@@ -1,0 +1,106 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Setting;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Http; // PERBAIKAN: Impor Http Facade agar getWaStatus() berfungsi
+
+class SettingController extends Controller
+{
+    public function index()
+    {
+        // Mengambil semua pengaturan dan mengubahnya menjadi format Key-Value
+        $settings = Setting::pluck('value', 'key')->toArray();
+        return Inertia::render('Settings/Index', [
+            'settings' => $settings
+        ]);
+    }
+
+    public function update(Request $request)
+    {
+        // TAMBAHAN: Validasi untuk 'start_number' dan 'favicon' tanpa menghapus yang lama
+        $request->validate([
+            'agency_name' => 'required|string|max:255',
+            'copyright' => 'required|string',
+            'start_number' => 'required|integer|min:1', // Tambahan validasi nomor urut surat
+            'logo' => 'nullable|image|max:2048', 
+            'signature_file' => 'nullable|image|mimes:png|max:2048', // Validasi khusus PNG
+            'favicon' => 'nullable|image|mimes:ico,png,jpg,jpeg|max:1024', // Tambahan validasi favicon (Maks 1MB)
+        ]);
+
+        // 1. Update pengaturan teks (agency_name, copyright, dan start_number)
+        foreach ($request->only(['agency_name', 'copyright', 'start_number']) as $key => $value) {
+            Setting::updateOrCreate(['key' => $key], ['value' => $value]);
+        }
+
+        // 2. Logika Update Logo Instansi
+        if ($request->hasFile('logo')) {
+            $oldLogo = Setting::where('key', 'agency_logo')->first();
+            if ($oldLogo && $oldLogo->value) {
+                Storage::disk('public')->delete($oldLogo->value);
+            }
+
+            $path = $request->file('logo')->store('agency', 'public');
+            Setting::updateOrCreate(['key' => 'agency_logo'], ['value' => $path]);
+        }
+
+        // 3. Logika Update Tanda Tangan Komandan (Fitur Baru)
+        if ($request->hasFile('signature_file')) {
+            // Kita simpan dengan nama tetap 'komandan_ttd.png' agar mudah dipanggil sistem
+            $path = $request->file('signature_file')->storeAs('signatures', 'komandan_ttd.png', 'public');
+            
+            // Simpan path-nya ke database dengan key 'commander_signature'
+            Setting::updateOrCreate(
+                ['key' => 'commander_signature'], 
+                ['value' => 'signatures/komandan_ttd.png']
+            );
+        }
+
+        // 4. TAMBAHAN: Logika Update Favicon Web
+        if ($request->hasFile('favicon')) {
+            $oldFavicon = Setting::where('key', 'favicon')->first();
+            if ($oldFavicon && $oldFavicon->value) {
+                Storage::disk('public')->delete($oldFavicon->value);
+            }
+
+            $path = $request->file('favicon')->store('favicon', 'public');
+            Setting::updateOrCreate(['key' => 'favicon'], ['value' => $path]);
+        }
+
+        return back()->with('success', 'Pengaturan, Tanda Tangan, dan Favicon berhasil diperbarui!');
+    }
+    
+    // app/Http/Controllers/Admin/SettingController.php
+    public function getWaStatus()
+    {
+        try {
+            // Panggil API Node.js yang kita buat tadi
+            $response = Http::get('http://localhost:3000/status-wa');
+            return $response->json();
+        } catch (\Exception $e) {
+            return ['status' => 'OFFLINE', 'qr' => null];
+        }
+    }
+    
+    public function updateStamp(Request $request)
+    {
+        $request->validate([
+            'stamp_file' => 'required|image|mimes:png|max:2048', // Wajib PNG agar transparan
+        ]);
+
+        if ($request->hasFile('stamp_file')) {
+            $path = $request->file('stamp_file')->store('settings', 'public');
+            
+            // Simpan ke database (mengasumsikan tabel settings dengan key-value)
+            Setting::updateOrCreate(
+                ['key' => 'commander_stamp'],
+                ['value' => $path]
+            );
+        }
+
+        return back()->with('success', 'Radar: Stempel berhasil diperbarui.');
+    }
+}
