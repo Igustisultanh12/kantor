@@ -39,7 +39,7 @@ class Cash extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'date' => 'date:Y-m-d',
+        'date' => 'string',
         'debit' => 'float',
         'credit' => 'float',
         'balance' => 'float',

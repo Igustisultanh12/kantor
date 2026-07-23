@@ -59,7 +59,7 @@ class CashController extends Controller
 
             return [
                 'id' => $cash->id,
-                'date' => $cash->date,
+                'date' => (string)($cash->getRawOriginal('date') ?? $cash->date),
                 'description' => $cash->description,
                 'debit' => (float)($cash->debit ?? 0),
                 'credit' => (float)($cash->credit ?? 0),
@@ -102,8 +102,10 @@ class CashController extends Controller
         // PERBAIKAN: Paksa konversi array menjadi string JSON murni secara manual agar database tidak memicu error 500
         $finalPathValue = count($storedPaths) > 0 ? json_encode($storedPaths) : null;
 
+        $dateFormatted = is_string($request->date) ? substr($request->date, 0, 10) : $request->date;
+
         Cash::create([
-            'date' => $request->date,
+            'date' => $dateFormatted,
             'description' => $request->description,
             'debit' => $request->debit ?? 0,
             'credit' => $request->credit ?? 0,
@@ -128,7 +130,8 @@ class CashController extends Controller
         ]);
 
         $cash = Cash::findOrFail($id);
-        $updateData = $request->only(['date', 'description', 'debit', 'credit']);
+        $updateData = $request->only(['description', 'debit', 'credit']);
+        $updateData['date'] = is_string($request->date) ? substr($request->date, 0, 10) : $request->date;
 
         // Jika ada unggahan kumpulan dokumen nota baru, bersihkan berkas lama
         if ($request->hasFile('receipt_files')) {
