@@ -13,9 +13,17 @@ const props = defineProps({
 const showModal = ref(false);
 const isEdit = ref(false);
 
+const getTodayLocalDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 const form = useForm({
     id: null,
-    tanggal: new Date().toISOString().split('T')[0],
+    tanggal: getTodayLocalDate(),
     keterangan: '',
     jenis: 'MASUK',
     jumlah: 0

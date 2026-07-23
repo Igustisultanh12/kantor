@@ -24,13 +24,21 @@ const search = ref('');
 const startDate = ref(''); 
 const endDate = ref('');   
 
+const getTodayLocalDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 const form = useForm({
     priority: 'B',
     category_id: '',
     sub_category_id: '', 
     subject: '',
     recipient: '', 
-    date: new Date().toISOString().substr(0, 10),
+    date: getTodayLocalDate(),
     sequence: '', // PENTING: Sudah mendukung String/Huruf
 });
 

@@ -51,8 +51,19 @@ const formatRupiah = (angka) => {
 
 const filteredCashes = computed(() => {
     return props.cashes.filter(cash => {
-        const d = new Date(cash.date);
-        const matchDate = (d.getMonth() + 1) == filterMonth.value && d.getFullYear() == filterYear.value;
+        if (!cash.date) return false;
+        const cleanDate = typeof cash.date === 'string' ? cash.date.split('T')[0] : '';
+        const parts = cleanDate.split('-');
+        let year, month;
+        if (parts.length === 3) {
+            year = parseInt(parts[0], 10);
+            month = parseInt(parts[1], 10);
+        } else {
+            const d = new Date(cash.date);
+            year = d.getFullYear();
+            month = d.getMonth() + 1;
+        }
+        const matchDate = month == filterMonth.value && year == filterYear.value;
         const query = searchQuery.value.toLowerCase().trim();
         if (!query) return matchDate;
 
@@ -69,9 +80,17 @@ const totalDebit = computed(() => filteredCashes.value.reduce((acc, curr) => acc
 const totalCredit = computed(() => filteredCashes.value.reduce((acc, curr) => acc + parseFloat(curr.credit), 0));
 const selectedMonthName = computed(() => months.find(m => m.id == filterMonth.value)?.name.toUpperCase());
 
+const getTodayLocalDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 // Form Tambah Transaksi Baru (Multi-Files Array)
 const form = useForm({
-    date: new Date().toISOString().substr(0, 10),
+    date: getTodayLocalDate(),
     description: '',
     debit: 0,
     credit: 0,
@@ -205,6 +224,18 @@ const downloadPDF = () => {
 };
 
 const formatLongDate = (dateStr) => {
+    if (!dateStr) return '';
+    if (dateStr instanceof Date) {
+        return dateStr.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+    const cleanDateStr = typeof dateStr === 'string' ? dateStr.split('T')[0] : dateStr;
+    const parts = cleanDateStr.split('-');
+    if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        return new Date(year, month, day).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
     return new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 };
 </script>
