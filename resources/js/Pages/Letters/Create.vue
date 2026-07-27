@@ -159,26 +159,26 @@ const submit = () => {
     <AuthenticatedLayout>
         <div class="max-w-3xl mx-auto py-6 font-sans">
             <!-- Header Card -->
-            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0] mb-6 flex justify-between items-center">
+            <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0] mb-6 flex justify-between items-center">
                 <div>
-                    <h2 class="font-extrabold text-xl text-slate-900 uppercase tracking-tight">
+                    <h2 class="font-extrabold text-lg sm:text-xl text-slate-900 uppercase tracking-tight">
                         {{ props.selectedLog ? 'Otomatisasi Arsip PDF' : 'Input Arsip Baru' }}
                     </h2>
                     <p class="text-xs text-slate-500 font-semibold mt-0.5">Sistem Manajemen Pengarsipan & Penyimpanan Berkas Dokumen</p>
                 </div>
-                <Link :href="route('letters.index')" class="text-xs font-extrabold text-slate-400 hover:text-slate-700 uppercase tracking-wider">
+                <Link :href="route('letters.index')" class="text-xs font-extrabold text-slate-400 hover:text-slate-700 uppercase tracking-wider shrink-0">
                     ← Kembali
                 </Link>
             </div>
 
-            <form @submit.prevent="submit" class="bg-white p-8 shadow-xs rounded-3xl border border-[#E2E8F0] space-y-6">
+            <form @submit.prevent="submit" class="bg-white p-4 sm:p-6 lg:p-8 shadow-xs rounded-2xl sm:rounded-3xl border border-[#E2E8F0] space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     
                     <div class="md:col-span-2 space-y-2">
                         <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest px-1">Tipe Dokumen</label>
-                        <div class="grid grid-cols-3 gap-4" :class="{'opacity-50 pointer-events-none': props.selectedLog}">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4" :class="{'opacity-50 pointer-events-none': props.selectedLog}">
                             <label v-for="t in ['masuk', 'keluar', 'telegram']" :key="t" 
-                                :class="['flex items-center justify-center py-3.5 px-4 rounded-2xl border-2 cursor-pointer transition-all', form.type === t ? 'border-blue-600 bg-blue-50 text-blue-700 font-extrabold' : 'border-slate-100 text-slate-400 hover:bg-slate-50 font-semibold']">
+                                :class="['flex items-center justify-center py-3 px-4 rounded-2xl border-2 cursor-pointer transition-all', form.type === t ? 'border-blue-600 bg-blue-50 text-blue-700 font-extrabold' : 'border-slate-100 text-slate-400 hover:bg-slate-50 font-semibold']">
                                 <input type="radio" v-model="form.type" :value="t" class="hidden">
                                 <span class="text-xs uppercase tracking-wider">{{ t === 'telegram' ? 'Telegram' : 'Surat ' + t }}</span>
                             </label>

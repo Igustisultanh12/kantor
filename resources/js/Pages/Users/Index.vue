@@ -233,24 +233,24 @@ onUnmounted(() => {
         <div class="space-y-6 font-sans">
             
             <!-- Page Header Card -->
-            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h2 class="font-extrabold text-xl text-slate-900 uppercase tracking-tight">Otoritas Akses Personel</h2>
+                    <h2 class="font-extrabold text-lg sm:text-xl text-slate-900 uppercase tracking-tight">Otoritas Akses Personel</h2>
                     <p class="text-xs text-slate-500 font-semibold mt-0.5">Manajemen Pengguna, Peran Otoritas, & Verifikasi Akses Sistem</p>
                 </div>
                 
-                <div class="flex gap-3 w-full md:w-auto">
-                    <button @click="openPreview" class="flex-1 md:flex-none px-5 py-3 bg-slate-50 border border-slate-200 text-slate-700 rounded-2xl font-extrabold text-xs uppercase shadow-xs hover:bg-slate-100 transition tracking-wider">
+                <div class="flex gap-2 sm:gap-3 w-full md:w-auto">
+                    <button @click="openPreview" class="flex-1 md:flex-none px-4 sm:px-5 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 text-slate-700 rounded-2xl font-extrabold text-xs uppercase shadow-xs hover:bg-slate-100 transition tracking-wider">
                         📄 Pratinjau Rekap
                     </button>
-                    <button @click="showAddModal = true" class="flex-1 md:flex-none px-5 py-3 bg-blue-600 text-white rounded-2xl font-extrabold text-xs uppercase shadow-md shadow-blue-500/20 hover:bg-blue-700 transition tracking-wider">
+                    <button @click="showAddModal = true" class="flex-1 md:flex-none px-4 sm:px-5 py-2.5 sm:py-3 bg-blue-600 text-white rounded-2xl font-extrabold text-xs uppercase shadow-md shadow-blue-500/20 hover:bg-blue-700 transition tracking-wider">
                         + Tambah Personel
                     </button>
                 </div>
             </div>
 
             <!-- Table Card -->
-            <div class="bg-white rounded-3xl border border-[#E2E8F0] shadow-xs overflow-hidden p-6">
+            <div class="bg-white rounded-2xl sm:rounded-3xl border border-[#E2E8F0] shadow-xs overflow-hidden p-3 sm:p-6">
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>

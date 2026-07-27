@@ -228,7 +228,7 @@ const handleFileUpload = (event) => {
                         <input type="date" v-model="endDate" class="bg-white border-slate-200 text-xs font-bold rounded-xl py-2 px-3 focus:ring-blue-500">
                     </div>
 
-                    <div class="flex items-end h-full gap-2 mt-4 md:mt-0">
+                    <div class="flex flex-wrap items-center h-full gap-2 mt-4 md:mt-0">
                         <button @click="openPreview" class="px-4 py-2.5 bg-blue-50 text-blue-600 rounded-xl text-xs font-extrabold uppercase tracking-wider hover:bg-blue-600 hover:text-white transition">
                             Pratinjau
                         </button>
@@ -244,7 +244,7 @@ const handleFileUpload = (event) => {
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Form Booking Nomor Card -->
                 <div class="space-y-6">
-                    <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0]">
+                    <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0]">
                         <h3 class="font-extrabold text-slate-900 uppercase text-xs tracking-wider mb-6 flex items-center gap-2">
                             <span class="w-2 h-2 rounded-full bg-blue-600"></span>
                             ➕ Booking Nomor Baru

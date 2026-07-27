@@ -76,57 +76,57 @@ const formatRupiah = (val) => {
         <div class="space-y-6 font-sans">
             
             <!-- Page Header Card -->
-            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h2 class="font-extrabold text-xl text-slate-900 uppercase tracking-tight">Rekening Komandan</h2>
+                    <h2 class="font-extrabold text-lg sm:text-xl text-slate-900 uppercase tracking-tight">Rekening Komandan</h2>
                     <p class="text-xs text-slate-500 font-semibold mt-0.5">Manajemen Logistik & Alokasi Dana Rekening Komandan</p>
                 </div>
                 
-                <div class="flex items-center gap-3">
-                    <button v-if="canEdit" @click="openCreateModal" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-2xl text-xs font-extrabold uppercase shadow-sm transition tracking-wider flex items-center gap-2">
+                <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 w-full md:w-auto">
+                    <button v-if="canEdit" @click="openCreateModal" class="flex-1 md:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl text-xs font-extrabold uppercase shadow-sm transition tracking-wider flex items-center gap-2">
                         <span>📝</span> Catat Mutasi
                     </button>
-                    <a :href="route('commander.pdf')" target="_blank" class="bg-slate-900 hover:bg-slate-800 text-white px-5 py-3 rounded-2xl text-xs font-extrabold uppercase shadow-sm transition tracking-wider flex items-center gap-2">
+                    <a :href="route('commander.pdf')" target="_blank" class="flex-1 md:flex-none justify-center bg-slate-900 hover:bg-slate-800 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl text-xs font-extrabold uppercase shadow-sm transition tracking-wider flex items-center gap-2">
                         <span>🖨</span> Cetak Laporan
                     </a>
                 </div>
             </div>
 
             <!-- Stats Cards Row -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-white p-6 rounded-3xl shadow-xs border border-emerald-100 flex items-center justify-between">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+                <div class="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-xs border border-emerald-100 flex items-center justify-between">
                     <div>
                         <p class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Total Uang Masuk</p>
-                        <p class="text-2xl font-black text-emerald-600 mt-1 font-mono">{{ formatRupiah(stats.total_masuk) }}</p>
+                        <p class="text-xl sm:text-2xl font-black text-emerald-600 mt-1 font-mono">{{ formatRupiah(stats.total_masuk) }}</p>
                     </div>
-                    <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl font-bold">
+                    <div class="w-10 sm:w-12 h-10 sm:h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg sm:text-xl font-bold">
                         📥
                     </div>
                 </div>
 
-                <div class="bg-white p-6 rounded-3xl shadow-xs border border-rose-100 flex items-center justify-between">
+                <div class="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-xs border border-rose-100 flex items-center justify-between">
                     <div>
                         <p class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Total Uang Keluar</p>
-                        <p class="text-2xl font-black text-rose-600 mt-1 font-mono">{{ formatRupiah(stats.total_keluar) }}</p>
+                        <p class="text-xl sm:text-2xl font-black text-rose-600 mt-1 font-mono">{{ formatRupiah(stats.total_keluar) }}</p>
                     </div>
-                    <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl font-bold">
+                    <div class="w-10 sm:w-12 h-10 sm:h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center text-lg sm:text-xl font-bold">
                         📤
                     </div>
                 </div>
 
-                <div class="bg-white p-6 rounded-3xl shadow-xs border border-blue-100 bg-blue-50/20 flex items-center justify-between">
+                <div class="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-xs border border-blue-100 bg-blue-50/20 flex items-center justify-between">
                     <div>
                         <p class="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider">Saldo Akhir Komandan</p>
-                        <p class="text-2xl font-black text-blue-700 mt-1 font-mono">{{ formatRupiah(stats.saldo_akhir) }}</p>
+                        <p class="text-xl sm:text-2xl font-black text-blue-700 mt-1 font-mono">{{ formatRupiah(stats.saldo_akhir) }}</p>
                     </div>
-                    <div class="w-12 h-12 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center text-xl font-bold">
+                    <div class="w-10 sm:w-12 h-10 sm:h-12 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center text-lg sm:text-xl font-bold">
                         💰
                     </div>
                 </div>
             </div>
 
             <!-- Table Card -->
-            <div class="bg-white rounded-3xl shadow-xs border border-[#E2E8F0] overflow-hidden">
+            <div class="bg-white rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0] overflow-hidden">
                 <div class="p-6 border-b border-slate-100 flex justify-between items-center">
                     <h3 class="font-extrabold text-xs uppercase tracking-wider text-slate-800">Riwayat Mutasi & Transaksi</h3>
                     <span class="text-[10px] font-bold bg-slate-100 text-slate-600 px-3 py-1 rounded-full uppercase">Total Log: {{ logs.length }}</span>

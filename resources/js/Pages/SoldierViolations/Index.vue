@@ -180,34 +180,34 @@ const getFileName = (path) => {
         <div class="space-y-6 font-sans">
             
             <!-- Page Header Card -->
-            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h2 class="font-extrabold text-xl text-slate-900 uppercase tracking-tight">Data Pelanggaran Prajurit</h2>
+                    <h2 class="font-extrabold text-lg sm:text-xl text-slate-900 uppercase tracking-tight">Data Pelanggaran Prajurit</h2>
                     <p class="text-xs text-slate-500 font-semibold mt-0.5">Monitoring Berkas & Perkembangan Kasus Personel</p>
                 </div>
 
-                <div class="flex items-center gap-4">
-                    <button @click="showCreateModal = true" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-2xl text-xs font-extrabold uppercase shadow-sm transition tracking-wider flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                    <button @click="showCreateModal = true" class="flex-1 md:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl text-xs font-extrabold uppercase shadow-sm transition tracking-wider flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4" />
                         </svg>
                         Input Kasus Baru
                     </button>
-                    <div class="flex gap-4 text-right border-l border-slate-100 pl-4">
+                    <div class="flex gap-4 text-right border-l border-slate-100 pl-3">
                         <div>
                             <p class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Total Kasus</p>
-                            <p class="text-xl font-black text-blue-600">{{ stats.total }}</p>
+                            <p class="text-lg sm:text-xl font-black text-blue-600">{{ stats.total }}</p>
                         </div>
                         <div>
                             <p class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Dalam Proses</p>
-                            <p class="text-xl font-black text-rose-600">{{ stats.proses }}</p>
+                            <p class="text-lg sm:text-xl font-black text-rose-600">{{ stats.proses }}</p>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Table Card -->
-            <div class="bg-white rounded-3xl shadow-xs border border-[#E2E8F0] overflow-hidden">
+            <div class="bg-white rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0] overflow-hidden">
                 <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                     <input v-model="search" type="text" placeholder="Cari NRP atau Nama Prajurit..." class="rounded-2xl border-slate-200 bg-white text-xs font-bold px-5 py-2.5 w-full md:w-96 focus:ring-blue-500 focus:border-blue-600">
                 </div>

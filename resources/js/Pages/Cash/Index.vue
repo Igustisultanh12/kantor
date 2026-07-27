@@ -243,13 +243,13 @@ const formatLongDate = (dateStr) => {
 <template>
     <Head title="Pembukuan Kas" />
     <AuthenticatedLayout>
-        <div class="py-12 px-4 md:px-0 font-sans">
+        <div class="py-4 sm:py-8 font-sans">
             <div class="max-w-7xl mx-auto space-y-6">
                 
                 <!-- Page Header Card -->
-                <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                     <div>
-                        <h2 class="font-black text-slate-900 uppercase tracking-tight text-xl">Pembukuan Kas Unit</h2>
+                        <h2 class="font-extrabold text-slate-900 uppercase tracking-tight text-lg sm:text-xl">Pembukuan Kas Unit</h2>
                         <p class="text-xs text-slate-500 font-semibold mt-0.5">Sistem Keuangan Logistik & Buku Kas SINDEN</p>
                     </div>
                     
@@ -268,7 +268,7 @@ const formatLongDate = (dateStr) => {
                             </div>
                         </div>
 
-                        <div class="flex items-center gap-2">
+                        <div class="flex flex-wrap items-center gap-2">
                             <div class="flex flex-col">
                                 <label class="text-[9px] text-slate-400 ml-1 mb-1 font-extrabold uppercase">FILTER BULAN</label>
                                 <select v-model="filterMonth" class="text-xs font-bold rounded-xl border-slate-200 uppercase py-2 bg-white">
@@ -287,7 +287,7 @@ const formatLongDate = (dateStr) => {
                 </div>
 
                 <!-- Form Tambah Transaksi Card -->
-                <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0]">
+                <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0]">
                     <h3 class="font-extrabold mb-6 uppercase text-xs tracking-wider text-slate-700 flex items-center gap-2">
                         <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
                         ➕ Tambah Log Transaksi Kas Baru
