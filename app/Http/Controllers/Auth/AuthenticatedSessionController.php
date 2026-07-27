@@ -18,9 +18,17 @@ class AuthenticatedSessionController extends Controller
      */
     public function create(): Response
     {
+        $rawSettings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        $settings = [
+            'app_name' => $rawSettings['agency_name'] ?? 'SINDEN',
+            'agency_logo' => isset($rawSettings['agency_logo']) && $rawSettings['agency_logo'] ? asset('storage/' . $rawSettings['agency_logo']) : null,
+            'login_background' => isset($rawSettings['login_background']) && $rawSettings['login_background'] ? asset('storage/' . $rawSettings['login_background']) : null,
+        ];
+
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
+            'settings' => $settings,
         ]);
     }
 

@@ -246,88 +246,91 @@ const formatLongDate = (dateStr) => {
         <div class="py-12 px-4 md:px-0 font-sans">
             <div class="max-w-7xl mx-auto space-y-6">
                 
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                <!-- Page Header Card -->
+                <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                     <div>
-                        <h2 class="font-black text-indigo-900 uppercase tracking-widest text-lg">Pembukuan Kas Unit</h2>
-                        <p class="text-[10px] text-gray-400 font-bold uppercase">Sistem Intelijen Digital - Denintel</p>
+                        <h2 class="font-black text-slate-900 uppercase tracking-tight text-xl">Pembukuan Kas Unit</h2>
+                        <p class="text-xs text-slate-500 font-semibold mt-0.5">Sistem Keuangan Logistik & Buku Kas SINDEN</p>
                     </div>
                     
-                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-100 font-bold w-full lg:w-auto">
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200 font-bold w-full lg:w-auto">
                         <div class="flex flex-col flex-1 sm:flex-initial">
-                            <label class="text-[8px] text-indigo-700 ml-1 mb-0.5 uppercase font-black tracking-wider">🔎 Cari Transaksi</label>
+                            <label class="text-[9px] text-blue-600 ml-1 mb-1 uppercase font-extrabold tracking-wider">🔎 Cari Transaksi</label>
                             <div class="relative">
                                 <input 
                                     type="text" 
                                     v-model="searchQuery" 
                                     placeholder="Ketik uraian / nominal..." 
-                                    class="text-xs font-bold rounded-lg border-gray-200 py-1.5 w-full sm:w-56 focus:ring-indigo-500 pl-7"
+                                    class="text-xs font-bold rounded-xl border-slate-200 py-2 w-full sm:w-56 focus:ring-blue-500 focus:border-blue-600 pl-8 bg-white"
                                 />
-                                <span class="absolute left-2.5 top-2 text-xs text-gray-400">🔍</span>
-                                <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-2 top-1.5 text-gray-400 hover:text-red-500 text-sm">×</button>
+                                <span class="absolute left-2.5 top-2.5 text-xs text-slate-400">🔍</span>
+                                <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-2 top-2 text-slate-400 hover:text-rose-500 text-sm">×</button>
                             </div>
                         </div>
 
                         <div class="flex items-center gap-2">
                             <div class="flex flex-col">
-                                <label class="text-[8px] text-gray-400 ml-1 mb-0.5">FILTER BULAN</label>
-                                <select v-model="filterMonth" class="text-xs font-bold rounded-lg border-gray-200 uppercase py-1.5">
+                                <label class="text-[9px] text-slate-400 ml-1 mb-1 font-extrabold uppercase">FILTER BULAN</label>
+                                <select v-model="filterMonth" class="text-xs font-bold rounded-xl border-slate-200 uppercase py-2 bg-white">
                                     <option v-for="m in months" :key="m.id" :value="m.id">{{ m.name }}</option>
                                 </select>
                             </div>
                             <div class="flex flex-col">
-                                <label class="text-[8px] text-gray-400 ml-1 mb-0.5">TAHUN</label>
-                                <input type="number" v-model="filterYear" class="w-20 text-xs font-bold rounded-lg border-gray-200 py-1.5" />
+                                <label class="text-[9px] text-slate-400 ml-1 mb-1 font-extrabold uppercase">TAHUN</label>
+                                <input type="number" v-model="filterYear" class="w-20 text-xs font-bold rounded-xl border-slate-200 py-2 bg-white" />
                             </div>
-                            <button @click="openPreview" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-lg text-[10px] font-black uppercase shadow-lg flex items-center gap-2 mt-3.5 whitespace-nowrap">
+                            <button @click="openPreview" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase shadow-sm flex items-center gap-2 mt-4 whitespace-nowrap transition">
                                 <span>📄</span> Pratinjau PDF
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-white p-6 rounded-2xl shadow-lg border-t-4 border-green-600">
-                    <h3 class="font-black mb-6 uppercase text-xs tracking-widest text-slate-500 italic">➕ Tambah Log Transaksi</h3>
-                    <form @submit.prevent="submit" class="space-y-6 italic font-bold">
+                <!-- Form Tambah Transaksi Card -->
+                <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0]">
+                    <h3 class="font-extrabold mb-6 uppercase text-xs tracking-wider text-slate-700 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        ➕ Tambah Log Transaksi Kas Baru
+                    </h3>
+                    <form @submit.prevent="submit" class="space-y-6 font-bold">
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                             <div class="flex flex-col">
-                                <label class="text-[10px] text-gray-400 mb-1 uppercase tracking-widest ml-1">📅 Tanggal</label>
-                                <input type="date" v-model="form.date" class="rounded-xl border-gray-200 text-sm focus:ring-green-500" required />
+                                <label class="text-[10px] text-slate-400 mb-1 uppercase tracking-wider ml-1">📅 Tanggal</label>
+                                <input type="date" v-model="form.date" class="rounded-2xl border-slate-200 text-xs font-bold focus:ring-blue-500 focus:border-blue-600 py-3 bg-slate-50" required />
                             </div>
                             <div class="flex flex-col">
-                                <label class="text-[10px] text-gray-400 mb-1 uppercase tracking-widest ml-1">📝 Uraian / Keterangan</label>
-                                <input type="text" v-model="form.description" placeholder="Masukkan keterangan..." class="rounded-xl border-gray-200 text-sm focus:ring-green-500" required />
+                                <label class="text-[10px] text-slate-400 mb-1 uppercase tracking-wider ml-1">📝 Uraian / Keterangan</label>
+                                <input type="text" v-model="form.description" placeholder="Masukkan keterangan transaksi..." class="rounded-2xl border-slate-200 text-xs font-bold focus:ring-blue-500 focus:border-blue-600 py-3 bg-slate-50" required />
                             </div>
-                            <div class="flex flex-col p-2 bg-green-50 rounded-xl border border-green-100">
-                                <label class="text-[10px] text-green-700 mb-1 uppercase font-black tracking-widest ml-1">📥 Debit (Masuk)</label>
-                                <input type="number" v-model="form.debit" class="w-full bg-transparent border-none text-sm focus:ring-0 font-mono" />
+                            <div class="flex flex-col p-3 bg-emerald-50/60 rounded-2xl border border-emerald-100">
+                                <label class="text-[10px] text-emerald-700 mb-1 uppercase font-extrabold tracking-wider ml-1">📥 Debit (Masuk)</label>
+                                <input type="number" v-model="form.debit" class="w-full bg-transparent border-none text-sm focus:ring-0 font-mono font-bold text-emerald-800" />
                             </div>
-                            <div class="flex flex-col p-2 bg-red-50 rounded-xl border border-red-100">
-                                <label class="text-[10px] text-red-700 mb-1 uppercase font-black tracking-widest ml-1">📤 Kredit (Keluar)</label>
-                                <input type="number" v-model="form.credit" class="w-full bg-transparent border-none text-sm focus:ring-0 font-mono" />
+                            <div class="flex flex-col p-3 bg-rose-50/60 rounded-2xl border border-rose-100">
+                                <label class="text-[10px] text-rose-700 mb-1 uppercase font-extrabold tracking-wider ml-1">📤 Kredit (Keluar)</label>
+                                <input type="number" v-model="form.credit" class="w-full bg-transparent border-none text-sm focus:ring-0 font-mono font-bold text-rose-800" />
                             </div>
                         </div>
 
-                        <div class="p-5 bg-slate-50/80 rounded-2xl border border-dashed border-slate-200 flex flex-col md:flex-row items-center gap-6 group transition-all hover:border-indigo-300">
-                            <div class="flex gap-2 flex-wrap items-center justify-center min-w-[6rem] max-w-md shrink-0">
-                                <template v-if="receiptPreviews.length > 0">
-                                    <div v-for="(prev, index) in receiptPreviews" :key="index" class="w-14 h-14 rounded-lg bg-white border border-slate-200 shadow-sm flex items-center justify-center overflow-hidden">
-                                        <img v-if="!prev.is_pdf" :src="prev.url" class="w-full h-full object-cover" />
-                                        <span v-else class="text-[8px] text-red-500 font-black uppercase text-center p-0.5 leading-none">📄 PDF</span>
-                                    </div>
-                                </template>
-                                <span v-else class="text-[10px] text-slate-300 font-black uppercase tracking-tighter text-center px-1">Belum Ada Nota</span>
+                        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
+                            <div class="flex gap-3 flex-wrap">
+                                <div v-for="(prev, i) in receiptPreviews" :key="i" class="w-14 h-14 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-center overflow-hidden">
+                                    <img v-if="!prev.is_pdf" :src="prev.url" class="w-full h-full object-cover" />
+                                    <span v-else class="text-[8px] text-rose-500 font-black uppercase text-center p-0.5 leading-none">📄 PDF</span>
+                                </div>
+                                <span v-if="receiptPreviews.length === 0" class="text-[10px] text-slate-400 font-bold uppercase tracking-tight text-center px-1">Belum Ada Nota Bukti Terpilih</span>
                             </div>
                             <div class="flex-1 text-center md:text-left">
-                                <label class="cursor-pointer bg-white border border-slate-200 px-5 py-2 rounded-xl text-[10px] font-black uppercase text-indigo-600 hover:bg-indigo-600 hover:text-white transition shadow-sm inline-block">
+                                <label class="cursor-pointer bg-white border border-slate-200 px-5 py-2.5 rounded-xl text-[10px] font-extrabold uppercase text-blue-600 hover:bg-blue-600 hover:text-white transition shadow-xs inline-block">
                                     📁 Unggah Lampiran Multi-Nota Bukti
                                     <input type="file" @change="handleReceiptChange" class="hidden" accept="image/jpeg,image/jpg,image/png,application/pdf" multiple />
                                 </label>
-                                <p class="text-[9px] text-gray-400 mt-2 font-bold uppercase tracking-tight">Mendukung unggah banyak gambar sekaligus (Maksimal Kapasitas Gabungan: 150MB)</p>
-                                <p v-if="form.receipt_files.length > 0" class="text-[9px] text-emerald-600 mt-1 uppercase font-black">✓ Terpilih: {{ form.receipt_files.length }} File Berkas Berhasil Disiapkan</p>
+                                <p class="text-[9px] text-slate-400 mt-1.5 font-bold uppercase tracking-tight">Mendukung banyak gambar / PDF sekaligus (Max 150MB)</p>
+                                <p v-if="form.receipt_files.length > 0" class="text-[9px] text-emerald-600 mt-1 uppercase font-extrabold">✓ Terpilih: {{ form.receipt_files.length }} File Berkas</p>
                             </div>
                         </div>
 
-                        <button :disabled="form.processing" class="w-full bg-green-700 text-white font-black py-4 rounded-2xl uppercase hover:bg-green-800 transition shadow-lg active:scale-95 disabled:opacity-50">
+                        <button :disabled="form.processing" class="w-full bg-blue-600 text-white font-extrabold py-3.5 rounded-2xl uppercase hover:bg-blue-700 transition shadow-md shadow-blue-500/20 active:scale-95 disabled:opacity-50 text-xs tracking-wider">
                             💾 Simpan ke Buku Kas Digital
                         </button>
                     </form>

@@ -27,6 +27,7 @@ class SettingController extends Controller
             'copyright' => 'required|string',
             'start_number' => 'required|integer|min:1', // Tambahan validasi nomor urut surat
             'logo' => 'nullable|image|max:2048', 
+            'login_background' => 'nullable|image|max:5120', // Background login (Maks 5MB)
             'signature_file' => 'nullable|image|mimes:png|max:2048', // Validasi khusus PNG
             'favicon' => 'nullable|image|mimes:ico,png,jpg,jpeg|max:1024', // Tambahan validasi favicon (Maks 1MB)
         ]);
@@ -45,6 +46,17 @@ class SettingController extends Controller
 
             $path = $request->file('logo')->store('agency', 'public');
             Setting::updateOrCreate(['key' => 'agency_logo'], ['value' => $path]);
+        }
+
+        // 2b. Logika Update Background Login
+        if ($request->hasFile('login_background')) {
+            $oldBg = Setting::where('key', 'login_background')->first();
+            if ($oldBg && $oldBg->value) {
+                Storage::disk('public')->delete($oldBg->value);
+            }
+
+            $path = $request->file('login_background')->store('backgrounds', 'public');
+            Setting::updateOrCreate(['key' => 'login_background'], ['value' => $path]);
         }
 
         // 3. Logika Update Tanda Tangan Komandan (Fitur Baru)
@@ -70,7 +82,7 @@ class SettingController extends Controller
             Setting::updateOrCreate(['key' => 'favicon'], ['value' => $path]);
         }
 
-        return back()->with('success', 'Pengaturan, Tanda Tangan, dan Favicon berhasil diperbarui!');
+        return back()->with('success', 'Pengaturan, Logo, Background Login, Tanda Tangan, dan Favicon berhasil diperbarui!');
     }
     
     // app/Http/Controllers/Admin/SettingController.php

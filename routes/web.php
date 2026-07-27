@@ -31,15 +31,12 @@ use App\Models\AuditLog;
 use App\Models\Setting;
 use Illuminate\Support\Facades\Http;
 
-// --- HALAMAN DEPAN (GUDANG PUBLIK) ---
+// --- HALAMAN DEPAN (DIRECT LOGIN SINDEN) ---
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-        'settings' => Setting::first(), 
-    ]);
+    if (auth()->check()) {
+        return redirect()->route('dashboard');
+    }
+    return redirect()->route('login');
 });
 
 // --- FITUR AKTIVASI & RESET CUSTOM (AKSES PUBLIK) ---
