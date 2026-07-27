@@ -122,39 +122,39 @@ const submit = async () => {
     <Head title="Otoritas Login - SINDEN" />
 
     <div 
-        class="min-h-screen flex font-sans bg-cover bg-center relative transition-all duration-300 bg-slate-900"
+        class="min-h-screen flex text-slate-800 font-sans bg-cover bg-center relative transition-all duration-300 bg-slate-950"
         :style="loginBg ? { backgroundImage: `url(${loginBg})` } : {}"
     >
-        <!-- Overlay Gelap Jika Ada Gambar Background -->
+        <!-- Dark overlay -->
         <div class="absolute inset-0 bg-slate-950/75 backdrop-blur-[2px] z-0"></div>
 
+        <!-- Main Wrapper -->
         <div class="relative z-10 w-full min-h-screen flex flex-col lg:flex-row">
-            <!-- Sisi Kiri: Logo Instansi & Branding App SISFOPERSKC Style -->
-            <div class="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 lg:p-16 text-white">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                        <span class="font-black text-white text-xl">S</span>
-                    </div>
-                    <span class="font-black tracking-widest text-lg text-white uppercase">{{ appName }}</span>
-                </div>
+            
+            <!-- Left Column: Floating Logos & Information -->
+            <div class="hidden lg:flex lg:w-1/2 flex-col justify-between p-16 text-white z-10">
+                <div></div>
 
-                <div class="my-auto max-w-lg space-y-6 text-center mx-auto">
-                    <!-- Logo Utama (Dapat Diatur Lewat Pengaturan Admin) -->
-                    <div v-if="configuredLogo" class="flex justify-center">
-                        <img :src="configuredLogo" class="h-28 lg:h-36 object-contain drop-shadow-[0_10px_25px_rgba(0,0,0,0.6)] animate-pulse" />
+                <div class="my-auto max-w-lg space-y-8 flex flex-col items-center text-center mx-auto">
+                    <!-- Logo TNI Utama (Efek Mentul-Mentul / Floating Animation) -->
+                    <div class="flex justify-center animate-float-slow">
+                        <img v-if="configuredLogo" :src="configuredLogo" class="h-32 lg:h-40 object-contain drop-shadow-[0_10px_25px_rgba(0,0,0,0.6)]" />
+                        <img v-else src="https://upload.wikimedia.org/wikipedia/commons/b/b5/Tentara_Nasional_Indonesia_insignia.svg" class="h-32 lg:h-40 object-contain drop-shadow-[0_10px_25px_rgba(0,0,0,0.6)]" />
                     </div>
-                    <div v-else class="flex justify-center">
-                        <div class="w-24 h-24 rounded-3xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-2xl">
-                            <span class="font-black text-white text-4xl">S</span>
-                        </div>
+                    
+                    <!-- Logo Tiga Matra Sejajar (Efek Mentul-Mentul) -->
+                    <div class="flex items-center justify-center gap-6 flex-wrap animate-float-slow delay-200">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/e/eb/Coat_of_arms_of_the_Indonesian_Army.svg" class="h-14 object-contain drop-shadow-md transition hover:scale-110" alt="AD" />
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/c/c5/Coat_of_arms_of_the_Indonesian_Navy.svg" class="h-14 object-contain drop-shadow-md transition hover:scale-110" alt="AL" />
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/Coat_of_arms_of_the_Indonesian_Air_Force.svg" class="h-14 object-contain drop-shadow-md transition hover:scale-110" alt="AU" />
                     </div>
 
                     <div>
-                        <h1 class="text-3xl lg:text-4xl font-black tracking-tight text-white uppercase drop-shadow-md">
-                            {{ appName }}
-                        </h1>
-                        <p class="text-sm mt-3 text-slate-300 max-w-md mx-auto leading-relaxed font-medium">
-                            Sistem Informasi Detasemen Intelijen — Integrasi Akses, Pengawasan, dan Logistik Terpadu.
+                        <h2 class="text-3xl font-extrabold tracking-tight uppercase text-white drop-shadow-md">
+                            {{ appName }} INTEGRASI TNI
+                        </h2>
+                        <p class="text-sm mt-3 leading-relaxed max-w-md mx-auto text-slate-200">
+                            Sistem informasi personel & logistik yang terintegrasi, valid, dan akuntabel untuk pengelolaan administrasi intelijen dan operasional.
                         </p>
                     </div>
                 </div>
@@ -164,109 +164,138 @@ const submit = async () => {
                 </p>
             </div>
 
-            <!-- Sisi Kanan: Card Form Login Clean Glassmorphism -->
-            <div class="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-10 my-auto">
-                <div class="w-full max-w-md p-8 sm:p-10 rounded-3xl shadow-2xl bg-white/95 backdrop-blur-md border border-white/40 text-slate-800">
-                    <div class="mb-6 text-center sm:text-left">
-                        <div class="flex items-center justify-center sm:justify-start gap-2 mb-2 lg:hidden">
-                            <img v-if="configuredLogo" :src="configuredLogo" class="h-10 object-contain" />
-                            <span class="font-black text-slate-900 tracking-wider uppercase text-lg">{{ appName }}</span>
-                        </div>
-                        <h2 class="text-2xl font-black text-slate-900 uppercase tracking-tight">Masuk Akun</h2>
-                        <p class="text-xs text-slate-500 font-semibold mt-1">Otoritas Login & Verifikasi Keamanan GPS SINDEN</p>
+            <!-- Right Column: Dark Floating Card Form Login -->
+            <div class="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-10 z-10 my-auto">
+                <div class="w-full max-w-md p-8 sm:p-10 rounded-2xl shadow-2xl bg-slate-900/90 backdrop-blur-md border border-white/10 text-white animate-float-card">
+                    <div class="mb-8">
+                        <h3 class="text-xl font-bold text-white">Masuk Akun</h3>
+                        <p class="text-xs mt-1 text-slate-300">
+                            Gunakan akun internal Anda untuk mengakses sistem dashboard.
+                        </p>
                     </div>
 
-                    <form @submit.prevent="submit" class="space-y-4">
+                    <form @submit.prevent="submit" class="space-y-5">
                         <div>
-                            <InputLabel for="email" value="Email Dinas" class="text-[10px] font-black uppercase text-slate-500 ms-1" />
-                            <TextInput 
-                                id="email" 
-                                type="email" 
-                                class="mt-1 block w-full rounded-2xl border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-blue-500/20 text-sm font-semibold transition-all placeholder:text-slate-400 py-3" 
-                                v-model="form.email" 
-                                required 
-                                autofocus 
-                                autocomplete="username" 
-                                placeholder="masukkan email dinas..." 
-                            />
-                            <InputError class="mt-1.5" :message="form.errors.email" />
-                        </div>
-
-                        <div>
-                            <InputLabel for="password" value="Password" class="text-[10px] font-black uppercase text-slate-500 ms-1" />
-                            <TextInput 
-                                id="password" 
-                                type="password" 
-                                class="mt-1 block w-full rounded-2xl border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-blue-500/20 text-sm font-semibold transition-all placeholder:text-slate-400 py-3" 
-                                v-model="form.password" 
-                                required 
-                                autocomplete="current-password" 
-                                placeholder="••••••••" 
-                            />
-                            <InputError class="mt-1.5" :message="form.errors.password" />
-                        </div>
-
-                        <div class="flex items-center justify-between pt-1">
-                            <label class="flex items-center cursor-pointer">
-                                <Checkbox name="remember" v-model:checked="form.remember" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                                <span class="ms-2 text-[11px] font-bold text-slate-600 uppercase tracking-wider">Ingat Perangkat</span>
+                            <label class="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-300">
+                                Email / NIKC / NRP
                             </label>
-                            
-                            <Link v-if="canResetPassword" :href="route('password.request.custom')" class="text-[10px] font-extrabold text-blue-600 uppercase tracking-tight hover:text-blue-800">
-                                Lupa Password?
-                            </Link>
+                            <input 
+                                type="email" 
+                                v-model="form.email" 
+                                class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white" 
+                                placeholder="Masukkan email / NRP"
+                                required 
+                                autofocus
+                            />
+                            <InputError class="mt-1 text-xs text-red-400" :message="form.errors.email" />
                         </div>
 
-                        <div class="pt-2">
-                            <PrimaryButton
-                                class="w-full justify-center bg-blue-600 py-3.5 rounded-2xl font-black uppercase text-xs tracking-widest text-white shadow-lg shadow-blue-500/30 hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50"
-                                :disabled="form.processing || isLockingGPS"
-                            >
-                                <template v-if="isLockingGPS">
-                                    <svg class="animate-spin h-4 w-4 mr-2 text-white inline" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    MENGUNCI GPS...
-                                </template>
-                                <template v-else-if="form.processing">
-                                    MEREGISTER AKSES...
-                                </template>
-                                <template v-else>
-                                    Masuk Ke Sistem
-                                </template>
-                            </PrimaryButton>
-                        </div>
-
-                        <div class="flex items-center justify-between text-xs pt-3 font-bold border-t border-slate-100 mt-4">
-                            <Link href="/aktivasi" class="text-emerald-600 hover:underline uppercase text-[10px]">Aktivasi Akun Disini</Link>
-                            <Link :href="route('register')" class="text-blue-600 hover:underline uppercase text-[10px]">Silahkan Mendaftar</Link>
-                        </div>
-
-                        <!-- Status GPS Verifikasi -->
-                        <div class="mt-4 p-3.5 rounded-2xl border transition-all flex items-center gap-3"
-                             :class="form.latitude ? 'bg-emerald-50/80 border-emerald-200' : 'bg-slate-50 border-slate-200'">
-                            
-                            <div class="h-2.5 w-2.5 rounded-full shrink-0 transition-all" 
-                                :class="[
-                                    form.latitude ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'bg-rose-500', 
-                                    isLockingGPS ? 'animate-ping' : ''
-                                ]"
-                            ></div>
-
-                            <div class="flex flex-col overflow-hidden">
-                                <p class="text-[10px] font-black uppercase leading-tight" 
-                                   :class="form.latitude ? 'text-emerald-800' : 'text-slate-600'">
-                                    {{ form.latitude ? 'Koordinat Terkunci' : (gpsError ? 'Akses Terblokir' : 'Status Lokasi Aktif') }}
-                                </p>
-                                <p class="text-[9px] font-bold text-slate-400 uppercase mt-0.5 tracking-tight truncate">
-                                    {{ gpsError || (form.latitude ? `Laporan lokasi: ${form.latitude.toFixed(4)}, ${form.longitude.toFixed(4)}` : 'GPS Wajib Aktif sebagai instrumen verifikasi.') }}
-                                </p>
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300">
+                                    Kata Kunci
+                                </label>
+                                <Link v-if="canResetPassword" :href="route('password.request.custom')" class="text-xs font-medium text-orange-400 hover:underline">
+                                    Lupa Password?
+                                </Link>
                             </div>
+                            <input 
+                                type="password" 
+                                v-model="form.password" 
+                                class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white" 
+                                placeholder="••••••••" 
+                                required 
+                            />
+                            <InputError class="mt-1 text-xs text-red-400" :message="form.errors.password" />
                         </div>
+
+                        <div class="flex items-center justify-between">
+                            <label class="flex items-center gap-2 text-sm text-slate-300 select-none cursor-pointer">
+                                <input 
+                                    type="checkbox" 
+                                    v-model="form.remember" 
+                                    class="w-4 h-4 rounded bg-white/10 border-white/10 text-orange-500 focus:ring-0 cursor-pointer" 
+                                />
+                                Ingat Saya
+                            </label>
+                        </div>
+
+                        <button 
+                            type="submit" 
+                            :disabled="form.processing || isLockingGPS" 
+                            class="w-full py-3 px-4 text-white text-sm font-semibold rounded-lg shadow-lg bg-orange-500 hover:bg-orange-600 shadow-orange-500/20 transition duration-150 disabled:opacity-50 cursor-pointer flex justify-center items-center gap-2"
+                        >
+                            <template v-if="isLockingGPS">
+                                <svg class="animate-spin h-4 w-4 mr-2 text-white inline" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>Mengunci GPS...</span>
+                            </template>
+                            <template v-else-if="form.processing">
+                                <span>Memverifikasi...</span>
+                            </template>
+                            <template v-else>
+                                <span>Masuk Sistem</span>
+                                <span>➔</span>
+                            </template>
+                        </button>
                     </form>
+
+                    <!-- Status GPS Verification Widget -->
+                    <div class="mt-4 p-3 rounded-xl border transition-all flex items-center gap-3"
+                         :class="form.latitude ? 'bg-emerald-950/40 border-emerald-500/40' : 'bg-slate-800/50 border-slate-700/50'">
+                        <div class="h-2.5 w-2.5 rounded-full shrink-0 transition-all" 
+                            :class="[
+                                form.latitude ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'bg-rose-400', 
+                                isLockingGPS ? 'animate-ping' : ''
+                            ]"
+                        ></div>
+                        <div class="flex flex-col overflow-hidden text-left">
+                            <p class="text-[10px] font-bold uppercase leading-tight" 
+                               :class="form.latitude ? 'text-emerald-300' : 'text-slate-300'">
+                                {{ form.latitude ? 'GPS Presisi Terkunci' : (gpsError ? 'Akses Terblokir' : 'Verifikasi GPS Sistem') }}
+                            </p>
+                            <p class="text-[9px] text-slate-400 uppercase mt-0.5 tracking-tight truncate">
+                                {{ gpsError || (form.latitude ? `Koordinat: ${form.latitude.toFixed(4)}, ${form.longitude.toFixed(4)}` : 'Lokasi GPS Wajib Aktif') }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 text-center border-t border-white/10 pt-6 flex justify-between text-xs text-slate-300">
+                        <Link href="/aktivasi" class="text-orange-400 hover:underline">Aktivasi Akun</Link>
+                        <span>Belum punya akun? <Link :href="route('register')" class="font-semibold text-orange-400 hover:underline">Daftar Sekarang</Link></span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </template>
+
+<style scoped>
+.animate-float-slow {
+  animation: float-logo 5s ease-in-out infinite;
+}
+
+.animate-float-card {
+  animation: float-card 6s ease-in-out infinite;
+}
+
+@keyframes float-logo {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes float-card {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+</style>
