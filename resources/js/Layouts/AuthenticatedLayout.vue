@@ -214,7 +214,7 @@ onUnmounted(() => {
                         </Link>
 
                         <Link 
-                            :href="route('backup.explore')" 
+                            :href="route('backup.index')" 
                             :class="route().current('backup.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'" 
                             class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
                         >
