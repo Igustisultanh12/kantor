@@ -58,7 +58,7 @@ const submit = () => {
                     id="name"
                     type="text"
                     class="mt-1 block w-full font-bold" 
-                    v-v-model="form.name"
+                    v-model="form.name"
                     required
                     autofocus
                     autocomplete="name"

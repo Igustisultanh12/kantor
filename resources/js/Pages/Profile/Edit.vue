@@ -21,15 +21,15 @@ defineProps({
     <AuthenticatedLayout>
         <div class="space-y-6 font-sans">
             <!-- Header Card -->
-            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h2 class="font-extrabold text-xl text-slate-900 uppercase tracking-tight">Pengaturan Profil & Akun</h2>
+                    <h2 class="font-extrabold text-lg sm:text-xl text-slate-900 uppercase tracking-tight">Pengaturan Profil & Akun</h2>
                     <p class="text-xs text-slate-500 font-semibold mt-0.5">Manajemen Informasi Identitas Personel & Keamanan Sandi Akses</p>
                 </div>
             </div>
 
             <div class="space-y-6">
-                <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0]">
+                <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0]">
                     <UpdateProfileInformationForm
                         :must-verify-email="mustVerifyEmail"
                         :status="status"
@@ -37,11 +37,11 @@ defineProps({
                     />
                 </div>
 
-                <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0]">
+                <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0]">
                     <UpdatePasswordForm class="max-w-xl" />
                 </div>
 
-                <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0]">
+                <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0]">
                     <DeleteUserForm class="max-w-xl" />
                 </div>
             </div>
