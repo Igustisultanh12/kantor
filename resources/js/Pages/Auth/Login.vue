@@ -126,35 +126,30 @@ const submit = async () => {
         :style="loginBg ? { backgroundImage: `url(${loginBg})` } : {}"
     >
         <!-- Dark overlay -->
-        <div class="absolute inset-0 bg-slate-950/75 backdrop-blur-[2px] z-0"></div>
+        <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-[2px] z-0"></div>
 
         <!-- Main Wrapper -->
         <div class="relative z-10 w-full min-h-screen flex flex-col lg:flex-row">
             
-            <!-- Left Column: Floating Logos & Information -->
+            <!-- Left Column: Single Floating Logo & App Info -->
             <div class="hidden lg:flex lg:w-1/2 flex-col justify-between p-16 text-white z-10">
                 <div></div>
 
-                <div class="my-auto max-w-lg space-y-8 flex flex-col items-center text-center mx-auto">
-                    <!-- Logo TNI Utama (Efek Mentul-Mentul / Floating Animation) -->
+                <div class="my-auto max-w-lg space-y-6 flex flex-col items-center text-center mx-auto">
+                    <!-- Single Main Logo (Efek Mentul-Mentul / Floating Animation) -->
                     <div class="flex justify-center animate-float-slow">
-                        <img v-if="configuredLogo" :src="configuredLogo" class="h-32 lg:h-40 object-contain drop-shadow-[0_10px_25px_rgba(0,0,0,0.6)]" />
-                        <img v-else src="https://upload.wikimedia.org/wikipedia/commons/b/b5/Tentara_Nasional_Indonesia_insignia.svg" class="h-32 lg:h-40 object-contain drop-shadow-[0_10px_25px_rgba(0,0,0,0.6)]" />
-                    </div>
-                    
-                    <!-- Logo Tiga Matra Sejajar (Efek Mentul-Mentul) -->
-                    <div class="flex items-center justify-center gap-6 flex-wrap animate-float-slow delay-200">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/e/eb/Coat_of_arms_of_the_Indonesian_Army.svg" class="h-14 object-contain drop-shadow-md transition hover:scale-110" alt="AD" />
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/c/c5/Coat_of_arms_of_the_Indonesian_Navy.svg" class="h-14 object-contain drop-shadow-md transition hover:scale-110" alt="AL" />
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/Coat_of_arms_of_the_Indonesian_Air_Force.svg" class="h-14 object-contain drop-shadow-md transition hover:scale-110" alt="AU" />
+                        <img v-if="configuredLogo" :src="configuredLogo" class="h-36 lg:h-44 object-contain drop-shadow-[0_10px_25px_rgba(0,0,0,0.6)]" alt="Logo SINDEN" />
+                        <div v-else class="w-32 h-32 rounded-3xl bg-blue-600/30 backdrop-blur-md border border-blue-500/40 flex items-center justify-center shadow-2xl">
+                            <span class="font-black text-white text-5xl">S</span>
+                        </div>
                     </div>
 
-                    <div>
+                    <div class="space-y-3">
                         <h2 class="text-3xl font-extrabold tracking-tight uppercase text-white drop-shadow-md">
-                            {{ appName }} INTEGRASI TNI
+                            {{ appName }}
                         </h2>
-                        <p class="text-sm mt-3 leading-relaxed max-w-md mx-auto text-slate-200">
-                            Sistem informasi personel & logistik yang terintegrasi, valid, dan akuntabel untuk pengelolaan administrasi intelijen dan operasional.
+                        <p class="text-xs leading-relaxed max-w-md mx-auto text-slate-300 font-medium">
+                            Sistem Informasi Detasemen Intelijen — Integrasi Otoritas Akses, Pengawasan Lokasi, Administrasi Surat & Logistik Terpadu.
                         </p>
                     </div>
                 </div>
@@ -170,14 +165,14 @@ const submit = async () => {
                     <div class="mb-8">
                         <h3 class="text-xl font-bold text-white">Masuk Akun</h3>
                         <p class="text-xs mt-1 text-slate-300">
-                            Gunakan akun internal Anda untuk mengakses sistem dashboard.
+                            Gunakan akun internal Anda untuk mengakses sistem dashboard SINDEN.
                         </p>
                     </div>
 
                     <form @submit.prevent="submit" class="space-y-5">
                         <div>
                             <label class="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-300">
-                                Email / NIKC / NRP
+                                Email / Username Dinas
                             </label>
                             <input 
                                 type="email" 
