@@ -45,59 +45,63 @@ const submitSub = (categoryId) => {
     <Head title="Manajemen Kategori" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <h2 class="font-bold text-xl text-gray-800 leading-tight">Manajemen Kategori & Penomoran</h2>
-        </template>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="md:col-span-1">
-                <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 sticky top-24">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="h-10 w-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-100">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-                            </svg>
-                        </div>
-                        <h3 class="font-black text-indigo-900 uppercase text-xs tracking-widest">Kategori Baru</h3>
-                    </div>
-                    
-                    <form @submit.prevent="submitCategory" class="space-y-4">
-                        <div>
-                            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Tipe Kategori</label>
-                            <select v-model="form.category_type" class="w-full mt-1 rounded-2xl border-gray-100 bg-gray-50 focus:ring-indigo-500 text-sm font-semibold h-12">
-                                <option value="umum">KATEGORI UMUM (SURAT)</option>
-                                <option value="telegram">KATEGORI TELEGRAM</option>
-                                <!--<option value="SURAT R">SURAT R (RAHASIA)</option>-->
-                                <!--<option value="SPRIN">SPRIN (SURAT PERINTAH)</option>-->
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Nama Kategori</label>
-                            <input v-model="form.name" type="text" placeholder="MISAL: SURAT KEPUTUSAN" class="w-full mt-1 rounded-2xl border-gray-100 bg-gray-50 focus:ring-indigo-500 uppercase text-sm font-bold h-12">
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Kode</label>
-                                <input v-model="form.code" type="text" placeholder="SKHPP" class="w-full mt-1 rounded-2xl border-gray-100 bg-gray-50 focus:ring-indigo-500 uppercase text-sm font-black h-12">
-                            </div>
-                            <div>
-                                <label class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest px-1">Mulai Nomor</label>
-                                <input v-model="form.start_number" type="number" min="1" class="w-full mt-1 rounded-2xl border-gray-100 bg-indigo-50 text-indigo-700 focus:ring-indigo-500 text-sm font-black h-12">
-                            </div>
-                        </div>
-
-                        <button :disabled="form.processing" 
-                                :class="form.category_type === 'telegram' ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-100' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100'"
-                                class="w-full text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] transition shadow-xl disabled:opacity-50 active:scale-95">
-                            Simpan {{ form.category_type === 'telegram' ? 'Telegram' : 'Kategori' }}
-                        </button>
-                    </form>
+        <div class="space-y-6 font-sans">
+            
+            <!-- Page Header Card -->
+            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="font-extrabold text-xl text-slate-900 uppercase tracking-tight">Manajemen Kategori & Penomoran</h2>
+                    <p class="text-xs text-slate-500 font-semibold mt-0.5">Konfigurasi Klasifikasi Kode Surat, Telegram, & Sub-Jenis Surat</p>
                 </div>
             </div>
 
-            <div class="md:col-span-2 space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="md:col-span-1">
+                    <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0] sticky top-24">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="h-10 w-10 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <h3 class="font-extrabold text-slate-900 uppercase text-xs tracking-wider">Kategori Baru</h3>
+                        </div>
+                        
+                        <form @submit.prevent="submitCategory" class="space-y-4">
+                            <div>
+                                <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider ms-1">Tipe Kategori</label>
+                                <select v-model="form.category_type" class="w-full mt-1 rounded-2xl border-slate-200 bg-slate-50 focus:ring-blue-500 focus:border-blue-600 text-xs font-bold py-3">
+                                    <option value="umum">KATEGORI UMUM (SURAT)</option>
+                                    <option value="telegram">KATEGORI TELEGRAM</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider ms-1">Nama Kategori</label>
+                                <input v-model="form.name" type="text" placeholder="MISAL: SURAT KEPUTUSAN" class="w-full mt-1 rounded-2xl border-slate-200 bg-slate-50 focus:ring-blue-500 focus:border-blue-600 uppercase text-xs font-bold py-3">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider ms-1">Kode</label>
+                                    <input v-model="form.code" type="text" placeholder="SKHPP" class="w-full mt-1 rounded-2xl border-slate-200 bg-slate-50 focus:ring-blue-500 focus:border-blue-600 uppercase text-xs font-black py-3">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider ms-1">Mulai Nomor</label>
+                                    <input v-model="form.start_number" type="number" min="1" class="w-full mt-1 rounded-2xl border-blue-200 bg-blue-50/50 text-blue-700 focus:ring-blue-500 focus:border-blue-600 text-xs font-black py-3">
+                                </div>
+                            </div>
+
+                            <button :disabled="form.processing" 
+                                    :class="form.category_type === 'telegram' ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20'"
+                                    class="w-full text-white py-3.5 rounded-2xl font-extrabold uppercase text-xs tracking-wider transition shadow-md disabled:opacity-50 active:scale-95">
+                                Simpan {{ form.category_type === 'telegram' ? 'Telegram' : 'Kategori' }}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="md:col-span-2 space-y-6">
                 <div v-for="cat in categories" :key="cat.id" class="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden group hover:shadow-md transition-all duration-300">
                     <div class="p-6 flex justify-between items-center bg-gray-50/30">
                         <div class="flex items-center gap-4">

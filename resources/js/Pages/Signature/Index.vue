@@ -297,42 +297,43 @@ const printPdf = () => {
 </script>
 
 <template>
-    <Head title="SI SINDEN - Mobile Verified" />
+    <Head title="Validasi & TTE Digital" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-2 text-left">
-                <div class="flex flex-col gap-1">
-                    <h2 class="font-black text-xl text-indigo-950 uppercase italic tracking-tighter sm:tracking-widest">SISINDEN <span class="text-indigo-600">M</span></h2>
-                    <div class="flex items-center gap-2">
-                        <div class="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></div>
-                        <span class="text-[9px] font-black text-emerald-600 uppercase italic leading-none">Live 0.5s active</span>
+        <div class="space-y-6 font-sans">
+            
+            <!-- Page Header Card -->
+            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <h2 class="font-extrabold text-xl text-slate-900 uppercase tracking-tight">Otoritas Validasi & TTE Digital</h2>
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
                     </div>
+                    <p class="text-xs text-slate-500 font-semibold">Sistem Validasi Tanda Tangan Elektronik & Pengesahan Berkas</p>
                 </div>
 
-                <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                     <button v-if="user.role !== 'komandan'" @click="isModalOpen = true" 
-                        class="hidden sm:block bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase shadow-xl transition-all active:scale-95 text-center">
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-extrabold text-xs uppercase shadow-md shadow-blue-500/20 transition tracking-wider text-center">
                         + Registrasi Berkas Baru
                     </button>
                     <button v-if="user.role === 'admin'" @click="clearAllData"
-                        class="w-full sm:w-auto bg-white text-rose-600 border border-rose-100 px-8 py-3 rounded-2xl font-black text-[9px] uppercase hover:bg-rose-50 transition-all italic tracking-widest shadow-sm text-center">
+                        class="bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 border border-rose-200 px-6 py-3 rounded-2xl font-extrabold text-xs uppercase transition tracking-wider text-center">
                         🗑️ Bersihkan Riwayat Sistem
                     </button>
                 </div>
             </div>
-        </template>
 
-        <div class="py-4 sm:py-6 px-2 sm:px-4 pb-32 sm:pb-6 text-left">
-            <div class="hidden sm:block bg-white/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl border border-white overflow-hidden">
+            <!-- Table Card -->
+            <div class="bg-white rounded-3xl shadow-xs border border-[#E2E8F0] overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
-                        <thead class="bg-indigo-50/50 uppercase font-black text-indigo-400 text-[10px] tracking-widest">
+                        <thead class="bg-slate-50 uppercase font-extrabold text-slate-500 text-[10px] tracking-wider border-b border-slate-100">
                             <tr>
-                                <th class="p-6">Timestamp</th>
-                                <th class="p-6">Subjek Berkas</th>
-                                <th class="p-6 text-center">Status</th>
-                                <th class="p-6 text-right">Otoritas</th>
+                                <th class="p-4">Timestamp</th>
+                                <th class="p-4">Subjek Berkas</th>
+                                <th class="p-4 text-center">Status</th>
+                                <th class="p-4 text-right">Otoritas</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-indigo-50 uppercase font-bold text-slate-800 text-[11px]">

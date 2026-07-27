@@ -230,32 +230,37 @@ onUnmounted(() => {
     <Head title="Otoritas Akses Personel" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <h2 class="text-xl font-black text-indigo-950 uppercase tracking-tight italic">Otoritas Akses Personel</h2>
+        <div class="space-y-6 font-sans">
+            
+            <!-- Page Header Card -->
+            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="font-extrabold text-xl text-slate-900 uppercase tracking-tight">Otoritas Akses Personel</h2>
+                    <p class="text-xs text-slate-500 font-semibold mt-0.5">Manajemen Pengguna, Peran Otoritas, & Verifikasi Akses Sistem</p>
+                </div>
                 
-                <div class="flex gap-2 w-full md:w-auto">
-                    <button @click="openPreview" class="flex-1 md:flex-none px-6 py-3 bg-white border border-gray-200 text-slate-600 rounded-xl font-black text-[10px] uppercase shadow-sm hover:bg-gray-50 transition-all active:scale-95">
+                <div class="flex gap-3 w-full md:w-auto">
+                    <button @click="openPreview" class="flex-1 md:flex-none px-5 py-3 bg-slate-50 border border-slate-200 text-slate-700 rounded-2xl font-extrabold text-xs uppercase shadow-xs hover:bg-slate-100 transition tracking-wider">
                         📄 Pratinjau Rekap
                     </button>
-                    <button @click="showAddModal = true" class="flex-1 md:flex-none px-6 py-3 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95">
+                    <button @click="showAddModal = true" class="flex-1 md:flex-none px-5 py-3 bg-blue-600 text-white rounded-2xl font-extrabold text-xs uppercase shadow-md shadow-blue-500/20 hover:bg-blue-700 transition tracking-wider">
                         + Tambah Personel
                     </button>
                 </div>
             </div>
-        </template>
 
-        <div class="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden p-4 md:p-8">
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="text-[9px] font-black text-gray-300 uppercase tracking-[0.2em] border-b border-gray-50">
-                            <th class="pb-6 px-4 italic">Personel</th>
-                            <th class="pb-6 px-4 text-center">Identitas (NRP)</th>
-                            <th class="pb-6 px-4 text-center">Status</th>
-                            <th class="pb-6 px-4 text-right tracking-tight">Opsi Kelola</th>
-                        </tr>
-                    </thead>
+            <!-- Table Card -->
+            <div class="bg-white rounded-3xl border border-[#E2E8F0] shadow-xs overflow-hidden p-6">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                                <th class="pb-4 px-4">Personel</th>
+                                <th class="pb-4 px-4 text-center">Identitas (NRP)</th>
+                                <th class="pb-4 px-4 text-center">Status</th>
+                                <th class="pb-4 px-4 text-right">Opsi Kelola</th>
+                            </tr>
+                        </thead>
                     <tbody class="divide-y divide-gray-50 text-[11px]">
                         <tr v-for="user in users.data" :key="user.id" class="group hover:bg-indigo-50/30 transition-all">
                             <td class="py-6 px-4">

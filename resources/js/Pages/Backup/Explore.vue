@@ -304,38 +304,45 @@ onUnmounted(() => {
     <Head :title="'Explorer - ' + pc.pc_name" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <div class="flex justify-between items-center">
+        <div class="space-y-6 font-sans" @contextmenu.prevent="">
+            
+            <!-- Page Header Card -->
+            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div class="flex items-center gap-4">
                     <Link v-if="currentFolderId" 
                           :href="route('backup.explore', { id: pc.id, folder: parentFolderId })"
-                          class="bg-white border-2 border-gray-800 text-gray-800 p-2 rounded-xl hover:bg-gray-800 hover:text-white transition shadow-sm flex items-center justify-center w-10 h-10"
+                          class="bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-800 p-2.5 rounded-2xl transition shadow-xs flex items-center justify-center w-11 h-11"
                           title="Kembali Mundur">
                         <span class="font-black text-lg">←</span>
                     </Link>
 
-                    <h2 class="font-black text-xl text-gray-800 leading-tight uppercase tracking-tighter">
-                        📦 {{ pc.pc_name }}
-                    </h2>
+                    <div>
+                        <h2 class="font-extrabold text-xl text-slate-900 uppercase tracking-tight">
+                            📦 Explorer: {{ pc.pc_name }}
+                        </h2>
+                        <p class="text-xs text-slate-500 font-semibold mt-0.5">Sistem Manajemen File & Penyimpanan Cadangan Logistik SINDEN</p>
+                    </div>
                 </div>
-                <Link :href="route('backup.index')" class="bg-gray-800 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase shadow">Kembali ke Radar</Link>
-            </div>
-        </template>
-
-        <div class="py-12" @contextmenu.prevent="">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-4">
                 
-                <div class="bg-white p-2 rounded-xl shadow border-b-4 border-slate-300">
+                <Link :href="route('backup.index')" class="bg-slate-900 hover:bg-slate-800 text-white px-5 py-3 rounded-2xl text-xs font-extrabold uppercase shadow-sm transition tracking-wider">
+                    Kembali ke Radar
+                </Link>
+            </div>
+
+            <!-- Deep Scan Search Bar & Breadcrumbs -->
+            <div class="bg-white p-4 rounded-3xl shadow-xs border border-[#E2E8F0] space-y-4">
+                <div class="relative">
                     <input v-model="searchQuery" type="text" placeholder="Cari Berkas (Deep Scan Sub-Folder)..." 
-                            class="w-full rounded-lg border-none font-bold text-sm focus:ring-0 placeholder:text-gray-300" />
+                            class="w-full rounded-2xl border-slate-200 bg-slate-50 font-bold text-xs py-3.5 pl-10 focus:ring-blue-500 focus:border-blue-600 placeholder:text-slate-400" />
+                    <span class="absolute left-3.5 top-3 text-sm text-slate-400">🔍</span>
                 </div>
 
-                <div v-if="searchQuery" class="px-4 py-2 bg-indigo-50 border-l-4 border-indigo-600 text-indigo-700 text-[10px] font-black uppercase mb-4 flex items-center gap-2 animate-pulse">
+                <div v-if="searchQuery" class="px-4 py-2.5 bg-blue-50 border-l-4 border-blue-600 text-blue-700 text-[10px] font-extrabold uppercase rounded-r-xl flex items-center gap-2 animate-pulse">
                     <span>📡</span> Menampilkan hasil pencarian di seluruh Folder...
                 </div>
 
-                <nav class="flex bg-white px-5 py-3 rounded-lg shadow border-l-4 border-blue-600">
-                    <ol class="flex items-center space-x-2 text-[10px] font-black uppercase tracking-wider">
+                <nav class="flex bg-slate-50 px-5 py-3 rounded-2xl border border-slate-200">
+                    <ol class="flex items-center space-x-2 text-[10px] font-extrabold uppercase tracking-wider">
                         <li>
                             <Link :href="route('backup.explore', { id: pc.id })" class="text-blue-600 hover:underline">HOME</Link>
                         </li>

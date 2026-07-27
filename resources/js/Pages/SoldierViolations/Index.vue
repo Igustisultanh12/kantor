@@ -177,45 +177,50 @@ const getFileName = (path) => {
 <template>
     <Head title="Pelanggaran Prajurit" />
     <AuthenticatedLayout>
-        <template #header>
-            <div class="flex justify-between items-center text-left">
+        <div class="space-y-6 font-sans">
+            
+            <!-- Page Header Card -->
+            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="font-extrabold text-xl text-slate-900 uppercase tracking-tight">Data Pelanggaran Prajurit</h2>
+                    <p class="text-xs text-slate-500 font-semibold mt-0.5">Monitoring Berkas & Perkembangan Kasus Personel</p>
+                </div>
+
                 <div class="flex items-center gap-4">
-                    <h2 class="font-bold text-2xl text-gray-800 leading-tight">Data Pelanggaran Prajurit</h2>
-                    <button @click="showCreateModal = true" class="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-red-100 transition-all active:scale-95 flex items-center gap-2">
+                    <button @click="showCreateModal = true" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-2xl text-xs font-extrabold uppercase shadow-sm transition tracking-wider flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4" />
                         </svg>
                         Input Kasus Baru
                     </button>
-                </div>
-                <div class="flex gap-4 text-right">
-                    <div class="text-right px-4 border-r border-gray-200">
-                        <p class="text-[10px] font-black text-gray-400 uppercase">Total Kasus</p>
-                        <p class="text-xl font-black text-indigo-600">{{ stats.total }}</p>
-                    </div>
-                    <div class="text-right px-4">
-                        <p class="text-[10px] font-black text-gray-400 uppercase">Dalam Proses</p>
-                        <p class="text-xl font-black text-red-600">{{ stats.proses }}</p>
+                    <div class="flex gap-4 text-right border-l border-slate-100 pl-4">
+                        <div>
+                            <p class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Total Kasus</p>
+                            <p class="text-xl font-black text-blue-600">{{ stats.total }}</p>
+                        </div>
+                        <div>
+                            <p class="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Dalam Proses</p>
+                            <p class="text-xl font-black text-rose-600">{{ stats.proses }}</p>
+                        </div>
                     </div>
                 </div>
             </div>
-        </template>
 
-        <div class="py-8 px-4 md:px-6">
-            <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden text-left">
-                <div class="p-6 border-b border-gray-50 bg-gray-50/30 flex justify-between items-center text-left">
-                    <input v-model="search" type="text" placeholder="Cari NRP atau Nama Prajurit..." class="rounded-full border-gray-100 bg-white text-xs px-6 py-3 w-full md:w-96 focus:ring-indigo-500 shadow-sm">
+            <!-- Table Card -->
+            <div class="bg-white rounded-3xl shadow-xs border border-[#E2E8F0] overflow-hidden">
+                <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                    <input v-model="search" type="text" placeholder="Cari NRP atau Nama Prajurit..." class="rounded-2xl border-slate-200 bg-white text-xs font-bold px-5 py-2.5 w-full md:w-96 focus:ring-blue-500 focus:border-blue-600">
                 </div>
 
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
-                        <thead class="bg-gray-50/80 uppercase">
+                        <thead class="bg-slate-50 text-slate-500 uppercase text-[10px] font-extrabold tracking-wider border-b border-slate-100">
                             <tr>
-                                <th class="px-6 py-5 text-[9px] font-black text-gray-400 tracking-widest border-b">Personel</th>
-                                <th class="px-6 py-5 text-[9px] font-black text-gray-400 tracking-widest border-b">Kasus & TMT</th>
-                                <th class="px-6 py-5 text-[9px] font-black text-gray-400 tracking-widest border-b text-center">Status</th>
-                                <th class="px-6 py-5 text-[9px] font-black text-gray-400 tracking-widest border-b text-center">Riwayat Berkas (Per Update)</th>
-                                <th class="px-6 py-5 text-[9px] font-black text-gray-400 text-right tracking-widest border-b">Aksi</th>
+                                <th class="px-6 py-4">Personel</th>
+                                <th class="px-6 py-4">Kasus & TMT</th>
+                                <th class="px-6 py-4 text-center">Status</th>
+                                <th class="px-6 py-4 text-center">Riwayat Berkas (Per Update)</th>
+                                <th class="px-6 py-4 text-right">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-50">

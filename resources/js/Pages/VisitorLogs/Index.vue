@@ -80,23 +80,28 @@ const formatTime = (dateStr) => {
 <template>
     <Head title="Monitoring Pengunjung" />
     <AuthenticatedLayout>
-        <template #header>
-            <div class="flex justify-between items-center">
-                <h2 class="font-bold text-2xl text-gray-800 leading-tight italic">Log Monitoring Pengunjung</h2>
-                <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100 flex items-center gap-2">
-                    <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    Sistem Intelijen Digital SI SINDEN
+        <div class="space-y-6 font-sans">
+            
+            <!-- Page Header Card -->
+            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="font-extrabold text-xl text-slate-900 uppercase tracking-tight">Log Monitoring Pengunjung</h2>
+                    <p class="text-xs text-slate-500 font-semibold mt-0.5">Sistem Audit Akses Perangkat & Pengawasan Lokasi SINDEN</p>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button @click="confirmDeleteLogs" class="bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 px-4 py-2.5 rounded-2xl text-xs font-extrabold uppercase border border-rose-200 shadow-xs transition tracking-wider flex items-center gap-2">
+                        <span>🗑️</span> Musnahkan Riwayat Log
+                    </button>
                 </div>
             </div>
-        </template>
 
-        <div class="py-12 px-4 max-w-7xl mx-auto">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 flex items-center gap-5">
-                    <div class="h-12 w-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center font-black shadow-inner tracking-tighter">DATA</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-3xl shadow-xs border border-[#E2E8F0] flex items-center gap-5">
+                    <div class="h-14 w-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center font-black text-xl shadow-xs">📊</div>
                     <div>
-                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Akses Masuk</p>
-                        <p class="text-xl font-black text-indigo-900">{{ logs.total }} <span class="text-xs font-normal text-gray-400 tracking-normal">Record Terdeteksi</span></p>
+                        <p class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Total Akses Masuk</p>
+                        <p class="text-2xl font-black text-slate-900 mt-0.5">{{ logs.total }} <span class="text-xs font-semibold text-slate-400">Record Terdeteksi</span></p>
                     </div>
                 </div>
                 

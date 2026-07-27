@@ -91,53 +91,58 @@ const levelConfig = (level) => {
     <Head title="Arsip Surat" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <div class="flex justify-between items-end pb-2 border-b-2 border-gray-800">
+        <div class="space-y-6 font-sans">
+            
+            <!-- Page Header Card -->
+            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h2 class="font-bold text-2xl uppercase tracking-tighter text-gray-900 leading-none">Pusat Arsip Digital</h2>
-                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-[0.3em] mt-1">Denintel Kodaeral V</p>
+                    <h2 class="font-extrabold text-xl text-slate-900 uppercase tracking-tight">Pusat Arsip Digital Surat</h2>
+                    <p class="text-xs text-slate-500 font-semibold mt-0.5">Sistem Manajemen Pengarsipan & Penyimpanan Berkas Dokumen</p>
                 </div>
-                <Link :href="route('letters.create')" class="text-[10px] font-black border-2 border-gray-800 px-5 py-2 hover:bg-gray-800 hover:text-white transition-all uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]">
+                
+                <Link :href="route('letters.create')" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-2xl text-xs font-extrabold uppercase shadow-md shadow-blue-500/20 transition tracking-wider flex items-center gap-2">
                     + Arsip Baru
                 </Link>
             </div>
-        </template>
 
-        <div class="mt-6 mb-8 flex items-center gap-4">
-            <div class="flex items-center gap-2 border-b border-gray-300 focus-within:border-gray-800 py-1">
-                <span class="text-[10px] font-black uppercase text-gray-400">Cari:</span>
-                <input v-model="search" type="text" class="border-none focus:ring-0 bg-transparent text-sm w-72 p-0 font-bold placeholder:font-normal placeholder:text-gray-300" placeholder="Nomor atau perihal..." />
+            <!-- Search Card -->
+            <div class="bg-white p-4 rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="relative w-full sm:w-80">
+                    <input v-model="search" type="text" class="w-full rounded-2xl border-slate-200 bg-slate-50 text-xs font-bold py-3 pl-10 focus:ring-blue-500 focus:border-blue-600 placeholder:text-slate-400" placeholder="Nomor atau perihal..." />
+                    <span class="absolute left-3.5 top-3 text-sm text-slate-400">🔍</span>
+                </div>
+                <div class="text-xs font-extrabold text-slate-500 uppercase tracking-wider bg-slate-50 px-4 py-2 rounded-xl">
+                    Total: <span class="text-blue-600 font-black">{{ letters.total || 0 }}</span> Berkas
+                </div>
             </div>
-            <div class="text-[10px] font-black uppercase text-gray-400 italic">Total: {{ letters.total || 0 }} Berkas</div>
-        </div>
 
-        <div class="space-y-12 pb-24">
+        <div class="space-y-8 pb-24">
             <div v-for="(categoriesInLevel, level) in groupedLetters" :key="level">
                 
-                <div class="bg-gray-800 text-white px-4 py-1.5 inline-block mb-1">
-                    <span class="text-[10px] font-black uppercase tracking-[0.3em]">Sifat: {{ level }}</span>
+                <div class="bg-slate-900 text-white px-4 py-2 rounded-2xl inline-block mb-3 shadow-xs">
+                    <span class="text-[10px] font-extrabold uppercase tracking-wider">Sifat: {{ level }}</span>
                 </div>
 
-                <div v-for="(items, catName) in categoriesInLevel" :key="catName" class="mb-6 last:mb-0">
-                    <div class="bg-gray-100 border-x border-t border-gray-800 px-4 py-1 flex justify-between">
-                        <span class="text-[10px] font-bold text-gray-600 uppercase tracking-tighter italic">Kategori: {{ catName }}</span>
-                        <span class="text-[9px] font-bold text-gray-400">{{ items.length }} Berkas</span>
+                <div v-for="(items, catName) in categoriesInLevel" :key="catName" class="mb-6 last:mb-0 bg-white rounded-3xl border border-[#E2E8F0] overflow-hidden shadow-xs">
+                    <div class="bg-slate-50 px-6 py-3 border-b border-slate-100 flex justify-between items-center">
+                        <span class="text-xs font-extrabold text-slate-700 uppercase tracking-wider">Kategori: {{ catName }}</span>
+                        <span class="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-3 py-1 rounded-full uppercase">{{ items.length }} Berkas</span>
                     </div>
 
                     <div class="overflow-x-auto">
-                        <table class="w-full border-collapse border-2 border-gray-800 text-sm">
-                            <thead class="bg-gray-200">
+                        <table class="w-full border-collapse text-xs">
+                            <thead class="bg-slate-50/50 text-slate-400 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-100">
                                 <tr>
-                                    <th class="border border-gray-800 px-3 py-2 text-[10px] font-black uppercase w-12 text-center text-gray-700">NO</th>
-                                    <th class="border border-gray-800 px-4 py-2 text-[10px] font-black uppercase text-left text-gray-700">Identitas & Perihal Surat</th>
-                                    <th class="border border-gray-800 px-4 py-2 text-[10px] font-black uppercase w-48 text-left text-gray-700">Asal / Instansi</th>
-                                    <th class="border border-gray-800 px-4 py-2 text-[10px] font-black uppercase w-32 text-center text-gray-700">Tanggal</th>
-                                    <th class="border border-gray-800 px-4 py-2 text-[10px] font-black uppercase w-28 text-center text-gray-700">Aksi</th>
+                                    <th class="px-4 py-3 text-center w-12">NO</th>
+                                    <th class="px-4 py-3 text-left">Identitas & Perihal Surat</th>
+                                    <th class="px-4 py-3 text-left w-48">Asal / Instansi</th>
+                                    <th class="px-4 py-3 text-center w-32">Tanggal</th>
+                                    <th class="px-4 py-3 text-center w-32">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody class="bg-white">
-                                <tr v-for="(letter, index) in items" :key="letter.id" class="hover:bg-yellow-50/50 transition-colors group">
-                                    <td class="border border-gray-800 px-3 py-3 text-center font-mono text-xs font-bold text-gray-400 group-hover:text-gray-900">
+                            <tbody class="divide-y divide-slate-100 font-semibold">
+                                <tr v-for="(letter, index) in items" :key="letter.id" class="hover:bg-slate-50/80 transition group">
+                                    <td class="px-4 py-3.5 text-center font-mono text-xs font-bold text-slate-400">
                                         {{ index + 1 }}
                                     </td>
                                     <td class="border border-gray-800 px-4 py-3">

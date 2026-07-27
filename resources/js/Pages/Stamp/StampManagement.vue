@@ -182,51 +182,65 @@ const handleManualUpload = (e) => {
 <template>
     <Head title="Otoritas Stempel" />
     <AuthenticatedLayout>
-        <template #header>
-            <div class="flex justify-between items-center">
-                <h2 class="font-black text-xl text-indigo-950 uppercase italic tracking-tighter">Otoritas Stempel Digital</h2>
-                <label class="bg-indigo-600 text-white px-6 py-2 rounded-xl font-black text-[10px] uppercase cursor-pointer hover:bg-indigo-700 transition-all shadow-lg">
+        <div class="space-y-6 font-sans">
+            
+            <!-- Page Header Card -->
+            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="font-extrabold text-xl text-slate-900 uppercase tracking-tight">Otoritas Stempel Digital</h2>
+                    <p class="text-xs text-slate-500 font-semibold mt-0.5">Validasi Stempel Digital & Pembubuhan Legalisasi Berkas</p>
+                </div>
+                
+                <label class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-2xl font-extrabold text-xs uppercase cursor-pointer transition shadow-md shadow-blue-500/20 tracking-wider">
                     + Upload PDF Manual
                     <input type="file" @change="handleManualUpload" accept=".pdf" class="hidden" />
                 </label>
             </div>
-        </template>
 
-        <div class="py-12 px-4 space-y-12">
-            <div class="max-w-6xl mx-auto bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
-                <div class="p-8 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center">
-                    <h3 class="font-black text-indigo-900 uppercase text-[10px] tracking-widest italic">📡 Berkas Menunggu Validasi Stempel</h3>
+            <!-- Pending Stamping Card -->
+            <div class="bg-white rounded-3xl shadow-xs border border-[#E2E8F0] overflow-hidden">
+                <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                    <h3 class="font-extrabold text-slate-900 uppercase text-xs tracking-wider flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-blue-600 animate-ping"></span>
+                        📡 Berkas Menunggu Validasi Stempel
+                    </h3>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
-                        <thead class="bg-gray-50 font-black text-[9px] text-gray-400 uppercase tracking-widest">
+                        <thead class="bg-slate-50 font-extrabold text-[10px] text-slate-500 uppercase tracking-wider border-b border-slate-100">
                             <tr>
-                                <th class="p-6">Nomor/Perihal</th>
-                                <th class="p-6">Status TTD</th>
-                                <th class="p-6 text-right">Aksi Strategis</th>
+                                <th class="p-4">Nomor/Perihal</th>
+                                <th class="p-4">Status TTD</th>
+                                <th class="p-4 text-right">Aksi Strategis</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-50">
-                            <tr v-for="doc in approvedRequests" :key="doc.id" class="hover:bg-indigo-50/30 transition-all group">
-                                <td class="p-6">
-                                    <div class="font-black text-indigo-950 text-xs uppercase italic group-hover:text-indigo-600 transition-colors">{{ doc.subject }}</div>
-                                    <div class="text-[9px] text-gray-400 font-bold mt-1 uppercase">{{ doc.letter_number || 'NO-REF' }}</div>
+                        <tbody class="divide-y divide-slate-100 text-xs font-semibold">
+                            <tr v-for="doc in approvedRequests" :key="doc.id" class="hover:bg-slate-50/70 transition group">
+                                <td class="p-4">
+                                    <div class="font-extrabold text-slate-900 text-xs uppercase group-hover:text-blue-600 transition">{{ doc.subject }}</div>
+                                    <div class="text-[9px] text-slate-400 font-bold mt-0.5 uppercase">{{ doc.letter_number || 'NO-REF' }}</div>
                                 </td>
-                                <td class="p-6 text-[10px]">
-                                    <span class="text-emerald-500 font-black uppercase tracking-tighter italic">✓ DISAHKAN KOMANDAN</span>
+                                <td class="p-4 text-[10px]">
+                                    <span class="text-emerald-600 font-extrabold uppercase tracking-wider">✓ DISAHKAN KOMANDAN</span>
                                 </td>
-                                <td class="p-6 text-right">
-                                    <button @click="openStamping(doc)" class="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black text-[9px] uppercase shadow-lg active:scale-95 transition-all">LAKUKAN STEMPEL</button>
+                                <td class="p-4 text-right">
+                                    <button @click="openStamping(doc)" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-2xl font-extrabold text-xs uppercase shadow-xs transition tracking-wider">LAKUKAN STEMPEL</button>
                                 </td>
+                            </tr>
+                            <tr v-if="approvedRequests.length === 0">
+                                <td colspan="3" class="p-8 text-center text-slate-400 italic">Tidak ada berkas yang menunggu stempel.</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <div class="max-w-6xl mx-auto bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
-                <div class="p-8 border-b border-emerald-50 bg-emerald-50/30 flex justify-between items-center">
-                    <h3 class="font-black text-emerald-900 uppercase text-[10px] tracking-widest italic">✅ Riwayat Berkas Selesai Stempel</h3>
+            <!-- Stamped History Card -->
+            <div class="bg-white rounded-3xl shadow-xs border border-[#E2E8F0] overflow-hidden">
+                <div class="p-6 border-b border-slate-100 bg-emerald-50/40 flex justify-between items-center">
+                    <h3 class="font-extrabold text-emerald-900 uppercase text-xs tracking-wider flex items-center gap-2">
+                        <span>✅</span> Riwayat Berkas Selesai Stempel
+                    </h3>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">

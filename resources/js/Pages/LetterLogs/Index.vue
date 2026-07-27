@@ -200,104 +200,113 @@ const handleFileUpload = (event) => {
 <template>
     <Head title="Penomoran Surat" />
     <AuthenticatedLayout>
-        <template #header>
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 print:hidden">
-                <h2 class="font-bold text-2xl text-gray-800 leading-tight">Penomoran Surat</h2>
+        <div class="space-y-6 font-sans print:hidden">
+            
+            <!-- Page Header Card -->
+            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="font-extrabold text-xl text-slate-900 uppercase tracking-tight">Penomoran Agenda Surat</h2>
+                    <p class="text-xs text-slate-500 font-semibold mt-0.5">Sistem Pengagendaan & Booking Nomor Surat SINDEN</p>
+                </div>
                 
-                <div class="flex flex-wrap items-center gap-2 w-full md:w-auto bg-gray-50 p-2 rounded-2xl border border-gray-100">
+                <div class="flex flex-wrap items-center gap-3 w-full md:w-auto bg-slate-50 p-3 rounded-2xl border border-slate-200">
                     <div class="flex flex-col">
-                        <label class="text-[8px] font-black text-gray-400 ml-1 mb-1 uppercase">Kategori</label>
-                        <select v-model="filterCategoryId" class="bg-white border-gray-200 text-[10px] font-black uppercase tracking-widest rounded-xl py-2 px-3">
+                        <label class="text-[9px] font-extrabold text-slate-400 ml-1 mb-1 uppercase">Kategori</label>
+                        <select v-model="filterCategoryId" class="bg-white border-slate-200 text-xs font-extrabold uppercase tracking-wider rounded-xl py-2 px-3 focus:ring-blue-500">
                             <option value="">Semua Kategori</option>
                             <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
                         </select>
                     </div>
 
                     <div class="flex flex-col">
-                        <label class="text-[8px] font-black text-gray-400 ml-1 mb-1 uppercase">Dari</label>
-                        <input type="date" v-model="startDate" class="bg-white border-gray-200 text-[10px] font-bold rounded-xl py-2 px-3">
+                        <label class="text-[9px] font-extrabold text-slate-400 ml-1 mb-1 uppercase">Dari</label>
+                        <input type="date" v-model="startDate" class="bg-white border-slate-200 text-xs font-bold rounded-xl py-2 px-3 focus:ring-blue-500">
                     </div>
 
                     <div class="flex flex-col">
-                        <label class="text-[8px] font-black text-gray-400 ml-1 mb-1 uppercase">Sampai</label>
-                        <input type="date" v-model="endDate" class="bg-white border-gray-200 text-[10px] font-bold rounded-xl py-2 px-3">
+                        <label class="text-[9px] font-extrabold text-slate-400 ml-1 mb-1 uppercase">Sampai</label>
+                        <input type="date" v-model="endDate" class="bg-white border-slate-200 text-xs font-bold rounded-xl py-2 px-3 focus:ring-blue-500">
                     </div>
 
-                    <div class="flex items-end h-full gap-2 mt-3 md:mt-0">
-                        <button @click="openPreview" class="px-5 py-2.5 bg-indigo-100 text-indigo-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-200 transition-all">
+                    <div class="flex items-end h-full gap-2 mt-4 md:mt-0">
+                        <button @click="openPreview" class="px-4 py-2.5 bg-blue-50 text-blue-600 rounded-xl text-xs font-extrabold uppercase tracking-wider hover:bg-blue-600 hover:text-white transition">
                             Pratinjau
                         </button>
-                        <button @click="downloadPDF" class="px-5 py-2.5 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-indigo-600 transition-all">
+                        <button @click="downloadPDF" class="px-4 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-extrabold uppercase tracking-wider shadow-sm hover:bg-blue-600 transition">
                             Unduh PDF
                         </button>
                     </div>
                 </div>
             </div>
-        </template>
 
-        <div class="py-8 px-4 md:px-0 print:hidden">
             <input type="file" ref="fileInput" class="hidden" accept="application/pdf" @change="handleFileUpload">
             
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Form Booking Nomor Card -->
                 <div class="space-y-6">
-                    <div class="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-gray-100">
-                        <h3 class="font-black text-indigo-900 uppercase text-xs tracking-widest mb-6 italic">➕ Booking Nomor Baru</h3>
+                    <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0]">
+                        <h3 class="font-extrabold text-slate-900 uppercase text-xs tracking-wider mb-6 flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+                            ➕ Booking Nomor Baru
+                        </h3>
                         <form @submit.prevent="submit" class="space-y-4">
                             <div>
-                                <label class="text-[9px] font-black text-gray-400 uppercase ml-1">Sifat Surat</label>
-                                <select v-model="form.priority" class="w-full mt-1 rounded-2xl border-gray-100 bg-gray-50 h-12 text-xs font-bold focus:ring-indigo-500">
+                                <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider ms-1">Sifat Surat</label>
+                                <select v-model="form.priority" class="w-full mt-1 rounded-2xl border-slate-200 bg-slate-50 py-3 text-xs font-bold focus:ring-blue-500 focus:border-blue-600">
                                     <option v-for="(label, code) in priorities" :key="code" :value="code">{{ code }} - {{ label }}</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="text-[9px] font-black text-gray-400 uppercase ml-1">Kategori Surat</label>
-                                <select v-model="form.category_id" class="w-full mt-1 rounded-2xl border-gray-100 bg-gray-50 h-12 text-xs font-bold focus:ring-indigo-500">
+                                <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider ms-1">Kategori Surat</label>
+                                <select v-model="form.category_id" class="w-full mt-1 rounded-2xl border-slate-200 bg-slate-50 py-3 text-xs font-bold focus:ring-blue-500 focus:border-blue-600">
                                     <option value="" disabled>Pilih Kategori...</option>
                                     <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
                                 </select>
                             </div>
 
                             <div v-if="filteredSubCategories.length > 0">
-                                <label class="text-[9px] font-black text-indigo-400 uppercase ml-1 animate-pulse">Pilih Jenis Surat</label>
-                                <select v-model="form.sub_category_id" class="w-full mt-1 rounded-2xl border-indigo-100 bg-indigo-50/30 h-12 text-xs font-bold focus:ring-indigo-500">
+                                <label class="text-[10px] font-extrabold text-blue-600 uppercase ms-1 animate-pulse">Pilih Jenis Surat</label>
+                                <select v-model="form.sub_category_id" class="w-full mt-1 rounded-2xl border-blue-200 bg-blue-50/50 py-3 text-xs font-bold focus:ring-blue-500 focus:border-blue-600">
                                     <option value="">-- Pilih Jenis --</option>
                                     <option v-for="sub in filteredSubCategories" :key="sub.id" :value="sub.id">{{ sub.name }}</option>
                                 </select>
                             </div>
 
                             <div>
-                                <label class="text-[9px] font-black text-gray-400 uppercase ml-1">Nomor Urut (Huruf diperbolehkan)</label>
-                                <input type="text" v-model="form.sequence" class="w-full mt-1 rounded-2xl border-gray-100 bg-gray-50 h-12 text-xs font-black uppercase px-4 focus:ring-indigo-500" placeholder="Contoh: 14a" required />
+                                <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider ms-1">Nomor Urut (Huruf diperbolehkan)</label>
+                                <input type="text" v-model="form.sequence" class="w-full mt-1 rounded-2xl border-slate-200 bg-slate-50 py-3 text-xs font-black uppercase px-4 focus:ring-blue-500 focus:border-blue-600" placeholder="Contoh: 14a" required />
                             </div>
 
                             <div>
-                                <label class="text-[9px] font-black text-gray-400 uppercase ml-1">Perihal</label>
-                                <textarea v-model="form.subject" placeholder="..." class="w-full mt-1 rounded-2xl border-gray-100 bg-gray-50 h-20 text-xs font-medium italic px-4 py-2 focus:ring-indigo-500"></textarea>
+                                <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider ms-1">Perihal</label>
+                                <textarea v-model="form.subject" placeholder="..." class="w-full mt-1 rounded-2xl border-slate-200 bg-slate-50 h-20 text-xs font-medium px-4 py-2.5 focus:ring-blue-500 focus:border-blue-600"></textarea>
                             </div>
                             <div>
-                                <label class="text-[9px] font-black text-gray-400 uppercase ml-1">Tujuan / Alamat</label>
-                                <textarea v-model="form.recipient" placeholder="..." class="w-full mt-1 rounded-2xl border-gray-100 bg-gray-50 h-24 text-xs font-medium px-4 py-2 focus:ring-indigo-500"></textarea>
+                                <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider ms-1">Tujuan / Alamat</label>
+                                <textarea v-model="form.recipient" placeholder="..." class="w-full mt-1 rounded-2xl border-slate-200 bg-slate-50 h-24 text-xs font-medium px-4 py-2.5 focus:ring-blue-500 focus:border-blue-600"></textarea>
                             </div>
                             
-                            <div class="p-5 bg-indigo-50 rounded-2xl border border-indigo-100">
-                                <p class="text-[9px] font-black text-indigo-400 uppercase mb-1">Radar Preview Nomor:</p>
-                                <div class="font-mono text-indigo-700 text-sm font-black tracking-tighter">
+                            <div class="p-4 bg-blue-50/60 rounded-2xl border border-blue-100">
+                                <p class="text-[9px] font-extrabold text-blue-600 uppercase mb-1">Radar Preview Nomor:</p>
+                                <div class="font-mono text-blue-800 text-sm font-black tracking-tight">
                                     {{ isCalculating ? 'Calculating...' : previewNumber }}
                                 </div>
                             </div>
 
-                            <button :disabled="form.processing || !form.category_id" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 disabled:opacity-50 transition-all">
+                            <button :disabled="form.processing || !form.category_id" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-2xl font-extrabold uppercase text-xs tracking-wider shadow-md shadow-blue-500/20 active:scale-95 disabled:opacity-50 transition">
                                 Booking Nomor Sekarang
                             </button>
                         </form>
                     </div>
                 </div>
 
+                <!-- Table Log Agenda Card -->
                 <div class="lg:col-span-2">
-                    <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
-                        <div class="p-6 md:p-8 border-b border-gray-50 flex flex-col md:flex-row justify-between items-center bg-gray-50/30 gap-4">
-                            <h3 class="font-black text-gray-400 uppercase text-[10px] tracking-widest">Log Penomoran Terakhir</h3>
-                            <input v-model="search" type="text" placeholder="Cari nomor/perihal..." class="rounded-full border-gray-100 bg-white text-[10px] px-6 py-2.5 w-full md:w-64 focus:ring-indigo-500">
+                    <div class="bg-white rounded-3xl shadow-xs border border-[#E2E8F0] overflow-hidden">
+                        <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center bg-slate-50/50 gap-4">
+                            <h3 class="font-extrabold text-slate-700 uppercase text-xs tracking-wider">Log Penomoran Terakhir</h3>
+                            <input v-model="search" type="text" placeholder="Cari nomor/perihal..." class="rounded-2xl border-slate-200 bg-white text-xs font-bold px-5 py-2.5 w-full md:w-64 focus:ring-blue-500 focus:border-blue-600">
+                        </div>
                         </div>
                         
                         <div class="overflow-x-auto">
