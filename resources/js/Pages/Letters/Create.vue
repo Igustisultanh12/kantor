@@ -157,101 +157,108 @@ const submit = () => {
     <Head title="Tambah Arsip" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <h2 class="font-bold text-xl text-gray-800 leading-tight uppercase italic">
-                {{ props.selectedLog ? 'Otomatisasi Arsip PDF' : 'Input Arsip Baru' }}
-            </h2>
-        </template>
+        <div class="max-w-3xl mx-auto py-6 font-sans">
+            <!-- Header Card -->
+            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0] mb-6 flex justify-between items-center">
+                <div>
+                    <h2 class="font-extrabold text-xl text-slate-900 uppercase tracking-tight">
+                        {{ props.selectedLog ? 'Otomatisasi Arsip PDF' : 'Input Arsip Baru' }}
+                    </h2>
+                    <p class="text-xs text-slate-500 font-semibold mt-0.5">Sistem Manajemen Pengarsipan & Penyimpanan Berkas Dokumen</p>
+                </div>
+                <Link :href="route('letters.index')" class="text-xs font-extrabold text-slate-400 hover:text-slate-700 uppercase tracking-wider">
+                    ← Kembali
+                </Link>
+            </div>
 
-        <div class="max-w-3xl mx-auto py-8">
-            <form @submit.prevent="submit" class="bg-white p-8 shadow-sm rounded-[2.5rem] border border-gray-100">
+            <form @submit.prevent="submit" class="bg-white p-8 shadow-xs rounded-3xl border border-[#E2E8F0] space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     
                     <div class="md:col-span-2 space-y-2">
-                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Tipe Dokumen</label>
+                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest px-1">Tipe Dokumen</label>
                         <div class="grid grid-cols-3 gap-4" :class="{'opacity-50 pointer-events-none': props.selectedLog}">
                             <label v-for="t in ['masuk', 'keluar', 'telegram']" :key="t" 
-                                :class="['flex items-center justify-center py-3 px-4 rounded-2xl border-2 cursor-pointer transition-all', form.type === t ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-50 text-gray-400 hover:bg-gray-50']">
+                                :class="['flex items-center justify-center py-3.5 px-4 rounded-2xl border-2 cursor-pointer transition-all', form.type === t ? 'border-blue-600 bg-blue-50 text-blue-700 font-extrabold' : 'border-slate-100 text-slate-400 hover:bg-slate-50 font-semibold']">
                                 <input type="radio" v-model="form.type" :value="t" class="hidden">
-                                <span class="text-xs font-black uppercase tracking-widest">{{ t === 'telegram' ? 'Telegram' : 'Surat ' + t }}</span>
+                                <span class="text-xs uppercase tracking-wider">{{ t === 'telegram' ? 'Telegram' : 'Surat ' + t }}</span>
                             </label>
                         </div>
                     </div>
 
                     <div class="md:col-span-2 space-y-1">
-                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Nomor Dokumen</label>
-                        <input v-model="form.letter_number" type="text" :readonly="!!props.selectedLog" class="w-full rounded-2xl border-gray-200 focus:ring-indigo-500 shadow-sm uppercase font-mono h-12">
+                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest px-1">Nomor Dokumen</label>
+                        <input v-model="form.letter_number" type="text" :readonly="!!props.selectedLog" class="w-full rounded-2xl border-slate-200 bg-slate-50 text-xs font-bold uppercase font-mono h-12 focus:ring-blue-500 focus:border-blue-600">
                     </div>
 
                     <div v-if="form.type !== 'telegram'" class="md:col-span-2 space-y-1">
-                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Sifat Surat</label>
-                        <select v-model="form.security_level" :disabled="!!props.selectedLog" class="w-full rounded-2xl border-gray-200 h-12 text-sm font-bold">
+                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest px-1">Sifat Surat</label>
+                        <select v-model="form.security_level" :disabled="!!props.selectedLog" class="w-full rounded-2xl border-slate-200 bg-slate-50 h-12 text-xs font-bold focus:ring-blue-500 focus:border-blue-600">
                             <option value="biasa">BIASA (B)</option>
                             <option value="rahasia">RAHASIA (R)</option>
                         </select>
                     </div>
 
                     <div :class="filteredSubCategories.length > 0 ? 'md:col-span-1' : 'md:col-span-2'" class="space-y-1">
-                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Kategori</label>
-                        <select v-model="form.category_id" :disabled="!!props.selectedLog" class="w-full rounded-2xl border-gray-200 h-12 text-sm font-bold">
+                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest px-1">Kategori</label>
+                        <select v-model="form.category_id" :disabled="!!props.selectedLog" class="w-full rounded-2xl border-slate-200 bg-slate-50 h-12 text-xs font-bold focus:ring-blue-500 focus:border-blue-600">
                             <option value="" disabled>Pilih Kategori</option>
                             <option v-for="cat in availableCategories" :key="cat.id" :value="cat.id">{{ cat.name }} ({{ cat.code }})</option>
                         </select>
                     </div>
 
                     <div v-if="filteredSubCategories.length > 0" class="space-y-1">
-                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Sub-Jenis</label>
-                        <select v-model="form.sub_category_id" class="w-full rounded-2xl border-gray-200 h-12 text-sm font-bold">
+                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest px-1">Sub-Jenis</label>
+                        <select v-model="form.sub_category_id" class="w-full rounded-2xl border-slate-200 bg-slate-50 h-12 text-xs font-bold focus:ring-blue-500 focus:border-blue-600">
                             <option value="" disabled>Pilih Sub-Jenis</option>
                             <option v-for="sub in filteredSubCategories" :key="sub.id" :value="sub.id">{{ sub.name }}</option>
                         </select>
                     </div>
 
                     <div class="md:col-span-2 space-y-1">
-                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Perihal / Isi Ringkas</label>
-                        <input v-model="form.subject" type="text" :readonly="!!props.selectedLog" class="w-full rounded-2xl border-gray-200 focus:ring-indigo-500 shadow-sm h-12 text-sm font-bold italic">
+                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest px-1">Perihal / Isi Ringkas</label>
+                        <input v-model="form.subject" type="text" :readonly="!!props.selectedLog" class="w-full rounded-2xl border-slate-200 bg-slate-50 h-12 text-xs font-bold focus:ring-blue-500 focus:border-blue-600">
                     </div>
 
                     <div class="space-y-1">
-                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Tanggal Dokumen</label>
-                        <input v-model="form.date" type="date" :readonly="!!props.selectedLog" class="w-full rounded-2xl border-gray-200 h-12 text-sm font-bold">
+                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest px-1">Tanggal Dokumen</label>
+                        <input v-model="form.date" type="date" :readonly="!!props.selectedLog" class="w-full rounded-2xl border-slate-200 bg-slate-50 h-12 text-xs font-bold focus:ring-blue-500 focus:border-blue-600">
                     </div>
                     <div class="space-y-1">
-                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Asal / Instansi</label>
-                        <input v-model="form.issuer" type="text" placeholder="MISAL: KODAM V/BRW" class="w-full rounded-2xl border-gray-200 focus:ring-indigo-500 uppercase h-12 text-sm font-bold">
+                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest px-1">Asal / Instansi</label>
+                        <input v-model="form.issuer" type="text" placeholder="MISAL: KODAM V/BRW" class="w-full rounded-2xl border-slate-200 bg-slate-50 uppercase h-12 text-xs font-bold focus:ring-blue-500 focus:border-blue-600">
                     </div>
 
-                    <div class="md:col-span-2 space-y-3 pt-4 border-t border-gray-50">
-                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Lampiran Berkas (PDF)</label>
+                    <div class="md:col-span-2 space-y-3 pt-4 border-t border-slate-100">
+                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest px-1">Lampiran Berkas (PDF)</label>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div @click="triggerFileInput" class="flex flex-col items-center justify-center p-6 border-2 border-gray-100 border-dashed rounded-[2rem] hover:border-indigo-400 hover:bg-indigo-50/30 transition cursor-pointer group">
+                            <div @click="triggerFileInput" class="flex flex-col items-center justify-center p-6 border-2 border-slate-200 border-dashed rounded-3xl hover:border-blue-500 hover:bg-blue-50/40 transition cursor-pointer group">
                                 <input ref="fileInput" type="file" class="hidden" accept=".pdf" @change="e => form.file = e.target.files[0]">
                                 <span class="text-[20px] mb-1">📂</span>
-                                <span class="text-[9px] font-black text-indigo-600 uppercase tracking-tighter">Cari di Komputer</span>
+                                <span class="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider">Cari di Komputer</span>
                             </div>
-                            <div @click="startScan" class="flex flex-col items-center justify-center p-6 border-2 border-emerald-100 border-dashed rounded-[2rem] hover:border-emerald-400 hover:bg-emerald-50/30 transition cursor-pointer group">
+                            <div @click="startScan" class="flex flex-col items-center justify-center p-6 border-2 border-emerald-200 border-dashed rounded-3xl hover:border-emerald-500 hover:bg-emerald-50/40 transition cursor-pointer group">
                                 <span class="text-[20px] mb-1">{{ isScanning ? '⏳' : '🖨️' }}</span>
-                                <span class="text-[9px] font-black text-emerald-600 uppercase tracking-tighter">Tarik dari Printer</span>
+                                <span class="text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider">Tarik dari Printer</span>
                             </div>
                         </div>
 
-                        <div v-if="form.file" class="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex items-center justify-between">
+                        <div v-if="form.file" class="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex items-center justify-between">
                             <div class="flex items-center gap-3">
                                 <span class="text-xl">📄</span>
                                 <div class="flex flex-col leading-none">
-                                    <span class="text-[10px] font-black text-gray-950 uppercase truncate max-w-[200px]">{{ form.file.name }}</span>
-                                    <span class="text-[8px] text-gray-400 font-bold uppercase mt-1 italic">{{ (form.file.size / 1024 / 1024).toFixed(2) }} MB</span>
+                                    <span class="text-[10px] font-extrabold text-slate-900 uppercase truncate max-w-[200px]">{{ form.file.name }}</span>
+                                    <span class="text-[8px] text-slate-400 font-bold uppercase mt-1 italic">{{ (form.file.size / 1024 / 1024).toFixed(2) }} MB</span>
                                 </div>
                             </div>
-                            <button @click="form.file = null" type="button" class="text-[10px] font-black text-rose-500 uppercase hover:underline">Hapus</button>
+                            <button @click="form.file = null" type="button" class="text-[10px] font-extrabold text-rose-500 uppercase hover:underline">Hapus</button>
                         </div>
                     </div>
                 </div>
 
-                <div class="mt-10 flex items-center justify-end space-x-6 border-t border-gray-50 pt-8">
-                    <Link :href="route('letters.index')" class="text-xs font-black text-gray-400 uppercase tracking-widest hover:text-gray-900 transition">Batal</Link>
+                <div class="mt-8 flex items-center justify-end space-x-4 border-t border-slate-100 pt-6">
+                    <Link :href="route('letters.index')" class="text-xs font-extrabold text-slate-400 uppercase tracking-wider hover:text-slate-800 transition">Batal</Link>
                     <button type="submit" :disabled="form.processing || !form.file"
-                            class="bg-indigo-600 text-white px-10 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-indigo-700 shadow-xl disabled:opacity-50 transition-all active:scale-95">
+                            class="bg-blue-600 text-white px-8 py-3.5 rounded-2xl font-extrabold uppercase text-xs tracking-wider hover:bg-blue-700 shadow-md shadow-blue-500/20 disabled:opacity-50 transition-all active:scale-95">
                         Simpan Arsip
                     </button>
                 </div>
