@@ -323,6 +323,7 @@ onUnmounted(() => {
                 </div>
             </div>
         </div>
+        </div>
 
         <div style="position: absolute; left: -9999px;">
             <div id="area-rekap-personel" class="p-10 bg-white text-black" style="width: 1050px; font-family: Arial, sans-serif;">
