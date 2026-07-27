@@ -177,6 +177,7 @@ const levelConfig = (level) => {
                 </div>
             </div>
         </div>
+        </div>
 
         <Teleport to="body">
             <div v-if="isShowingPdf" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
