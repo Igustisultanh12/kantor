@@ -307,7 +307,6 @@ const handleFileUpload = (event) => {
                             <h3 class="font-extrabold text-slate-700 uppercase text-xs tracking-wider">Log Penomoran Terakhir</h3>
                             <input v-model="search" type="text" placeholder="Cari nomor/perihal..." class="rounded-2xl border-slate-200 bg-white text-xs font-bold px-5 py-2.5 w-full md:w-64 focus:ring-blue-500 focus:border-blue-600">
                         </div>
-                        </div>
                         
                         <div class="overflow-x-auto">
                             <table class="w-full text-left border-collapse">

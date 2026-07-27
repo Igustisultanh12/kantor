@@ -144,5 +144,6 @@ const submitSub = (categoryId) => {
                 </div>
             </div>
         </div>
+    </div>
     </AuthenticatedLayout>
 </template>
