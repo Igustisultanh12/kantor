@@ -19,6 +19,9 @@ const filterMonth = ref(new Date().getMonth() + 1);
 const filterYear = ref(new Date().getFullYear());
 const searchQuery = ref(''); 
 
+// State Pemilihan Baris Transaksi untuk Cetak Laporan Kustom
+const selectedCashIds = ref([]);
+
 // PENYESUAIAN MULTI-UPLOAD: State penampung kumpulan objek URL pratinjau
 const receiptPreviews = ref([]); 
 const editPreviews = ref([]);
@@ -76,8 +79,33 @@ const filteredCashes = computed(() => {
     });
 });
 
-const totalDebit = computed(() => filteredCashes.value.reduce((acc, curr) => acc + parseFloat(curr.debit), 0));
-const totalCredit = computed(() => filteredCashes.value.reduce((acc, curr) => acc + parseFloat(curr.credit), 0));
+// LOGIKA CETAK BERKAS TERPILIH (Pilih Mana Saja Yang Mau Dicetak)
+const selectAll = computed({
+    get() {
+        return filteredCashes.value.length > 0 && selectedCashIds.value.length === filteredCashes.value.length;
+    },
+    set(val) {
+        if (val) {
+            selectedCashIds.value = filteredCashes.value.map(c => c.id);
+        } else {
+            selectedCashIds.value = [];
+        }
+    }
+});
+
+const printableCashes = computed(() => {
+    if (selectedCashIds.value.length > 0) {
+        return filteredCashes.value.filter(c => selectedCashIds.value.includes(c.id));
+    }
+    return filteredCashes.value;
+});
+
+const totalDebit = computed(() => filteredCashes.value.reduce((acc, curr) => acc + parseFloat(curr.debit || 0), 0));
+const totalCredit = computed(() => filteredCashes.value.reduce((acc, curr) => acc + parseFloat(curr.credit || 0), 0));
+
+const printableDebit = computed(() => printableCashes.value.reduce((acc, curr) => acc + parseFloat(curr.debit || 0), 0));
+const printableCredit = computed(() => printableCashes.value.reduce((acc, curr) => acc + parseFloat(curr.credit || 0), 0));
+
 const selectedMonthName = computed(() => months.find(m => m.id == filterMonth.value)?.name.toUpperCase());
 
 const getTodayLocalDate = () => {
@@ -280,7 +308,7 @@ const formatLongDate = (dateStr) => {
                                 <input type="number" v-model="filterYear" class="w-20 text-xs font-bold rounded-xl border-slate-200 py-2 bg-white" />
                             </div>
                             <button @click="openPreview" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase shadow-sm flex items-center gap-2 mt-4 whitespace-nowrap transition">
-                                <span>📄</span> Pratinjau PDF
+                                <span>📄</span> {{ selectedCashIds.length > 0 ? `Pratinjau PDF (${selectedCashIds.length} Terpilih)` : 'Pratinjau PDF' }}
                             </button>
                         </div>
                     </div>
@@ -337,16 +365,36 @@ const formatLongDate = (dateStr) => {
                 </div>
 
                 <div class="bg-white overflow-hidden shadow-xl rounded-2xl border border-gray-200">
-                    <div class="p-4 bg-slate-50 border-b flex justify-between items-center flex-wrap gap-2">
-                        <h3 class="font-black uppercase text-[10px] text-slate-400 tracking-[0.2em]">Log Transaksi Keseluruhan</h3>
-                        <span v-if="searchQuery" class="text-[10px] font-black bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full uppercase">
-                            Ditemukan: {{ filteredCashes.length }} Hasil
-                        </span>
+                    <div class="p-4 bg-slate-50 border-b flex justify-between items-center flex-wrap gap-3">
+                        <div class="flex items-center gap-3">
+                            <h3 class="font-black uppercase text-[10px] text-slate-400 tracking-[0.2em]">Log Transaksi Keseluruhan</h3>
+                            <span v-if="searchQuery" class="text-[10px] font-black bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full uppercase">
+                                Ditemukan: {{ filteredCashes.length }} Hasil
+                            </span>
+                        </div>
+
+                        <!-- Widget Pemilihan Berkas Cetak -->
+                        <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-xs">
+                            <label class="flex items-center gap-2 text-xs font-extrabold text-slate-700 cursor-pointer select-none">
+                                <input type="checkbox" v-model="selectAll" class="rounded border-slate-300 text-rose-600 focus:ring-rose-500 w-4 h-4 cursor-pointer" />
+                                <span>Pilih Semua</span>
+                            </label>
+                            <span class="text-slate-300">|</span>
+                            <span class="text-[11px] font-bold text-slate-500">
+                                Terpilih untuk Cetak: <strong class="text-rose-600 font-extrabold">{{ selectedCashIds.length }}</strong> / {{ filteredCashes.length }}
+                            </span>
+                            <button v-if="selectedCashIds.length > 0" @click="selectedCashIds = []" class="text-[10px] font-extrabold text-rose-500 hover:underline ms-1">
+                                (Batal Pilih)
+                            </button>
+                        </div>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left text-sm border-collapse">
                             <thead class="bg-slate-800 text-white text-[10px] uppercase font-black tracking-widest">
                                 <tr>
+                                    <th class="p-4 text-center w-10">
+                                        <input type="checkbox" v-model="selectAll" class="rounded border-slate-400 text-rose-600 focus:ring-rose-500 w-4 h-4 cursor-pointer" title="Pilih Semua / Batal Pilih" />
+                                    </th>
                                     <th class="p-4 text-center">Tgl</th>
                                     <th class="p-4">Keterangan</th>
                                     <th class="p-4 text-right">Debit (In)</th>
@@ -356,7 +404,13 @@ const formatLongDate = (dateStr) => {
                                 </tr>
                             </thead>
                             <tbody class="font-bold">
-                                <tr v-for="cash in filteredCashes" :key="cash.id" class="border-b hover:bg-green-50/30 transition-colors group">
+                                <tr v-for="cash in filteredCashes" :key="cash.id" 
+                                    :class="selectedCashIds.includes(cash.id) ? 'bg-rose-50/60 border-rose-200' : 'border-b hover:bg-green-50/30'"
+                                    class="transition-colors group"
+                                >
+                                    <td class="p-4 text-center">
+                                        <input type="checkbox" :value="cash.id" v-model="selectedCashIds" class="rounded border-slate-300 text-rose-600 focus:ring-rose-500 w-4 h-4 cursor-pointer" />
+                                    </td>
                                     <td class="p-4 text-gray-500 text-center text-xs">
                                         {{ cash.date ? cash.date.substring(0, 10) : '' }}
                                     </td>
@@ -383,12 +437,12 @@ const formatLongDate = (dateStr) => {
                                     </td>
                                 </tr>
                                 <tr v-if="filteredCashes.length === 0">
-                                    <td colspan="6" class="p-10 text-center text-gray-400 font-black uppercase italic">Radar Data Kosong / Tidak Ditemukan</td>
+                                    <td colspan="7" class="p-10 text-center text-gray-400 font-black uppercase italic">Radar Data Kosong / Tidak Ditemukan</td>
                                 </tr>
                             </tbody>
                             <thead class="bg-slate-900 text-white font-black">
                                 <tr>
-                                    <td colspan="4" class="p-5 text-right uppercase italic text-xs tracking-widest border-r border-slate-800">Total Saldo Saat Ini :</td>
+                                    <td colspan="5" class="p-5 text-right uppercase italic text-xs tracking-widest border-r border-slate-800">Total Saldo Saat Ini :</td>
                                     <td colspan="2" class="p-5 text-right text-lg font-mono text-yellow-400">{{ formatRupiah(totalSaldo) }}</td>
                                 </tr>
                             </thead>
@@ -410,7 +464,9 @@ const formatLongDate = (dateStr) => {
 
                 <div class="text-center mb-8 uppercase">
                     <h3 style="margin: 0; font-size: 16px; font-weight: bold; text-decoration: underline;">REKENING KORAN BUKU KAS</h3>
-                    <p style="margin: 8px 0 0 0; font-size: 11px; font-weight: bold;">BULAN: {{ selectedMonthName }} {{ filterYear }}</p>
+                    <p style="margin: 8px 0 0 0; font-size: 11px; font-weight: bold;">
+                        BULAN: {{ selectedMonthName }} {{ filterYear }} {{ selectedCashIds.length > 0 ? `(${selectedCashIds.length} TRANSAKSI TERPILIH)` : '' }}
+                    </p>
                 </div>
 
                 <table class="w-full border-collapse border-[1.5px] border-black text-[10px]">
@@ -425,7 +481,7 @@ const formatLongDate = (dateStr) => {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="(cash, index) in filteredCashes" :key="cash.id">
+                        <tr v-for="(cash, index) in printableCashes" :key="cash.id">
                             <td style="border: 1px solid #000; padding: 6px 4px; text-align: center;">{{ index + 1 }}</td>
                             <td style="border: 1px solid #000; padding: 6px 4px; text-align: center;">{{ cash.date ? cash.date.substring(0, 10) : '' }}</td>
                             <td style="border: 1px solid #000; padding: 6px 4px; text-transform: uppercase;">{{ cash.description }}</td>
@@ -433,15 +489,15 @@ const formatLongDate = (dateStr) => {
                             <td style="border: 1px solid #000; padding: 6px 4px; text-align: right;">{{ cash.credit > 0 ? formatRupiah(cash.credit) : '-' }}</td>
                             <td style="border: 1px solid #000; padding: 6px 4px; text-align: right; font-weight: bold;">{{ formatRupiah(cash.balance) }}</td>
                         </tr>
-                        <tr v-if="filteredCashes.length === 0">
-                            <td colspan="6" style="border: 1px solid #000; padding: 40px; text-align: center; font-weight: bold; color: #9ca3af;">DATA BULAN {{ selectedMonthName }} TIDAK DITEMUKAN</td>
+                        <tr v-if="printableCashes.length === 0">
+                            <td colspan="6" style="border: 1px solid #000; padding: 40px; text-align: center; font-weight: bold; color: #9ca3af;">DATA TRANSAKSI KAS TIDAK DITEMUKAN / TIDAK ADA YANG DIPILIH</td>
                         </tr>
                     </tbody>
                 </table>
 
                 <div style="margin-top: 15px; padding: 10px; border-left: 4px solid #000; background-color: #f9fafb; font-size: 11px; font-weight: bold; text-transform: uppercase;">
-                    <p style="margin: 0;">TOTAL DEBIT BULAN INI: {{ formatRupiah(totalDebit) }}</p>
-                    <p style="margin: 4px 0 0 0;">TOTAL KREDIT BULAN INI: {{ formatRupiah(totalCredit) }}</p>
+                    <p style="margin: 0;">TOTAL DEBIT {{ selectedCashIds.length > 0 ? 'TERPILIH' : 'BULAN INI' }}: {{ formatRupiah(printableDebit) }}</p>
+                    <p style="margin: 4px 0 0 0;">TOTAL KREDIT {{ selectedCashIds.length > 0 ? 'TERPILIH' : 'BULAN INI' }}: {{ formatRupiah(printableCredit) }}</p>
                     <div style="margin-top: 8px; border-top: 1px dashed #ccc; padding-top: 5px;">
                         <p style="margin: 0; font-size: 12px;">SALDO AKHIR (TOTAL): {{ formatRupiah(props.totalSaldo) }}</p>
                     </div>
