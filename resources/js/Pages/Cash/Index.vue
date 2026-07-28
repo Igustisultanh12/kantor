@@ -106,6 +106,13 @@ const totalCredit = computed(() => filteredCashes.value.reduce((acc, curr) => ac
 const printableDebit = computed(() => printableCashes.value.reduce((acc, curr) => acc + parseFloat(curr.debit || 0), 0));
 const printableCredit = computed(() => printableCashes.value.reduce((acc, curr) => acc + parseFloat(curr.credit || 0), 0));
 
+const printableTotalReimb = computed(() => {
+    return printableCashes.value.reduce((acc, curr) => {
+        const amt = parseFloat(curr.credit || 0) > 0 ? parseFloat(curr.credit) : parseFloat(curr.debit || 0);
+        return acc + amt;
+    }, 0);
+});
+
 const selectedMonthName = computed(() => months.find(m => m.id == filterMonth.value)?.name.toUpperCase());
 
 const getTodayLocalDate = () => {
@@ -241,9 +248,12 @@ const openPreview = () => {
 
 const downloadPDF = () => {
     const element = document.getElementById('area-kas-cetak');
+    const isReimb = selectedCashIds.value.length > 0;
     const opt = {
         margin: 0.5,
-        filename: `BUKU_KAS_${selectedMonthName.value}_${filterYear.value}.pdf`,
+        filename: isReimb 
+            ? `LAPORAN_REIMBURSEMENT_${selectedMonthName.value}_${filterYear.value}.pdf` 
+            : `BUKU_KAS_${selectedMonthName.value}_${filterYear.value}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2 },
         jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
@@ -462,46 +472,93 @@ const formatLongDate = (dateStr) => {
                     </div>
                 </div>
 
-                <div class="text-center mb-8 uppercase">
-                    <h3 style="margin: 0; font-size: 16px; font-weight: bold; text-decoration: underline;">REKENING KORAN BUKU KAS</h3>
-                    <p style="margin: 8px 0 0 0; font-size: 11px; font-weight: bold;">
-                        BULAN: {{ selectedMonthName }} {{ filterYear }} {{ selectedCashIds.length > 0 ? `(${selectedCashIds.length} TRANSAKSI TERPILIH)` : '' }}
-                    </p>
-                </div>
-
-                <table class="w-full border-collapse border-[1.5px] border-black text-[10px]">
-                    <thead>
-                        <tr style="background-color: #f2f2f2; text-transform: uppercase; font-weight: bold; text-align: center;">
-                            <th style="border: 1px solid #000; padding: 10px 4px; width: 5%;">NO</th>
-                            <th style="border: 1px solid #000; padding: 10px 4px; width: 15%;">TANGGAL</th>
-                            <th style="border: 1px solid #000; padding: 10px 4px; width: 35%; text-align: left;">KETERANGAN</th>
-                            <th style="border: 1px solid #000; padding: 10px 4px; width: 15%;">DEBIT</th>
-                            <th style="border: 1px solid #000; padding: 10px 4px; width: 15%;">KREDIT</th>
-                            <th style="border: 1px solid #000; padding: 10px 4px; width: 15%;">SALDO</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="(cash, index) in printableCashes" :key="cash.id">
-                            <td style="border: 1px solid #000; padding: 6px 4px; text-align: center;">{{ index + 1 }}</td>
-                            <td style="border: 1px solid #000; padding: 6px 4px; text-align: center;">{{ cash.date ? cash.date.substring(0, 10) : '' }}</td>
-                            <td style="border: 1px solid #000; padding: 6px 4px; text-transform: uppercase;">{{ cash.description }}</td>
-                            <td style="border: 1px solid #000; padding: 6px 4px; text-align: right;">{{ cash.debit > 0 ? formatRupiah(cash.debit) : '-' }}</td>
-                            <td style="border: 1px solid #000; padding: 6px 4px; text-align: right;">{{ cash.credit > 0 ? formatRupiah(cash.credit) : '-' }}</td>
-                            <td style="border: 1px solid #000; padding: 6px 4px; text-align: right; font-weight: bold;">{{ formatRupiah(cash.balance) }}</td>
-                        </tr>
-                        <tr v-if="printableCashes.length === 0">
-                            <td colspan="6" style="border: 1px solid #000; padding: 40px; text-align: center; font-weight: bold; color: #9ca3af;">DATA TRANSAKSI KAS TIDAK DITEMUKAN / TIDAK ADA YANG DIPILIH</td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                <div style="margin-top: 15px; padding: 10px; border-left: 4px solid #000; background-color: #f9fafb; font-size: 11px; font-weight: bold; text-transform: uppercase;">
-                    <p style="margin: 0;">TOTAL DEBIT {{ selectedCashIds.length > 0 ? 'TERPILIH' : 'BULAN INI' }}: {{ formatRupiah(printableDebit) }}</p>
-                    <p style="margin: 4px 0 0 0;">TOTAL KREDIT {{ selectedCashIds.length > 0 ? 'TERPILIH' : 'BULAN INI' }}: {{ formatRupiah(printableCredit) }}</p>
-                    <div style="margin-top: 8px; border-top: 1px dashed #ccc; padding-top: 5px;">
-                        <p style="margin: 0; font-size: 12px;">SALDO AKHIR (TOTAL): {{ formatRupiah(props.totalSaldo) }}</p>
+                <!-- Tampilan 1: Mode Laporan Reimbursement (Jika Ada Transaksi Terpilih) -->
+                <template v-if="selectedCashIds.length > 0">
+                    <div class="text-center mb-8 uppercase">
+                        <h3 style="margin: 0; font-size: 16px; font-weight: bold; text-decoration: underline;">LAPORAN PERINCIAN REIMBURSEMENT (REMBES)</h3>
+                        <p style="margin: 8px 0 0 0; font-size: 11px; font-weight: bold;">
+                            BULAN: {{ selectedMonthName }} {{ filterYear }} | TOTAL {{ printableCashes.length }} TRANSAKSI TERPILIH
+                        </p>
                     </div>
-                </div>
+
+                    <table class="w-full border-collapse border-[1.5px] border-black text-[10px]">
+                        <thead>
+                            <tr style="background-color: #f2f2f2; text-transform: uppercase; font-weight: bold; text-align: center;">
+                                <th style="border: 1px solid #000; padding: 10px 4px; width: 6%;">NO</th>
+                                <th style="border: 1px solid #000; padding: 10px 4px; width: 16%;">TANGGAL</th>
+                                <th style="border: 1px solid #000; padding: 10px 4px; width: 54%; text-align: left;">URAIAN / KETERANGAN PENGELUARAN (REMBES)</th>
+                                <th style="border: 1px solid #000; padding: 10px 4px; width: 24%; text-align: right;">JUMLAH (RP)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(cash, index) in printableCashes" :key="cash.id">
+                                <td style="border: 1px solid #000; padding: 6px 4px; text-align: center;">{{ index + 1 }}</td>
+                                <td style="border: 1px solid #000; padding: 6px 4px; text-align: center;">{{ cash.date ? cash.date.substring(0, 10) : '' }}</td>
+                                <td style="border: 1px solid #000; padding: 6px 4px; text-transform: uppercase;">{{ cash.description }}</td>
+                                <td style="border: 1px solid #000; padding: 6px 4px; text-align: right; font-weight: bold;">
+                                    {{ cash.credit > 0 ? formatRupiah(cash.credit) : formatRupiah(cash.debit) }}
+                                </td>
+                            </tr>
+                            <tr v-if="printableCashes.length === 0">
+                                <td colspan="4" style="border: 1px solid #000; padding: 40px; text-align: center; font-weight: bold; color: #9ca3af;">TIDAK ADA TRANSAKSI REIMBURSEMENT TERPILIH</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div style="margin-top: 15px; padding: 12px; border-left: 4px solid #000; background-color: #f9fafb; font-size: 11px; font-weight: bold; text-transform: uppercase;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 12px;">TOTAL PENGAJUAN REIMBURSEMENT (REMBES):</span>
+                            <span style="font-size: 14px; font-weight: bold;">{{ formatRupiah(printableTotalReimb) }}</span>
+                        </div>
+                        <p style="margin: 6px 0 0 0; font-size: 9px; color: #555; font-style: italic; font-weight: normal;">
+                            * Lampiran dokumen ini diterbitkan khusus untuk pengajuan klaim / penggantian dana reimbursement (Rembes).
+                        </p>
+                    </div>
+                </template>
+
+                <!-- Tampilan 2: Mode Laporan Buku Kas Bulanan Lengkap (Tanpa Centangan) -->
+                <template v-else>
+                    <div class="text-center mb-8 uppercase">
+                        <h3 style="margin: 0; font-size: 16px; font-weight: bold; text-decoration: underline;">REKENING KORAN BUKU KAS</h3>
+                        <p style="margin: 8px 0 0 0; font-size: 11px; font-weight: bold;">
+                            BULAN: {{ selectedMonthName }} {{ filterYear }}
+                        </p>
+                    </div>
+
+                    <table class="w-full border-collapse border-[1.5px] border-black text-[10px]">
+                        <thead>
+                            <tr style="background-color: #f2f2f2; text-transform: uppercase; font-weight: bold; text-align: center;">
+                                <th style="border: 1px solid #000; padding: 10px 4px; width: 5%;">NO</th>
+                                <th style="border: 1px solid #000; padding: 10px 4px; width: 15%;">TANGGAL</th>
+                                <th style="border: 1px solid #000; padding: 10px 4px; width: 35%; text-align: left;">KETERANGAN</th>
+                                <th style="border: 1px solid #000; padding: 10px 4px; width: 15%;">DEBIT</th>
+                                <th style="border: 1px solid #000; padding: 10px 4px; width: 15%;">KREDIT</th>
+                                <th style="border: 1px solid #000; padding: 10px 4px; width: 15%;">SALDO</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(cash, index) in printableCashes" :key="cash.id">
+                                <td style="border: 1px solid #000; padding: 6px 4px; text-align: center;">{{ index + 1 }}</td>
+                                <td style="border: 1px solid #000; padding: 6px 4px; text-align: center;">{{ cash.date ? cash.date.substring(0, 10) : '' }}</td>
+                                <td style="border: 1px solid #000; padding: 6px 4px; text-transform: uppercase;">{{ cash.description }}</td>
+                                <td style="border: 1px solid #000; padding: 6px 4px; text-align: right;">{{ cash.debit > 0 ? formatRupiah(cash.debit) : '-' }}</td>
+                                <td style="border: 1px solid #000; padding: 6px 4px; text-align: right;">{{ cash.credit > 0 ? formatRupiah(cash.credit) : '-' }}</td>
+                                <td style="border: 1px solid #000; padding: 6px 4px; text-align: right; font-weight: bold;">{{ formatRupiah(cash.balance) }}</td>
+                            </tr>
+                            <tr v-if="printableCashes.length === 0">
+                                <td colspan="6" style="border: 1px solid #000; padding: 40px; text-align: center; font-weight: bold; color: #9ca3af;">DATA BULAN {{ selectedMonthName }} TIDAK DITEMUKAN</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div style="margin-top: 15px; padding: 10px; border-left: 4px solid #000; background-color: #f9fafb; font-size: 11px; font-weight: bold; text-transform: uppercase;">
+                        <p style="margin: 0;">TOTAL DEBIT BULAN INI: {{ formatRupiah(totalDebit) }}</p>
+                        <p style="margin: 4px 0 0 0;">TOTAL KREDIT BULAN INI: {{ formatRupiah(totalCredit) }}</p>
+                        <div style="margin-top: 8px; border-top: 1px dashed #ccc; padding-top: 5px;">
+                            <p style="margin: 0; font-size: 12px;">SALDO AKHIR (TOTAL): {{ formatRupiah(props.totalSaldo) }}</p>
+                        </div>
+                    </div>
+                </template>
 
                 <div style="margin-top: 50px; display: flex; justify-content: flex-end;">
                     <div style="width: 300px; text-align: left; font-size: 11px;">
