@@ -64,11 +64,11 @@ const approveSkhpp = () => {
                 </div>
 
                 <div>
-                    <label class="block font-bold uppercase mb-1 text-slate-700">Derajat Kecepatan / Prioritas</label>
+                    <label class="block font-bold uppercase mb-1 text-slate-700">Derajat Kecepatan / Prioritas (Logika Penyamaran Kode SKHPP)</label>
                     <select id="swal-priority-show" class="w-full text-xs font-bold p-2.5 border rounded-xl">
-                        <option value="R" selected>R (RAHASIA) — R/[NOMOR]/SKHPP/[BULAN]/[TAHUN]</option>
-                        <option value="B">B (BIASA) — B/[NOMOR]/SKHPP/[BULAN]/[TAHUN]</option>
-                        <option value="K">K (KILAT) — K/[NOMOR]/SKHPP/[BULAN]/[TAHUN]</option>
+                        <option value="R" selected>R (RAHASIA) — Format: R / [NOMOR] / SKHPP / [BULAN] / [TAHUN]</option>
+                        <option value="B">B (BIASA) — Format: B / [NOMOR] / SKHPP / [BULAN] / [TAHUN]</option>
+                        <option value="K">K (KILAT) — Format: K / [NOMOR] / SKHPP / [BULAN] / [TAHUN]</option>
                     </select>
                 </div>
             </div>

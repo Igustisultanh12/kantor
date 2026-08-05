@@ -300,12 +300,27 @@ class SkhppController extends Controller
 
         $priority = $request->input('priority', 'R'); // R (RAHASIA), B (BIASA), K (KILAT)
 
-        // FORMAT TUNGGAL TERINTEGRASI SINDEN BUKU AGENDA LOG:
-        // {PRIORITY} / {SEQUENCE} / SKHPP / {BULAN_ROMAWI} / {TAHUN}
+        // =========================================================================
+        // SULTAN CONFIG: EXACT LETTER-LOGS PENYAMARAN KODE FORMAT (SKHPP-D / SKHPP-P -> SKHPP)
+        // Format: {PRIORITY} / {SEQUENCE} / SKHPP / {ROMAN_MONTH} / {YEAR}
+        // =========================================================================
+        $targetCode = ($skhpp->kategori_personel === 'sipil') ? 'SKHPP-P' : 'SKHPP-D';
+        $categoryName = ($skhpp->kategori_personel === 'sipil') 
+            ? 'SKHPP Mitra Kerja / Sipil' 
+            : 'SKHPP Dinas Militer TNI AL';
+
+        $skhppCategory = \App\Models\Category::firstOrCreate(
+            ['code' => $targetCode],
+            ['name' => $categoryName, 'start_number' => 1]
+        );
+
+        $cleanCode = explode('-', $skhppCategory->code)[0]; // 'SKHPP'
+
         if ($request->filled('custom_nomor_skhpp')) {
             $formattedNo = trim($request->custom_nomor_skhpp);
         } else {
-            $formattedNo = "{$priority}/{$nextSeq}/SKHPP/{$romanMonth}/{$currentYear}";
+            // EXACT FORMAT: {$priority} / {$sequence} / {$cleanCode} / {$romanMonth} / {$year}
+            $formattedNo = "{$priority} / {$nextSeq} / {$cleanCode} / {$romanMonth} / {$currentYear}";
         }
 
         $skhpp->update([
@@ -322,14 +337,11 @@ class SkhppController extends Controller
 
         // SINKRONISASI OTOMATIS KE BUKU AGENDA SURAT SINDEN (LETTER_LOGS)
         try {
-            $skhppCategory = \App\Models\Category::where('code', 'LIKE', '%SKHPP%')->first();
-            $categoryId = $skhppCategory ? $skhppCategory->id : 1;
-
             \App\Models\LetterLog::create([
                 'full_number' => $formattedNo,
                 'sequence' => (string)$nextSeq,
                 'priority' => $priority,
-                'category_id' => $categoryId,
+                'category_id' => $skhppCategory->id,
                 'subject' => "SKHPP - {$skhpp->nama} (" . strtoupper($skhpp->kategori_personel) . ") - " . $skhpp->peruntukan,
                 'recipient' => 'Yth. Asintel Dankodaeral V',
                 'date' => now()->toDateString(),
