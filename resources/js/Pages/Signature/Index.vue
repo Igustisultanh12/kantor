@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, router, usePage, Link } from '@inertiajs/vue3';
-import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
+import { ref, shallowRef, markRaw, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import Swal from 'sweetalert2';
 import interact from 'interactjs';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -34,10 +34,10 @@ const selectedSkhpp = ref(null);
 const isAdjusting = ref(false);
 const isLoadingPdf = ref(false);
 
-// Multi-Page PDF State
+// Multi-Page PDF State (Gunakan shallowRef agar tidak di-Proxy oleh Vue 3)
 const currentPage = ref(1);
 const totalPages = ref(1);
-const pdfDoc = ref(null);
+const pdfDoc = shallowRef(null);
 
 // Signature Drag Position
 const signaturePos = ref({ x: 50, y: 150 });
@@ -186,7 +186,8 @@ const openPdfPreview = async (req) => {
       disableFontFace: false
     });
 
-    pdfDoc.value = await loadingTask.promise;
+    const rawPdf = await loadingTask.promise;
+    pdfDoc.value = markRaw(rawPdf);
     totalPages.value = pdfDoc.value.numPages;
     currentPage.value = req.target_page || 1;
 
