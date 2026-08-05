@@ -243,9 +243,12 @@
                 <td style="vertical-align: top; width: 330px;">
                     <div style="width: 330px;">
                         <div style="text-align: left;">Dikeluarkan di Surabaya</div>
-                        <div style="border-bottom: 1px solid #000; padding-bottom: 1px; margin-bottom: 6px; text-align: left; white-space: nowrap;">
-                            pada tanggal &nbsp;&nbsp;&nbsp;{{ $tanggal_skhpp_indo }}
-                        </div>
+                        <table style="width: 100%; border-bottom: 1px solid #000; margin-bottom: 6px;">
+                            <tr>
+                                <td style="text-align: left; padding-bottom: 1px;">pada tanggal</td>
+                                <td style="text-align: right; padding-bottom: 1px;">{{ $tanggal_skhpp_indo }}</td>
+                            </tr>
+                        </table>
                         
                         <div style="font-weight: normal; line-height: 1.2; text-align: center; white-space: nowrap; margin-top: 4px;">
                             Komandan Detasemen Intelijen Kodaeral V,
@@ -258,8 +261,8 @@
                             @endif
                         </div>
 
-                        <div style="font-weight: normal; text-decoration: underline; text-align: center; white-space: nowrap;">Hari Bagio Wijayanto, M.Tr.Opsla.</div>
-                        <div style="font-weight: normal; text-align: center; white-space: nowrap;">Kolonel Laut (E) NRP 16085/P</div>
+                        <div style="font-weight: normal; text-decoration: none; text-align: center; white-space: nowrap;">Hari Bagio Wijayanto, M.Tr.Opsla.</div>
+                        <div style="font-weight: normal; text-decoration: none; text-align: center; white-space: nowrap;">Kolonel Laut (E) NRP 16085/P</div>
                     </div>
                 </td>
             </tr>
@@ -337,7 +340,7 @@
                                 <img src="{{ $qr_base64 }}" style="width: 65px; height: 65px; border: 1px solid #ccc; padding: 2px; margin: 0 auto; display: block;" />
                             @endif
                         </div>
-                        <div style="text-decoration: underline;">Hari Bagio Wijayanto, M.Tr.Opsla.</div>
+                        <div style="text-decoration: none;">Hari Bagio Wijayanto, M.Tr.Opsla.</div>
                         <div>Kolonel Laut (E) NRP 16085/P</div>
                     </div>
                 </td>
