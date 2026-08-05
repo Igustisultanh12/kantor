@@ -707,10 +707,11 @@ const getStatusClass = (status) => {
         <div class="relative bg-white shadow-2xl overflow-hidden rounded-sm" style="line-height: 0;">
           <canvas id="pdf-render-canvas"></canvas>
 
-          <!-- Draggable Signature Box -->
-          <div v-if="isAdjusting" class="drag-signature absolute z-[200] cursor-move border-2 border-blue-600 bg-blue-500/20 backdrop-blur-[1px] shadow-2xl flex items-center justify-center touch-none"
+          <!-- Draggable Signature Box (QR Code TTD Digital) -->
+          <div v-if="isAdjusting" class="drag-signature absolute z-[200] cursor-move border-2 border-blue-600 bg-white/95 backdrop-blur-[2px] shadow-2xl flex flex-col items-center justify-center touch-none text-center p-1"
                :style="{ left: signaturePos.x + 'px', top: signaturePos.y + 'px', width: signatureSize.width + 'px', height: signatureSize.height + 'px' }">
-            <img :src="'/storage/' + commanderSignature" class="w-full h-full object-contain pointer-events-none opacity-90" alt="TTD Komandan" />
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=SINDEN_PREVIEW" class="w-full h-full object-contain pointer-events-none max-h-[82%] border border-slate-300 p-0.5 rounded-sm" alt="QR Code TTD Digital" />
+            <span class="text-[7px] font-black text-emerald-700 uppercase tracking-tighter mt-0.5 truncate max-w-full pointer-events-none">✓ QR CODE TTD KOMANDAN</span>
             <div class="absolute -bottom-2 -right-2 w-6 h-6 bg-blue-600 rounded-full border-2 border-white shadow-lg cursor-se-resize flex items-center justify-center">
               <div class="w-1.5 h-1.5 bg-white rounded-full"></div>
             </div>

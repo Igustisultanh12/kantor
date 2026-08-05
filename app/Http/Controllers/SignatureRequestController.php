@@ -60,6 +60,7 @@ class SignatureRequestController extends Controller
                 'letter_number' => $request->letter_number,
                 'file_path' => $path,
                 'status' => 'pending',
+                'verification_code' => 'DOC-' . strtoupper(\Illuminate\Support\Str::random(10)),
                 'x' => $request->x ?? 0.5,
                 'y' => $request->y ?? 0.5,
                 'width' => $request->width ?? 0.2,
@@ -142,15 +143,31 @@ class SignatureRequestController extends Controller
             DB::beginTransaction();
 
             if ($request->status === 'approved') {
-                Log::info("=== MEMULAI PROSES PENEMPELAN TTD ===");
+                Log::info("=== MEMULAI PROSES PENEMPELAN QR CODE TTD DIGITAL ===");
                 Log::info("ID Request: " . $signatureRequest->id);
 
+                if (!$signatureRequest->verification_code) {
+                    $signatureRequest->verification_code = 'DOC-' . strtoupper(\Illuminate\Support\Str::random(10));
+                }
+
                 $originalPath = storage_path('app/public/' . $signatureRequest->file_path);
-                $signatureKey = Setting::where('key', 'commander_signature')->first();
-                $signatureImg = storage_path('app/public/' . ($signatureKey->value ?? 'signatures/komandan_ttd.png'));
+
+                // Generate QR Code TTD Image
+                $verifyUrl = route('skhpp.verify', $signatureRequest->verification_code);
+                $qrApiUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' . urlencode($verifyUrl);
+                $qrImageContent = @file_get_contents($qrApiUrl);
+
+                $tempQrPath = storage_path('app/public/temp_qr_' . time() . '_' . $signatureRequest->id . '.png');
+                if ($qrImageContent) {
+                    file_put_contents($tempQrPath, $qrImageContent);
+                    $signatureImg = $tempQrPath;
+                } else {
+                    $signatureKey = Setting::where('key', 'commander_signature')->first();
+                    $signatureImg = storage_path('app/public/' . ($signatureKey->value ?? 'signatures/komandan_ttd.png'));
+                }
 
                 Log::info("Path PDF: " . $originalPath);
-                Log::info("Path TTD: " . $signatureImg);
+                Log::info("Path TTD QR: " . $signatureImg);
 
                 if (!file_exists($signatureImg)) {
                     Log::error("CRITICAL: File TTD tidak ditemukan di storage!");
@@ -181,7 +198,7 @@ class SignatureRequestController extends Controller
                         $posY = $yRatio * $pdfH;
                         $ttdW = $wRatio * $pdfW;
 
-                        Log::info("Menempelkan TTD di Hal $pageNo (Posisi: $posX, $posY | Lebar: $ttdW)");
+                        Log::info("Menempelkan TTD QR Code di Hal $pageNo (Posisi: $posX, $posY | Lebar: $ttdW)");
                         $pdf->Image($signatureImg, $posX, $posY, $ttdW, 0, 'PNG');
                     }
                 }
@@ -190,6 +207,10 @@ class SignatureRequestController extends Controller
                 $newPath = 'signature_reqs/' . $newFileName;
                 $pdf->Output(storage_path('app/public/' . $newPath), 'F');
                 Log::info("Output PDF Signed Berhasil: " . $newPath);
+
+                if (file_exists($tempQrPath)) {
+                    @unlink($tempQrPath);
+                }
 
                 if (Storage::disk('public')->exists($signatureRequest->file_path)) {
                     Storage::disk('public')->delete($signatureRequest->file_path);
