@@ -189,10 +189,28 @@ Route::middleware('auth')->group(function () {
     Route::get('/commander-account/pdf', [CommanderAccountController::class, 'exportPdf'])->name('commander.pdf');
 
     // =========================================================================
+    // MODUL MANAJEMEN PENCATATAN PEMBAYARAN MITRA (MATRIX BULANAN & CETAK PDF)
+    // =========================================================================
+    Route::get('/mitras', [MitraPaymentController::class, 'index'])->name('mitras.index');
+    Route::post('/mitras', [MitraPaymentController::class, 'store'])->name('mitras.store');
+    Route::put('/mitras/{id}', [MitraPaymentController::class, 'update'])->name('mitras.update');
+    Route::delete('/mitras/{id}', [MitraPaymentController::class, 'destroy'])->name('mitras.destroy');
+    Route::post('/mitras/toggle-payment', [MitraPaymentController::class, 'togglePayment'])->name('mitras.toggle-payment');
+    Route::post('/mitras/reorder', [MitraPaymentController::class, 'reorder'])->name('mitras.reorder');
+    Route::post('/mitras/{id}/move', [MitraPaymentController::class, 'movePosition'])->name('mitras.move');
+
+    // =========================================================================
+    // MODUL MANAJEMEN BUKU KAS DAN UNIT TEKNIS
+    // =========================================================================
+    Route::get('/technical-cash', [TechnicalUnitCashController::class, 'index'])->name('technical-cash.index');
+    Route::post('/technical-cash', [TechnicalUnitCashController::class, 'store'])->name('technical-cash.store');
+    Route::put('/technical-cash/{id}', [TechnicalUnitCashController::class, 'update'])->name('technical-cash.update');
+    Route::delete('/technical-cash/{id}', [TechnicalUnitCashController::class, 'destroy'])->name('technical-cash.destroy');
+
+    // =========================================================================
     // FITUR KHUSUS ADMIN (OTORITAS TINGGI MONEV)
     // =========================================================================
     Route::middleware(['role:admin'])->group(function () {
-        
         Route::post('/signature-requests/clear-all', [SignatureRequestController::class, 'clearAll'])->name('signature.clear-all');
         Route::get('/users/print-report-pdf', [UserController::class, 'printPdf'])->name('users.print-pdf');
 
@@ -203,6 +221,7 @@ Route::middleware('auth')->group(function () {
         Route::patch('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle');
         Route::post('/users/{user}/generate-token', [UserController::class, 'generateResetToken'])->name('users.generate-token');
         Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+        Route::post('/users/{id}/toggle-mitra-access', [MitraPaymentController::class, 'toggleUserAccess'])->name('users.toggle-mitra-access');
 
         // Kategori Arsip Surat Mako V
         Route::resource('categories', CategoryController::class);
@@ -254,26 +273,6 @@ Route::middleware('auth')->group(function () {
         Route::post('/admin/applicants/{id}/update-status', [PESSAdminController::class, 'updateStatus'])->name('admin.applicants.update-status');
         Route::put('/admin/applicants/{id}/edit', [PESSAdminController::class, 'updateProfile'])->name('admin.applicants.edit');
         Route::delete('/admin/applicants/{id}/delete', [PESSAdminController::class, 'destroyAccount'])->name('admin.applicants.delete');
-
-        // =====================================================================
-        // MODUL MANAJEMEN PENCATATAN PEMBAYARAN MITRA (MATRIX BULANAN & CETAK PDF)
-        // =====================================================================
-        Route::get('/mitras', [MitraPaymentController::class, 'index'])->name('mitras.index');
-        Route::post('/mitras', [MitraPaymentController::class, 'store'])->name('mitras.store');
-        Route::put('/mitras/{id}', [MitraPaymentController::class, 'update'])->name('mitras.update');
-        Route::delete('/mitras/{id}', [MitraPaymentController::class, 'destroy'])->name('mitras.destroy');
-        Route::post('/mitras/toggle-payment', [MitraPaymentController::class, 'togglePayment'])->name('mitras.toggle-payment');
-        Route::post('/mitras/reorder', [MitraPaymentController::class, 'reorder'])->name('mitras.reorder');
-        Route::post('/mitras/{id}/move', [MitraPaymentController::class, 'movePosition'])->name('mitras.move');
-        Route::post('/users/{id}/toggle-mitra-access', [MitraPaymentController::class, 'toggleUserAccess'])->name('users.toggle-mitra-access');
-
-        // =====================================================================
-        // MODUL MANAJEMEN BUKU KAS DAN UNIT TEKNIS
-        // =====================================================================
-        Route::get('/technical-cash', [TechnicalUnitCashController::class, 'index'])->name('technical-cash.index');
-        Route::post('/technical-cash', [TechnicalUnitCashController::class, 'store'])->name('technical-cash.store');
-        Route::put('/technical-cash/{id}', [TechnicalUnitCashController::class, 'update'])->name('technical-cash.update');
-        Route::delete('/technical-cash/{id}', [TechnicalUnitCashController::class, 'destroy'])->name('technical-cash.destroy');
     });
 });
 
