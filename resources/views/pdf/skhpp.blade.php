@@ -16,6 +16,7 @@
             color: #000;
             margin: 0;
             padding: 0;
+            font-weight: normal;
         }
 
         .page-break {
@@ -24,15 +25,18 @@
 
         table {
             border-collapse: collapse;
+            font-weight: normal;
         }
 
         .table-data td {
             padding: 2px 0;
+            font-weight: normal;
         }
 
         .table-members th, .table-members td {
             border: 1px solid #000;
             padding: 6px 8px;
+            font-weight: normal;
         }
     </style>
 </head>
@@ -43,22 +47,22 @@
         
         <!-- Kop Surat (Rata Kiri dengan Garis Kop) -->
         <div style="margin-bottom: 20px;">
-            <div style="font-weight: bold; text-transform: uppercase; font-size: 12pt;">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
-            <div style="font-weight: bold; text-transform: uppercase; font-size: 12pt; padding-left: 25px;">DETASEMEN INTELIJEN</div>
+            <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt;">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
+            <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt; padding-left: 25px;">DETASEMEN INTELIJEN</div>
             <div style="border-bottom: 2px solid #000; width: 330px; margin-top: 2px;"></div>
         </div>
 
         <!-- Judul Surat -->
         <div style="text-align: center; margin-top: 15px; margin-bottom: 25px;">
-            <div style="font-weight: bold; text-transform: uppercase; font-size: 12pt;">
+            <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt;">
                 SURAT KETERANGAN HASIL PENELITIAN PERSONEL(SKHPP)
             </div>
             @if($skhpp->kategori_personel === 'perusahaan')
-            <div style="font-weight: bold; text-transform: uppercase; font-size: 12pt;">
+            <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt;">
                 MITRA KERJA TNI ANGKATAN LAUT
             </div>
             @endif
-            <div style="font-weight: bold; font-size: 12pt; margin-top: 3px;">
+            <div style="font-weight: normal; font-size: 12pt; margin-top: 3px;">
                 Nomor : R/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /SKHPP/{{ $skhpp->bulan_romawi ?? 'VIII' }}/{{ $skhpp->tahun ?? '2026' }}
             </div>
         </div>
@@ -66,9 +70,9 @@
         <!-- Point 1: Dasar -->
         <table style="width: 100%; margin-bottom: 10px;">
             <tr>
-                <td style="width: 30px; vertical-align: top; font-weight: bold;">1.</td>
+                <td style="width: 30px; vertical-align: top; font-weight: normal;">1.</td>
                 <td style="vertical-align: top;">
-                    <div style="font-weight: bold;">Dasar :</div>
+                    <div style="font-weight: normal;">Dasar :</div>
                     <table style="width: 100%; margin-top: 3px;">
                         <tr>
                             <td style="width: 25px; vertical-align: top;">a.</td>
@@ -90,7 +94,7 @@
         <!-- Point 2: Data Personel (Menjorok Rata Huruf "Dengan") -->
         <table style="width: 100%; margin-bottom: 10px;">
             <tr>
-                <td style="width: 30px; vertical-align: top; font-weight: bold;">2.</td>
+                <td style="width: 30px; vertical-align: top; font-weight: normal;">2.</td>
                 <td style="vertical-align: top;">
                     <div>Dengan ini menerangkan bahwa hasil penelitian terhadap :</div>
                     
@@ -100,7 +104,7 @@
                             <td style="width: 25px; vertical-align: top;">a.</td>
                             <td style="width: 145px; vertical-align: top;">Nama</td>
                             <td style="width: 12px; vertical-align: top;">:</td>
-                            <td style="vertical-align: top; font-weight: bold;">{{ $skhpp->nama }}</td>
+                            <td style="vertical-align: top; font-weight: normal;">{{ $skhpp->nama }}</td>
                         </tr>
                         <tr>
                             <td style="vertical-align: top;">b.</td>
@@ -145,7 +149,7 @@
                             <td style="width: 25px; vertical-align: top;">a.</td>
                             <td style="width: 145px; vertical-align: top;">Nama</td>
                             <td style="width: 12px; vertical-align: top;">:</td>
-                            <td style="vertical-align: top; font-weight: bold;">{{ $skhpp->nama }}</td>
+                            <td style="vertical-align: top; font-weight: normal;">{{ $skhpp->nama }}</td>
                         </tr>
                         <tr>
                             <td style="vertical-align: top;">b.</td>
@@ -189,10 +193,10 @@
             </tr>
         </table>
 
-        <!-- Point 2: Hasil (Nomor 2 Sesuai Format SISFOPERS Resmi) -->
+        <!-- Point 2: Hasil (HANYA 'Memenuhi Syarat' YANG DI BOLD) -->
         <table style="width: 100%; margin-bottom: 10px;">
             <tr>
-                <td style="width: 30px; vertical-align: top; font-weight: bold;">2.</td>
+                <td style="width: 30px; vertical-align: top; font-weight: normal;">2.</td>
                 <td style="vertical-align: top;">
                     Hasil Penelitian Personel <span style="font-weight: bold;">Memenuhi Syarat</span>
                 </td>
@@ -202,7 +206,7 @@
         <!-- Point 3: Peruntukan -->
         <table style="width: 100%; margin-bottom: 10px;">
             <tr>
-                <td style="width: 30px; vertical-align: top; font-weight: bold;">3.</td>
+                <td style="width: 30px; vertical-align: top; font-weight: normal;">3.</td>
                 <td style="vertical-align: top; text-align: justify;">
                     SKHPP ini diberikan {{ $skhpp->peruntukan }}.
                 </td>
@@ -212,14 +216,14 @@
         <!-- Point 4: Penutup -->
         <table style="width: 100%; margin-bottom: 15px;">
             <tr>
-                <td style="width: 30px; vertical-align: top; font-weight: bold;">4.</td>
+                <td style="width: 30px; vertical-align: top; font-weight: normal;">4.</td>
                 <td style="vertical-align: top; text-align: justify;">
                     Apabila kemudian terdapat kekeliruan, SKHPP ini akan dicabut dan diadakan pembetulan seperlunya.
                 </td>
             </tr>
         </table>
 
-        <!-- Pas Foto (Menempel 1 Spasi ke Dikeluarkan) & Signature Block Komandan -->
+        <!-- Pas Foto & Signature Block Komandan -->
         <table style="width: 100%; margin-top: 15px;">
             <tr>
                 <!-- Kolom Pas Foto -->
@@ -261,10 +265,10 @@
             </tr>
         </table>
 
-        <!-- Footer Kepada -->
-        <div style="margin-top: 25px;">
+        <!-- Footer Kepada (Tanpa Bold & Tanpa Turun Baris / Wrap pada "V") -->
+        <div style="margin-top: 25px; font-weight: normal;">
             <div>Kepada :</div>
-            <div style="font-weight: bold; border-bottom: 1px solid #000; width: 190px; padding-bottom: 2px;">Yth. Asintel Dankodaeral V</div>
+            <div style="font-weight: normal; border-bottom: 1px solid #000; display: inline-block; padding-bottom: 2px; white-space: nowrap;">Yth. Asintel Dankodaeral V</div>
         </div>
     </div>
 
@@ -278,11 +282,11 @@
         <table style="width: 100%; margin-bottom: 25px;">
             <tr>
                 <td style="width: 55%; vertical-align: top;">
-                    <div style="font-weight: bold; text-transform: uppercase; font-size: 12pt;">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
-                    <div style="font-weight: bold; text-transform: uppercase; font-size: 12pt; padding-left: 25px;">DETASEMEN INTELIJEN</div>
+                    <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt;">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
+                    <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt; padding-left: 25px;">DETASEMEN INTELIJEN</div>
                     <div style="border-bottom: 2px solid #000; width: 330px; margin-top: 2px;"></div>
                 </td>
-                <td style="width: 45%; vertical-align: top; text-align: right; font-size: 11pt; line-height: 1.3;">
+                <td style="width: 45%; vertical-align: top; text-align: right; font-size: 11pt; line-height: 1.3; font-weight: normal;">
                     <div>Lampiran SKHPP Den Intel Kodaeral V</div>
                     <div style="border-bottom: 1px solid #000; display: inline-block; padding-bottom: 2px;">
                         Nomor SKHPP/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /{{ $skhpp->bulan_romawi ?? 'VII' }}/{{ $skhpp->tahun ?? '2026' }}<br>
@@ -293,14 +297,14 @@
         </table>
 
         <!-- Judul Lampiran -->
-        <div style="text-align: center; font-weight: bold; text-transform: uppercase; margin-bottom: 15px; font-size: 12pt;">
+        <div style="text-align: center; font-weight: normal; text-transform: uppercase; margin-bottom: 15px; font-size: 12pt;">
             DAFTAR NAMA-NAMA ANGGOTA PENGIKUT
         </div>
 
         <!-- Tabel Anggota Pengikut -->
         <table class="table-members" style="width: 100%; font-size: 11pt; margin-bottom: 25px;">
             <thead>
-                <tr style="background-color: #f8f8f8; text-transform: uppercase; text-align: center; font-weight: bold;">
+                <tr style="background-color: #f8f8f8; text-transform: uppercase; text-align: center; font-weight: normal;">
                     <th style="width: 35px;">NO</th>
                     <th>NAMA</th>
                     <th style="width: 180px;">NIK / NRP / NIP</th>
@@ -310,8 +314,8 @@
             <tbody>
                 @foreach($skhpp->members as $idx => $m)
                 <tr>
-                    <td style="text-align: center; font-weight: bold;">{{ $idx + 1 }}.</td>
-                    <td style="font-weight: bold;">{{ $m->nama }}</td>
+                    <td style="text-align: center; font-weight: normal;">{{ $idx + 1 }}.</td>
+                    <td style="font-weight: normal;">{{ $m->nama }}</td>
                     <td style="text-align: center;">{{ $m->pangkat_nrp_nik }}</td>
                     <td>{{ $m->jabatan }}</td>
                 </tr>
