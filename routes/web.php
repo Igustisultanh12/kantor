@@ -257,6 +257,9 @@ Route::middleware('auth')->group(function () {
                 ], 500);
             }
         })->name('settings.wa-status');
+
+        // Fitur khusus Admin: Atur/Loncati nomor urut SKHPP tanpa TTD
+        Route::post('/skhpp/{id}/update-number', [SkhppController::class, 'updateNumber'])->name('skhpp.update-number');
     });
 
     // =====================================================================
@@ -280,7 +283,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/skhpp/{id}/export-pdf', [SkhppController::class, 'exportPdf'])->name('skhpp.export-pdf');
     Route::get('/skhpp/{id}/edit', [SkhppController::class, 'edit'])->name('skhpp.edit');
     Route::post('/skhpp/{id}/update', [SkhppController::class, 'update'])->name('skhpp.update');
-    Route::post('/skhpp/{id}/set-nomor', [SkhppController::class, 'setNomor'])->name('skhpp.set-nomor');
     Route::post('/skhpp/{id}/approve', [SkhppController::class, 'approve'])->name('skhpp.approve');
     Route::post('/skhpp/{id}/reject', [SkhppController::class, 'reject'])->name('skhpp.reject');
     Route::delete('/skhpp/{id}', [SkhppController::class, 'destroy'])->name('skhpp.destroy');

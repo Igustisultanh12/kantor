@@ -11,6 +11,7 @@ const props = defineProps({
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
+const isAdmin = computed(() => user.value.role === 'admin');
 const isCommander = computed(() => user.value.role === 'admin' || user.value.role === 'komandan' || user.value.name === 'I Gusti Sultan H.A, A.Md.Kom');
 
 const search = ref(props.filters?.search || '');
@@ -86,11 +87,11 @@ const changeNomorSkhpp = (skhpp) => {
         title: `ATUR NOMOR URUT ${katCode}`,
         html: `
             <div class="text-left text-xs space-y-3 font-sans">
-                <p class="text-slate-600">Atur atau loncati nomor urut khusus untuk <b>${skhpp.nama}</b> (${katCode}):</p>
+                <p class="text-slate-600">Atur atau ubah nomor urut khusus untuk <b>${skhpp.nama}</b> (${katCode}):</p>
                 <div>
                     <label class="block font-bold uppercase mb-1 text-slate-700 text-[10px]">Nomor Urut Baru (${katCode})</label>
                     <input id="swal-new-seq" type="number" value="${skhpp.nomor_urut || ''}" class="w-full text-xs font-bold p-2.5 border rounded-xl" placeholder="Ketik nomor urut (contoh: ${skhpp.kategori_personel === 'perusahaan' ? '15' : '180'})" />
-                    <span class="text-[9px] text-slate-400 mt-1 block">*Menyimpan nomor TIDAK AKAN otomatis menandatangani (dokumen tetap PENDING TTD Komandan).</span>
+                    <span class="text-[9px] text-slate-400 mt-1 block">*Nomor urut ${katCode} berjalan independen tanpa mempengaruhi kategori lain.</span>
                 </div>
             </div>
         `,
@@ -102,10 +103,10 @@ const changeNomorSkhpp = (skhpp) => {
         }
     }).then((result) => {
         if (result.isConfirmed && result.value) {
-            router.post(route('skhpp.set-nomor', skhpp.id), {
+            router.post(route('skhpp.update-number', skhpp.id), {
                 custom_nomor_urut: result.value
             }, {
-                onSuccess: () => Swal.fire('NOMOR DISIMPAN', `Nomor urut ${katCode} berhasil diatur ke ${result.value}. Dokumen tetap PENDING TTD Komandan.`, 'success')
+                onSuccess: () => Swal.fire('BERHASIL DISIMPAN', `Nomor urut ${katCode} berhasil diatur ke ${result.value} tanpa memberikan TTD.`, 'success')
             });
         }
     });
@@ -315,10 +316,10 @@ const formatDate = (dateStr) => {
                                             Edit Data
                                         </Link>
 
-                                        <!-- Tombol Khusus Admin: Atur Nomor (Tanpa Auto TTD) -->
-                                        <button v-if="user.role === 'admin'" @click="changeNomorSkhpp(skhpp)" 
+                                        <!-- Tombol Khusus Admin untuk Atur/Loncati Nomor tanpa TTD -->
+                                        <button v-if="isAdmin" @click="changeNomorSkhpp(skhpp)" 
                                             class="px-2.5 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs"
-                                            title="Khusus Admin: Atur / Loncati Nomor Urut (Tanpa Otomatis TTD Komandan)">
+                                            title="Atur / Loncati Nomor Urut SKHPP (Khusus Admin)">
                                             🔢 Atur Nomor
                                         </button>
 
