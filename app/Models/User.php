@@ -26,6 +26,7 @@ class User extends Authenticatable
         'phone',
         'role',
         'is_active',
+        'can_access_mitra',
         'activation_token',
         'must_change_password', // TAMBAHKAN INI: Agar sistem tahu user perlu ganti password
         'reset_token',
@@ -55,6 +56,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'can_access_mitra' => 'boolean',
             'must_change_password' => 'boolean', // Tambahkan cast agar logika Vue Bapak akurat
             'token_expires_at' => 'datetime',
         ];
