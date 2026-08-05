@@ -24,6 +24,7 @@ use App\Http\Controllers\PESSAdminController; // SULTAN CONFIG: Pangkalan Pemisa
 use App\Http\Controllers\API\PESSReceiverController; // SULTAN CONFIG: Controller Penerima File Lintas VPS
 use App\Http\Controllers\CommanderAccountController; // SINDEN CORRECTION: Kalibrasi typo dari Controkkers ke Controllers
 use App\Http\Controllers\MitraPaymentController;
+use App\Http\Controllers\TechnicalUnitCashController;
 use App\Models\User;
 use App\Models\LetterLog;
 use App\Models\Letter;
@@ -263,8 +264,13 @@ Route::middleware('auth')->group(function () {
         Route::delete('/mitras/{id}', [MitraPaymentController::class, 'destroy'])->name('mitras.destroy');
         Route::post('/mitras/toggle-payment', [MitraPaymentController::class, 'togglePayment'])->name('mitras.toggle-payment');
         Route::post('/mitras/reorder', [MitraPaymentController::class, 'reorder'])->name('mitras.reorder');
-        Route::post('/mitras/{id}/move', [MitraPaymentController::class, 'movePosition'])->name('mitras.move');
-        Route::post('/users/{id}/toggle-mitra-access', [MitraPaymentController::class, 'toggleUserAccess'])->name('users.toggle-mitra-access');
+        // =====================================================================
+        // MODUL MANAJEMEN BUKU KAS DAN UNIT TEKNIS
+        // =====================================================================
+        Route::get('/technical-cash', [TechnicalUnitCashController::class, 'index'])->name('technical-cash.index');
+        Route::post('/technical-cash', [TechnicalUnitCashController::class, 'store'])->name('technical-cash.store');
+        Route::put('/technical-cash/{id}', [TechnicalUnitCashController::class, 'update'])->name('technical-cash.update');
+        Route::delete('/technical-cash/{id}', [TechnicalUnitCashController::class, 'destroy'])->name('technical-cash.destroy');
     });
 });
 
