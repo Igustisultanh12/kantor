@@ -1,5 +1,5 @@
 <script setup>
-import { Head, Link, usePage } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 const props = defineProps({
@@ -17,6 +17,12 @@ const configuredLogo = computed(() => {
     return (logo.startsWith('http') || logo.startsWith('/storage') || logo.startsWith('/images')) ? logo : '/storage/' + logo;
 });
 
+const loginBg = computed(() => {
+    const bg = pageSettings.value.login_background;
+    if (!bg) return null;
+    return (bg.startsWith('http') || bg.startsWith('/storage')) ? bg : '/storage/' + bg;
+});
+
 const formatDateIndo = (dateStr) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString('id-ID', {
@@ -32,45 +38,43 @@ const formatDateIndo = (dateStr) => {
 <template>
     <Head :title="`Verifikasi Legalitas SKHPP - ${skhpp.nama}`" />
 
-    <div class="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col justify-between p-4 sm:p-8 relative overflow-hidden">
-        
-        <!-- Ambient Glow Background matching Login UI -->
-        <div class="absolute -top-40 -left-40 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none"></div>
+    <div 
+        class="min-h-screen flex flex-col justify-between items-center p-4 sm:p-8 font-sans bg-cover bg-center relative transition-all duration-300 bg-slate-950 text-white"
+        :style="loginBg ? { backgroundImage: `url(${loginBg})` } : {}"
+    >
+        <!-- Dark Overlay Matching Login UI -->
+        <div class="absolute inset-0 bg-slate-950/85 backdrop-blur-[3px] z-0"></div>
 
-        <!-- Header Brand -->
-        <div class="max-w-2xl mx-auto w-full flex items-center justify-between border-b border-white/10 pb-4 relative z-10">
-            <div class="flex items-center gap-3">
-                <img v-if="configuredLogo" :src="configuredLogo" class="h-10 w-10 object-contain drop-shadow-md" alt="Logo SINDEN" />
-                <div v-else class="w-10 h-10 rounded-xl bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-blue-400 font-black text-xl">
-                    S
-                </div>
-                <div>
-                    <h1 class="text-sm font-black uppercase tracking-wider text-white">SINDEN LEGALITAS DIGITAL</h1>
-                    <p class="text-[10px] text-slate-400 font-medium">Detasemen Intelijen Komando Daerah TNI AL V</p>
-                </div>
-            </div>
-            <div class="text-right">
-                <span class="px-3 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full text-[9px] font-black uppercase tracking-widest">
-                    VERIFIED OFFICIAL
-                </span>
-            </div>
-        </div>
+        <!-- Ambient Glow Elements -->
+        <div class="absolute -top-40 -left-40 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none z-0"></div>
+        <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none z-0"></div>
 
-        <!-- Main Card Verification (Login UI Aesthetic) -->
-        <div class="max-w-2xl mx-auto w-full my-auto py-6 relative z-10">
-            <div class="bg-slate-900/90 border border-white/10 rounded-2xl p-6 sm:p-10 shadow-2xl space-y-6 relative overflow-hidden backdrop-blur-md">
+        <div></div>
+
+        <!-- Main Card Verification (Exact Login UI Floating Card Aesthetic) -->
+        <div class="w-full max-w-xl my-auto py-4 relative z-10">
+            <div class="w-full p-6 sm:p-10 rounded-2xl shadow-2xl bg-slate-900/90 backdrop-blur-md border border-white/10 text-white space-y-6">
                 
-                <!-- Top Main Logo (Menggantikan Icon Centang / Shield) -->
+                <!-- Status Badge & Top Main Logo -->
                 <div class="text-center space-y-3">
+                    <div class="flex justify-center mb-1">
+                        <span class="px-3.5 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                            VERIFIED OFFICIAL
+                        </span>
+                    </div>
+
+                    <!-- Single Main Logo -->
                     <div class="flex justify-center">
-                        <img v-if="configuredLogo" :src="configuredLogo" class="h-24 sm:h-28 object-contain drop-shadow-[0_10px_25px_rgba(0,0,0,0.6)]" alt="Logo Denintel SINDEN" />
+                        <img v-if="configuredLogo" :src="configuredLogo" class="h-24 sm:h-28 object-contain drop-shadow-[0_10px_25px_rgba(0,0,0,0.6)]" alt="Logo SINDEN" />
                         <div v-else class="w-20 h-20 rounded-2xl bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-white font-black text-3xl shadow-2xl mx-auto">
                             S
                         </div>
                     </div>
 
-                    <h2 class="text-lg sm:text-xl font-black text-white uppercase tracking-tight">DOKUMEN SKHPP ASLI & TERVERIFIKASI</h2>
+                    <h2 class="text-lg sm:text-xl font-extrabold text-white uppercase tracking-tight drop-shadow-md">
+                        DOKUMEN SKHPP ASLI & TERVERIFIKASI
+                    </h2>
                     <p class="text-xs text-emerald-400 font-semibold max-w-md mx-auto leading-relaxed">
                         Surat Keterangan Hasil Penelitian Personel Ini Sah Ditandatangani Komandan Detasemen Intelijen Kodaeral V secara Digital.
                     </p>
@@ -139,9 +143,9 @@ const formatDateIndo = (dateStr) => {
             </div>
         </div>
 
-        <!-- Footer -->
-        <div class="text-center text-xs text-slate-500 font-medium relative z-10">
-            © {{ new Date().getFullYear() }} {{ appName }} Detasemen Intelijen Komando Daerah TNI Angkatan Laut V. All Rights Reserved.
+        <!-- Footer Matching Login UI -->
+        <div class="text-center text-xs text-slate-400 font-medium relative z-10 py-2">
+            © {{ new Date().getFullYear() }} {{ appName }}. Detasemen Intelijen Komando Daerah TNI Angkatan Laut V. All Rights Reserved.
         </div>
     </div>
 </template>
