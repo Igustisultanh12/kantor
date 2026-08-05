@@ -615,18 +615,21 @@ class SkhppController extends Controller
             'submitted_at' => now(),
         ]);
 
-        // Kirim Notifikasi WA ke Komandan jika terkonfigurasi
+        // Kirim Notifikasi WA ke Komandan
         try {
             $komandan = \App\Models\User::where('role', 'komandan')->first();
             if ($komandan && $komandan->phone) {
-                $pesan = "📢 *SI SINDEN: PEMBERITAHUAN DIAJUKAN ULANG*\n\n" .
-                         "Mohon izin Komandan, terdapat pengajuan ulang TTE SKHPP:\n\n" .
+                $katName = ($skhpp->kategori_personel === 'perusahaan') ? 'SKHPP-P (Mitra Kerja/Perusahaan)' : 'SKHPP-D (Dinas Militer & PNS)';
+                $pesan = "📢 *SI SINDEN: PENGAJUAN ULANG TTE SKHPP*\n\n" .
+                         "Mohon izin Komandan, terdapat permohonan SKHPP yang DIAJUKAN ULANG oleh Admin untuk otorisasi TTE Komandan:\n\n" .
                          "📝 *Nama:* {$skhpp->nama}\n" .
-                         "👤 *Kategori:* " . ($skhpp->kategori_personel === 'perusahaan' ? 'SKHPP-P (Mitra)' : 'SKHPP-D (Dinas/PNS)') . "\n" .
-                         "🎯 *Peruntukan:* {$skhpp->peruntukan}\n\n" .
-                         "Mohon izin untuk memeriksa berkas di Laman : https://sisinden.my.id/signature-requests";
+                         "👤 *Pangkat/NRP/NIK:* " . ($skhpp->pangkat_korps_nrp ?: ($skhpp->nik ?: '-')) . "\n" .
+                         "🏷️ *Kategori:* {$katName}\n" .
+                         "🎯 *Peruntukan:* {$skhpp->peruntukan}\n" .
+                         "👨‍💻 *Pengaju (Admin):* {$user->name}\n\n" .
+                         "Mohon izin untuk memeriksa & menyetujui berkas di Laman : https://sisinden.my.id/signature-requests";
                 
-                \Illuminate\Support\Facades\Http::post('http://localhost:3000/send-message', [
+                \Illuminate\Support\Facades\Http::timeout(3)->post('http://localhost:3000/send-message', [
                     'number' => $komandan->phone,
                     'message' => $pesan
                 ]);
