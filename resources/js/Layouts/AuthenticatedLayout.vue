@@ -86,7 +86,7 @@ const isDanUnitTeknis = computed(() => {
 });
 
 const canAccessTechnicalCash = computed(() => {
-    return isAdmin.value || isDanUnitTeknis.value || user.value.name === 'I Gusti Sultan H.A, A.Md.Kom' || user.value.name === 'Suma Nurhasanah';
+    return isAdmin.value || isDanUnitTeknis.value || Boolean(user.value.can_access_technical_cash) || user.value.name === 'I Gusti Sultan H.A, A.Md.Kom';
 });
 
 const isMobileMenuOpen = ref(false);

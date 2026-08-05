@@ -15,14 +15,14 @@ class TechnicalUnitCashController extends Controller
     public function index()
     {
         $user = auth()->user();
-        $allowedRoles = ['admin', 'danunitteknis', 'DAN UNIT TEKNIS', 'dan unit teknis'];
-        $allowedNames = [
-            'I Gusti Sultan H.A, A.Md.Kom',
-            'Suma Nurhasanah',
-            'HARI BAGIO WIJAYANTO, M.TR.OPSLA'
-        ];
+        $isDanUnitTeknis = in_array($user->role, ['danunitteknis', 'DAN UNIT TEKNIS', 'dan unit teknis']);
+        
+        $canAccess = $user->role === 'admin' 
+            || $isDanUnitTeknis 
+            || (bool)$user->can_access_technical_cash 
+            || $user->name === 'I Gusti Sultan H.A, A.Md.Kom';
 
-        if (!in_array($user->role, $allowedRoles) && !in_array($user->name, $allowedNames)) {
+        if (!$canAccess) {
             return redirect()->route('dashboard')->with('error', 'Akses ditolak! Halaman Buku Kas Dan Unit Teknis khusus untuk Role Dan Unit Teknis.');
         }
 
@@ -193,5 +193,21 @@ class TechnicalUnitCashController extends Controller
             $item->balance = $runningBalance;
             $item->save();
         }
+    }
+
+    /**
+     * Toggle Hak Akses Modul Kas Teknis untuk User Spesifik (Admin Only)
+     */
+    public function toggleUserAccess(Request $request, $id)
+    {
+        if (auth()->user()->role !== 'admin') {
+            return response()->json(['message' => 'Otoritas ditolak.'], 403);
+        }
+
+        $targetUser = \App\Models\User::findOrFail($id);
+        $targetUser->can_access_technical_cash = !$targetUser->can_access_technical_cash;
+        $targetUser->save();
+
+        return back()->with('success', 'Status akses Buku Kas Dan Unit Teknis berhasil diperbarui.');
     }
 }

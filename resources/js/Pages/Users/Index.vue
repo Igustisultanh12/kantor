@@ -219,6 +219,13 @@ const toggleMitraAccess = (user) => {
     });
 };
 
+const toggleTechnicalCashAccess = (user) => {
+    router.post(route('users.toggle-technical-cash-access', user.id), {}, {
+        preserveScroll: true,
+        onSuccess: () => Swal.fire('SUKSES', `Hak Akses Buku Kas Dan Unit Teknis untuk ${user.name} berhasil diperbarui.`, 'success')
+    });
+};
+
 const getStatusClass = (status) => {
     return status ? 'bg-emerald-50 text-emerald-600 border-emerald-100 shadow-sm' : 'bg-rose-50 text-rose-600 border-rose-100 shadow-sm';
 };
@@ -300,6 +307,12 @@ onUnmounted(() => {
                                         class="px-2.5 py-1.5 text-[8px] font-black uppercase rounded-lg transition-all shadow-xs"
                                         title="Toggle Hak Akses Modul Mitra">
                                         Mitra: {{ user.can_access_mitra ? 'AKTIF' : 'OFF' }}
+                                    </button>
+                                    <button @click="toggleTechnicalCashAccess(user)" 
+                                        :class="user.can_access_technical_cash ? 'bg-cyan-100 text-cyan-800 hover:bg-cyan-600 hover:text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-700 hover:text-white'"
+                                        class="px-2.5 py-1.5 text-[8px] font-black uppercase rounded-lg transition-all shadow-xs"
+                                        title="Toggle Hak Akses Buku Kas Dan Unit Teknis">
+                                        Kas Teknis: {{ user.can_access_technical_cash ? 'AKTIF' : 'OFF' }}
                                     </button>
                                     <button @click="requestToken(user)" class="px-3 py-2 bg-amber-100 text-amber-700 text-[8px] font-black uppercase rounded-lg hover:bg-amber-500 hover:text-white transition-all shadow-sm">
                                         Req Token
