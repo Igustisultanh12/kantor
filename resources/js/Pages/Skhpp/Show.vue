@@ -114,49 +114,47 @@ const formatDateIndo = (dateStr) => {
 
             <!-- Main Printable Document Container -->
             <div class="flex justify-center">
-                <div id="area-skhpp-cetak" class="bg-white text-black p-10 font-serif leading-relaxed shadow-2xl border border-slate-200" style="width: 670px; min-height: 950px; box-sizing: border-box;">
+                <div id="area-skhpp-cetak" class="bg-white text-black p-10 font-sans leading-relaxed shadow-2xl border border-slate-200 text-[12pt]" style="width: 670px; min-height: 950px; box-sizing: border-box; font-family: Arial, Helvetica, sans-serif;">
                     
                     <!-- Page 1: Main SKHPP Document -->
                     <div class="skhpp-page">
                         
                         <!-- Kop Header -->
-                        <div class="border-b border-black pb-0.5 mb-6 inline-block" style="font-family: 'Times New Roman', Times, serif;">
-                            <div class="text-[12px] font-bold uppercase tracking-wide leading-tight">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
-                            <div class="text-[12px] font-bold uppercase tracking-wide leading-tight pl-6">DETASEMEN INTELIJEN</div>
+                        <div class="mb-5 w-[380px] text-center">
+                            <div class="font-normal uppercase text-[12pt] whitespace-nowrap">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
+                            <div class="font-normal uppercase text-[12pt] whitespace-nowrap">DETASEMEN INTELIJEN</div>
+                            <div class="border-b-2 border-black w-full mt-0.5"></div>
                         </div>
 
                         <!-- Judul Surat -->
-                        <div class="text-center my-6" style="font-family: 'Times New Roman', Times, serif;">
-                            <div class="text-[13px] font-bold uppercase tracking-wide">
-                                SURAT KETERANGAN HASIL PENELITIAN PERSONEL(SKHPP)
-                            </div>
-                            <div v-if="skhpp.kategori_personel === 'perusahaan'" class="text-[13px] font-bold uppercase tracking-wide">
-                                MITRA KERJA TNI ANGKATAN LAUT
-                            </div>
-                            <div class="text-[12px] font-bold mt-1">
-                                Nomor : R / {{ skhpp.nomor_urut || '      ' }} / SKHPP / {{ skhpp.bulan_romawi || 'VIII' }} / {{ skhpp.tahun || '2026' }}
+                        <div class="text-center my-6">
+                            <div class="font-normal uppercase text-[12pt]">SURAT KETERANGAN HASIL PENELITIAN PERSONEL(SKHPP)</div>
+                            <div v-if="skhpp.kategori_personel === 'perusahaan'" class="font-normal uppercase text-[12pt]">MITRA KERJA TNI ANGKATAN LAUT</div>
+                            <div class="font-normal text-[12pt] mt-1">
+                                <span v-if="skhpp.nomor_skhpp">Nomor : {{ skhpp.nomor_skhpp }}</span>
+                                <span v-else>Nomor : R/ &nbsp;&nbsp;&nbsp;&nbsp;{{ skhpp.nomor_urut || '        ' }}&nbsp;&nbsp;&nbsp;&nbsp; /SKHPP/{{ skhpp.bulan_romawi || 'VIII' }}/{{ skhpp.tahun || '2026' }}</span>
                             </div>
                         </div>
 
                         <!-- Poin Rincian SKHPP -->
-                        <div class="text-[12px] space-y-3" style="font-family: 'Times New Roman', Times, serif; text-align: justify;">
+                        <div class="text-[12pt] space-y-3 font-normal" style="text-align: justify;">
                             
                             <!-- Poin 1: Dasar -->
                             <div class="flex items-start">
-                                <span class="w-6 font-bold shrink-0">1.</span>
+                                <span class="w-8 font-normal shrink-0">1.</span>
                                 <div class="flex-1">
-                                    <div class="font-bold">Dasar :</div>
+                                    <div class="font-normal">Dasar :</div>
                                     <div class="space-y-1.5 mt-1">
                                         <div class="flex items-start">
-                                            <span class="w-5 shrink-0">a.</span>
+                                            <span class="w-6 shrink-0">a.</span>
                                             <div class="flex-1">Peraturan Kasal Nomor Perkasal/50/XII/2007 tanggal 04 Desember 2007 tentang Petunjuk Pelaksanaan Penelitian Personel di lingkungan TNI AL;</div>
                                         </div>
                                         <div class="flex items-start">
-                                            <span class="w-5 shrink-0">b.</span>
+                                            <span class="w-6 shrink-0">b.</span>
                                             <div class="flex-1">Prosedur Tetap Nomor Protap/01/VIII/2024 tanggal 26 Agustus 2024 tentang Pengurusan Surat Keterangan Hasil Penelitian Personel (SKHPP) di Lingkungan Tentara Nasional Indonesia Angkatan Laut; dan</div>
                                         </div>
                                         <div class="flex items-start">
-                                            <span class="w-5 shrink-0">c.</span>
+                                            <span class="w-6 shrink-0">c.</span>
                                             <div class="flex-1">{{ skhpp.surat_pengantar }}</div>
                                         </div>
                                     </div>
@@ -165,178 +163,182 @@ const formatDateIndo = (dateStr) => {
 
                             <!-- Poin 2: Data Personel -->
                             <div class="flex items-start pt-1">
-                                <span class="w-6 font-bold shrink-0">2.</span>
+                                <span class="w-8 font-normal shrink-0">2.</span>
                                 <div class="flex-1">
                                     <div>Dengan ini menerangkan bahwa hasil penelitian terhadap :</div>
                                     
                                     <!-- Militer / PNS dengan Pangkat/NRP/NIP -->
-                                    <table v-if="skhpp.pangkat_korps_nrp" class="w-full mt-2 text-[12px]" style="line-height: 1.5;">
+                                    <table v-if="skhpp.pangkat_korps_nrp" class="w-full mt-2 text-[12pt] pl-[45px]" style="line-height: 1.5;">
                                         <tr>
-                                            <td class="w-5 font-normal">a.</td>
-                                            <td class="w-36 font-normal">Nama</td>
-                                            <td class="w-3">:</td>
-                                            <td class="font-bold">{{ skhpp.nama }}</td>
+                                            <td class="w-6 font-normal align-top">a.</td>
+                                            <td class="w-36 font-normal align-top">Nama</td>
+                                            <td class="w-3 align-top">:</td>
+                                            <td class="font-normal align-top">{{ skhpp.nama }}</td>
                                         </tr>
                                         <tr>
-                                            <td class="font-normal">b.</td>
-                                            <td class="font-normal">Pangkat/Korp/NRP</td>
-                                            <td>:</td>
-                                            <td>{{ skhpp.pangkat_korps_nrp }}</td>
+                                            <td class="font-normal align-top">b.</td>
+                                            <td class="font-normal align-top">Pangkat/Korp/NRP</td>
+                                            <td class="align-top">:</td>
+                                            <td class="align-top font-normal">{{ skhpp.pangkat_korps_nrp }}</td>
                                         </tr>
                                         <tr>
-                                            <td class="font-normal">c.</td>
-                                            <td class="font-normal">Jabatan</td>
-                                            <td>:</td>
-                                            <td>{{ skhpp.jabatan_pekerjaan }}</td>
+                                            <td class="font-normal align-top">c.</td>
+                                            <td class="font-normal align-top">Jabatan</td>
+                                            <td class="align-top">:</td>
+                                            <td class="align-top font-normal">{{ skhpp.jabatan_pekerjaan }}</td>
                                         </tr>
                                         <tr>
-                                            <td class="font-normal">d.</td>
-                                            <td class="font-normal">Tempat/Tgl. lahir</td>
-                                            <td>:</td>
-                                            <td>{{ skhpp.tempat_lahir }}, {{ formatDateIndo(skhpp.tanggal_lahir) }}</td>
+                                            <td class="font-normal align-top">d.</td>
+                                            <td class="font-normal align-top">Tempat/Tgl. lahir</td>
+                                            <td class="align-top">:</td>
+                                            <td class="align-top font-normal">{{ skhpp.tempat_lahir }}, {{ formatDateIndo(skhpp.tanggal_lahir) }}</td>
                                         </tr>
                                         <tr>
-                                            <td class="font-normal">e.</td>
-                                            <td class="font-normal">Jenis kelamin</td>
-                                            <td>:</td>
-                                            <td>{{ skhpp.jenis_kelamin }}</td>
+                                            <td class="font-normal align-top">e.</td>
+                                            <td class="font-normal align-top">Jenis kelamin</td>
+                                            <td class="align-top">:</td>
+                                            <td class="align-top font-normal">{{ skhpp.jenis_kelamin }}</td>
                                         </tr>
                                         <tr>
-                                            <td class="font-normal">f.</td>
-                                            <td class="font-normal">Agama</td>
-                                            <td>:</td>
-                                            <td>{{ skhpp.agama }}</td>
+                                            <td class="font-normal align-top">f.</td>
+                                            <td class="font-normal align-top">Agama</td>
+                                            <td class="align-top">:</td>
+                                            <td class="align-top font-normal">{{ skhpp.agama }}</td>
                                         </tr>
                                         <tr>
-                                            <td class="font-normal">g.</td>
-                                            <td class="font-normal">Alamat rumah</td>
-                                            <td>:</td>
-                                            <td>{{ skhpp.alamat }}</td>
+                                            <td class="font-normal align-top">g.</td>
+                                            <td class="font-normal align-top">Alamat rumah</td>
+                                            <td class="align-top">:</td>
+                                            <td class="align-top font-normal">{{ skhpp.alamat }}</td>
                                         </tr>
                                     </table>
 
                                     <!-- Sipil / Pelajar / Mahasiswa / Perusahaan dengan NIK -->
-                                    <table v-else class="w-full mt-2 text-[12px]" style="line-height: 1.5;">
+                                    <table v-else class="w-full mt-2 text-[12pt] pl-[45px]" style="line-height: 1.5;">
                                         <tr>
-                                            <td class="w-5 font-normal">a.</td>
-                                            <td class="w-36 font-normal">Nama</td>
-                                            <td class="w-3">:</td>
-                                            <td class="font-bold">{{ skhpp.nama }}</td>
+                                            <td class="w-6 font-normal align-top">a.</td>
+                                            <td class="w-36 font-normal align-top">Nama</td>
+                                            <td class="w-3 align-top">:</td>
+                                            <td class="font-normal align-top">{{ skhpp.nama }}</td>
                                         </tr>
                                         <tr>
-                                            <td class="font-normal">b.</td>
-                                            <td class="font-normal">NIK</td>
-                                            <td>:</td>
-                                            <td>{{ skhpp.nik || '-' }}</td>
+                                            <td class="font-normal align-top">b.</td>
+                                            <td class="font-normal align-top">NIK</td>
+                                            <td class="align-top">:</td>
+                                            <td class="align-top font-normal">{{ skhpp.nik || '-' }}</td>
                                         </tr>
                                         <tr>
-                                            <td class="font-normal">c.</td>
-                                            <td class="font-normal">Tempat/Tgl. lahir</td>
-                                            <td>:</td>
-                                            <td>{{ skhpp.tempat_lahir }}, {{ formatDateIndo(skhpp.tanggal_lahir) }}</td>
+                                            <td class="font-normal align-top">c.</td>
+                                            <td class="font-normal align-top">Tempat/Tgl. lahir</td>
+                                            <td class="align-top">:</td>
+                                            <td class="align-top font-normal">{{ skhpp.tempat_lahir }}, {{ formatDateIndo(skhpp.tanggal_lahir) }}</td>
                                         </tr>
                                         <tr>
-                                            <td class="font-normal">d.</td>
-                                            <td class="font-normal">Jenis kelamin</td>
-                                            <td>:</td>
-                                            <td>{{ skhpp.jenis_kelamin }}</td>
+                                            <td class="font-normal align-top">d.</td>
+                                            <td class="font-normal align-top">Jenis kelamin</td>
+                                            <td class="align-top">:</td>
+                                            <td class="align-top font-normal">{{ skhpp.jenis_kelamin }}</td>
                                         </tr>
                                         <tr>
-                                            <td class="font-normal">e.</td>
-                                            <td class="font-normal">Agama</td>
-                                            <td>:</td>
-                                            <td>{{ skhpp.agama }}</td>
+                                            <td class="font-normal align-top">e.</td>
+                                            <td class="font-normal align-top">Agama</td>
+                                            <td class="align-top">:</td>
+                                            <td class="align-top font-normal">{{ skhpp.agama }}</td>
                                         </tr>
                                         <tr>
-                                            <td class="font-normal">f.</td>
-                                            <td class="font-normal">Pekerjaan</td>
-                                            <td>:</td>
-                                            <td>{{ skhpp.jabatan_pekerjaan }}</td>
+                                            <td class="font-normal align-top">f.</td>
+                                            <td class="font-normal align-top">Pekerjaan</td>
+                                            <td class="align-top">:</td>
+                                            <td class="align-top font-normal">{{ skhpp.jabatan_pekerjaan }}</td>
                                         </tr>
                                         <tr>
-                                            <td class="font-normal">g.</td>
-                                            <td class="font-normal">Alamat rumah</td>
-                                            <td>:</td>
-                                            <td>{{ skhpp.alamat }}</td>
+                                            <td class="font-normal align-top">g.</td>
+                                            <td class="font-normal align-top">Alamat rumah</td>
+                                            <td class="align-top">:</td>
+                                            <td class="align-top font-normal">{{ skhpp.alamat }}</td>
                                         </tr>
                                     </table>
                                 </div>
                             </div>
 
-                            <!-- Poin 3: Hasil -->
+                            <!-- Poin 2: Hasil (Nomor 2 Sesuai SISFOPERS) -->
                             <div class="flex items-start pt-1">
-                                <span class="w-6 font-bold shrink-0">3.</span>
+                                <span class="w-8 font-normal shrink-0">2.</span>
                                 <div class="flex-1">
                                     Hasil Penelitian Personel <span class="font-bold">Memenuhi Syarat</span>
                                 </div>
                             </div>
 
-                            <!-- Poin 4: Peruntukan -->
+                            <!-- Poin 3: Peruntukan -->
                             <div class="flex items-start pt-1">
-                                <span class="w-6 font-bold shrink-0">4.</span>
+                                <span class="w-8 font-normal shrink-0">3.</span>
                                 <div class="flex-1">
                                     SKHPP ini diberikan {{ skhpp.peruntukan }}.
                                 </div>
                             </div>
 
-                            <!-- Poin 5: Penutup -->
+                            <!-- Poin 4: Penutup -->
                             <div class="flex items-start pt-1">
-                                <span class="w-6 font-bold shrink-0">5.</span>
+                                <span class="w-8 font-normal shrink-0">4.</span>
                                 <div class="flex-1">
                                     Apabila kemudian terdapat kekeliruan, SKHPP ini akan dicabut dan diadakan pembetulan seperlunya.
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Pas Foto & Signature Block Komandan -->
-                        <div class="mt-8 flex justify-between items-start text-[12px]" style="font-family: 'Times New Roman', Times, serif;">
+                        <!-- Pas Foto 4x6 (Mepet TTD Komandan) & Signature Block Komandan -->
+                        <div class="mt-8 flex justify-between items-start text-[12pt]">
                             
-                            <!-- Pas Foto Section -->
-                            <div class="flex items-center gap-3">
+                            <!-- Ruang Kosong Left -->
+                            <div class="w-[20%]"></div>
+
+                            <!-- Pas Foto Section 4x6 -->
+                            <div class="flex items-center gap-2 pr-4 shrink-0">
                                 <div v-if="skhpp.foto_1" class="text-center">
-                                    <img :src="'/storage/' + skhpp.foto_1" class="w-28 h-36 object-cover border border-black shadow-xs" />
-                                    <div v-if="skhpp.is_pernikahan" class="text-[9px] font-bold mt-1 uppercase">Suami</div>
+                                    <img :src="'/storage/' + skhpp.foto_1" class="w-[4cm] h-[6cm] object-cover border border-black shadow-xs inline-block align-top" />
+                                    <div v-if="skhpp.is_pernikahan" class="text-[9px] font-normal mt-1 uppercase">Suami</div>
                                 </div>
                                 <div v-if="skhpp.is_pernikahan && skhpp.foto_2" class="text-center">
-                                    <img :src="'/storage/' + skhpp.foto_2" class="w-28 h-36 object-cover border border-black shadow-xs" />
-                                    <div class="text-[9px] font-bold mt-1 uppercase">Istri</div>
+                                    <img :src="'/storage/' + skhpp.foto_2" class="w-[4cm] h-[6cm] object-cover border border-black shadow-xs inline-block align-top" />
+                                    <div class="text-[9px] font-normal mt-1 uppercase">Istri</div>
                                 </div>
                             </div>
 
                             <!-- TTD Block Komandan & QR Code -->
-                            <div class="text-left w-72">
-                                <div>Dikeluarkan di Surabaya</div>
-                                <div class="border-b border-black pb-1">
-                                    pada tanggal <span class="ml-4">{{ formatDateIndo(skhpp.tanggal_skhpp || skhpp.approved_at || skhpp.created_at) }}</span>
+                            <div class="w-[330px]">
+                                <div class="text-left">Dikeluarkan di Surabaya</div>
+                                <div class="border-b border-black pb-0.5 mb-1 flex justify-between items-center text-[12pt]">
+                                    <span>pada tanggal</span>
+                                    <span>{{ formatDateIndo(skhpp.tanggal_skhpp || skhpp.approved_at || skhpp.created_at) }}</span>
                                 </div>
-                                <div class="mt-2 font-bold leading-snug">
+                                <div class="font-normal text-center whitespace-nowrap mt-1 leading-snug">
                                     Komandan Detasemen Intelijen Kodaeral V,
                                 </div>
 
                                 <!-- QR Code Digital Signature -->
-                                <div class="my-2 py-1">
-                                    <div v-if="skhpp.status === 'approved'" class="flex items-center gap-2">
-                                        <img :src="qrApiUrl" class="w-20 h-20 border border-slate-300 p-0.5 rounded-sm" />
-                                        <div class="text-[8px] leading-tight font-sans text-slate-600">
-                                            <div class="font-bold text-emerald-700">✓ DITANDATANGANI SECARA DIGITAL</div>
+                                <div class="my-2 py-1 text-center">
+                                    <div v-if="skhpp.status === 'approved'" class="flex items-center justify-center gap-2">
+                                        <img :src="qrApiUrl" class="w-16 h-16 border border-slate-300 p-0.5 rounded-sm" />
+                                        <div class="text-[8px] leading-tight font-sans text-slate-600 text-left">
+                                            <div class="font-bold text-emerald-700">✓ TERVERIFIKASI TTD</div>
                                             <div>Detasemen Intelijen V</div>
-                                            <div class="text-[7px] text-slate-400 mt-0.5 truncate max-w-[130px]">{{ skhpp.verification_code }}</div>
+                                            <div class="text-[7px] text-slate-400 mt-0.5 truncate max-w-[120px]">{{ skhpp.verification_code }}</div>
                                         </div>
                                     </div>
-                                    <div v-else class="h-20 flex items-center justify-center border border-dashed border-slate-300 text-[10px] text-slate-400 font-sans italic">
+                                    <div v-else class="h-16 flex items-center justify-center border border-dashed border-slate-300 text-[10px] text-slate-400 font-sans italic">
                                         [ PENDING TTD KOMANDAN ]
                                     </div>
                                 </div>
 
-                                <div class="font-bold underline mt-1">Hari Bagio Wijayanto, M.Tr.Opsla.</div>
-                                <div class="font-bold">Kolonel Laut (E) NRP 16085/P</div>
+                                <div class="font-normal text-center whitespace-nowrap">Hari Bagio Wijayanto, M.Tr.Opsla.</div>
+                                <div class="font-normal text-center whitespace-nowrap">Kolonel Laut (E) NRP 16085/P</div>
                             </div>
                         </div>
 
                         <!-- Footer Kepada -->
-                        <div class="mt-8 text-[12px]" style="font-family: 'Times New Roman', Times, serif;">
+                        <div class="mt-8 text-[12pt] font-normal">
                             <div>Kepada :</div>
-                            <div class="font-bold border-b border-black inline-block pb-0.5">Yth. Asintel Dankodaeral V</div>
+                            <div class="font-normal border-b border-black inline-block pb-0.5 whitespace-nowrap">Yth. Asintel Dankodaeral V</div>
                         </div>
                     </div>
 
@@ -348,31 +350,33 @@ const formatDateIndo = (dateStr) => {
                         <div class="skhpp-page pt-6">
                             
                             <!-- Header Lampiran (Kop Kiri & Detail Lampiran Kanan) -->
-                            <div class="flex justify-between items-start mb-6" style="font-family: 'Times New Roman', Times, serif;">
-                                <div class="border-b border-black pb-0.5 inline-block">
-                                    <div class="text-[12px] font-bold uppercase leading-tight">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
-                                    <div class="text-[12px] font-bold uppercase leading-tight pl-6">DETASEMEN INTELIJEN</div>
+                            <div class="flex justify-between items-start mb-6">
+                                <div class="w-[380px] text-center">
+                                    <div class="text-[12pt] font-normal uppercase leading-tight whitespace-nowrap">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
+                                    <div class="text-[12pt] font-normal uppercase leading-tight whitespace-nowrap">DETASEMEN INTELIJEN</div>
+                                    <div class="border-b-2 border-black w-full mt-0.5"></div>
                                 </div>
-                                <div class="text-right text-[11px]" style="line-height: 1.3;">
+                                <div class="text-right text-[11pt] font-normal" style="line-height: 1.3;">
                                     <div>Lampiran SKHPP Den Intel Kodaeral V</div>
                                     <div class="border-b border-black inline-block pb-0.5">
-                                        Nomor SKHPP/ <span class="px-2">{{ skhpp.nomor_urut || '   ' }}</span> /{{ skhpp.bulan_romawi || 'VII' }}/{{ skhpp.tahun || '2026' }}<br>
+                                        <span v-if="skhpp.nomor_skhpp">Nomor {{ skhpp.nomor_skhpp }}</span>
+                                        <span v-else>Nomor SKHPP/ <span class="px-2">{{ skhpp.nomor_urut || '   ' }}</span> /{{ skhpp.bulan_romawi || 'VIII' }}/{{ skhpp.tahun || '2026' }}</span><br>
                                         Tanggal <span class="px-3">{{ formatDateIndo(skhpp.tanggal_skhpp || skhpp.approved_at || skhpp.created_at) }}</span>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Judul Lampiran -->
-                            <div class="text-center my-6" style="font-family: 'Times New Roman', Times, serif;">
-                                <div class="text-[13px] font-bold uppercase tracking-wider">
+                            <div class="text-center my-6">
+                                <div class="text-[12pt] font-normal uppercase tracking-wider">
                                     DAFTAR NAMA-NAMA ANGGOTA PENGIKUT
                                 </div>
                             </div>
 
                             <!-- Tabel Anggota Pengikut -->
-                            <table class="w-full border-collapse border border-black text-[11px] my-6" style="font-family: 'Times New Roman', Times, serif;">
+                            <table class="w-full border-collapse border border-black text-[11pt] my-6 font-normal">
                                 <thead>
-                                    <tr class="font-bold uppercase border-b border-black text-center bg-slate-50">
+                                    <tr class="font-normal uppercase border-b border-black text-center bg-slate-50">
                                         <th class="border border-black p-2 w-10">NO</th>
                                         <th class="border border-black p-2">NAMA</th>
                                         <th class="border border-black p-2">NIK / NRP / NIP</th>
@@ -381,8 +385,8 @@ const formatDateIndo = (dateStr) => {
                                 </thead>
                                 <tbody>
                                     <tr v-for="(m, idx) in skhpp.members" :key="idx" class="border-b border-black">
-                                        <td class="border border-black p-2 text-center font-bold">{{ idx + 1 }}.</td>
-                                        <td class="border border-black p-2 font-bold">{{ m.nama }}</td>
+                                        <td class="border border-black p-2 text-center font-normal">{{ idx + 1 }}.</td>
+                                        <td class="border border-black p-2 font-normal">{{ m.nama }}</td>
                                         <td class="border border-black p-2 text-center">{{ m.pangkat_nrp_nik }}</td>
                                         <td class="border border-black p-2">{{ m.jabatan }}</td>
                                     </tr>
@@ -390,27 +394,23 @@ const formatDateIndo = (dateStr) => {
                             </table>
 
                             <!-- TTD Komandan Lampiran -->
-                            <div class="mt-8 flex justify-end text-[12px]" style="font-family: 'Times New Roman', Times, serif;">
-                                <div class="text-left w-72">
-                                    <div class="font-bold leading-snug">
+                            <div class="mt-8 flex justify-end text-[12pt]">
+                                <div class="w-[330px] text-center">
+                                    <div class="font-normal text-center whitespace-nowrap leading-snug">
                                         Komandan Detasemen Intelijen Kodaeral V,
                                     </div>
 
-                                    <div class="my-2 py-1">
-                                        <div v-if="skhpp.status === 'approved'" class="flex items-center gap-2">
-                                            <img :src="qrApiUrl" class="w-20 h-20 border border-slate-300 p-0.5 rounded-sm" />
-                                            <div class="text-[8px] leading-tight font-sans text-slate-600">
-                                                <div class="font-bold text-emerald-700">✓ TERVERIFIKASI LAMPIRAN</div>
-                                                <div>Detasemen Intelijen V</div>
-                                            </div>
+                                    <div class="my-2 py-1 text-center">
+                                        <div v-if="skhpp.status === 'approved'" class="flex items-center justify-center gap-2">
+                                            <img :src="qrApiUrl" class="w-16 h-16 border border-slate-300 p-0.5 rounded-sm" />
                                         </div>
-                                        <div v-else class="h-20 flex items-center justify-center border border-dashed border-slate-300 text-[10px] text-slate-400 font-sans italic">
+                                        <div v-else class="h-16 flex items-center justify-center border border-dashed border-slate-300 text-[10px] text-slate-400 font-sans italic">
                                             [ PENDING TTD KOMANDAN ]
                                         </div>
                                     </div>
 
-                                    <div class="font-bold underline mt-1">Hari Bagio Wijayanto, M.Tr.Opsla.</div>
-                                    <div class="font-bold">Kolonel Laut (E) NRP 16085/P</div>
+                                    <div class="font-normal text-center whitespace-nowrap">Hari Bagio Wijayanto, M.Tr.Opsla.</div>
+                                    <div class="font-normal text-center whitespace-nowrap">Kolonel Laut (E) NRP 16085/P</div>
                                 </div>
                             </div>
                         </div>
