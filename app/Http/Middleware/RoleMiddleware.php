@@ -8,13 +8,24 @@ use Symfony\Component\HttpFoundation\Response;
 
 class RoleMiddleware
 {
-    public function handle(Request $request, Closure $next, string $role): Response
+    public function handle(Request $request, Closure $next, ...$roles): Response
     {
-        // Cek apakah user sudah login dan memiliki role yang sesuai
-        if (!$request->user() || $request->user()->role !== $role) {
+        $user = $request->user();
+
+        if (!$user) {
             abort(403, 'Anda tidak memiliki otoritas untuk mengakses halaman ini.');
         }
 
-        return $next($request);
+        // Admin selalu memiliki otoritas penuh di seluruh sistem
+        if ($user->role === 'admin') {
+            return $next($request);
+        }
+
+        // Cek jika role pengguna cocok dengan salah satu role yang dizinkan
+        if (empty($roles) || in_array($user->role, $roles)) {
+            return $next($request);
+        }
+
+        abort(403, 'Anda tidak memiliki otoritas untuk mengakses halaman ini.');
     }
 }

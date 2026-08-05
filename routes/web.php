@@ -257,35 +257,32 @@ Route::middleware('auth')->group(function () {
                 ], 500);
             }
         })->name('settings.wa-status');
-
-        // =====================================================================
-        // SULTAN CONFIG: JALUR VERIFIKASI INTEGRASI PESS & SINDEN (TTD DIGITAL/SINKODV)
-        // =====================================================================
-        Route::get('/applicants/dashboard', [PESSAdminController::class, 'index'])->name('admin.pess.dashboard');
-        Route::post('/submissions/verify/{id}', [PESSAdminController::class, 'verifyFiles'])->name('admin.pess.verify');
-        Route::post('/submissions/interview/{id}', [PESSAdminController::class, 'scheduleInterview'])->name('admin.pess.interview');
-        Route::post('/submissions/skhpp/{id}', [PESSAdminController::class, 'issueSKHPP'])->name('admin.pess.skhpp');
-        Route::post('/submissions/sign-komandan/{id}', [PESSAdminController::class, 'signDigitalKomandan'])->name('admin.pess.sign_komandan');
-        Route::post('/submissions/forward-sinkodv/{id}', [PESSAdminController::class, 'forwardToSINKODV'])->name('admin.pess.forward_sinkodv');
-        Route::post('/submissions/sc/upload-sign/{id}', [PESSAdminController::class, 'uploadAndSignSC'])->name('admin.pess.sc_upload_sign');
-
-        // =====================================================================
-        // SULTAN CONFIG: TAMBAHAN MURNI MANAJEMEN KONTROL PORTAL AKUN PERSONEL
-        // =====================================================================
-        // =====================================================================
-        // MODUL UTAMA PENERBITAN & OTORITAS SKHPP (MILITER, SIPIL, NIKAH)
-        // =====================================================================
-        Route::get('/skhpp', [SkhppController::class, 'index'])->name('skhpp.index');
-        Route::get('/skhpp/create', [SkhppController::class, 'create'])->name('skhpp.create');
-        Route::post('/skhpp', [SkhppController::class, 'store'])->name('skhpp.store');
-        Route::get('/skhpp/{id}', [SkhppController::class, 'show'])->name('skhpp.show');
-        Route::get('/skhpp/{id}/export-pdf', [SkhppController::class, 'exportPdf'])->name('skhpp.export-pdf');
-        Route::get('/skhpp/{id}/edit', [SkhppController::class, 'edit'])->name('skhpp.edit');
-        Route::post('/skhpp/{id}/update', [SkhppController::class, 'update'])->name('skhpp.update');
-        Route::post('/skhpp/{id}/approve', [SkhppController::class, 'approve'])->name('skhpp.approve');
-        Route::post('/skhpp/{id}/reject', [SkhppController::class, 'reject'])->name('skhpp.reject');
-        Route::delete('/skhpp/{id}', [SkhppController::class, 'destroy'])->name('skhpp.destroy');
     });
+
+    // =====================================================================
+    // SULTAN CONFIG: JALUR VERIFIKASI INTEGRASI PESS & SINDEN (TTD DIGITAL/SINKODV)
+    // =====================================================================
+    Route::get('/applicants/dashboard', [PESSAdminController::class, 'index'])->name('admin.pess.dashboard');
+    Route::post('/submissions/verify/{id}', [PESSAdminController::class, 'verifyFiles'])->name('admin.pess.verify');
+    Route::post('/submissions/interview/{id}', [PESSAdminController::class, 'scheduleInterview'])->name('admin.pess.interview');
+    Route::post('/submissions/skhpp/{id}', [PESSAdminController::class, 'issueSKHPP'])->name('admin.pess.skhpp');
+    Route::post('/submissions/sign-komandan/{id}', [PESSAdminController::class, 'signDigitalKomandan'])->name('admin.pess.sign_komandan');
+    Route::post('/submissions/forward-sinkodv/{id}', [PESSAdminController::class, 'forwardToSINKODV'])->name('admin.pess.forward_sinkodv');
+    Route::post('/submissions/sc/upload-sign/{id}', [PESSAdminController::class, 'uploadAndSignSC'])->name('admin.pess.sc_upload_sign');
+
+    // =====================================================================
+    // MODUL UTAMA PENERBITAN & OTORITAS SKHPP (MILITER, SIPIL, NIKAH)
+    // =====================================================================
+    Route::get('/skhpp', [SkhppController::class, 'index'])->name('skhpp.index');
+    Route::get('/skhpp/create', [SkhppController::class, 'create'])->name('skhpp.create');
+    Route::post('/skhpp', [SkhppController::class, 'store'])->name('skhpp.store');
+    Route::get('/skhpp/{id}', [SkhppController::class, 'show'])->name('skhpp.show');
+    Route::get('/skhpp/{id}/export-pdf', [SkhppController::class, 'exportPdf'])->name('skhpp.export-pdf');
+    Route::get('/skhpp/{id}/edit', [SkhppController::class, 'edit'])->name('skhpp.edit');
+    Route::post('/skhpp/{id}/update', [SkhppController::class, 'update'])->name('skhpp.update');
+    Route::post('/skhpp/{id}/approve', [SkhppController::class, 'approve'])->name('skhpp.approve');
+    Route::post('/skhpp/{id}/reject', [SkhppController::class, 'reject'])->name('skhpp.reject');
+    Route::delete('/skhpp/{id}', [SkhppController::class, 'destroy'])->name('skhpp.destroy');
 });
 
 // Jalur Verifikasi Publik QR Code Scan TTD Komandan SKHPP
