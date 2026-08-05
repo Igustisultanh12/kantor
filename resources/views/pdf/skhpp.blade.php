@@ -63,7 +63,11 @@
             </div>
             @endif
             <div style="font-weight: normal; font-size: 12pt; margin-top: 3px;">
-                Nomor : R/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /SKHPP/{{ $skhpp->bulan_romawi ?? 'VIII' }}/{{ $skhpp->tahun ?? '2026' }}
+                @if($skhpp->nomor_skhpp)
+                    Nomor : {{ $skhpp->nomor_skhpp }}
+                @else
+                    Nomor : R/ &nbsp;&nbsp;&nbsp;&nbsp;{{ $skhpp->nomor_urut ?? '        ' }}&nbsp;&nbsp;&nbsp;&nbsp; /SKHPP/{{ $skhpp->bulan_romawi ?? 'VIII' }}/{{ $skhpp->tahun ?? '2026' }}
+                @endif
             </div>
         </div>
 
@@ -292,7 +296,11 @@
                 <td style="width: 45%; vertical-align: top; text-align: right; font-size: 11pt; line-height: 1.3; font-weight: normal;">
                     <div>Lampiran SKHPP Den Intel Kodaeral V</div>
                     <div style="border-bottom: 1px solid #000; display: inline-block; padding-bottom: 2px;">
-                        Nomor SKHPP/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /{{ $skhpp->bulan_romawi ?? 'VII' }}/{{ $skhpp->tahun ?? '2026' }}<br>
+                        @if($skhpp->nomor_skhpp)
+                            Nomor {{ $skhpp->nomor_skhpp }}<br>
+                        @else
+                            Nomor SKHPP/ &nbsp;&nbsp;&nbsp;&nbsp;{{ $skhpp->nomor_urut ?? '        ' }}&nbsp;&nbsp;&nbsp;&nbsp; /{{ $skhpp->bulan_romawi ?? 'VIII' }}/{{ $skhpp->tahun ?? '2026' }}<br>
+                        @endif
                         Tanggal &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{{ $tanggal_skhpp_indo }}
                     </div>
                 </td>
