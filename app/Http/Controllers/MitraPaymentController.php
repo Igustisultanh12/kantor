@@ -17,10 +17,9 @@ class MitraPaymentController extends Controller
     {
         $user = auth()->user();
 
-        // Otoritas Akses: Admin, Personel Terpilih, atau can_access_mitra == true
+        // Otoritas Akses: Admin, Developer, atau can_access_mitra == true
         $allowedNames = [
-            'I Gusti Sultan H.A, A.Md.Kom',
-            'Suma Nurhasanah'
+            'I Gusti Sultan H.A, A.Md.Kom'
         ];
 
         $canAccess = $user->role === 'admin' 

@@ -78,7 +78,7 @@ const canAccessCommanderAccount = computed(() => {
 });
 
 const canAccessMitra = computed(() => {
-    return isAdmin.value || Boolean(user.value.can_access_mitra) || user.value.name === 'I Gusti Sultan H.A, A.Md.Kom' || user.value.name === 'Suma Nurhasanah';
+    return isAdmin.value || Boolean(user.value.can_access_mitra) || user.value.name === 'I Gusti Sultan H.A, A.Md.Kom';
 });
 
 const isDanUnitTeknis = computed(() => {
