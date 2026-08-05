@@ -77,6 +77,10 @@ const canAccessCommanderAccount = computed(() => {
     return isAdmin.value || user.value.name === 'Suma Nurhasanah' || user.value.role === 'komandan' || user.value.name === 'I Gusti Sultan H.A, A.Md.Kom';
 });
 
+const canAccessMitra = computed(() => {
+    return isAdmin.value || Boolean(user.value.can_access_mitra) || user.value.name === 'I Gusti Sultan H.A, A.Md.Kom' || user.value.name === 'Suma Nurhasanah';
+});
+
 const isMobileMenuOpen = ref(false);
 
 const isMobile = ref(false);
@@ -226,6 +230,17 @@ onUnmounted(() => {
                             >
                                 <svg class="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                                 <span>Rekening Komandan</span>
+                            </Link>
+
+                            <Link 
+                                v-if="canAccessMitra"
+                                :href="route('mitras.index')" 
+                                @click="isMobileMenuOpen = false"
+                                :class="route().current('mitras.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'" 
+                                class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
+                            >
+                                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0h4m-4 0V11m0 0h4m-4 0H7m4 0v10"></path></svg>
+                                <span>Pencatatan Mitra</span>
                             </Link>
 
                             <Link 
@@ -438,6 +453,16 @@ onUnmounted(() => {
                         >
                             <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-emerald-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                             <span>Rekening Komandan</span>
+                        </Link>
+
+                        <Link 
+                            v-if="canAccessMitra"
+                            :href="route('mitras.index')" 
+                            :class="route().current('mitras.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'" 
+                            class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
+                        >
+                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0h4m-4 0V11m0 0h4m-4 0H7m4 0v10"></path></svg>
+                            <span>Pencatatan Mitra</span>
                         </Link>
 
                         <Link 

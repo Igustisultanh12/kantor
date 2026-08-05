@@ -23,6 +23,7 @@ use App\Http\Controllers\PersonnelController;
 use App\Http\Controllers\PESSAdminController; // SULTAN CONFIG: Pangkalan Pemisah Logika Otoritas Kerja Admin PESS
 use App\Http\Controllers\API\PESSReceiverController; // SULTAN CONFIG: Controller Penerima File Lintas VPS
 use App\Http\Controllers\CommanderAccountController; // SINDEN CORRECTION: Kalibrasi typo dari Controkkers ke Controllers
+use App\Http\Controllers\MitraPaymentController;
 use App\Models\User;
 use App\Models\LetterLog;
 use App\Models\Letter;
@@ -252,6 +253,18 @@ Route::middleware('auth')->group(function () {
         Route::post('/admin/applicants/{id}/update-status', [PESSAdminController::class, 'updateStatus'])->name('admin.applicants.update-status');
         Route::put('/admin/applicants/{id}/edit', [PESSAdminController::class, 'updateProfile'])->name('admin.applicants.edit');
         Route::delete('/admin/applicants/{id}/delete', [PESSAdminController::class, 'destroyAccount'])->name('admin.applicants.delete');
+
+        // =====================================================================
+        // MODUL MANAJEMEN PENCATATAN PEMBAYARAN MITRA (MATRIX BULANAN & CETAK PDF)
+        // =====================================================================
+        Route::get('/mitras', [MitraPaymentController::class, 'index'])->name('mitras.index');
+        Route::post('/mitras', [MitraPaymentController::class, 'store'])->name('mitras.store');
+        Route::put('/mitras/{id}', [MitraPaymentController::class, 'update'])->name('mitras.update');
+        Route::delete('/mitras/{id}', [MitraPaymentController::class, 'destroy'])->name('mitras.destroy');
+        Route::post('/mitras/toggle-payment', [MitraPaymentController::class, 'togglePayment'])->name('mitras.toggle-payment');
+        Route::post('/mitras/reorder', [MitraPaymentController::class, 'reorder'])->name('mitras.reorder');
+        Route::post('/mitras/{id}/move', [MitraPaymentController::class, 'movePosition'])->name('mitras.move');
+        Route::post('/users/{id}/toggle-mitra-access', [MitraPaymentController::class, 'toggleUserAccess'])->name('users.toggle-mitra-access');
     });
 });
 
