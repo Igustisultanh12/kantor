@@ -318,7 +318,7 @@ const formatDateIndo = (dateStr) => {
                                 <!-- QR Code Digital Signature -->
                                 <div class="my-2 py-1 text-center">
                                     <div v-if="skhpp.status === 'approved'" class="flex items-center justify-center gap-2">
-                                        <img :src="qrApiUrl" class="w-16 h-16 border border-slate-300 p-0.5 rounded-sm" />
+                                        <img :src="qrApiUrl" class="w-[85px] h-[85px] border border-slate-300 p-0.5 rounded-sm" />
                                         <div class="text-[8px] leading-tight font-sans text-slate-600 text-left">
                                             <div class="font-bold text-emerald-700">✓ TERVERIFIKASI TTD</div>
                                             <div>Detasemen Intelijen V</div>
@@ -402,7 +402,7 @@ const formatDateIndo = (dateStr) => {
 
                                     <div class="my-2 py-1 text-center">
                                         <div v-if="skhpp.status === 'approved'" class="flex items-center justify-center gap-2">
-                                            <img :src="qrApiUrl" class="w-16 h-16 border border-slate-300 p-0.5 rounded-sm" />
+                                            <img :src="qrApiUrl" class="w-[85px] h-[85px] border border-slate-300 p-0.5 rounded-sm" />
                                         </div>
                                         <div v-else class="h-16 flex items-center justify-center border border-dashed border-slate-300 text-[10px] text-slate-400 font-sans italic">
                                             [ PENDING TTD KOMANDAN ]

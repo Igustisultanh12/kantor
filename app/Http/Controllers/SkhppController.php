@@ -448,7 +448,7 @@ class SkhppController extends Controller
         if ($skhpp->status === 'approved') {
             try {
                 $verifyUrl = route('skhpp.verify', $skhpp->verification_code);
-                $qrData = file_get_contents('https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' . urlencode($verifyUrl));
+                $qrData = file_get_contents('https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' . urlencode($verifyUrl));
                 if ($qrData) {
                     $qr_base64 = 'data:image/png;base64,' . base64_encode($qrData);
                 }

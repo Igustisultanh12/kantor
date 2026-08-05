@@ -259,9 +259,9 @@
                         </div>
 
                         <!-- TTD QR Code Rata Tengah -->
-                        <div style="height: 75px; margin-top: 5px; margin-bottom: 5px; text-align: center;">
+                        <div style="height: 95px; margin-top: 5px; margin-bottom: 5px; text-align: center;">
                             @if($qr_base64 && $skhpp->status === 'approved')
-                                <img src="{{ $qr_base64 }}" style="width: 65px; height: 65px; border: 1px solid #ccc; padding: 2px; margin: 0 auto; display: block;" />
+                                <img src="{{ $qr_base64 }}" style="width: 85px; height: 85px; border: 1px solid #ccc; padding: 2px; margin: 0 auto; display: block;" />
                             @endif
                         </div>
 
@@ -345,9 +345,9 @@
                         <div style="line-height: 1.2; white-space: nowrap;">
                             Komandan Detasemen Intelijen Kodaeral V,
                         </div>
-                        <div style="height: 75px; margin-top: 5px; margin-bottom: 5px; text-align: center;">
+                        <div style="height: 95px; margin-top: 5px; margin-bottom: 5px; text-align: center;">
                             @if($qr_base64 && $skhpp->status === 'approved')
-                                <img src="{{ $qr_base64 }}" style="width: 65px; height: 65px; border: 1px solid #ccc; padding: 2px; margin: 0 auto; display: block;" />
+                                <img src="{{ $qr_base64 }}" style="width: 85px; height: 85px; border: 1px solid #ccc; padding: 2px; margin: 0 auto; display: block;" />
                             @endif
                         </div>
                         <div style="text-decoration: none;">Hari Bagio Wijayanto, M.Tr.Opsla.</div>
