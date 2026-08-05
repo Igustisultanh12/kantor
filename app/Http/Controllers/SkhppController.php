@@ -161,6 +161,29 @@ class SkhppController extends Controller
             \Illuminate\Support\Facades\Log::warning("Gagal auto-sync SKHPP ke SignatureRequest: " . $e->getMessage());
         }
 
+        // Kirim Notifikasi WA ke Komandan
+        try {
+            $komandan = User::where('role', 'komandan')->first();
+            if ($komandan && $komandan->phone) {
+                $katName = ($skhpp->kategori_personel === 'perusahaan') ? 'SKHPP-P (Mitra Kerja/Perusahaan)' : 'SKHPP-D (Dinas Militer & PNS)';
+                $pesanKomandan = "📢 *SI SINDEN: PENGAJUAN SKHPP BARU*\n\n" .
+                                 "Mohon izin Komandan, terdapat pengajuan penerbitan SKHPP baru:\n\n" .
+                                 "📝 *Nama:* {$skhpp->nama}\n" .
+                                 "👤 *Pangkat/NRP/NIK:* " . ($skhpp->pangkat_korps_nrp ?: ($skhpp->nik ?: '-')) . "\n" .
+                                 "🏷️ *Kategori:* {$katName}\n" .
+                                 "🎯 *Peruntukan:* {$skhpp->peruntukan}\n" .
+                                 "👨‍💻 *Operator Pengaju:* {$user->name}\n\n" .
+                                 "Mohon izin untuk memeriksa berkas di Laman : https://sisinden.my.id/signature-requests";
+
+                \Illuminate\Support\Facades\Http::timeout(3)->post('http://localhost:3000/send-message', [
+                    'number' => $komandan->phone,
+                    'message' => $pesanKomandan
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Gagal kirim WA notif Komandan SKHPP baru: " . $e->getMessage());
+        }
+
         return redirect()->route('skhpp.index')->with('success', 'Permohonan SKHPP berhasil diterbitkan & dikirim ke Antrean TTD Komandan.');
     }
 
@@ -359,6 +382,27 @@ class SkhppController extends Controller
             \Illuminate\Support\Facades\Log::warning("Gagal auto-sync SKHPP ke LetterLog: " . $e->getMessage());
         }
 
+        // Kirim Notifikasi WA ke Operator / Pengaju
+        try {
+            $operator = User::find($skhpp->submitted_by);
+            if ($operator && $operator->phone) {
+                $katName = ($skhpp->kategori_personel === 'perusahaan') ? 'SKHPP-P' : 'SKHPP-D';
+                $pesanOperator = "✅ *SI SINDEN: SKHPP RESMI DISAHKAN & DITANDATANGANI*\n\n" .
+                                 "Laporan untuk Operator/Pengaju, SKHPP telah disetujui & ditandatangani Komandan:\n\n" .
+                                 "📝 *Nama:* {$skhpp->nama}\n" .
+                                 "🔢 *Nomor SKHPP:* {$formattedNo}\n" .
+                                 "🏷️ *Kategori:* {$katName}\n\n" .
+                                 "Dokumen resmi & QR Code TTD sudah terbit dan dapat diunduh di Laman : https://sisinden.my.id/skhpp";
+
+                \Illuminate\Support\Facades\Http::timeout(3)->post('http://localhost:3000/send-message', [
+                    'number' => $operator->phone,
+                    'message' => $pesanOperator
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Gagal kirim WA notif Operator SKHPP disetujui: " . $e->getMessage());
+        }
+
         return back()->with('success', "SKHPP Resmi disetujui Komandan! Nomor: {$formattedNo} (Tersinkron ke Buku Nomor Agenda)");
     }
 
@@ -383,6 +427,25 @@ class SkhppController extends Controller
             'status' => 'rejected',
             'catatan_revisi' => $request->catatan_revisi
         ]);
+
+        // Kirim Notifikasi WA ke Operator / Pengaju
+        try {
+            $operator = User::find($skhpp->submitted_by);
+            if ($operator && $operator->phone) {
+                $pesanRevisi = "⚠️ *SI SINDEN: PERMOHONAN SKHPP MEMERLUKAN REVISI*\n\n" .
+                               "Laporan untuk Operator/Pengaju, pengajuan SKHPP dikembalikan Komandan untuk direvisi:\n\n" .
+                               "📝 *Nama:* {$skhpp->nama}\n" .
+                               "📌 *Catatan Revisi Komandan:* {$request->catatan_revisi}\n\n" .
+                               "Silakan lakukan perbaikan data pada Laman : https://sisinden.my.id/skhpp";
+
+                \Illuminate\Support\Facades\Http::timeout(3)->post('http://localhost:3000/send-message', [
+                    'number' => $operator->phone,
+                    'message' => $pesanRevisi
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Gagal kirim WA notif Operator SKHPP revisi: " . $e->getMessage());
+        }
 
         return back()->with('warning', 'Pengajuan SKHPP ditolak / dikembalikan untuk revisi.');
     }
