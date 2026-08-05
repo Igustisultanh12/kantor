@@ -488,7 +488,7 @@ class SkhppController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.skhpp', compact(
             'skhpp', 'foto1_base64', 'foto2_base64', 'qr_base64',
             'tanggal_lahir_indo', 'tanggal_skhpp_indo', 'bulan_tahun_indo'
-        ))->setPaper('a4', 'portrait');
+        ))->setPaper([0, 0, 609.45, 935.43], 'portrait'); // EXACT F4 / FOLIO SIZE (21.5cm x 33cm)
 
         $safeName = \Illuminate\Support\Str::slug($skhpp->nama);
         return $pdf->stream("SKHPP_{$safeName}.pdf");

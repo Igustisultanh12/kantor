@@ -420,3 +420,12 @@ const formatDateIndo = (dateStr) => {
         </div>
     </AuthenticatedLayout>
 </template>
+
+<style scoped>
+@media print {
+    @page {
+        size: 215mm 330mm portrait;
+        margin: 1cm 1.5cm;
+    }
+}
+</style>

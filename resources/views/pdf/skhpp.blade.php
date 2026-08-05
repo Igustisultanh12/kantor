@@ -6,7 +6,7 @@
     <style>
         @page {
             margin: 1cm 1.5cm;
-            size: A4 portrait;
+            size: 215mm 330mm portrait;
         }
 
         body {
