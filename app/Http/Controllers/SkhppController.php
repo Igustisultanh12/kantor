@@ -324,9 +324,12 @@ class SkhppController extends Controller
             ? 'SKHPP Mitra Kerja / Perusahaan' 
             : 'SKHPP Dinas Militer & PNS';
 
-        // PENOMORAN TERPISAH KATEGORI (SKHPP-P & SKHPP-D INDEPENDEN) & BISA LONCATI NOMOR
+        // PENOMORAN TERPISAH KATEGORI (SKHPP-P & SKHPP-D INDEPENDEN) & PERTAHANKAN NOMOR SAAT PENGAJUAN ULANG
         if ($request->filled('custom_nomor_urut') && (int)$request->custom_nomor_urut > 0) {
             $nextSeq = (int)$request->custom_nomor_urut;
+        } elseif (!empty($skhpp->nomor_urut) && (int)$skhpp->nomor_urut > 0) {
+            // PERTAHANKAN NOMOR LAMA JIKA SUDAH ADA / DIATUR ADMIN SEBELUMNYA
+            $nextSeq = (int)$skhpp->nomor_urut;
         } else {
             $seqQuery = Skhpp::where('tahun', $currentYear);
             if ($isPerusahaan) {
