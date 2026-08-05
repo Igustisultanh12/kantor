@@ -45,11 +45,11 @@
     <!-- HALAMAN 1: DOKUMEN SKHPP UTAMA -->
     <div style="width: 100%;">
         
-        <!-- Kop Surat (Rata Kiri dengan Garis Kop) -->
-        <div style="margin-bottom: 20px;">
+        <!-- Kop Surat (Rata Tengah dalam Kop Block) -->
+        <div style="margin-bottom: 20px; width: 330px; text-align: center;">
             <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt;">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
-            <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt; padding-left: 25px;">DETASEMEN INTELIJEN</div>
-            <div style="border-bottom: 2px solid #000; width: 330px; margin-top: 2px;"></div>
+            <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt;">DETASEMEN INTELIJEN</div>
+            <div style="border-bottom: 2px solid #000; width: 100%; margin-top: 2px;"></div>
         </div>
 
         <!-- Judul Surat -->
@@ -289,9 +289,11 @@
         <table style="width: 100%; margin-bottom: 25px;">
             <tr>
                 <td style="width: 55%; vertical-align: top;">
-                    <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt;">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
-                    <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt; padding-left: 25px;">DETASEMEN INTELIJEN</div>
-                    <div style="border-bottom: 2px solid #000; width: 330px; margin-top: 2px;"></div>
+                    <div style="width: 330px; text-align: center;">
+                        <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt;">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
+                        <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt;">DETASEMEN INTELIJEN</div>
+                        <div style="border-bottom: 2px solid #000; width: 100%; margin-top: 2px;"></div>
+                    </div>
                 </td>
                 <td style="width: 45%; vertical-align: top; text-align: right; font-size: 11pt; line-height: 1.3; font-weight: normal;">
                     <div>Lampiran SKHPP Den Intel Kodaeral V</div>
