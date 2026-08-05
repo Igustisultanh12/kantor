@@ -72,12 +72,12 @@ class SkhppController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'kategori_personel' => 'required|in:militer,sipil',
+            'kategori_personel' => 'required|in:militer,sipil_dinas,perusahaan',
             'is_pernikahan' => 'required|boolean',
             'surat_pengantar' => 'required|string',
             'nama' => 'required|string',
-            'pangkat_korps_nrp' => 'nullable|required_if:kategori_personel,militer|string',
-            'nik' => 'nullable|required_if:kategori_personel,sipil|string',
+            'pangkat_korps_nrp' => 'nullable|string',
+            'nik' => 'nullable|string',
             'jabatan_pekerjaan' => 'required|string',
             'tempat_lahir' => 'required|string',
             'tanggal_lahir' => 'required|date',
@@ -192,12 +192,12 @@ class SkhppController extends Controller
         $skhpp = Skhpp::findOrFail($id);
 
         $request->validate([
-            'kategori_personel' => 'required|in:militer,sipil',
+            'kategori_personel' => 'required|in:militer,sipil_dinas,perusahaan',
             'is_pernikahan' => 'required|boolean',
             'surat_pengantar' => 'required|string',
             'nama' => 'required|string',
-            'pangkat_korps_nrp' => 'nullable|required_if:kategori_personel,militer|string',
-            'nik' => 'nullable|required_if:kategori_personel,sipil|string',
+            'pangkat_korps_nrp' => 'nullable|string',
+            'nik' => 'nullable|string',
             'jabatan_pekerjaan' => 'required|string',
             'tempat_lahir' => 'required|string',
             'tanggal_lahir' => 'required|date',
@@ -304,10 +304,10 @@ class SkhppController extends Controller
         // SULTAN CONFIG: EXACT LETTER-LOGS PENYAMARAN KODE FORMAT (SKHPP-D / SKHPP-P -> SKHPP)
         // Format: {PRIORITY} / {SEQUENCE} / SKHPP / {ROMAN_MONTH} / {YEAR}
         // =========================================================================
-        $targetCode = ($skhpp->kategori_personel === 'sipil') ? 'SKHPP-P' : 'SKHPP-D';
-        $categoryName = ($skhpp->kategori_personel === 'sipil') 
-            ? 'SKHPP Mitra Kerja / Sipil' 
-            : 'SKHPP Dinas Militer TNI AL';
+        $targetCode = ($skhpp->kategori_personel === 'perusahaan') ? 'SKHPP-P' : 'SKHPP-D';
+        $categoryName = ($skhpp->kategori_personel === 'perusahaan') 
+            ? 'SKHPP Mitra Kerja / Perusahaan' 
+            : 'SKHPP Dinas Militer & PNS';
 
         $skhppCategory = \App\Models\Category::firstOrCreate(
             ['code' => $targetCode],

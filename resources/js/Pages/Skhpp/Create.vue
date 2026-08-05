@@ -98,18 +98,26 @@ const submit = () => {
                     <h2 class="text-xs font-black uppercase tracking-wider text-emerald-600 border-b pb-2">1. Jenis Permohonan & Kategori</h2>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Kategori Personel</label>
-                            <div class="grid grid-cols-2 gap-3">
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Kategori Personel & Peruntukan</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <button type="button" @click="form.kategori_personel = 'militer'"
                                     :class="form.kategori_personel === 'militer' ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"
-                                    class="py-3 px-4 rounded-2xl text-xs font-black uppercase transition-all">
-                                    ⚓ Militer TNI AL
+                                    class="py-3.5 px-4 rounded-2xl text-xs font-black uppercase transition-all flex flex-col items-center gap-1">
+                                    <span>⚓ Militer TNI AL</span>
+                                    <span class="text-[9px] opacity-80">(Format Dinas SKHPP-D)</span>
                                 </button>
-                                <button type="button" @click="form.kategori_personel = 'sipil'"
-                                    :class="form.kategori_personel === 'sipil' ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"
-                                    class="py-3 px-4 rounded-2xl text-xs font-black uppercase transition-all">
-                                    🏢 Sipil / Mitra Kerja
+                                <button type="button" @click="form.kategori_personel = 'sipil_dinas'"
+                                    :class="form.kategori_personel === 'sipil_dinas' ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"
+                                    class="py-3.5 px-4 rounded-2xl text-xs font-black uppercase transition-all flex flex-col items-center gap-1">
+                                    <span>🏢 PNS / Sipil Dinas</span>
+                                    <span class="text-[9px] opacity-80">(Format Dinas SKHPP-D)</span>
+                                </button>
+                                <button type="button" @click="form.kategori_personel = 'perusahaan'"
+                                    :class="form.kategori_personel === 'perusahaan' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"
+                                    class="py-3.5 px-4 rounded-2xl text-xs font-black uppercase transition-all flex flex-col items-center gap-1">
+                                    <span>🏭 Perusahaan / Mitra Kerja</span>
+                                    <span class="text-[9px] opacity-80">(Format Perusahaan SKHPP-P)</span>
                                 </button>
                             </div>
                         </div>

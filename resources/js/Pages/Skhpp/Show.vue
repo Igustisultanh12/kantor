@@ -154,7 +154,7 @@ const formatDateIndo = (dateStr) => {
                             <div class="text-[13px] font-bold uppercase tracking-wide">
                                 SURAT KETERANGAN HASIL PENELITIAN PERSONEL(SKHPP)
                             </div>
-                            <div v-if="skhpp.kategori_personel === 'sipil'" class="text-[13px] font-bold uppercase tracking-wide">
+                            <div v-if="skhpp.kategori_personel === 'perusahaan'" class="text-[13px] font-bold uppercase tracking-wide">
                                 MITRA KERJA TNI ANGKATAN LAUT
                             </div>
                             <div class="text-[12px] font-bold mt-1">
