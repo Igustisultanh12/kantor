@@ -240,17 +240,14 @@
                 </td>
 
                 <!-- Kolom TTD Komandan -->
-                <td style="vertical-align: top; width: 280px;">
-                    <div style="width: 280px;">
+                <td style="vertical-align: top; width: 330px;">
+                    <div style="width: 330px;">
                         <div style="text-align: left;">Dikeluarkan di Surabaya</div>
-                        <table style="width: 100%; border-bottom: 1px solid #000; margin-bottom: 6px;">
-                            <tr>
-                                <td style="text-align: left; padding-bottom: 1px;">pada tanggal</td>
-                                <td style="text-align: right; padding-bottom: 1px;">{{ $tanggal_skhpp_indo }}</td>
-                            </tr>
-                        </table>
+                        <div style="border-bottom: 1px solid #000; padding-bottom: 1px; margin-bottom: 6px; text-align: left; white-space: nowrap;">
+                            pada tanggal &nbsp;&nbsp;&nbsp;{{ $tanggal_skhpp_indo }}
+                        </div>
                         
-                        <div style="font-weight: normal; line-height: 1.2; text-align: left; margin-top: 4px;">
+                        <div style="font-weight: normal; line-height: 1.2; text-align: center; white-space: nowrap; margin-top: 4px;">
                             Komandan Detasemen Intelijen Kodaeral V,
                         </div>
 
@@ -261,8 +258,8 @@
                             @endif
                         </div>
 
-                        <div style="font-weight: normal; text-decoration: underline; text-align: center;">Hari Bagio Wijayanto, M.Tr.Opsla.</div>
-                        <div style="font-weight: normal; text-align: center;">Kolonel Laut (E) NRP 16085/P</div>
+                        <div style="font-weight: normal; text-decoration: underline; text-align: center; white-space: nowrap;">Hari Bagio Wijayanto, M.Tr.Opsla.</div>
+                        <div style="font-weight: normal; text-align: center; white-space: nowrap;">Kolonel Laut (E) NRP 16085/P</div>
                     </div>
                 </td>
             </tr>
@@ -332,7 +329,7 @@
                 <td style="width: 50%;"></td>
                 <td style="width: 50%; text-align: center;">
                     <div style="text-align: center; width: 280px; margin: 0 auto; font-weight: normal;">
-                        <div style="line-height: 1.2;">
+                        <div style="line-height: 1.2; white-space: nowrap;">
                             Komandan Detasemen Intelijen Kodaeral V,
                         </div>
                         <div style="height: 75px; margin-top: 5px; margin-bottom: 5px; text-align: center;">
