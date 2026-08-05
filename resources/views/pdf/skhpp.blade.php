@@ -227,19 +227,19 @@
             </tr>
         </table>
 
-        <!-- Pas Foto 4x6 (Mepet TTD Komandan) & Signature Block Komandan -->
+        <!-- Pas Foto 4x6 (Mepet TTD Komandan & Foto Suami-Istri Nempel) & Signature Block Komandan -->
         <table style="width: 100%; margin-top: 15px;">
             <tr>
                 <!-- Ruang Kosong Kiri -->
-                <td style="width: 30%;"></td>
+                <td style="width: 25%;"></td>
 
-                <!-- Kolom Pas Foto 4x6 (Mepet TTD Komandan) -->
-                <td style="vertical-align: top; text-align: right; padding-right: 15px; width: 1px; white-space: nowrap;">
+                <!-- Kolom Pas Foto 4x6 (Nempel Berhimpitan Tanpa Jarak & Mepet TTD Komandan) -->
+                <td style="vertical-align: top; text-align: right; padding-right: 4px; width: 1px; white-space: nowrap; font-size: 0;">
                     @if($foto1_base64)
                         <img src="{{ $foto1_base64 }}" style="width: 4cm; height: 6cm; object-fit: cover; border: 1px solid #000; display: inline-block; vertical-align: top;" />
                     @endif
                     @if($skhpp->is_pernikahan && $foto2_base64)
-                        <img src="{{ $foto2_base64 }}" style="width: 4cm; height: 6cm; object-fit: cover; border: 1px solid #000; margin-left: 5px; display: inline-block; vertical-align: top;" />
+                        <img src="{{ $foto2_base64 }}" style="width: 4cm; height: 6cm; object-fit: cover; border: 1px solid #000; margin-left: 0px; display: inline-block; vertical-align: top;" />
                     @endif
                 </td>
 
