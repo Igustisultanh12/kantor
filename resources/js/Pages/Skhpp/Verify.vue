@@ -39,7 +39,7 @@ const formatDateIndo = (dateStr) => {
     <Head :title="`Verifikasi Legalitas SKHPP - ${skhpp.nama}`" />
 
     <div 
-        class="min-h-screen flex flex-col justify-between items-center p-4 sm:p-8 font-sans bg-cover bg-center relative transition-all duration-300 bg-slate-950 text-white"
+        class="min-h-screen w-full flex flex-col justify-between items-center p-4 sm:p-8 font-sans bg-cover bg-center bg-fixed bg-no-repeat relative transition-all duration-300 bg-slate-950 text-white overflow-hidden"
         :style="loginBg ? { backgroundImage: `url(${loginBg})` } : {}"
     >
         <!-- Dark Overlay Matching Login UI -->
@@ -149,3 +149,12 @@ const formatDateIndo = (dateStr) => {
         </div>
     </div>
 </template>
+
+<style>
+html, body {
+    background-color: #020617 !important; /* bg-slate-950 */
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+}
+</style>
