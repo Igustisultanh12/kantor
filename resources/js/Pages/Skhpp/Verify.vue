@@ -54,11 +54,10 @@ const formatDateIndo = (dateStr) => {
       >
         <div></div>
         
-        <!-- Live Preview Logo -->
+        <!-- Live Preview Logo dengan Efek Mentul-Mentul (animate-float-slow) -->
         <div class="my-auto max-w-lg space-y-6 flex flex-col items-center text-center mx-auto">
-          <!-- Logo Utama SINDEN / Denintel -->
           <div class="flex justify-center animate-float-slow">
-            <img v-if="configuredLogo" :src="configuredLogo" class="h-32 lg:h-44 object-contain drop-shadow-[0_10px_25px_rgba(0,0,0,0.6)]" alt="Logo SINDEN" />
+            <img v-if="configuredLogo" :src="configuredLogo" class="h-36 lg:h-44 object-contain drop-shadow-[0_10px_25px_rgba(0,0,0,0.6)]" alt="Logo SINDEN" />
             <div v-else class="w-32 h-32 rounded-3xl bg-blue-600/30 backdrop-blur-md border border-blue-500/40 flex items-center justify-center shadow-2xl">
               <span class="font-black text-white text-5xl">S</span>
             </div>
@@ -79,36 +78,36 @@ const formatDateIndo = (dateStr) => {
         </p>
       </div>
 
-      <!-- Bagian Kanan: Card Form Verifikasi Dokumen Publik -->
+      <!-- Bagian Kanan: Card Form Verifikasi Dokumen Publik (animate-float-card) -->
       <div class="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 z-10 my-auto">
         <div 
-          class="w-full max-w-lg p-6 sm:p-10 rounded-2xl shadow-2xl transition-all duration-300 space-y-6 bg-slate-900/90 backdrop-blur-md border border-white/10 text-white"
+          class="w-full max-w-[620px] p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 space-y-5 bg-slate-900/90 backdrop-blur-md border border-white/10 text-white animate-float-card"
         >
-          <!-- Header logo di mobile -->
-          <div class="lg:hidden flex flex-col items-center justify-center gap-2 mb-4 text-center">
+          <!-- Header logo di mobile dengan Efek Mentul-Mentul -->
+          <div class="lg:hidden flex flex-col items-center justify-center gap-2 mb-2 text-center animate-float-slow">
             <img v-if="configuredLogo" :src="configuredLogo" class="h-16 object-contain drop-shadow-md" />
             <h1 class="text-sm font-black uppercase text-white tracking-wider">{{ appName }} LEGALITAS DIGITAL</h1>
           </div>
 
           <!-- KONDISI 1: DOKUMEN VALID & TERDAFTAR -->
-          <div v-if="skhpp" class="space-y-6">
+          <div v-if="skhpp" class="space-y-5">
             
             <!-- BANNER STATUS SAH -->
             <div 
-              class="p-5 rounded-2xl text-center space-y-2 border shadow-xs bg-emerald-500/20 border-emerald-400/40 text-emerald-200"
+              class="p-4 rounded-2xl text-center space-y-1.5 border shadow-xs bg-emerald-500/20 border-emerald-400/40 text-emerald-200"
             >
-              <div class="w-12 h-12 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto text-xl font-bold shadow-md shadow-emerald-500/30">
+              <div class="w-10 h-10 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto text-lg font-bold shadow-md shadow-emerald-500/30">
                 ✓
               </div>
-              <h3 class="text-lg font-extrabold tracking-tight uppercase">DOKUMEN RESMI TERVERIFIKASI & SAH</h3>
+              <h3 class="text-base font-extrabold tracking-tight uppercase">DOKUMEN RESMI TERVERIFIKASI & SAH</h3>
               <p class="text-xs leading-relaxed opacity-90">
                 Surat Keterangan Hasil Penelitian Personel Ini Sah Ditandatangani Komandan Detasemen Intelijen Kodaeral V secara Digital.
               </p>
             </div>
 
-            <!-- DETAIL HASIL VERIFIKASI -->
-            <div class="space-y-4">
-              <div class="flex items-center justify-between border-b border-white/10 pb-3">
+            <!-- DETAIL HASIL VERIFIKASI (INFORMASI MENSAMPING GRID 2 KOLOM) -->
+            <div class="space-y-3.5">
+              <div class="flex items-center justify-between border-b border-white/10 pb-2.5">
                 <span class="text-xs font-bold uppercase tracking-wider text-slate-300">
                   Manifes Otentikasi (Kode Unik)
                 </span>
@@ -117,71 +116,77 @@ const formatDateIndo = (dateStr) => {
                 </span>
               </div>
 
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+              <!-- Grid 2 Kolom Menyamping -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 
-                <!-- Judul Dokumen -->
-                <div class="sm:col-span-2 p-3.5 rounded-xl border border-white/10 bg-white/5 space-y-0.5">
+                <!-- 1: Judul Dokumen -->
+                <div class="p-3 rounded-xl border border-white/10 bg-white/5 space-y-0.5">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Judul Dokumen Resmi</span>
-                  <p class="text-xs font-bold text-white uppercase">SURAT KETERANGAN HASIL PENELITIAN PERSONEL (SKHPP)</p>
-                  <p v-if="skhpp.kategori_personel === 'perusahaan'" class="text-[10px] font-bold text-blue-400 uppercase">MITRA KERJA TNI ANGKATAN LAUT</p>
+                  <p class="text-xs font-bold text-white uppercase leading-snug">SKHPP DENINTEL KODAERAL V</p>
+                  <p v-if="skhpp.kategori_personel === 'perusahaan'" class="text-[9px] font-bold text-blue-400 uppercase">MITRA KERJA TNI AL</p>
                 </div>
 
-                <!-- Nomor Surat Resmi -->
-                <div class="sm:col-span-2 p-3.5 rounded-xl border border-white/10 bg-white/5 space-y-0.5">
+                <!-- 2: Nomor Surat Resmi -->
+                <div class="p-3 rounded-xl border border-white/10 bg-white/5 space-y-0.5">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nomor Surat Resmi</span>
-                  <p class="text-xs font-mono font-bold text-orange-400">{{ skhpp.nomor_skhpp || 'Draft (Proses TTD)' }}</p>
+                  <p class="text-xs font-mono font-bold text-orange-400 truncate" :title="skhpp.nomor_skhpp">{{ skhpp.nomor_skhpp || 'Draft (Proses TTD)' }}</p>
                 </div>
 
-                <!-- Nama Personel (Subjek) -->
-                <div class="p-3.5 rounded-xl border border-white/10 bg-white/5 space-y-0.5">
+                <!-- 3: Nama Personel -->
+                <div class="p-3 rounded-xl border border-white/10 bg-white/5 space-y-0.5">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nama Personel (Subjek)</span>
-                  <p class="text-xs font-bold text-emerald-300">{{ skhpp.nama }}</p>
+                  <p class="text-xs font-bold text-emerald-300 truncate" :title="skhpp.nama">{{ skhpp.nama }}</p>
                 </div>
 
-                <!-- Identitas: NRP / NIP / NIK -->
-                <div class="p-3.5 rounded-xl border border-white/10 bg-white/5 space-y-0.5">
+                <!-- 4: Identitas NRP / NIK -->
+                <div class="p-3 rounded-xl border border-white/10 bg-white/5 space-y-0.5">
                   <span v-if="skhpp.pangkat_korps_nrp" class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pangkat / Korps / NRP</span>
                   <span v-else-if="skhpp.nik" class="text-[10px] font-bold uppercase tracking-wider text-slate-400">NIK Identitas</span>
                   <span v-else class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Kategori Personel</span>
 
-                  <p v-if="skhpp.pangkat_korps_nrp" class="text-xs font-mono font-bold text-blue-300">{{ skhpp.pangkat_korps_nrp }}</p>
-                  <p v-else-if="skhpp.nik" class="text-xs font-mono font-bold text-white">{{ skhpp.nik }}</p>
+                  <p v-if="skhpp.pangkat_korps_nrp" class="text-xs font-mono font-bold text-blue-300 truncate" :title="skhpp.pangkat_korps_nrp">{{ skhpp.pangkat_korps_nrp }}</p>
+                  <p v-else-if="skhpp.nik" class="text-xs font-mono font-bold text-white truncate">{{ skhpp.nik }}</p>
                   <p v-else class="text-xs font-bold text-white uppercase">{{ skhpp.kategori_personel ? skhpp.kategori_personel.toUpperCase() : 'SIPIL' }}</p>
                 </div>
 
-                <!-- Jabatan / Pekerjaan -->
-                <div class="sm:col-span-2 p-3.5 rounded-xl border border-white/10 bg-white/5 space-y-0.5">
+                <!-- 5: Jabatan / Pekerjaan -->
+                <div class="p-3 rounded-xl border border-white/10 bg-white/5 space-y-0.5">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Jabatan / Pekerjaan</span>
-                  <p class="text-xs font-semibold text-slate-200">{{ skhpp.jabatan_pekerjaan }}</p>
+                  <p class="text-xs font-semibold text-slate-200 truncate" :title="skhpp.jabatan_pekerjaan">{{ skhpp.jabatan_pekerjaan }}</p>
                 </div>
 
-                <!-- Maksud & Peruntukan -->
-                <div class="sm:col-span-2 p-3.5 rounded-xl border border-white/10 bg-white/5 space-y-0.5">
-                  <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Maksud & Peruntukan</span>
-                  <p class="text-xs font-medium text-slate-300 leading-relaxed">{{ skhpp.peruntukan }}</p>
-                </div>
-
-                <!-- Tanggal & Waktu Penerbitan -->
-                <div class="p-3.5 rounded-xl border border-white/10 bg-white/5 space-y-0.5">
+                <!-- 6: Tanggal Pengesahan -->
+                <div class="p-3 rounded-xl border border-white/10 bg-white/5 space-y-0.5">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tanggal Pengesahan</span>
                   <p class="text-xs font-semibold text-slate-200">{{ formatDateIndo(skhpp.tanggal_skhpp || skhpp.approved_at) }}</p>
                 </div>
 
-                <!-- Yang Bertanda Tangan -->
-                <div class="p-3.5 rounded-xl border border-white/10 bg-white/5 space-y-0.5">
-                  <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Yang Bertanda Tangan (Pejabat TTE)</span>
-                  <p class="text-xs font-bold text-white">Hari Bagio Wijayanto, M.Tr.Opsla.</p>
-                  <p class="text-[10px] text-slate-400">Komandan Detasemen Intelijen Kodaeral V — Kolonel Laut (E) NRP 16085/P</p>
+                <!-- 7: Peruntukan (Span 2 Full Width) -->
+                <div class="sm:col-span-2 p-3 rounded-xl border border-white/10 bg-white/5 space-y-0.5">
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Maksud & Peruntukan</span>
+                  <p class="text-xs font-medium text-slate-300 leading-relaxed">{{ skhpp.peruntukan }}</p>
+                </div>
+
+                <!-- 8: Yang Bertanda Tangan (Span 2 Full Width) -->
+                <div class="sm:col-span-2 p-3 rounded-xl border border-white/10 bg-white/5 flex items-center justify-between gap-3">
+                  <div>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Pejabat Penandatangan (TTE)</span>
+                    <p class="text-xs font-bold text-white">Hari Bagio Wijayanto, M.Tr.Opsla.</p>
+                    <p class="text-[10px] text-slate-300">Komandan Detasemen Intelijen Kodaeral V — Kolonel Laut (E) NRP 16085/P</p>
+                  </div>
+                  <div class="text-emerald-400 text-xl font-black shrink-0">
+                    🛡️
+                  </div>
                 </div>
 
               </div>
 
               <!-- CATATAN JAMINAN KEASLIAN -->
               <div 
-                class="p-4 rounded-xl text-xs leading-relaxed border border-blue-400/30 bg-blue-500/10 text-blue-200 space-y-1"
+                class="p-3.5 rounded-xl text-xs leading-relaxed border border-blue-400/30 bg-blue-500/10 text-blue-200 space-y-0.5"
               >
-                <strong class="block font-bold">🔒 Catatan Jaminan Keaslian:</strong>
-                <p class="text-[11px] opacity-90 leading-relaxed">
+                <strong class="block font-bold text-[11px]">🔒 Catatan Jaminan Keaslian:</strong>
+                <p class="text-[10px] opacity-90 leading-relaxed">
                   Jika data pada dokumen fisik / lembar cetak berbeda dengan data di atas, maka dokumen tersebut dinyatakan <strong>TIDAK SAH / PALSU</strong>.
                 </p>
               </div>
@@ -222,5 +227,23 @@ html, body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
+}
+
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes floatCard {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-float-slow {
+  animation: floatSlow 6s ease-in-out infinite;
+}
+
+.animate-float-card {
+  animation: floatCard 5s ease-in-out infinite;
 }
 </style>
