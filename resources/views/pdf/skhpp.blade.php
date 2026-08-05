@@ -10,9 +10,9 @@
         }
 
         body {
-            font-family: 'Times New Roman', Times, serif;
-            font-size: 11pt;
-            line-height: 1.3;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 12pt;
+            line-height: 1.35;
             color: #000;
             margin: 0;
             padding: 0;
@@ -32,7 +32,7 @@
 
         .table-members th, .table-members td {
             border: 1px solid #000;
-            padding: 5px 8px;
+            padding: 6px 8px;
         }
     </style>
 </head>
@@ -43,13 +43,13 @@
         
         <!-- Kop Surat (Rata Kiri dengan Garis Kop) -->
         <div style="margin-bottom: 20px;">
-            <div style="font-weight: bold; text-transform: uppercase; font-size: 11pt;">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
-            <div style="font-weight: bold; text-transform: uppercase; font-size: 11pt; padding-left: 25px;">DETASEMEN INTELIJEN</div>
-            <div style="border-bottom: 1px solid #000; width: 310px; margin-top: 2px;"></div>
+            <div style="font-weight: bold; text-transform: uppercase; font-size: 12pt;">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
+            <div style="font-weight: bold; text-transform: uppercase; font-size: 12pt; padding-left: 25px;">DETASEMEN INTELIJEN</div>
+            <div style="border-bottom: 2px solid #000; width: 330px; margin-top: 2px;"></div>
         </div>
 
         <!-- Judul Surat -->
-        <div style="text-align: center; margin-top: 15px; margin-bottom: 20px;">
+        <div style="text-align: center; margin-top: 15px; margin-bottom: 25px;">
             <div style="font-weight: bold; text-transform: uppercase; font-size: 12pt;">
                 SURAT KETERANGAN HASIL PENELITIAN PERSONEL(SKHPP)
             </div>
@@ -58,20 +58,20 @@
                 MITRA KERJA TNI ANGKATAN LAUT
             </div>
             @endif
-            <div style="font-weight: bold; font-size: 11pt; margin-top: 3px;">
-                Nomor : R/ &nbsp;&nbsp;{{ $skhpp->nomor_urut ?? '      ' }}&nbsp;&nbsp; /SKHPP/{{ $skhpp->bulan_romawi ?? 'VIII' }}/{{ $skhpp->tahun ?? '2026' }}
+            <div style="font-weight: bold; font-size: 12pt; margin-top: 3px;">
+                Nomor : R/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /SKHPP/{{ $skhpp->bulan_romawi ?? 'VIII' }}/{{ $skhpp->tahun ?? '2026' }}
             </div>
         </div>
 
         <!-- Point 1: Dasar -->
-        <table style="width: 100%; margin-bottom: 8px;">
+        <table style="width: 100%; margin-bottom: 10px;">
             <tr>
                 <td style="width: 25px; vertical-align: top; font-weight: bold;">1.</td>
                 <td style="vertical-align: top;">
                     <div style="font-weight: bold;">Dasar :</div>
                     <table style="width: 100%; margin-top: 3px;">
                         <tr>
-                            <td style="width: 20px; vertical-align: top;">a.</td>
+                            <td style="width: 22px; vertical-align: top;">a.</td>
                             <td style="text-align: justify;">Peraturan Kasal Nomor Perkasal/50/XII/2007 tanggal 04 Desember 2007 tentang Petunjuk Pelaksanaan Penelitian Personel di lingkungan TNI AL;</td>
                         </tr>
                         <tr>
@@ -87,18 +87,19 @@
             </tr>
         </table>
 
-        <!-- Point 2: Data Personel -->
-        <table style="width: 100%; margin-bottom: 8px;">
+        <!-- Point 2: Data Personel (Menjorok Rata Huruf "Dengan") -->
+        <table style="width: 100%; margin-bottom: 10px;">
             <tr>
                 <td style="width: 25px; vertical-align: top; font-weight: bold;">2.</td>
                 <td style="vertical-align: top;">
                     <div>Dengan ini menerangkan bahwa hasil penelitian terhadap :</div>
+                    
                     @if($skhpp->pangkat_korps_nrp)
-                    <table class="table-data" style="width: 100%; margin-top: 4px;">
+                    <table class="table-data" style="width: 100%; margin-top: 4px; padding-left: 20px;">
                         <tr>
-                            <td style="width: 20px; vertical-align: top;">a.</td>
-                            <td style="width: 140px; vertical-align: top;">Nama</td>
-                            <td style="width: 10px; vertical-align: top;">:</td>
+                            <td style="width: 22px; vertical-align: top;">a.</td>
+                            <td style="width: 145px; vertical-align: top;">Nama</td>
+                            <td style="width: 12px; vertical-align: top;">:</td>
                             <td style="vertical-align: top; font-weight: bold;">{{ $skhpp->nama }}</td>
                         </tr>
                         <tr>
@@ -139,11 +140,11 @@
                         </tr>
                     </table>
                     @else
-                    <table class="table-data" style="width: 100%; margin-top: 4px;">
+                    <table class="table-data" style="width: 100%; margin-top: 4px; padding-left: 20px;">
                         <tr>
-                            <td style="width: 20px; vertical-align: top;">a.</td>
-                            <td style="width: 140px; vertical-align: top;">Nama</td>
-                            <td style="width: 10px; vertical-align: top;">:</td>
+                            <td style="width: 22px; vertical-align: top;">a.</td>
+                            <td style="width: 145px; vertical-align: top;">Nama</td>
+                            <td style="width: 12px; vertical-align: top;">:</td>
                             <td style="vertical-align: top; font-weight: bold;">{{ $skhpp->nama }}</td>
                         </tr>
                         <tr>
@@ -189,7 +190,7 @@
         </table>
 
         <!-- Point 3: Hasil -->
-        <table style="width: 100%; margin-bottom: 8px;">
+        <table style="width: 100%; margin-bottom: 10px;">
             <tr>
                 <td style="width: 25px; vertical-align: top; font-weight: bold;">3.</td>
                 <td style="vertical-align: top;">
@@ -199,7 +200,7 @@
         </table>
 
         <!-- Point 4: Peruntukan -->
-        <table style="width: 100%; margin-bottom: 8px;">
+        <table style="width: 100%; margin-bottom: 10px;">
             <tr>
                 <td style="width: 25px; vertical-align: top; font-weight: bold;">4.</td>
                 <td style="vertical-align: top; text-align: justify;">
@@ -218,34 +219,41 @@
             </tr>
         </table>
 
-        <!-- Pas Foto & Signature Block Komandan -->
+        <!-- Pas Foto (Menempel 1 Spasi ke Dikeluarkan) & Signature Block Komandan Rata Tengah -->
         <table style="width: 100%; margin-top: 15px;">
             <tr>
-                <td style="width: 45%; vertical-align: top;">
+                <!-- Kolom Pas Foto -->
+                <td style="vertical-align: top; padding-right: 15px; width: 1px; white-space: nowrap;">
                     @if($foto1_base64)
-                        <img src="{{ $foto1_base64 }}" style="width: 3.2cm; height: 4.2cm; object-fit: cover; border: 1px solid #000;" />
+                        <img src="{{ $foto1_base64 }}" style="width: 3.5cm; height: 4.5cm; object-fit: cover; border: 1px solid #000; display: inline-block;" />
                     @endif
                     @if($skhpp->is_pernikahan && $foto2_base64)
-                        <img src="{{ $foto2_base64 }}" style="width: 3.2cm; height: 4.2cm; object-fit: cover; border: 1px solid #000; margin-left: 5px;" />
+                        <img src="{{ $foto2_base64 }}" style="width: 3.5cm; height: 4.5cm; object-fit: cover; border: 1px solid #000; margin-left: 5px; display: inline-block;" />
                     @endif
                 </td>
-                <td style="width: 55%; vertical-align: top; text-align: left;">
-                    <div>Dikeluarkan di Surabaya</div>
-                    <div style="border-bottom: 1px solid #000; width: 230px; padding-bottom: 2px;">
-                        pada tanggal &nbsp;&nbsp;&nbsp;&nbsp;{{ $tanggal_skhpp_indo }}
-                    </div>
-                    <div style="font-weight: bold; margin-top: 5px; line-height: 1.2;">
-                        Komandan Detasemen Intelijen Kodaeral V,
-                    </div>
 
-                    <div style="height: 75px; margin-top: 5px; margin-bottom: 5px;">
-                        @if($qr_base64 && $skhpp->status === 'approved')
-                            <img src="{{ $qr_base64 }}" style="width: 65px; height: 65px; border: 1px solid #ccc; padding: 2px;" />
-                        @endif
-                    </div>
+                <!-- Kolom TTD Komandan (Rata Tengah Tanpa Bold) -->
+                <td style="vertical-align: top; text-align: center;">
+                    <div style="text-align: center; width: 280px; margin: 0 auto;">
+                        <div style="text-align: left;">Dikeluarkan di Surabaya</div>
+                        <div style="border-bottom: 1px solid #000; width: 270px; text-align: left; padding-bottom: 1px; margin-bottom: 5px;">
+                            pada tanggal &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{{ $tanggal_skhpp_indo }}
+                        </div>
+                        
+                        <div style="font-weight: normal; line-height: 1.2; text-align: center; margin-top: 5px;">
+                            Komandan Detasemen Intelijen Kodaeral V,
+                        </div>
 
-                    <div style="font-weight: bold; text-decoration: underline;">Hari Bagio Wijayanto, M.Tr.Opsla.</div>
-                    <div style="font-weight: bold;">Kolonel Laut (E) NRP 16085/P</div>
+                        <!-- TTD QR Code Rata Tengah -->
+                        <div style="height: 75px; margin-top: 5px; margin-bottom: 5px; text-align: center;">
+                            @if($qr_base64 && $skhpp->status === 'approved')
+                                <img src="{{ $qr_base64 }}" style="width: 65px; height: 65px; border: 1px solid #ccc; padding: 2px; margin: 0 auto; display: block;" />
+                            @endif
+                        </div>
+
+                        <div style="font-weight: normal; text-decoration: underline; text-align: center;">Hari Bagio Wijayanto, M.Tr.Opsla.</div>
+                        <div style="font-weight: normal; text-align: center;">Kolonel Laut (E) NRP 16085/P</div>
+                    </div>
                 </td>
             </tr>
         </table>
@@ -253,7 +261,7 @@
         <!-- Footer Kepada -->
         <div style="margin-top: 25px;">
             <div>Kepada :</div>
-            <div style="font-weight: bold; border-bottom: 1px solid #000; width: 180px; padding-bottom: 2px;">Yth. Asintel Dankodaeral V</div>
+            <div style="font-weight: bold; border-bottom: 1px solid #000; width: 190px; padding-bottom: 2px;">Yth. Asintel Dankodaeral V</div>
         </div>
     </div>
 
@@ -264,18 +272,18 @@
     <div style="width: 100%; padding-top: 10px;">
         
         <!-- Header Lampiran (Kop Kiri & Detail Lampiran Kanan) -->
-        <table style="width: 100%; margin-bottom: 20px;">
+        <table style="width: 100%; margin-bottom: 25px;">
             <tr>
-                <td style="width: 50%; vertical-align: top;">
-                    <div style="font-weight: bold; text-transform: uppercase; font-size: 11pt;">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
-                    <div style="font-weight: bold; text-transform: uppercase; font-size: 11pt; padding-left: 25px;">DETASEMEN INTELIJEN</div>
-                    <div style="border-bottom: 1px solid #000; width: 310px; margin-top: 2px;"></div>
+                <td style="width: 55%; vertical-align: top;">
+                    <div style="font-weight: bold; text-transform: uppercase; font-size: 12pt;">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
+                    <div style="font-weight: bold; text-transform: uppercase; font-size: 12pt; padding-left: 25px;">DETASEMEN INTELIJEN</div>
+                    <div style="border-bottom: 2px solid #000; width: 330px; margin-top: 2px;"></div>
                 </td>
-                <td style="width: 50%; vertical-align: top; text-align: right; font-size: 10pt; line-height: 1.3;">
+                <td style="width: 45%; vertical-align: top; text-align: right; font-size: 11pt; line-height: 1.3;">
                     <div>Lampiran SKHPP Den Intel Kodaeral V</div>
                     <div style="border-bottom: 1px solid #000; display: inline-block; padding-bottom: 2px;">
-                        Nomor SKHPP/ &nbsp;&nbsp;{{ $skhpp->nomor_urut ?? '   ' }}&nbsp;&nbsp; /{{ $skhpp->bulan_romawi ?? 'VII' }}/{{ $skhpp->tahun ?? '2026' }}<br>
-                        Tanggal &nbsp;&nbsp;&nbsp;&nbsp;{{ $tanggal_skhpp_indo }}
+                        Nomor SKHPP/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /{{ $skhpp->bulan_romawi ?? 'VII' }}/{{ $skhpp->tahun ?? '2026' }}<br>
+                        Tanggal &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{{ $tanggal_skhpp_indo }}
                     </div>
                 </td>
             </tr>
@@ -287,7 +295,7 @@
         </div>
 
         <!-- Tabel Anggota Pengikut -->
-        <table class="table-members" style="width: 100%; font-size: 10pt; margin-bottom: 25px;">
+        <table class="table-members" style="width: 100%; font-size: 11pt; margin-bottom: 25px;">
             <thead>
                 <tr style="background-color: #f8f8f8; text-transform: uppercase; text-align: center; font-weight: bold;">
                     <th style="width: 35px;">NO</th>
@@ -308,21 +316,23 @@
             </tbody>
         </table>
 
-        <!-- TTD Komandan Lampiran -->
+        <!-- TTD Komandan Lampiran (Rata Tengah Tanpa Bold) -->
         <table style="width: 100%;">
             <tr>
                 <td style="width: 50%;"></td>
-                <td style="width: 50%; text-align: left;">
-                    <div style="font-weight: bold; line-height: 1.2;">
-                        Komandan Detasemen Intelijen Kodaeral V,
+                <td style="width: 50%; text-align: center;">
+                    <div style="text-align: center; width: 280px; margin: 0 auto; font-weight: normal;">
+                        <div style="line-height: 1.2;">
+                            Komandan Detasemen Intelijen Kodaeral V,
+                        </div>
+                        <div style="height: 75px; margin-top: 5px; margin-bottom: 5px; text-align: center;">
+                            @if($qr_base64 && $skhpp->status === 'approved')
+                                <img src="{{ $qr_base64 }}" style="width: 65px; height: 65px; border: 1px solid #ccc; padding: 2px; margin: 0 auto; display: block;" />
+                            @endif
+                        </div>
+                        <div style="text-decoration: underline;">Hari Bagio Wijayanto, M.Tr.Opsla.</div>
+                        <div>Kolonel Laut (E) NRP 16085/P</div>
                     </div>
-                    <div style="height: 75px; margin-top: 5px; margin-bottom: 5px;">
-                        @if($qr_base64 && $skhpp->status === 'approved')
-                            <img src="{{ $qr_base64 }}" style="width: 65px; height: 65px; border: 1px solid #ccc; padding: 2px;" />
-                        @endif
-                    </div>
-                    <div style="font-weight: bold; text-decoration: underline;">Hari Bagio Wijayanto, M.Tr.Opsla.</div>
-                    <div style="font-weight: bold;">Kolonel Laut (E) NRP 16085/P</div>
                 </td>
             </tr>
         </table>
