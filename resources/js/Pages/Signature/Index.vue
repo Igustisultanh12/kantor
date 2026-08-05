@@ -474,52 +474,201 @@ const getStatusClass = (status) => {
 
     </div>
 
-    <!-- MODAL PRATINJAU SKHPP -->
-    <div v-if="isSkhppPreviewOpen && selectedSkhpp" class="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-      <div class="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-200 text-left">
-        <div class="flex items-center justify-between border-b pb-4">
+    <!-- MODAL PRATINJAU DOKUMEN SKHPP (KOREKSI & OTORITAS KOMANDAN) -->
+    <div v-if="isSkhppPreviewOpen && selectedSkhpp" class="fixed inset-0 z-[150] flex items-center justify-center p-2 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
+      <div class="bg-slate-100 rounded-3xl max-w-4xl w-full p-4 sm:p-8 space-y-6 shadow-2xl border border-slate-300 text-left my-auto max-h-[92vh] flex flex-col">
+        
+        <!-- Header Bar Modal -->
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-300 pb-4 gap-3 shrink-0">
           <div>
-            <span class="text-[10px] font-bold uppercase tracking-wider text-blue-600 block">Detail Pengajuan SKHPP</span>
-            <h3 class="text-base font-black text-slate-900 uppercase">{{ selectedSkhpp.nama }}</h3>
+            <span class="text-[10px] font-black uppercase tracking-wider text-blue-600 block">KOREKSI & OTORITAS VALIDASI SKHPP KOMANDAN</span>
+            <h3 class="text-sm sm:text-base font-black text-slate-900 uppercase">SURAT KETERANGAN HASIL PENELITIAN PERSONEL ({{ selectedSkhpp.nama }})</h3>
           </div>
-          <button @click="isSkhppPreviewOpen = false" class="text-slate-400 hover:text-slate-600 text-sm font-black">✕</button>
-        </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <span class="text-[10px] font-bold text-slate-400 block uppercase">Identitas (Pangkat/NRP/NIK)</span>
-            <span class="font-bold text-slate-800">{{ selectedSkhpp.pangkat_korps_nrp || selectedSkhpp.nik || '-' }}</span>
-          </div>
-          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <span class="text-[10px] font-bold text-slate-400 block uppercase">Jabatan / Pekerjaan</span>
-            <span class="font-semibold text-slate-800">{{ selectedSkhpp.jabatan_pekerjaan }}</span>
-          </div>
-          <div class="sm:col-span-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <span class="text-[10px] font-bold text-slate-400 block uppercase">Maksud & Peruntukan</span>
-            <span class="font-medium text-slate-700 leading-relaxed">{{ selectedSkhpp.peruntukan }}</span>
-          </div>
-          <div class="sm:col-span-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <span class="text-[10px] font-bold text-slate-400 block uppercase">Nomor SKHPP</span>
-            <span class="font-mono font-bold text-orange-600">{{ selectedSkhpp.nomor_skhpp || 'Draft (Otomatis saat disetujui Komandan)' }}</span>
-          </div>
-        </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <Link :href="`/skhpp/${selectedSkhpp.id}/edit`" class="bg-amber-500 hover:bg-amber-600 text-white px-3.5 py-2 rounded-xl text-xs font-black uppercase shadow-sm flex items-center gap-1.5">
+              ✏️ Koreksi / Edit Data
+            </Link>
 
-        <div class="flex justify-between items-center pt-4 border-t gap-3">
-          <Link :href="`/skhpp/${selectedSkhpp.id}`" class="text-xs font-bold text-blue-600 hover:underline">
-            📄 Buka Halaman Cetak SKHPP Lengkap →
-          </Link>
-          <div class="flex gap-2">
             <template v-if="(user.role === 'admin' || user.role === 'komandan') && selectedSkhpp.status === 'pending'">
-              <button @click="approveSkhpp(selectedSkhpp)" class="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase shadow-md">
+              <button @click="approveSkhpp(selectedSkhpp)" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-black uppercase shadow-md flex items-center gap-1.5">
                 ✅ Setujui & TTD
               </button>
-              <button @click="rejectSkhpp(selectedSkhpp)" class="bg-rose-50 text-rose-600 border border-rose-200 px-4 py-2 rounded-xl text-xs font-bold uppercase">
+              <button @click="rejectSkhpp(selectedSkhpp)" class="bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl text-xs font-black uppercase shadow-sm flex items-center gap-1.5">
                 ❌ Tolak
               </button>
             </template>
-            <button @click="isSkhppPreviewOpen = false" class="bg-slate-100 text-slate-600 px-4 py-2 rounded-xl text-xs font-bold uppercase">
-              Tutup
+
+            <button @click="isSkhppPreviewOpen = false" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-black uppercase">
+              ✕ Tutup
             </button>
+          </div>
+        </div>
+
+        <!-- Scrollable Authentic SKHPP Preview Container (Arial 12pt 1-to-1 Layout) -->
+        <div class="flex-1 overflow-y-auto bg-white p-6 sm:p-10 border border-slate-300 rounded-2xl shadow-inner font-sans text-[12pt] text-black leading-relaxed space-y-4 max-w-[800px] mx-auto w-full" style="font-family: Arial, Helvetica, sans-serif;">
+          
+          <!-- Kop Header (Rata Tengah & Presisi Single Line) -->
+          <div class="text-center w-[380px] mx-auto text-[12pt] font-normal leading-snug">
+              <div class="whitespace-nowrap font-normal">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
+              <div class="font-normal text-center">DETASEMEN INTELIJEN</div>
+              <div class="w-48 h-[1.5px] bg-black mx-auto mt-0.5"></div>
+          </div>
+
+          <!-- Judul & Nomor SKHPP -->
+          <div class="text-center my-4">
+              <div class="font-bold text-[12pt] underline uppercase tracking-tight">
+                  SURAT KETERANGAN HASIL PENELITIAN PERSONEL
+              </div>
+              <div v-if="selectedSkhpp.kategori_personel === 'perusahaan'" class="font-bold text-[11pt] uppercase">
+                  MITRA KERJA TNI ANGKATAN LAUT
+              </div>
+              <div class="text-[12pt] font-normal mt-0.5">
+                  Nomor : {{ selectedSkhpp.nomor_skhpp || ('R / ' + (selectedSkhpp.nomor_urut || '....') + ' / SKHPP / ' + (selectedSkhpp.bulan_romawi || 'VIII') + ' / ' + (selectedSkhpp.tahun || '2026')) }}
+              </div>
+          </div>
+
+          <!-- Poin Isi 1 s.d. 4 -->
+          <div class="space-y-3 text-[12pt]">
+              <div class="flex items-start">
+                  <span class="w-6 shrink-0">1.</span>
+                  <div>
+                      Dasar : {{ selectedSkhpp.surat_pengantar }}
+                  </div>
+              </div>
+
+              <div class="flex items-start">
+                  <span class="w-6 shrink-0">2.</span>
+                  <div>
+                      Dengan ini menerangkan bahwa hasil penelitian terhadap :
+                  </div>
+              </div>
+
+              <!-- Sub Poin a-g (Indentasi 45px Rata Huruf D) -->
+              <div class="pl-[45px] space-y-1">
+                  <div class="grid grid-cols-[160px_15px_1fr]">
+                      <span>a. Nama</span>
+                      <span>:</span>
+                      <span class="font-normal">{{ selectedSkhpp.nama }}</span>
+                  </div>
+
+                  <div class="grid grid-cols-[160px_15px_1fr]">
+                      <span>b. NIK / Pangkat</span>
+                      <span>:</span>
+                      <span>{{ selectedSkhpp.pangkat_korps_nrp || selectedSkhpp.nik || '-' }}</span>
+                  </div>
+
+                  <div class="grid grid-cols-[160px_15px_1fr]">
+                      <span>c. Jabatan / Pekerjaan</span>
+                      <span>:</span>
+                      <span>{{ selectedSkhpp.jabatan_pekerjaan }}</span>
+                  </div>
+
+                  <div class="grid grid-cols-[160px_15px_1fr]">
+                      <span>d. Tempat, tgl. lahir</span>
+                      <span>:</span>
+                      <span>{{ selectedSkhpp.tempat_lahir }}, {{ selectedSkhpp.tanggal_lahir }}</span>
+                  </div>
+
+                  <div class="grid grid-cols-[160px_15px_1fr]">
+                      <span>e. Jenis kelamin</span>
+                      <span>:</span>
+                      <span>{{ selectedSkhpp.jenis_kelamin }}</span>
+                  </div>
+
+                  <div class="grid grid-cols-[160px_15px_1fr]">
+                      <span>f. Agama</span>
+                      <span>:</span>
+                      <span>{{ selectedSkhpp.agama }}</span>
+                  </div>
+
+                  <div class="grid grid-cols-[160px_15px_1fr]">
+                      <span>g. Alamat rumah</span>
+                      <span>:</span>
+                      <span>{{ selectedSkhpp.alamat }}</span>
+                  </div>
+              </div>
+
+              <div class="flex items-start font-normal mt-2">
+                  <span class="w-6 shrink-0">2.</span>
+                  <div>
+                      Hasil Penelitian Personel <span class="font-bold">Memenuhi Syarat</span>
+                  </div>
+              </div>
+
+              <div class="flex items-start">
+                  <span class="w-6 shrink-0">3.</span>
+                  <div>
+                      SKHPP ini diberikan {{ selectedSkhpp.peruntukan }}
+                  </div>
+              </div>
+
+              <div class="flex items-start">
+                  <span class="w-6 shrink-0">4.</span>
+                  <div>
+                      Apabila kemudian terdapat kekeliruan, SKHPP ini akan dicabut dan diadakan pembetulan seperlunya.
+                  </div>
+              </div>
+          </div>
+
+          <!-- TTD Block Komandan & Pas Foto 4x6 -->
+          <div class="mt-6 pt-2 flex justify-end items-end gap-3">
+              <!-- Pas Foto 4x6 -->
+              <div class="w-[4cm] h-[6cm] border border-black bg-slate-100 flex items-center justify-center text-[10pt] text-slate-400 overflow-hidden shrink-0">
+                  <img v-if="selectedSkhpp.foto_1" :src="'/storage/' + selectedSkhpp.foto_1" class="w-full h-full object-cover" />
+                  <span v-else>FOTO 4x6</span>
+              </div>
+
+              <!-- Block TTD Komandan -->
+              <div class="w-[330px]">
+                  <div class="text-left">Dikeluarkan di Surabaya</div>
+                  <div class="border-b border-black pb-0.5 mb-1 flex justify-between items-center text-[12pt]">
+                      <span>pada tanggal</span>
+                      <span>{{ selectedSkhpp.tanggal_skhpp ? new Date(selectedSkhpp.tanggal_skhpp).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '5 Agustus 2026' }}</span>
+                  </div>
+                  <div class="font-normal text-center whitespace-nowrap mt-1 leading-snug">
+                      Komandan Detasemen Intelijen Kodaeral V,
+                  </div>
+
+                  <!-- QR Code TTD Status -->
+                  <div class="my-2 py-1 text-center min-h-[95px] flex items-center justify-center">
+                      <div v-if="selectedSkhpp.status === 'approved'" class="text-center space-y-1">
+                          <img :src="`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(window.location.origin + '/verify-skhpp/' + selectedSkhpp.verification_code)}`" class="w-[85px] h-[85px] border border-slate-300 p-0.5 rounded-sm mx-auto block" />
+                          <span class="text-[8px] font-bold text-emerald-700 block">✓ TERVERIFIKASI TTD DIGITAL</span>
+                      </div>
+                      <div v-else class="h-[85px] w-full flex items-center justify-center border border-dashed border-slate-300 text-[10px] text-slate-400 font-sans italic bg-slate-50">
+                          [ PENDING TTD KOMANDAN ]
+                      </div>
+                  </div>
+
+                  <div class="text-center font-normal text-[12pt]">
+                      <div>Hari Bagio Wijayanto, M.Tr.Opsla.</div>
+                      <div>Kolonel Laut (E) NRP 16085/P</div>
+                  </div>
+              </div>
+          </div>
+
+          <!-- Kepada Footer -->
+          <div class="pt-4 text-[12pt] font-normal">
+              <div>Kepada :</div>
+              <div class="whitespace-nowrap">Yth. Asintel Dankodaeral V</div>
+          </div>
+        </div>
+
+        <!-- Modal Footer Actions -->
+        <div class="flex justify-between items-center border-t border-slate-300 pt-4 gap-3 shrink-0">
+          <Link :href="`/skhpp/${selectedSkhpp.id}`" class="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1">
+            📄 Buka Halaman Cetak Lengkap (Dengan Lampiran Jika Ada) →
+          </Link>
+          <div class="flex gap-2">
+            <template v-if="(user.role === 'admin' || user.role === 'komandan') && selectedSkhpp.status === 'pending'">
+              <button @click="approveSkhpp(selectedSkhpp)" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase shadow-md">
+                ✅ Setujui & TTD Komandan
+              </button>
+              <button @click="rejectSkhpp(selectedSkhpp)" class="bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-600 hover:text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase">
+                ❌ Tolak / Minta Revisi
+              </button>
+            </template>
           </div>
         </div>
       </div>
