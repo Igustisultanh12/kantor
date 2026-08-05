@@ -391,12 +391,21 @@ class SkhppController extends Controller
     {
         $skhpp = Skhpp::with(['members', 'submitter', 'approver'])
             ->where('verification_code', $code)
-            ->firstOrFail();
+            ->first();
 
         $settings = \App\Models\Setting::pluck('value', 'key')->all();
 
+        if (!$skhpp || $skhpp->status !== 'approved') {
+            return Inertia::render('Skhpp/Verify', [
+                'skhpp' => null,
+                'verify_code' => $code,
+                'settings' => $settings
+            ]);
+        }
+
         return Inertia::render('Skhpp/Verify', [
             'skhpp' => $skhpp,
+            'verify_code' => $code,
             'settings' => $settings
         ]);
     }
@@ -415,9 +424,19 @@ class SkhppController extends Controller
             Storage::disk('public')->delete($skhpp->foto_2);
         }
 
+        // AuditLog pencabutan/penghapusan SKHPP
+        \App\Models\AuditLog::create([
+            'user_id' => auth()->id(),
+            'admin_name' => auth()->user()->name,
+            'action' => 'DELETE_SKHPP',
+            'target_personnel' => $skhpp->nama,
+            'description' => "Penghapusan / Pencabutan SKHPP Nomor: " . ($skhpp->nomor_skhpp || $skhpp->id),
+            'ip_address' => request()->ip(),
+        ]);
+
         $skhpp->delete();
 
-        return back()->with('success', 'Data permohonan SKHPP berhasil dihapus.');
+        return back()->with('success', 'Data SKHPP dan status validasi legalitas berhasil dihapus/dicabut.');
     }
 
     /**

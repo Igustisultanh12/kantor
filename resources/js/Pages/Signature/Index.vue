@@ -270,7 +270,7 @@ const downloadFile = (filePath, subject) => {
 const deleteRequest = (id) => {
   Swal.fire({
     title: 'Hapus Berkas?',
-    text: "Data akan dihapus permanen!",
+    text: "Data akan dihapus permanen dan validasi QR dicabut seketika!",
     icon: 'warning',
     showCancelButton: true,
     confirmButtonColor: '#e11d48',
@@ -278,7 +278,28 @@ const deleteRequest = (id) => {
   }).then((result) => {
     if (result.isConfirmed) {
       router.delete(route('signature.destroy', id), {
-        onSuccess: () => Swal.fire('Terhapus', 'Berkas berhasil dihapus.', 'success')
+        onSuccess: () => Swal.fire('Terhapus', 'Berkas dan validasi berhasil dihapus.', 'success')
+      });
+    }
+  });
+};
+
+const deleteSkhpp = (id) => {
+  Swal.fire({
+    title: 'HAPUS & CABUT SKHPP?',
+    text: "Dokumen SKHPP dan status validasi legalitas QR akan langsung dicabut/dihapus seketika!",
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#e11d48',
+    confirmButtonText: 'YA, HAPUS & CABUT!',
+    cancelButtonText: 'BATAL'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      router.delete(route('skhpp.destroy', id), {
+        onSuccess: () => {
+          isSkhppPreviewOpen.value = false;
+          Swal.fire('BERHASIL DICABUT', 'SKHPP dan status validasi QR berhasil dihapus seketika.', 'success');
+        }
       });
     }
   });
@@ -387,6 +408,10 @@ const getStatusClass = (status) => {
                         ❌ Tolak
                       </button>
                     </template>
+
+                    <button v-if="user.role === 'admin' || user.id === skhpp.user_id" @click="deleteSkhpp(skhpp.id)" class="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white px-2.5 py-1.5 rounded-xl text-[9px] font-black uppercase" title="Hapus & Cabut Validasi QR">
+                      🗑️
+                    </button>
                   </div>
                 </td>
               </tr>
