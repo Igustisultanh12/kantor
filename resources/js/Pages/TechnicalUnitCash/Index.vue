@@ -221,8 +221,9 @@ const deleteTransaction = (id) => {
 const openPreview = () => {
     const element = document.getElementById('area-kas-cetak');
     const opt = {
-        margin: [0.5, 0.5, 0.5, 0.5],
-        html2canvas: { scale: 2, useCORS: true, width: 790 },
+        margin: [0.3, 0.3, 0.3, 0.3],
+        html2canvas: { scale: 2, useCORS: true, windowWidth: 700 },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
     };
     html2pdf().set(opt).from(element).outputImg().then((img) => {
         previewImage.value = img.src;
@@ -234,12 +235,12 @@ const downloadPDF = () => {
     const element = document.getElementById('area-kas-cetak');
     const isReimb = selectedCashIds.value.length > 0;
     const opt = {
-        margin: 0.5,
+        margin: [0.3, 0.3, 0.3, 0.3],
         filename: isReimb 
             ? `REIMBURSEMENT_DAN_UNIT_TEKNIS_${selectedMonthName.value}_${filterYear.value}.pdf` 
             : `BUKU_KAS_DAN_UNIT_TEKNIS_${selectedMonthName.value}_${filterYear.value}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
+        html2canvas: { scale: 2, useCORS: true, windowWidth: 700 },
         jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
     };
     html2pdf().set(opt).from(element).save();
@@ -451,12 +452,12 @@ const formatLongDate = (dateStr) => {
 
         <!-- AREA HIDDEN CETAK PDF -->
         <div style="position: absolute; left: -9999px;">
-            <div id="area-kas-cetak" class="p-10 bg-white text-black" style="width: 790px; font-family: 'Times New Roman', serif;">
-                <div class="kop-container" style="text-align: left; margin-bottom: 30px;">
+            <div id="area-kas-cetak" class="p-8 bg-white text-black" style="width: 670px; box-sizing: border-box; font-family: 'Times New Roman', serif;">
+                <div class="kop-container" style="text-align: left; margin-bottom: 25px;">
                     <div style="display: inline-block; text-align: center;">
-                        <p style="margin: 0; font-size: 14px; font-weight: bold; line-height: 1.2; text-transform: uppercase;">KOMANDO DAERAH TNI ANGKATAN LAUT</p>
-                        <p style="margin: 0; font-size: 14px; font-weight: bold; line-height: 1.2; text-transform: uppercase;">DETASEMEN INTELIJEN - DAN UNIT TEKNIS</p>
-                        <div style="margin-top: 5px; border-top: 1px solid #000; border-bottom: 3.5px solid #000; height: 2px; width: 340px; margin-left: auto; margin-right: auto;"></div>
+                        <p style="margin: 0; font-size: 13px; font-weight: bold; line-height: 1.2; text-transform: uppercase;">KOMANDO DAERAH TNI ANGKATAN LAUT V</p>
+                        <p style="margin: 0; font-size: 13px; font-weight: bold; line-height: 1.2; text-transform: uppercase;">DETASEMEN INTELIJEN</p>
+                        <div style="margin-top: 4px; border-top: 1px solid #000; border-bottom: 3.5px solid #000; height: 2px; width: 330px; margin-left: auto; margin-right: auto;"></div>
                     </div>
                 </div>
 
@@ -472,10 +473,10 @@ const formatLongDate = (dateStr) => {
                     <table class="w-full border-collapse border-[1.5px] border-black text-[10px]">
                         <thead>
                             <tr style="background-color: #f2f2f2; text-transform: uppercase; font-weight: bold; text-align: center;">
-                                <th style="border: 1px solid #000; padding: 10px 4px; width: 6%;">NO</th>
-                                <th style="border: 1px solid #000; padding: 10px 4px; width: 16%;">TANGGAL</th>
-                                <th style="border: 1px solid #000; padding: 10px 4px; width: 54%; text-align: left;">URAIAN / KETERANGAN PENGELUARAN (REMBES)</th>
-                                <th style="border: 1px solid #000; padding: 10px 4px; width: 24%; text-align: right;">JUMLAH (RP)</th>
+                                <th style="border: 1px solid #000; padding: 8px 4px; width: 6%;">NO</th>
+                                <th style="border: 1px solid #000; padding: 8px 4px; width: 16%;">TANGGAL</th>
+                                <th style="border: 1px solid #000; padding: 8px 4px; width: 54%; text-align: left;">URAIAN / KETERANGAN PENGELUARAN (REMBES)</th>
+                                <th style="border: 1px solid #000; padding: 8px 4px; width: 24%; text-align: right;">JUMLAH (RP)</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -507,7 +508,7 @@ const formatLongDate = (dateStr) => {
                 <!-- Tampilan 2: Mode Laporan Buku Rekening Kas Dan Unit Teknis (Standard Buku Rekening) -->
                 <template v-else>
                     <div class="text-center mb-8 uppercase">
-                        <h3 style="margin: 0; font-size: 16px; font-weight: bold; text-decoration: underline; letter-spacing: 0.5px;">LAPORAN BUKU REKENING KAS DAN UNIT TEKNIS</h3>
+                        <h3 style="margin: 0; font-size: 15px; font-weight: bold; text-decoration: underline; letter-spacing: 0.5px;">LAPORAN BUKU REKENING KAS DAN UNIT TEKNIS</h3>
                         <p style="margin: 8px 0 0 0; font-size: 11px; font-weight: bold;">
                             PERIODE BULAN: {{ selectedMonthName }} {{ filterYear }}
                         </p>
@@ -518,8 +519,8 @@ const formatLongDate = (dateStr) => {
                         <thead>
                             <tr style="background-color: #e2e8f0; text-transform: uppercase; font-weight: bold; text-align: center; color: #000;">
                                 <th style="border: 1px solid #000; padding: 8px 4px; width: 5%;">NO</th>
-                                <th style="border: 1px solid #000; padding: 8px 4px; width: 14%;">TANGGAL</th>
-                                <th style="border: 1px solid #000; padding: 8px 6px; width: 36%; text-align: left;">URAIAN / KETERANGAN MUTASI REKENING</th>
+                                <th style="border: 1px solid #000; padding: 8px 4px; width: 15%;">TANGGAL</th>
+                                <th style="border: 1px solid #000; padding: 8px 6px; width: 35%; text-align: left;">URAIAN / KETERANGAN MUTASI REKENING</th>
                                 <th style="border: 1px solid #000; padding: 8px 6px; width: 15%; text-align: right;">DEBIT (MASUK)</th>
                                 <th style="border: 1px solid #000; padding: 8px 6px; width: 15%; text-align: right;">KREDIT (KELUAR)</th>
                                 <th style="border: 1px solid #000; padding: 8px 6px; width: 15%; text-align: right;">SALDO REKENING</th>
@@ -563,13 +564,14 @@ const formatLongDate = (dateStr) => {
                     </div>
                 </template>
 
-                <div style="margin-top: 50px; display: flex; justify-content: flex-end;">
-                    <div style="width: 300px; text-align: left; font-size: 11px;">
+                <div style="margin-top: 45px; display: flex; justify-content: flex-end;">
+                    <div style="width: 280px; text-align: left; font-size: 11px;">
                         <p style="margin-bottom: 2px;">Dikeluarkan di: Surabaya</p>
                         <p style="margin-bottom: 15px;">Pada tanggal: {{ formatLongDate(new Date()) }}</p>
                         <div style="text-align: center;">
-                            <p style="font-weight: bold; margin: 0;">Komandan Unit Teknis Denintel Kodaeral V,</p>
-                            <div style="height: 60px;"></div>
+                            <p style="font-weight: bold; margin: 0;">a.n. Komandan Detasemen Intelijen Kodaeral V</p>
+                            <p style="font-weight: bold; margin: 2px 0 0 0;">Dan Unit Teknis,</p>
+                            <div style="height: 55px;"></div>
                             <p style="font-weight: bold; text-decoration: underline; text-transform: uppercase; margin: 0;">{{ user.name }}</p>
                             <p style="margin: 2px 0 0 0;">{{ user.pangkat || 'Prajurit' }} NRP. {{ user.nrp || 'N/A' }}</p>
                         </div>
