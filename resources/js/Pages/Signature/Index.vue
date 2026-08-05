@@ -612,17 +612,17 @@ const getStatusClass = (status) => {
                 </div>
             </div>
 
-            <!-- TTD Block Komandan & Pas Foto 4x6 (Foto Suami-Istri Nempel & Mepet TTD) -->
+            <!-- TTD Block Komandan & Pas Foto 4x6 (Foto Suami-Istri Nempel & Mepet TTD, Tanpa Border) -->
             <div class="mt-4 sm:mt-6 pt-2 flex flex-col sm:flex-row justify-end items-center sm:items-end gap-1.5 sm:gap-2">
-                <!-- Pas Foto Section 4x6 (Nempel Berhimpitan) -->
+                <!-- Pas Foto Section 4x6 (Nempel Berhimpitan Tanpa Border) -->
                 <div class="flex items-center gap-0 shrink-0">
-                    <div v-if="selectedSkhpp.foto_1" class="w-[3.2cm] h-[4.8cm] sm:w-[4cm] sm:h-[6cm] border border-black bg-slate-100 flex items-center justify-center text-[9pt] sm:text-[10pt] text-slate-400 overflow-hidden">
+                    <div v-if="selectedSkhpp.foto_1" class="w-[3.2cm] h-[4.8cm] sm:w-[4cm] sm:h-[6cm] bg-slate-100 flex items-center justify-center text-[9pt] sm:text-[10pt] text-slate-400 overflow-hidden">
                         <img :src="'/storage/' + selectedSkhpp.foto_1" class="w-full h-full object-cover" />
                     </div>
-                    <div v-else class="w-[3.2cm] h-[4.8cm] sm:w-[4cm] sm:h-[6cm] border border-black bg-slate-100 flex items-center justify-center text-[9pt] sm:text-[10pt] text-slate-400 overflow-hidden">
+                    <div v-else class="w-[3.2cm] h-[4.8cm] sm:w-[4cm] sm:h-[6cm] border border-slate-300 bg-slate-100 flex items-center justify-center text-[9pt] sm:text-[10pt] text-slate-400 overflow-hidden">
                         <span>FOTO 4x6</span>
                     </div>
-                    <div v-if="selectedSkhpp.is_pernikahan && selectedSkhpp.foto_2" class="w-[3.2cm] h-[4.8cm] sm:w-[4cm] sm:h-[6cm] border border-black bg-slate-100 flex items-center justify-center text-[9pt] sm:text-[10pt] text-slate-400 overflow-hidden -ml-[1px]">
+                    <div v-if="selectedSkhpp.is_pernikahan && selectedSkhpp.foto_2" class="w-[3.2cm] h-[4.8cm] sm:w-[4cm] sm:h-[6cm] bg-slate-100 flex items-center justify-center text-[9pt] sm:text-[10pt] text-slate-400 overflow-hidden">
                         <img :src="'/storage/' + selectedSkhpp.foto_2" class="w-full h-full object-cover" />
                     </div>
                 </div>

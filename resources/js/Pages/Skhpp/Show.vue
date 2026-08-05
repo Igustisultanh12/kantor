@@ -292,14 +292,14 @@ const formatDateIndo = (dateStr) => {
                             <!-- Ruang Kosong Left -->
                             <div class="w-[15%]"></div>
 
-                            <!-- Pas Foto Section 4x6 (Nempel Berhimpitan) -->
+                            <!-- Pas Foto Section 4x6 (Nempel Berhimpitan Tanpa Border) -->
                             <div class="flex items-center gap-0 pr-1 shrink-0">
                                 <div v-if="skhpp.foto_1" class="text-center">
-                                    <img :src="'/storage/' + skhpp.foto_1" class="w-[4cm] h-[6cm] object-cover border border-black shadow-xs inline-block align-top" />
+                                    <img :src="'/storage/' + skhpp.foto_1" class="w-[4cm] h-[6cm] object-cover border-none inline-block align-top" />
                                     <div v-if="skhpp.is_pernikahan" class="text-[9px] font-normal mt-1 uppercase">Suami</div>
                                 </div>
                                 <div v-if="skhpp.is_pernikahan && skhpp.foto_2" class="text-center">
-                                    <img :src="'/storage/' + skhpp.foto_2" class="w-[4cm] h-[6cm] object-cover border border-black shadow-xs inline-block align-top -ml-[1px]" />
+                                    <img :src="'/storage/' + skhpp.foto_2" class="w-[4cm] h-[6cm] object-cover border-none inline-block align-top" />
                                     <div class="text-[9px] font-normal mt-1 uppercase">Istri</div>
                                 </div>
                             </div>

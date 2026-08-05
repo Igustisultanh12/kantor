@@ -233,13 +233,13 @@
                 <!-- Ruang Kosong Kiri -->
                 <td style="width: 25%;"></td>
 
-                <!-- Kolom Pas Foto 4x6 (Nempel Berhimpitan Tanpa Jarak & Mepet TTD Komandan) -->
+                <!-- Kolom Pas Foto 4x6 (Nempel Berhimpitan Tanpa Jarak & Mepet TTD Komandan, Tanpa Garis/Border) -->
                 <td style="vertical-align: top; text-align: right; padding-right: 4px; width: 1px; white-space: nowrap; font-size: 0;">
                     @if($foto1_base64)
-                        <img src="{{ $foto1_base64 }}" style="width: 4cm; height: 6cm; object-fit: cover; border: 1px solid #000; display: inline-block; vertical-align: top;" />
+                        <img src="{{ $foto1_base64 }}" style="width: 4cm; height: 6cm; object-fit: cover; border: none; display: inline-block; vertical-align: top;" />
                     @endif
                     @if($skhpp->is_pernikahan && $foto2_base64)
-                        <img src="{{ $foto2_base64 }}" style="width: 4cm; height: 6cm; object-fit: cover; border: 1px solid #000; margin-left: 0px; display: inline-block; vertical-align: top;" />
+                        <img src="{{ $foto2_base64 }}" style="width: 4cm; height: 6cm; object-fit: cover; border: none; margin-left: 0px; display: inline-block; vertical-align: top;" />
                     @endif
                 </td>
 
