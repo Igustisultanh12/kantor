@@ -34,24 +34,24 @@ const resetFilter = () => {
 
 const approveSkhpp = (skhpp) => {
     const defaultSeq = (skhpp.nomor_urut || 1);
-    const defaultFormat = skhpp.kategori_personel === 'sipil' ? 'mitra' : 'militer';
 
     Swal.fire({
         title: 'OTORISASI TTD KOMANDAN',
         html: `
             <div class="text-left text-xs space-y-3 font-sans">
-                <p class="text-slate-600">Pilih format penomoran dan isi nomor urut SKHPP (bisa melewati nomor jika ada arsip terlewat):</p>
+                <p class="text-slate-600">Nomor SKHPP akan diterbitkan & tersinkronisasi otomatis ke <b>Buku Agenda Surat SINDEN (Letter Logs)</b>:</p>
                 
                 <div>
-                    <label class="block font-bold uppercase mb-1">Nomor Urut SKHPP</label>
+                    <label class="block font-bold uppercase mb-1 text-slate-700">Nomor Urut SKHPP (Bisa diisi manual jika ada arsip terlewat)</label>
                     <input id="swal-nomor-urut" type="number" value="${defaultSeq}" class="w-full text-xs font-bold p-2.5 border rounded-xl" placeholder="Masukkan nomor urut (contoh: 171)" />
                 </div>
 
                 <div>
-                    <label class="block font-bold uppercase mb-1">Pilihan Format Penomoran</label>
-                    <select id="swal-tipe-format" class="w-full text-xs font-bold p-2.5 border rounded-xl">
-                        <option value="militer" ${defaultFormat === 'militer' ? 'selected' : ''}>Format Militer (R/[NOMOR]/SKHPP/[BULAN]/[TAHUN])</option>
-                        <option value="mitra" ${defaultFormat === 'mitra' ? 'selected' : ''}>Format Mitra Kerja/Sipil (R/[NOMOR]/SKHPP/MITRA/[BULAN]/[TAHUN])</option>
+                    <label class="block font-bold uppercase mb-1 text-slate-700">Derajat Kecepatan / Prioritas</label>
+                    <select id="swal-priority" class="w-full text-xs font-bold p-2.5 border rounded-xl">
+                        <option value="R" selected>R (RAHASIA) — R/[NOMOR]/SKHPP/[BULAN]/[TAHUN]</option>
+                        <option value="B">B (BIASA) — B/[NOMOR]/SKHPP/[BULAN]/[TAHUN]</option>
+                        <option value="K">K (KILAT) — K/[NOMOR]/SKHPP/[BULAN]/[TAHUN]</option>
                     </select>
                 </div>
             </div>
@@ -63,8 +63,8 @@ const approveSkhpp = (skhpp) => {
         confirmButtonColor: '#059669',
         preConfirm: () => {
             const seq = document.getElementById('swal-nomor-urut').value;
-            const fmt = document.getElementById('swal-tipe-format').value;
-            return { custom_nomor_urut: seq, tipe_format: fmt };
+            const prio = document.getElementById('swal-priority').value;
+            return { custom_nomor_urut: seq, priority: prio };
         }
     }).then((result) => {
         if (result.isConfirmed && result.value) {

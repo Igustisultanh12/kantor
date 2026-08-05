@@ -273,7 +273,7 @@ class SkhppController extends Controller
     }
 
     /**
-     * Persetujuan Komandan (TTD & Penomoran Fleksibel SINDEN)
+     * Persetujuan Komandan (TTD & Penomoran Terintegrasi Buku Agenda SINDEN)
      */
     public function approve(Request $request, $id)
     {
@@ -298,13 +298,14 @@ class SkhppController extends Controller
             $nextSeq = $lastSeq + 1;
         }
 
-        // Format Penomoran SKHPP SINDEN
+        $priority = $request->input('priority', 'R'); // R (RAHASIA), B (BIASA), K (KILAT)
+
+        // FORMAT TUNGGAL TERINTEGRASI SINDEN BUKU AGENDA LOG:
+        // {PRIORITY} / {SEQUENCE} / SKHPP / {BULAN_ROMAWI} / {TAHUN}
         if ($request->filled('custom_nomor_skhpp')) {
             $formattedNo = trim($request->custom_nomor_skhpp);
-        } else if ($request->input('tipe_format') === 'mitra' || $skhpp->kategori_personel === 'sipil') {
-            $formattedNo = "R/{$nextSeq}/SKHPP/MITRA/{$romanMonth}/{$currentYear}";
         } else {
-            $formattedNo = "R/{$nextSeq}/SKHPP/{$romanMonth}/{$currentYear}";
+            $formattedNo = "{$priority}/{$nextSeq}/SKHPP/{$romanMonth}/{$currentYear}";
         }
 
         $skhpp->update([
@@ -319,7 +320,26 @@ class SkhppController extends Controller
             'catatan_revisi' => null,
         ]);
 
-        return back()->with('success', "SKHPP Resmi disetujui & ditandatangani Komandan! Nomor SKHPP: {$formattedNo}");
+        // SINKRONISASI OTOMATIS KE BUKU AGENDA SURAT SINDEN (LETTER_LOGS)
+        try {
+            $skhppCategory = \App\Models\Category::where('code', 'LIKE', '%SKHPP%')->first();
+            $categoryId = $skhppCategory ? $skhppCategory->id : 1;
+
+            \App\Models\LetterLog::create([
+                'full_number' => $formattedNo,
+                'sequence' => (string)$nextSeq,
+                'priority' => $priority,
+                'category_id' => $categoryId,
+                'subject' => "SKHPP - {$skhpp->nama} (" . strtoupper($skhpp->kategori_personel) . ") - " . $skhpp->peruntukan,
+                'recipient' => 'Yth. Asintel Dankodaeral V',
+                'date' => now()->toDateString(),
+                'is_archived' => false,
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Gagal auto-sync SKHPP ke LetterLog: " . $e->getMessage());
+        }
+
+        return back()->with('success', "SKHPP Resmi disetujui Komandan! Nomor: {$formattedNo} (Tersinkron ke Buku Nomor Agenda)");
     }
 
     /**

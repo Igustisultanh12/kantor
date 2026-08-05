@@ -50,17 +50,42 @@ const downloadPdf = () => {
 };
 
 const approveSkhpp = () => {
+    const defaultSeq = (props.skhpp.nomor_urut || 1);
+
     Swal.fire({
         title: 'OTORISASI TTD KOMANDAN',
-        html: `Apakah Anda yakin ingin menyetujui & menandatangani secara digital SKHPP ini?`,
+        html: `
+            <div class="text-left text-xs space-y-3 font-sans">
+                <p class="text-slate-600">Nomor SKHPP akan diterbitkan & tersinkronisasi otomatis ke <b>Buku Agenda Surat SINDEN (Letter Logs)</b>:</p>
+                
+                <div>
+                    <label class="block font-bold uppercase mb-1 text-slate-700">Nomor Urut SKHPP (Bisa diisi manual jika ada arsip terlewat)</label>
+                    <input id="swal-nomor-urut-show" type="number" value="${defaultSeq}" class="w-full text-xs font-bold p-2.5 border rounded-xl" placeholder="Masukkan nomor urut (contoh: 171)" />
+                </div>
+
+                <div>
+                    <label class="block font-bold uppercase mb-1 text-slate-700">Derajat Kecepatan / Prioritas</label>
+                    <select id="swal-priority-show" class="w-full text-xs font-bold p-2.5 border rounded-xl">
+                        <option value="R" selected>R (RAHASIA) — R/[NOMOR]/SKHPP/[BULAN]/[TAHUN]</option>
+                        <option value="B">B (BIASA) — B/[NOMOR]/SKHPP/[BULAN]/[TAHUN]</option>
+                        <option value="K">K (KILAT) — K/[NOMOR]/SKHPP/[BULAN]/[TAHUN]</option>
+                    </select>
+                </div>
+            </div>
+        `,
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'YA, SETUJU & TTD',
         cancelButtonText: 'Batal',
         confirmButtonColor: '#059669',
+        preConfirm: () => {
+            const seq = document.getElementById('swal-nomor-urut-show').value;
+            const prio = document.getElementById('swal-priority-show').value;
+            return { custom_nomor_urut: seq, priority: prio };
+        }
     }).then((result) => {
-        if (result.isConfirmed) {
-            router.post(route('skhpp.approve', props.skhpp.id), {}, {
+        if (result.isConfirmed && result.value) {
+            router.post(route('skhpp.approve', props.skhpp.id), result.value, {
                 onSuccess: () => Swal.fire('SUKSES', 'SKHPP Resmi disetujui & ditandatangani Komandan.', 'success')
             });
         }
