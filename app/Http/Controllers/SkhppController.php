@@ -173,7 +173,107 @@ class SkhppController extends Controller
     }
 
     /**
-     * Persetujuan Komandan (TTD & Auto Penomoran Otomatis SINDEN)
+     * Halaman Edit Permohonan SKHPP (Operator Revisi Data)
+     */
+    public function edit($id)
+    {
+        $skhpp = Skhpp::with('members')->findOrFail($id);
+
+        return Inertia::render('Skhpp/Edit', [
+            'skhpp' => $skhpp
+        ]);
+    }
+
+    /**
+     * Simpan Perubahan & Ajukan Ulang ke TTD Komandan
+     */
+    public function update(Request $request, $id)
+    {
+        $skhpp = Skhpp::findOrFail($id);
+
+        $request->validate([
+            'kategori_personel' => 'required|in:militer,sipil',
+            'is_pernikahan' => 'required|boolean',
+            'surat_pengantar' => 'required|string',
+            'nama' => 'required|string',
+            'pangkat_korps_nrp' => 'nullable|required_if:kategori_personel,militer|string',
+            'nik' => 'nullable|required_if:kategori_personel,sipil|string',
+            'jabatan_pekerjaan' => 'required|string',
+            'tempat_lahir' => 'required|string',
+            'tanggal_lahir' => 'required|date',
+            'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
+            'agama' => 'required|string',
+            'alamat' => 'required|string',
+            'peruntukan' => 'required|string',
+            'foto_1' => 'nullable|image|mimes:jpeg,jpg,png|max:10240',
+            'foto_2' => 'nullable|image|mimes:jpeg,jpg,png|max:10240',
+            'has_pengikut' => 'boolean',
+            'members' => 'nullable|array',
+            'members.*.nama' => 'required|string',
+            'members.*.pangkat_nrp_nik' => 'required|string',
+            'members.*.jabatan' => 'required|string',
+        ]);
+
+        if ($request->hasFile('foto_1')) {
+            if ($skhpp->foto_1 && Storage::disk('public')->exists($skhpp->foto_1)) {
+                Storage::disk('public')->delete($skhpp->foto_1);
+            }
+            $skhpp->foto_1 = $request->file('foto_1')->store('skhpp_photos', 'public');
+        }
+
+        if ($request->hasFile('foto_2')) {
+            if ($skhpp->foto_2 && Storage::disk('public')->exists($skhpp->foto_2)) {
+                Storage::disk('public')->delete($skhpp->foto_2);
+            }
+            $skhpp->foto_2 = $request->file('foto_2')->store('skhpp_photos', 'public');
+        }
+
+        $user = auth()->user();
+
+        $skhpp->update([
+            'kategori_personel' => $request->kategori_personel,
+            'is_pernikahan' => $request->is_pernikahan,
+            'surat_pengantar' => $request->surat_pengantar,
+            'nama' => $request->nama,
+            'pangkat_korps_nrp' => $request->pangkat_korps_nrp,
+            'nik' => $request->nik,
+            'jabatan_pekerjaan' => $request->jabatan_pekerjaan,
+            'tempat_lahir' => $request->tempat_lahir,
+            'tanggal_lahir' => $request->tanggal_lahir,
+            'jenis_kelamin' => $request->jenis_kelamin,
+            'agama' => $request->agama,
+            'alamat' => $request->alamat,
+            'has_pengikut' => $request->has_pengikut ?? false,
+            'peruntukan' => $request->peruntukan,
+            'label_foto_1' => $request->is_pernikahan ? 'Foto Calon Suami' : 'Foto Utama Personel',
+            'label_foto_2' => $request->is_pernikahan ? 'Foto Calon Istri' : null,
+            'status' => 'pending', // Reset kembali ke pending setelah revisi operator
+            'catatan_revisi' => null,
+            'submitted_by' => $user->id,
+            'operator_name' => $user->name,
+            'operator_nrp_pangkat' => ($user->pangkat ? $user->pangkat . ' ' : '') . ($user->nrp ? 'NRP. ' . $user->nrp : ''),
+            'submitted_at' => now(),
+        ]);
+
+        // Re-sync Anggota Pengikut
+        SkhppMember::where('skhpp_id', $skhpp->id)->delete();
+        if ($request->has_pengikut && !empty($request->members)) {
+            foreach ($request->members as $idx => $m) {
+                SkhppMember::create([
+                    'skhpp_id' => $skhpp->id,
+                    'no_urut' => $idx + 1,
+                    'nama' => $m['nama'],
+                    'pangkat_nrp_nik' => $m['pangkat_nrp_nik'],
+                    'jabatan' => $m['jabatan'],
+                ]);
+            }
+        }
+
+        return redirect()->route('skhpp.index')->with('success', 'Data SKHPP berhasil diperbarui & diajukan ulang ke TTD Komandan.');
+    }
+
+    /**
+     * Persetujuan Komandan (TTD & Penomoran Fleksibel SINDEN)
      */
     public function approve(Request $request, $id)
     {
@@ -186,19 +286,26 @@ class SkhppController extends Controller
 
         $skhpp = Skhpp::findOrFail($id);
 
-        if ($skhpp->status === 'approved') {
-            return back()->with('info', 'SKHPP ini sudah pernah disetujui sebelumnya.');
-        }
-
-        // Auto Penomoran Dokumen SINDEN
         $currentYear = date('Y');
         $currentMonth = date('n');
         $romanMonth = $this->getRomanMonth($currentMonth);
 
-        $lastSeq = Skhpp::where('tahun', $currentYear)->max('nomor_urut') ?? 0;
-        $nextSeq = $lastSeq + 1;
+        // Penomoran Manual / Melewati Nomor yang Terlewat
+        if ($request->filled('custom_nomor_urut') && (int)$request->custom_nomor_urut > 0) {
+            $nextSeq = (int)$request->custom_nomor_urut;
+        } else {
+            $lastSeq = Skhpp::where('tahun', $currentYear)->max('nomor_urut') ?? 0;
+            $nextSeq = $lastSeq + 1;
+        }
 
-        $formattedNo = "R/{$nextSeq}/SKHPP/{$romanMonth}/{$currentYear}";
+        // Format Penomoran SKHPP SINDEN
+        if ($request->filled('custom_nomor_skhpp')) {
+            $formattedNo = trim($request->custom_nomor_skhpp);
+        } else if ($request->input('tipe_format') === 'mitra' || $skhpp->kategori_personel === 'sipil') {
+            $formattedNo = "R/{$nextSeq}/SKHPP/MITRA/{$romanMonth}/{$currentYear}";
+        } else {
+            $formattedNo = "R/{$nextSeq}/SKHPP/{$romanMonth}/{$currentYear}";
+        }
 
         $skhpp->update([
             'status' => 'approved',
@@ -209,6 +316,7 @@ class SkhppController extends Controller
             'tanggal_skhpp' => now(),
             'approved_by' => $user->id,
             'approved_at' => now(),
+            'catatan_revisi' => null,
         ]);
 
         return back()->with('success', "SKHPP Resmi disetujui & ditandatangani Komandan! Nomor SKHPP: {$formattedNo}");

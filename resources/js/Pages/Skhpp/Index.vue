@@ -33,17 +33,42 @@ const resetFilter = () => {
 };
 
 const approveSkhpp = (skhpp) => {
+    const defaultSeq = (skhpp.nomor_urut || 1);
+    const defaultFormat = skhpp.kategori_personel === 'sipil' ? 'mitra' : 'militer';
+
     Swal.fire({
         title: 'OTORISASI TTD KOMANDAN',
-        html: `Apakah Anda yakin ingin menyetujui & menandatangani secara digital SKHPP atas nama <b>${skhpp.nama}</b>?<br><br><span class="text-xs text-blue-600">Sistem akan menerbitkan Nomor SKHPP Resmi secara otomatis.</span>`,
+        html: `
+            <div class="text-left text-xs space-y-3 font-sans">
+                <p class="text-slate-600">Pilih format penomoran dan isi nomor urut SKHPP (bisa melewati nomor jika ada arsip terlewat):</p>
+                
+                <div>
+                    <label class="block font-bold uppercase mb-1">Nomor Urut SKHPP</label>
+                    <input id="swal-nomor-urut" type="number" value="${defaultSeq}" class="w-full text-xs font-bold p-2.5 border rounded-xl" placeholder="Masukkan nomor urut (contoh: 171)" />
+                </div>
+
+                <div>
+                    <label class="block font-bold uppercase mb-1">Pilihan Format Penomoran</label>
+                    <select id="swal-tipe-format" class="w-full text-xs font-bold p-2.5 border rounded-xl">
+                        <option value="militer" ${defaultFormat === 'militer' ? 'selected' : ''}>Format Militer (R/[NOMOR]/SKHPP/[BULAN]/[TAHUN])</option>
+                        <option value="mitra" ${defaultFormat === 'mitra' ? 'selected' : ''}>Format Mitra Kerja/Sipil (R/[NOMOR]/SKHPP/MITRA/[BULAN]/[TAHUN])</option>
+                    </select>
+                </div>
+            </div>
+        `,
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'YA, SETUJU & TTD',
         cancelButtonText: 'Batal',
         confirmButtonColor: '#059669',
+        preConfirm: () => {
+            const seq = document.getElementById('swal-nomor-urut').value;
+            const fmt = document.getElementById('swal-tipe-format').value;
+            return { custom_nomor_urut: seq, tipe_format: fmt };
+        }
     }).then((result) => {
-        if (result.isConfirmed) {
-            router.post(route('skhpp.approve', skhpp.id), {}, {
+        if (result.isConfirmed && result.value) {
+            router.post(route('skhpp.approve', skhpp.id), result.value, {
                 onSuccess: () => Swal.fire('SUKSES', 'SKHPP Resmi disetujui & ditandatangani Komandan.', 'success')
             });
         }
@@ -53,9 +78,9 @@ const approveSkhpp = (skhpp) => {
 const rejectSkhpp = (skhpp) => {
     Swal.fire({
         title: 'TOLAK / MINTA REVISI',
-        text: 'Masukkan alasan penolakan atau catatan revisi:',
+        text: 'Masukkan alasan penolakan atau catatan revisi agar operator dapat mengedit data:',
         input: 'textarea',
-        inputPlaceholder: 'Contoh: Data peruntukan kurang spesifik...',
+        inputPlaceholder: 'Contoh: Data peruntukan kurang spesifik atau NRP salah...',
         showCancelButton: true,
         confirmButtonText: 'Kirim Penolakan',
         confirmButtonColor: '#dc2626',
@@ -64,7 +89,7 @@ const rejectSkhpp = (skhpp) => {
             router.post(route('skhpp.reject', skhpp.id), {
                 catatan_revisi: result.value
             }, {
-                onSuccess: () => Swal.fire('DIKEMBALIKAN', 'Permohonan SKHPP dikembalikan ke operator.', 'warning')
+                onSuccess: () => Swal.fire('DIKEMBALIKAN', 'Permohonan SKHPP dikembalikan ke operator untuk direvisi.', 'warning')
             });
         }
     });
@@ -221,12 +246,16 @@ const formatDate = (dateStr) => {
                                     <span v-if="skhpp.status === 'approved'" class="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1">
                                         ✓ TERBIT (TTD QR)
                                     </span>
-                                    <span v-else-if="skhpp.status === 'rejected'" class="px-3 py-1 bg-rose-100 text-rose-700 rounded-full text-[9px] font-black uppercase tracking-wider">
+                                    <span v-else-if="skhpp.status === 'rejected'" class="px-3 py-1 bg-rose-100 text-rose-700 rounded-full text-[9px] font-black uppercase tracking-wider block">
                                         ✕ REVISI / DITOLAK
                                     </span>
                                     <span v-else class="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-[9px] font-black uppercase tracking-wider">
                                         ⏳ PENDING TTD
                                     </span>
+                                    
+                                    <div v-if="skhpp.catatan_revisi" class="text-[9px] text-rose-600 font-semibold mt-1 italic max-w-xs truncate" :title="skhpp.catatan_revisi">
+                                        Revisi: "{{ skhpp.catatan_revisi }}"
+                                    </div>
                                 </td>
 
                                 <td class="py-4 px-6 text-right">
@@ -237,7 +266,14 @@ const formatDate = (dateStr) => {
                                             Cetak PDF
                                         </Link>
 
-                                        <template v-if="isCommander && skhpp.status === 'pending'">
+                                        <!-- Tombol Edit & Revisi untuk Operator jika Ditolak/Pending -->
+                                        <Link v-if="skhpp.status === 'rejected' || skhpp.status === 'pending'" :href="route('skhpp.edit', skhpp.id)" 
+                                            class="px-3 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-500 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs"
+                                            title="Edit Data & Ajukan Ulang">
+                                            Edit Data
+                                        </Link>
+
+                                        <template v-if="isCommander && skhpp.status !== 'approved'">
                                             <button @click="approveSkhpp(skhpp)" 
                                                 class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs"
                                                 title="Setujui & TTD QR Komandan">

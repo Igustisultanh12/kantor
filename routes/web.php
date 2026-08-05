@@ -279,6 +279,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/skhpp/create', [SkhppController::class, 'create'])->name('skhpp.create');
         Route::post('/skhpp', [SkhppController::class, 'store'])->name('skhpp.store');
         Route::get('/skhpp/{id}', [SkhppController::class, 'show'])->name('skhpp.show');
+        Route::get('/skhpp/{id}/edit', [SkhppController::class, 'edit'])->name('skhpp.edit');
+        Route::post('/skhpp/{id}/update', [SkhppController::class, 'update'])->name('skhpp.update');
         Route::post('/skhpp/{id}/approve', [SkhppController::class, 'approve'])->name('skhpp.approve');
         Route::post('/skhpp/{id}/reject', [SkhppController::class, 'reject'])->name('skhpp.reject');
         Route::delete('/skhpp/{id}', [SkhppController::class, 'destroy'])->name('skhpp.destroy');
