@@ -149,16 +149,13 @@ const formatDateIndo = (dateStr) => {
                             <div class="text-[12px] font-bold uppercase tracking-wide leading-tight pl-6">DETASEMEN INTELIJEN</div>
                         </div>
 
-                        <!-- Judul Surat -->
+                        <!-- Judul Surat (Format Seragam Tanpa Sub-Judul Mitra) -->
                         <div class="text-center my-6" style="font-family: 'Times New Roman', Times, serif;">
                             <div class="text-[13px] font-bold uppercase tracking-wide">
                                 SURAT KETERANGAN HASIL PENELITIAN PERSONEL(SKHPP)
                             </div>
-                            <div v-if="skhpp.kategori_personel === 'perusahaan'" class="text-[13px] font-bold uppercase tracking-wide">
-                                MITRA KERJA TNI ANGKATAN LAUT
-                            </div>
                             <div class="text-[12px] font-bold mt-1">
-                                Nomor : R/ {{ skhpp.nomor_urut || '      ' }} /SKHPP/{{ skhpp.bulan_romawi || 'VIII' }}/{{ skhpp.tahun || '2026' }}
+                                Nomor : R / {{ skhpp.nomor_urut || '      ' }} / SKHPP / {{ skhpp.bulan_romawi || 'VIII' }} / {{ skhpp.tahun || '2026' }}
                             </div>
                         </div>
 
@@ -193,8 +190,8 @@ const formatDateIndo = (dateStr) => {
                                 <div class="flex-1">
                                     <div>Dengan ini menerangkan bahwa hasil penelitian terhadap :</div>
                                     
-                                    <!-- Militer Format -->
-                                    <table v-if="skhpp.kategori_personel === 'militer'" class="w-full mt-2 text-[12px]" style="line-height: 1.5;">
+                                    <!-- Militer / PNS dengan Pangkat/NRP/NIP -->
+                                    <table v-if="skhpp.pangkat_korps_nrp" class="w-full mt-2 text-[12px]" style="line-height: 1.5;">
                                         <tr>
                                             <td class="w-5 font-normal">a.</td>
                                             <td class="w-36 font-normal">Nama</td>
@@ -239,7 +236,7 @@ const formatDateIndo = (dateStr) => {
                                         </tr>
                                     </table>
 
-                                    <!-- Sipil Format -->
+                                    <!-- Sipil / Pelajar / Mahasiswa / Perusahaan dengan NIK -->
                                     <table v-else class="w-full mt-2 text-[12px]" style="line-height: 1.5;">
                                         <tr>
                                             <td class="w-5 font-normal">a.</td>
@@ -251,7 +248,7 @@ const formatDateIndo = (dateStr) => {
                                             <td class="font-normal">b.</td>
                                             <td class="font-normal">NIK</td>
                                             <td>:</td>
-                                            <td>{{ skhpp.nik }}</td>
+                                            <td>{{ skhpp.nik || '-' }}</td>
                                         </tr>
                                         <tr>
                                             <td class="font-normal">c.</td>

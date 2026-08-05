@@ -183,15 +183,17 @@ const submit = () => {
                                 class="w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500" />
                         </div>
 
-                        <div v-if="form.kategori_personel === 'militer'">
-                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Pangkat / Korps / NRP *</label>
-                            <input type="text" v-model="form.pangkat_korps_nrp" required placeholder="Contoh: Kapten Laut (K/W) NRP 22608/P"
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                                {{ form.kategori_personel === 'militer' ? 'Pangkat / Korps / NRP' : 'Pangkat / Golongan / NIP / Korps (Opsional PNS)' }}
+                            </label>
+                            <input type="text" v-model="form.pangkat_korps_nrp" placeholder="Contoh: Kapten Laut (K/W) NRP 22608/P atau PNS PENATA III/C NIP. 1973..."
                                 class="w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500" />
                         </div>
 
-                        <div v-else>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">NIK (Nomor Induk Kependudukan) *</label>
-                            <input type="text" v-model="form.nik" required placeholder="Contoh: 3515081205640009"
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">NIK (Nomor Induk Kependudukan / Pelajar / Mahasiswa)</label>
+                            <input type="text" v-model="form.nik" placeholder="Contoh: 3515081205640009"
                                 class="w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500" />
                         </div>
 
