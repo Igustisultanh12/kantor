@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Skhpp;
 use App\Models\SkhppMember;
 use App\Models\SignatureRequest;
+use App\Models\User;
+use App\Services\WhatsappService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
@@ -163,7 +165,8 @@ class SkhppController extends Controller
 
         // Kirim Notifikasi WA ke Komandan
         try {
-            $komandan = User::where('role', 'komandan')->first();
+            $komandan = User::where('role', 'komandan')->whereNotNull('phone')->first() 
+                     ?? User::where('role', 'admin')->whereNotNull('phone')->first();
             if ($komandan && $komandan->phone) {
                 $katName = ($skhpp->kategori_personel === 'perusahaan') ? 'SKHPP-P (Mitra Kerja/Perusahaan)' : 'SKHPP-D (Dinas Militer & PNS)';
                 $pesanKomandan = "📢 *SI SINDEN: PENGAJUAN SKHPP BARU*\n\n" .
@@ -175,10 +178,7 @@ class SkhppController extends Controller
                                  "👨‍💻 *Operator Pengaju:* {$user->name}\n\n" .
                                  "Mohon izin untuk memeriksa berkas di Laman : https://sisinden.my.id/signature-requests";
 
-                \Illuminate\Support\Facades\Http::timeout(3)->post('http://localhost:3000/send-message', [
-                    'number' => $komandan->phone,
-                    'message' => $pesanKomandan
-                ]);
+                WhatsappService::sendMessage($komandan->phone, $pesanKomandan);
             }
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::warning("Gagal kirim WA notif Komandan SKHPP baru: " . $e->getMessage());
@@ -397,10 +397,7 @@ class SkhppController extends Controller
                                  "🏷️ *Kategori:* {$katName}\n\n" .
                                  "Dokumen resmi & QR Code TTD sudah terbit dan dapat diunduh di Laman : https://sisinden.my.id/skhpp";
 
-                \Illuminate\Support\Facades\Http::timeout(3)->post('http://localhost:3000/send-message', [
-                    'number' => $operator->phone,
-                    'message' => $pesanOperator
-                ]);
+                WhatsappService::sendMessage($operator->phone, $pesanOperator);
             }
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::warning("Gagal kirim WA notif Operator SKHPP disetujui: " . $e->getMessage());
@@ -441,10 +438,7 @@ class SkhppController extends Controller
                                "📌 *Catatan Revisi Komandan:* {$request->catatan_revisi}\n\n" .
                                "Silakan lakukan perbaikan data pada Laman : https://sisinden.my.id/skhpp";
 
-                \Illuminate\Support\Facades\Http::timeout(3)->post('http://localhost:3000/send-message', [
-                    'number' => $operator->phone,
-                    'message' => $pesanRevisi
-                ]);
+                WhatsappService::sendMessage($operator->phone, $pesanRevisi);
             }
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::warning("Gagal kirim WA notif Operator SKHPP revisi: " . $e->getMessage());
@@ -620,7 +614,8 @@ class SkhppController extends Controller
 
         // Kirim Notifikasi WA ke Komandan
         try {
-            $komandan = \App\Models\User::where('role', 'komandan')->first();
+            $komandan = User::where('role', 'komandan')->whereNotNull('phone')->first() 
+                     ?? User::where('role', 'admin')->whereNotNull('phone')->first();
             if ($komandan && $komandan->phone) {
                 $katName = ($skhpp->kategori_personel === 'perusahaan') ? 'SKHPP-P (Mitra Kerja/Perusahaan)' : 'SKHPP-D (Dinas Militer & PNS)';
                 $pesan = "📢 *SI SINDEN: PENGAJUAN ULANG TTE SKHPP*\n\n" .
@@ -632,10 +627,7 @@ class SkhppController extends Controller
                          "👨‍💻 *Pengaju (Admin):* {$user->name}\n\n" .
                          "Mohon izin untuk memeriksa & menyetujui berkas di Laman : https://sisinden.my.id/signature-requests";
                 
-                \Illuminate\Support\Facades\Http::timeout(3)->post('http://localhost:3000/send-message', [
-                    'number' => $komandan->phone,
-                    'message' => $pesan
-                ]);
+                WhatsappService::sendMessage($komandan->phone, $pesan);
             }
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::warning("WA Notif Ajukan Ulang failed: " . $e->getMessage());
