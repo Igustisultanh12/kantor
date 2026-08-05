@@ -144,15 +144,18 @@ const formatDateIndo = (dateStr) => {
                     <div class="skhpp-page">
                         
                         <!-- Kop Header -->
-                        <div class="border-b-2 border-black pb-1 mb-6 text-left" style="font-family: 'Times New Roman', Times, serif;">
+                        <div class="border-b border-black pb-0.5 mb-6 inline-block" style="font-family: 'Times New Roman', Times, serif;">
                             <div class="text-[12px] font-bold uppercase tracking-wide leading-tight">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
                             <div class="text-[12px] font-bold uppercase tracking-wide leading-tight pl-6">DETASEMEN INTELIJEN</div>
                         </div>
 
-                        <!-- Judul Surat (Format Seragam Tanpa Sub-Judul Mitra) -->
+                        <!-- Judul Surat -->
                         <div class="text-center my-6" style="font-family: 'Times New Roman', Times, serif;">
                             <div class="text-[13px] font-bold uppercase tracking-wide">
                                 SURAT KETERANGAN HASIL PENELITIAN PERSONEL(SKHPP)
+                            </div>
+                            <div v-if="skhpp.kategori_personel === 'perusahaan'" class="text-[13px] font-bold uppercase tracking-wide">
+                                MITRA KERJA TNI ANGKATAN LAUT
                             </div>
                             <div class="text-[12px] font-bold mt-1">
                                 Nomor : R / {{ skhpp.nomor_urut || '      ' }} / SKHPP / {{ skhpp.bulan_romawi || 'VIII' }} / {{ skhpp.tahun || '2026' }}
@@ -357,45 +360,47 @@ const formatDateIndo = (dateStr) => {
                         <!-- Footer Kepada -->
                         <div class="mt-8 text-[12px]" style="font-family: 'Times New Roman', Times, serif;">
                             <div>Kepada :</div>
-                            <div class="font-bold border-b border-black inline-block">Yth. Asintel Dankodaeral V</div>
+                            <div class="font-bold border-b border-black inline-block pb-0.5">Yth. Asintel Dankodaeral V</div>
                         </div>
                     </div>
 
-                    <!-- Page 2: Lampiran SKHPP (If members exist > 1) -->
+                    <!-- Page 2: Lampiran SKHPP (If members exist > 0) -->
                     <template v-if="skhpp.has_pengikut && skhpp.members && skhpp.members.length > 0">
                         
                         <div class="html2pdf__page-break" style="page-break-before: always; height: 1px;"></div>
 
                         <div class="skhpp-page pt-6">
                             
-                            <!-- Header Lampiran -->
-                            <div class="flex justify-between items-start border-b-2 border-black pb-2 mb-6" style="font-family: 'Times New Roman', Times, serif;">
-                                <div>
-                                    <div class="text-[12px] font-bold uppercase">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
-                                    <div class="text-[12px] font-bold uppercase pl-6">DETASEMEN INTELIJEN</div>
+                            <!-- Header Lampiran (Kop Kiri & Detail Lampiran Kanan) -->
+                            <div class="flex justify-between items-start mb-6" style="font-family: 'Times New Roman', Times, serif;">
+                                <div class="border-b border-black pb-0.5 inline-block">
+                                    <div class="text-[12px] font-bold uppercase leading-tight">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
+                                    <div class="text-[12px] font-bold uppercase leading-tight pl-6">DETASEMEN INTELIJEN</div>
                                 </div>
-                                <div class="text-right text-[11px] font-bold">
+                                <div class="text-right text-[11px]" style="line-height: 1.3;">
                                     <div>Lampiran SKHPP Den Intel Kodaeral V</div>
-                                    <div>Nomor SKHPP/ {{ skhpp.nomor_urut || '   ' }} /{{ skhpp.bulan_romawi || 'VIII' }}/{{ skhpp.tahun || '2026' }}</div>
-                                    <div>Tanggal {{ formatDateIndo(skhpp.tanggal_skhpp || skhpp.approved_at || skhpp.created_at) }}</div>
+                                    <div class="border-b border-black inline-block pb-0.5">
+                                        Nomor SKHPP/ <span class="px-2">{{ skhpp.nomor_urut || '   ' }}</span> /{{ skhpp.bulan_romawi || 'VII' }}/{{ skhpp.tahun || '2026' }}<br>
+                                        Tanggal <span class="px-3">{{ formatDateIndo(skhpp.tanggal_skhpp || skhpp.approved_at || skhpp.created_at) }}</span>
+                                    </div>
                                 </div>
                             </div>
 
                             <!-- Judul Lampiran -->
                             <div class="text-center my-6" style="font-family: 'Times New Roman', Times, serif;">
-                                <div class="text-[13px] font-bold uppercase tracking-wider underline">
-                                    DAFTAR NAMA-NAMA PERSONEL / ANGGOTA PENGIKUT
+                                <div class="text-[13px] font-bold uppercase tracking-wider">
+                                    DAFTAR NAMA-NAMA ANGGOTA PENGIKUT
                                 </div>
                             </div>
 
                             <!-- Tabel Anggota Pengikut -->
                             <table class="w-full border-collapse border border-black text-[11px] my-6" style="font-family: 'Times New Roman', Times, serif;">
                                 <thead>
-                                    <tr class="bg-slate-100 font-bold uppercase border-b border-black text-center">
+                                    <tr class="font-bold uppercase border-b border-black text-center bg-slate-50">
                                         <th class="border border-black p-2 w-10">NO</th>
-                                        <th class="border border-black p-2">NAMA LENGKAP</th>
-                                        <th class="border border-black p-2">NRP / NIK</th>
-                                        <th class="border border-black p-2">JABATAN / PEKERJAAN</th>
+                                        <th class="border border-black p-2">NAMA</th>
+                                        <th class="border border-black p-2">NIK / NRP / NIP</th>
+                                        <th class="border border-black p-2">JABATAN</th>
                                     </tr>
                                 </thead>
                                 <tbody>
