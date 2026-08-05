@@ -278,6 +278,50 @@ class SkhppController extends Controller
     }
 
     /**
+     * Khusus Admin: Atur / Pesan Nomor Urut SKHPP (Tanpa Otomatis TTD Komandan)
+     */
+    public function setNomor(Request $request, $id)
+    {
+        $user = auth()->user();
+        if ($user->role !== 'admin') {
+            return back()->with('error', 'Hanya Admin yang berwenang mengatur penomoran!');
+        }
+
+        $request->validate([
+            'custom_nomor_urut' => 'required|integer|min:1'
+        ]);
+
+        $skhpp = Skhpp::findOrFail($id);
+        $currentYear = date('Y');
+        $currentMonth = date('n');
+        $romanMonth = $this->getRomanMonth($currentMonth);
+
+        $isPerusahaan = ($skhpp->kategori_personel === 'perusahaan');
+        $targetCode = $isPerusahaan ? 'SKHPP-P' : 'SKHPP-D';
+        $categoryName = $isPerusahaan ? 'SKHPP Mitra Kerja / Perusahaan' : 'SKHPP Dinas Militer & PNS';
+
+        $nextSeq = (int)$request->custom_nomor_urut;
+        $priority = $request->input('priority', 'R');
+
+        $skhppCategory = \App\Models\Category::firstOrCreate(
+            ['code' => $targetCode],
+            ['name' => $categoryName, 'start_number' => 1]
+        );
+
+        $cleanCode = explode('-', $skhppCategory->code)[0]; // 'SKHPP'
+        $formattedNo = "{$priority} / {$nextSeq} / {$cleanCode} / {$romanMonth} / {$currentYear}";
+
+        $skhpp->update([
+            'nomor_skhpp' => $formattedNo,
+            'nomor_urut' => $nextSeq,
+            'bulan_romawi' => $romanMonth,
+            'tahun' => (int)$currentYear,
+        ]);
+
+        return back()->with('success', "Nomor Urut SKHPP ({$targetCode}) berhasil diatur ke {$nextSeq} ({$formattedNo}). Berkas tetap PENDING TTD Komandan.");
+    }
+
+    /**
      * Persetujuan Komandan (TTD & Penomoran Terintegrasi Buku Agenda SINDEN)
      */
     public function approve(Request $request, $id)
