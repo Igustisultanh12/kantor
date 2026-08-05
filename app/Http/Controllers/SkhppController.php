@@ -393,8 +393,11 @@ class SkhppController extends Controller
             ->where('verification_code', $code)
             ->firstOrFail();
 
+        $settings = \App\Models\Setting::pluck('value', 'key')->all();
+
         return Inertia::render('Skhpp/Verify', [
-            'skhpp' => $skhpp
+            'skhpp' => $skhpp,
+            'settings' => $settings
         ]);
     }
 
