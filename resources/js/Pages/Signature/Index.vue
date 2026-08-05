@@ -671,6 +671,7 @@ const getStatusClass = (status) => {
                 ❌ Tolak / Minta Revisi
               </button>
             </template>
+          </div>
         </div>
       </div>
     </div>
