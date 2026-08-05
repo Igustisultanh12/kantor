@@ -460,11 +460,12 @@ class SkhppController extends Controller
         $tanggal_lahir_indo = $tglLahir ? ($tglLahir->format('d') . ' ' . $months[(int)$tglLahir->format('n') - 1] . ' ' . $tglLahir->format('Y')) : '';
 
         $tglSkhpp = $skhpp->tanggal_skhpp ? new \DateTime($skhpp->tanggal_skhpp) : ($skhpp->approved_at ? new \DateTime($skhpp->approved_at) : new \DateTime());
-        $tanggal_skhpp_indo = $tglSkhpp ? ($months[(int)$tglSkhpp->format('n') - 1] . ' ' . $tglSkhpp->format('Y')) : '';
+        $tanggal_skhpp_indo = $tglSkhpp ? ($tglSkhpp->format('j') . ' ' . $months[(int)$tglSkhpp->format('n') - 1] . ' ' . $tglSkhpp->format('Y')) : '';
+        $bulan_tahun_indo = $tglSkhpp ? ($months[(int)$tglSkhpp->format('n') - 1] . ' ' . $tglSkhpp->format('Y')) : '';
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.skhpp', compact(
             'skhpp', 'foto1_base64', 'foto2_base64', 'qr_base64',
-            'tanggal_lahir_indo', 'tanggal_skhpp_indo'
+            'tanggal_lahir_indo', 'tanggal_skhpp_indo', 'bulan_tahun_indo'
         ))->setPaper('a4', 'portrait');
 
         $safeName = \Illuminate\Support\Str::slug($skhpp->nama);
