@@ -112,6 +112,30 @@ const changeNomorSkhpp = (skhpp) => {
     });
 };
 
+const reSubmitTte = (skhpp) => {
+    const katCode = (skhpp.kategori_personel === 'perusahaan') ? 'SKHPP-P' : 'SKHPP-D';
+    Swal.fire({
+        title: 'AJUKAN TTE ULANG?',
+        html: `
+            <div class="text-left text-xs space-y-2 font-sans">
+                <p class="text-slate-600">Ajukan ulang permohonan SKHPP atas nama <b>${skhpp.nama}</b> (${katCode}) ke Komandan untuk otorisasi TTE Tanda Tangan Digital.</p>
+                <p class="text-emerald-600 font-bold text-[10px]">✓ Status akan direset ke Pending TTD Komandan & notifikasi WA dikirim.</p>
+            </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'YA, AJUKAN TTE ULANG',
+        confirmButtonColor: '#2563eb',
+        cancelButtonText: 'BATAL'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.post(route('skhpp.resubmit-tte', skhpp.id), {}, {
+                onSuccess: () => Swal.fire('BERHASIL DIAJUKAN', `Permohonan SKHPP ${skhpp.nama} berhasil diajukan ulang ke TTD Komandan.`, 'success')
+            });
+        }
+    });
+};
+
 const rejectSkhpp = (skhpp) => {
     Swal.fire({
         title: 'TOLAK / MINTA REVISI',
@@ -316,12 +340,19 @@ const formatDate = (dateStr) => {
                                             Edit Data
                                         </Link>
 
-                                        <!-- Tombol Khusus Admin untuk Atur/Loncati Nomor tanpa TTD -->
-                                        <button v-if="isAdmin" @click="changeNomorSkhpp(skhpp)" 
-                                            class="px-2.5 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs"
-                                            title="Atur / Loncati Nomor Urut SKHPP (Khusus Admin)">
-                                            🔢 Atur Nomor
-                                        </button>
+                                        <!-- Tombol Khusus Admin untuk Atur Nomor & Ajukan TTE Ulang -->
+                                        <template v-if="isAdmin">
+                                            <button @click="changeNomorSkhpp(skhpp)" 
+                                                class="px-2.5 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs"
+                                                title="Atur / Loncati Nomor Urut SKHPP (Khusus Admin)">
+                                                🔢 Atur Nomor
+                                            </button>
+                                            <button @click="reSubmitTte(skhpp)" 
+                                                class="px-2.5 py-1.5 bg-cyan-50 text-cyan-700 hover:bg-cyan-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs flex items-center gap-1"
+                                                title="Ajukan Ulang TTE ke Komandan (Khusus Admin)">
+                                                🔄 Ajukan TTE Ulang
+                                            </button>
+                                        </template>
 
                                         <template v-if="isCommander && skhpp.status !== 'approved'">
                                             <button @click="approveSkhpp(skhpp)" 

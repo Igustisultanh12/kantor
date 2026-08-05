@@ -534,4 +534,44 @@ class SkhppController extends Controller
 
         return back()->with('success', "Nomor urut {$targetCode} berhasil diatur ke {$nextSeq} ({$formattedNo}) tanpa menyetujui TTD.");
     }
+
+    /**
+     * Khusus Admin: Ajukan Ulang TTE ke Komandan (Reset status ke pending)
+     */
+    public function reSubmitTte($id)
+    {
+        $user = auth()->user();
+        if ($user->role !== 'admin') {
+            return back()->with('error', 'Hanya Admin yang berwenang mengoperasikan fitur Ajukan TTE Ulang.');
+        }
+
+        $skhpp = Skhpp::findOrFail($id);
+        $skhpp->update([
+            'status' => 'pending',
+            'catatan_revisi' => null,
+            'submitted_at' => now(),
+        ]);
+
+        // Kirim Notifikasi WA ke Komandan jika terkonfigurasi
+        try {
+            $komandan = \App\Models\User::where('role', 'komandan')->first();
+            if ($komandan && $komandan->phone) {
+                $pesan = "📢 *SI SINDEN: PEMBERITAHUAN DIAJUKAN ULANG*\n\n" .
+                         "Mohon izin Komandan, terdapat pengajuan ulang TTE SKHPP:\n\n" .
+                         "📝 *Nama:* {$skhpp->nama}\n" .
+                         "👤 *Kategori:* " . ($skhpp->kategori_personel === 'perusahaan' ? 'SKHPP-P (Mitra)' : 'SKHPP-D (Dinas/PNS)') . "\n" .
+                         "🎯 *Peruntukan:* {$skhpp->peruntukan}\n\n" .
+                         "Mohon izin untuk memeriksa berkas di Laman : https://sisinden.my.id/signature-requests";
+                
+                \Illuminate\Support\Facades\Http::post('http://localhost:3000/send-message', [
+                    'number' => $komandan->phone,
+                    'message' => $pesan
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("WA Notif Ajukan Ulang failed: " . $e->getMessage());
+        }
+
+        return back()->with('success', "Permohonan SKHPP {$skhpp->nama} berhasil diajukan ulang ke TTD Komandan.");
+    }
 }

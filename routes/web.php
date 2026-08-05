@@ -258,8 +258,9 @@ Route::middleware('auth')->group(function () {
             }
         })->name('settings.wa-status');
 
-        // Fitur khusus Admin: Atur/Loncati nomor urut SKHPP tanpa TTD
+        // Fitur khusus Admin: Atur/Loncati nomor urut SKHPP & Ajukan TTE Ulang
         Route::post('/skhpp/{id}/update-number', [SkhppController::class, 'updateNumber'])->name('skhpp.update-number');
+        Route::post('/skhpp/{id}/resubmit-tte', [SkhppController::class, 'reSubmitTte'])->name('skhpp.resubmit-tte');
     });
 
     // =====================================================================
