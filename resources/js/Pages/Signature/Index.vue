@@ -69,15 +69,26 @@ onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer); });
 
 // --- LOGIKA SKHPP APPROVE / REJECT ---
 const approveSkhpp = (skhpp) => {
+  const defaultSeq = skhpp.nomor_urut || '';
+
   Swal.fire({
-    title: 'SETUJUI & TTD SKHPP?',
+    title: 'OTORISASI & TERBITKAN SKHPP',
     html: `
-      <div class="text-left text-xs space-y-2">
-        <p><strong>Subjek:</strong> ${skhpp.nama}</p>
-        <p><strong>Pangkat/NRP/NIK:</strong> ${skhpp.pangkat_korps_nrp || skhpp.nik || '-'}</p>
-        <p><strong>Peruntukan:</strong> ${skhpp.peruntukan}</p>
-        <hr class="my-2"/>
-        <p class="text-emerald-600 font-bold">Dokumen akan otomatis diterbitkan nomor resmi, QR Code TTD Komandan, dan disinkronkan ke Buku Agenda SINDEN.</p>
+      <div class="text-left text-xs space-y-3 font-sans">
+        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+          <p class="font-bold text-slate-800">${skhpp.nama}</p>
+          <p class="text-slate-500">${skhpp.pangkat_korps_nrp || skhpp.nik || '-'}</p>
+        </div>
+
+        <div>
+          <label class="block font-bold uppercase mb-1 text-slate-700 text-[10px]">Nomor Urut SKHPP (Isi untuk Loncati Nomor / Arsip Terlewat)</label>
+          <input id="swal-custom-seq" type="number" value="${defaultSeq}" class="w-full text-xs font-bold p-2.5 border rounded-xl" placeholder="Kosongkan untuk otomatis urutan selanjutnya (cth: 175)" />
+          <span class="text-[9px] text-slate-400 mt-1 block">*Jika dikosongkan, sistem akan memakai nomor otomatis urutan berikutnya.</span>
+        </div>
+
+        <p class="text-emerald-700 font-bold text-[10px] bg-emerald-50 p-2 rounded-lg border border-emerald-200">
+          ✓ Dokumen akan otomatis diterbitkan nomor resmi, QR Code TTD Komandan, dan disinkronkan ke Buku Agenda SINDEN.
+        </p>
       </div>
     `,
     icon: 'question',
@@ -85,13 +96,19 @@ const approveSkhpp = (skhpp) => {
     confirmButtonColor: '#10b981',
     cancelButtonColor: '#64748b',
     confirmButtonText: 'YA, SETUJUI & TERBITKAN',
-    cancelButtonText: 'BATAL'
+    cancelButtonText: 'BATAL',
+    preConfirm: () => {
+      const seqVal = document.getElementById('swal-custom-seq').value;
+      return { custom_nomor_urut: seqVal };
+    }
   }).then((res) => {
     if (res.isConfirmed) {
-      router.post(route('skhpp.approve', skhpp.id), {}, {
+      router.post(route('skhpp.approve', skhpp.id), {
+        custom_nomor_urut: res.value.custom_nomor_urut
+      }, {
         onSuccess: () => {
           isSkhppPreviewOpen.value = false;
-          Swal.fire('BERHASIL DISAHKAN', 'SKHPP Resmi telah ditandatangani Komandan.', 'success');
+          Swal.fire('BERHASIL DISAHKAN', 'SKHPP Resmi telah ditandatangani Komandan & tersinkron ke Buku Agenda.', 'success');
         }
       });
     }
