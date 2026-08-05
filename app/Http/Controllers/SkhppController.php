@@ -416,4 +416,58 @@ class SkhppController extends Controller
 
         return back()->with('success', 'Data permohonan SKHPP berhasil dihapus.');
     }
+
+    /**
+     * Export Dokumen Resmi SKHPP ke Format PDF (DomPDF SINDEN Standard)
+     */
+    public function exportPdf($id)
+    {
+        $skhpp = Skhpp::with(['members', 'submitter', 'approver'])->findOrFail($id);
+
+        $foto1_base64 = null;
+        if ($skhpp->foto_1 && Storage::disk('public')->exists($skhpp->foto_1)) {
+            $foto1Path = Storage::disk('public')->path($skhpp->foto_1);
+            $foto1Type = pathinfo($foto1Path, PATHINFO_EXTENSION);
+            $foto1Data = file_get_contents($foto1Path);
+            $foto1_base64 = 'data:image/' . $foto1Type . ';base64,' . base64_encode($foto1Data);
+        }
+
+        $foto2_base64 = null;
+        if ($skhpp->foto_2 && Storage::disk('public')->exists($skhpp->foto_2)) {
+            $foto2Path = Storage::disk('public')->path($skhpp->foto_2);
+            $foto2Type = pathinfo($foto2Path, PATHINFO_EXTENSION);
+            $foto2Data = file_get_contents($foto2Path);
+            $foto2_base64 = 'data:image/' . $foto2Type . ';base64,' . base64_encode($foto2Data);
+        }
+
+        // Generate QR Code TTD Image
+        $qr_base64 = null;
+        if ($skhpp->status === 'approved') {
+            try {
+                $verifyUrl = route('skhpp.verify', $skhpp->verification_code);
+                $qrData = file_get_contents('https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' . urlencode($verifyUrl));
+                if ($qrData) {
+                    $qr_base64 = 'data:image/png;base64,' . base64_encode($qrData);
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning("Gagal fetch QR image: " . $e->getMessage());
+            }
+        }
+
+        $months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+        $tglLahir = $skhpp->tanggal_lahir ? new \DateTime($skhpp->tanggal_lahir) : null;
+        $tanggal_lahir_indo = $tglLahir ? ($tglLahir->format('d') . ' ' . $months[(int)$tglLahir->format('n') - 1] . ' ' . $tglLahir->format('Y')) : '';
+
+        $tglSkhpp = $skhpp->tanggal_skhpp ? new \DateTime($skhpp->tanggal_skhpp) : ($skhpp->approved_at ? new \DateTime($skhpp->approved_at) : new \DateTime());
+        $tanggal_skhpp_indo = $tglSkhpp ? ($months[(int)$tglSkhpp->format('n') - 1] . ' ' . $tglSkhpp->format('Y')) : '';
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.skhpp', compact(
+            'skhpp', 'foto1_base64', 'foto2_base64', 'qr_base64',
+            'tanggal_lahir_indo', 'tanggal_skhpp_indo'
+        ))->setPaper('a4', 'portrait');
+
+        $safeName = \Illuminate\Support\Str::slug($skhpp->nama);
+        return $pdf->stream("SKHPP_{$safeName}.pdf");
+    }
 }

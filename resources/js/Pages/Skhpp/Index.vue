@@ -260,10 +260,16 @@ const formatDate = (dateStr) => {
 
                                 <td class="py-4 px-6 text-right">
                                     <div class="flex items-center justify-end gap-2">
+                                        <a :href="route('skhpp.export-pdf', skhpp.id)" target="_blank"
+                                            class="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs flex items-center gap-1"
+                                            title="Unduh PDF DomPDF">
+                                            📄 PDF
+                                        </a>
+
                                         <Link :href="route('skhpp.show', skhpp.id)" 
                                             class="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs"
-                                            title="Lihat SKHPP & Cetak Dokumen PDF">
-                                            Cetak PDF
+                                            title="Pratinjau Dokumen">
+                                            Detail
                                         </Link>
 
                                         <!-- Tombol Edit & Revisi untuk Operator jika Ditolak/Pending -->

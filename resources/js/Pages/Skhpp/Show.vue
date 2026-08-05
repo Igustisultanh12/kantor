@@ -22,31 +22,7 @@ const qrApiUrl = computed(() => {
 const isExporting = ref(false);
 
 const downloadPdf = () => {
-    isExporting.value = true;
-    const element = document.getElementById('area-skhpp-cetak');
-
-    const opt = {
-        margin: [0.3, 0.4, 0.3, 0.4],
-        filename: `SKHPP_${props.skhpp.nama.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, windowWidth: 720 },
-        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-    };
-
-    if (window.html2pdf) {
-        window.html2pdf().set(opt).from(element).save().then(() => {
-            isExporting.value = false;
-        });
-    } else {
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-        script.onload = () => {
-            window.html2pdf().set(opt).from(element).save().then(() => {
-                isExporting.value = false;
-            });
-        };
-        document.head.appendChild(script);
-    }
+    window.open(route('skhpp.export-pdf', props.skhpp.id), '_blank');
 };
 
 const approveSkhpp = () => {
