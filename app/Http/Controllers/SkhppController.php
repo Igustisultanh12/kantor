@@ -295,24 +295,27 @@ class SkhppController extends Controller
         $currentMonth = date('n');
         $romanMonth = $this->getRomanMonth($currentMonth);
 
-        // Penomoran Manual / Melewati Nomor yang Terlewat
+        $isPerusahaan = ($skhpp->kategori_personel === 'perusahaan');
+        $targetCode = $isPerusahaan ? 'SKHPP-P' : 'SKHPP-D';
+        $categoryName = $isPerusahaan 
+            ? 'SKHPP Mitra Kerja / Perusahaan' 
+            : 'SKHPP Dinas Militer & PNS';
+
+        // PENOMORAN TERPISAH KATEGORI (SKHPP-P & SKHPP-D INDEPENDEN) & BISA LONCATI NOMOR
         if ($request->filled('custom_nomor_urut') && (int)$request->custom_nomor_urut > 0) {
             $nextSeq = (int)$request->custom_nomor_urut;
         } else {
-            $lastSeq = Skhpp::where('tahun', $currentYear)->max('nomor_urut') ?? 0;
+            $seqQuery = Skhpp::where('tahun', $currentYear);
+            if ($isPerusahaan) {
+                $seqQuery->where('kategori_personel', 'perusahaan');
+            } else {
+                $seqQuery->where('kategori_personel', '!=', 'perusahaan');
+            }
+            $lastSeq = $seqQuery->max('nomor_urut') ?? 0;
             $nextSeq = $lastSeq + 1;
         }
 
         $priority = $request->input('priority', 'R'); // R (RAHASIA), B (BIASA), K (KILAT)
-
-        // =========================================================================
-        // SULTAN CONFIG: EXACT LETTER-LOGS PENYAMARAN KODE FORMAT (SKHPP-D / SKHPP-P -> SKHPP)
-        // Format: {PRIORITY} / {SEQUENCE} / SKHPP / {ROMAN_MONTH} / {YEAR}
-        // =========================================================================
-        $targetCode = ($skhpp->kategori_personel === 'perusahaan') ? 'SKHPP-P' : 'SKHPP-D';
-        $categoryName = ($skhpp->kategori_personel === 'perusahaan') 
-            ? 'SKHPP Mitra Kerja / Perusahaan' 
-            : 'SKHPP Dinas Militer & PNS';
 
         $skhppCategory = \App\Models\Category::firstOrCreate(
             ['code' => $targetCode],

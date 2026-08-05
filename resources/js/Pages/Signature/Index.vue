@@ -70,24 +70,26 @@ onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer); });
 // --- LOGIKA SKHPP APPROVE / REJECT ---
 const approveSkhpp = (skhpp) => {
   const defaultSeq = skhpp.nomor_urut || '';
+  const katCode = (skhpp.kategori_personel === 'perusahaan') ? 'SKHPP-P (Mitra Kerja/Perusahaan)' : 'SKHPP-D (Dinas Militer & PNS)';
 
   Swal.fire({
     title: 'OTORISASI & TERBITKAN SKHPP',
     html: `
       <div class="text-left text-xs space-y-3 font-sans">
         <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+          <p class="font-black text-blue-600 text-[10px] uppercase mb-0.5">${katCode}</p>
           <p class="font-bold text-slate-800">${skhpp.nama}</p>
           <p class="text-slate-500">${skhpp.pangkat_korps_nrp || skhpp.nik || '-'}</p>
         </div>
 
         <div>
-          <label class="block font-bold uppercase mb-1 text-slate-700 text-[10px]">Nomor Urut SKHPP (Isi untuk Loncati Nomor / Arsip Terlewat)</label>
-          <input id="swal-custom-seq" type="number" value="${defaultSeq}" class="w-full text-xs font-bold p-2.5 border rounded-xl" placeholder="Kosongkan untuk otomatis urutan selanjutnya (cth: 175)" />
-          <span class="text-[9px] text-slate-400 mt-1 block">*Jika dikosongkan, sistem akan memakai nomor otomatis urutan berikutnya.</span>
+          <label class="block font-bold uppercase mb-1 text-slate-700 text-[10px]">Nomor Urut ${skhpp.kategori_personel === 'perusahaan' ? 'SKHPP-P' : 'SKHPP-D'} (Isi jika mau loncati nomor)</label>
+          <input id="swal-custom-seq" type="number" value="${defaultSeq}" class="w-full text-xs font-bold p-2.5 border rounded-xl" placeholder="Kosongkan untuk nomor urut otomatis ${skhpp.kategori_personel === 'perusahaan' ? 'SKHPP-P' : 'SKHPP-D'}" />
+          <span class="text-[9px] text-slate-400 mt-1 block">*Penomoran SKHPP-P dan SKHPP-D terpisah & independen.</span>
         </div>
 
         <p class="text-emerald-700 font-bold text-[10px] bg-emerald-50 p-2 rounded-lg border border-emerald-200">
-          ✓ Dokumen akan otomatis diterbitkan nomor resmi, QR Code TTD Komandan, dan disinkronkan ke Buku Agenda SINDEN.
+          ✓ Diterbitkan nomor resmi ${katCode}, QR Code TTD Komandan, dan tersinkron ke Buku Agenda.
         </p>
       </div>
     `,
