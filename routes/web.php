@@ -25,6 +25,7 @@ use App\Http\Controllers\API\PESSReceiverController; // SULTAN CONFIG: Controlle
 use App\Http\Controllers\CommanderAccountController; // SINDEN CORRECTION: Kalibrasi typo dari Controkkers ke Controllers
 use App\Http\Controllers\MitraPaymentController;
 use App\Http\Controllers\TechnicalUnitCashController;
+use App\Http\Controllers\SkhppController;
 use App\Models\User;
 use App\Models\LetterLog;
 use App\Models\Letter;
@@ -271,11 +272,21 @@ Route::middleware('auth')->group(function () {
         // =====================================================================
         // SULTAN CONFIG: TAMBAHAN MURNI MANAJEMEN KONTROL PORTAL AKUN PERSONEL
         // =====================================================================
-        Route::post('/admin/applicants/{id}/update-status', [PESSAdminController::class, 'updateStatus'])->name('admin.applicants.update-status');
-        Route::put('/admin/applicants/{id}/edit', [PESSAdminController::class, 'updateProfile'])->name('admin.applicants.edit');
-        Route::delete('/admin/applicants/{id}/delete', [PESSAdminController::class, 'destroyAccount'])->name('admin.applicants.delete');
+        // =====================================================================
+        // MODUL UTAMA PENERBITAN & OTORITAS SKHPP (MILITER, SIPIL, NIKAH)
+        // =====================================================================
+        Route::get('/skhpp', [SkhppController::class, 'index'])->name('skhpp.index');
+        Route::get('/skhpp/create', [SkhppController::class, 'create'])->name('skhpp.create');
+        Route::post('/skhpp', [SkhppController::class, 'store'])->name('skhpp.store');
+        Route::get('/skhpp/{id}', [SkhppController::class, 'show'])->name('skhpp.show');
+        Route::post('/skhpp/{id}/approve', [SkhppController::class, 'approve'])->name('skhpp.approve');
+        Route::post('/skhpp/{id}/reject', [SkhppController::class, 'reject'])->name('skhpp.reject');
+        Route::delete('/skhpp/{id}', [SkhppController::class, 'destroy'])->name('skhpp.destroy');
     });
 });
+
+// Jalur Verifikasi Publik QR Code Scan TTD Komandan SKHPP
+Route::get('/verify-skhpp/{code}', [SkhppController::class, 'verify'])->name('skhpp.verify');
 
 // =====================================================================
 // SULTAN CONFIG: GATEWAY OPEN API PENERIMA BERKAS FISIK LINTAS VPS (BEARER TOKEN)

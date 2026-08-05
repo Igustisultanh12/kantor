@@ -1,0 +1,273 @@
+<script setup>
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
+import Swal from 'sweetalert2';
+
+const props = defineProps({
+    skhpps: Object,
+    filters: Object,
+});
+
+const page = usePage();
+const user = computed(() => page.props.auth.user);
+const isCommander = computed(() => user.value.role === 'admin' || user.value.role === 'komandan' || user.value.name === 'I Gusti Sultan H.A, A.Md.Kom');
+
+const search = ref(props.filters?.search || '');
+const statusFilter = ref(props.filters?.status || 'all');
+const kategoriFilter = ref(props.filters?.kategori || 'all');
+
+const applyFilter = () => {
+    router.get(route('skhpp.index'), {
+        search: search.value,
+        status: statusFilter.value,
+        kategori: kategoriFilter.value,
+    }, { preserveState: true, replace: true });
+};
+
+const resetFilter = () => {
+    search.value = '';
+    statusFilter.value = 'all';
+    kategoriFilter.value = 'all';
+    applyFilter();
+};
+
+const approveSkhpp = (skhpp) => {
+    Swal.fire({
+        title: 'OTORISASI TTD KOMANDAN',
+        html: `Apakah Anda yakin ingin menyetujui & menandatangani secara digital SKHPP atas nama <b>${skhpp.nama}</b>?<br><br><span class="text-xs text-blue-600">Sistem akan menerbitkan Nomor SKHPP Resmi secara otomatis.</span>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'YA, SETUJU & TTD',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#059669',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.post(route('skhpp.approve', skhpp.id), {}, {
+                onSuccess: () => Swal.fire('SUKSES', 'SKHPP Resmi disetujui & ditandatangani Komandan.', 'success')
+            });
+        }
+    });
+};
+
+const rejectSkhpp = (skhpp) => {
+    Swal.fire({
+        title: 'TOLAK / MINTA REVISI',
+        text: 'Masukkan alasan penolakan atau catatan revisi:',
+        input: 'textarea',
+        inputPlaceholder: 'Contoh: Data peruntukan kurang spesifik...',
+        showCancelButton: true,
+        confirmButtonText: 'Kirim Penolakan',
+        confirmButtonColor: '#dc2626',
+    }).then((result) => {
+        if (result.isConfirmed && result.value) {
+            router.post(route('skhpp.reject', skhpp.id), {
+                catatan_revisi: result.value
+            }, {
+                onSuccess: () => Swal.fire('DIKEMBALIKAN', 'Permohonan SKHPP dikembalikan ke operator.', 'warning')
+            });
+        }
+    });
+};
+
+const deleteSkhpp = (skhpp) => {
+    Swal.fire({
+        title: 'Hapus SKHPP?',
+        text: `Data permohonan SKHPP atas nama ${skhpp.nama} akan dihapus permanen.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Hapus',
+        confirmButtonColor: '#dc2626',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.delete(route('skhpp.destroy', skhpp.id), {
+                onSuccess: () => Swal.fire('TERHAPUS', 'Data berhasil dihapus.', 'success')
+            });
+        }
+    });
+};
+
+const formatDate = (dateStr) => {
+    if (!dateStr) return '-';
+    return new Date(dateStr).toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+    });
+};
+</script>
+
+<template>
+    <Head title="Penerbitan SKHPP - SINDEN" />
+
+    <AuthenticatedLayout>
+        <div class="py-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+            
+            <!-- Header Section -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl shadow-xs border border-slate-100">
+                <div class="flex items-center gap-4">
+                    <div class="p-3 bg-emerald-50 text-emerald-600 rounded-2xl">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-black text-slate-900 uppercase tracking-tight">Penerbitan SKHPP</h1>
+                        <p class="text-xs text-slate-500 font-medium">Surat Keterangan Hasil Penelitian Personel (Militer & Sipil Mitra) SINDEN</p>
+                    </div>
+                </div>
+
+                <Link :href="route('skhpp.create')" 
+                    class="inline-flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-2xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
+                    <span>Terbitkan SKHPP Baru</span>
+                </Link>
+            </div>
+
+            <!-- Filter & Search Bar -->
+            <div class="bg-white p-5 rounded-3xl shadow-xs border border-slate-100 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">Cari Personel / NIK / Nomor</label>
+                    <input type="text" v-model="search" @keyup.enter="applyFilter" placeholder="Ketik nama / NIK / NRP..."
+                        class="w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500" />
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">Kategori Personel</label>
+                    <select v-model="kategoriFilter" @change="applyFilter" class="w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500">
+                        <option value="all">Semua Kategori</option>
+                        <option value="militer">Militer TNI AL</option>
+                        <option value="sipil">Sipil / Mitra Kerja</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">Status TTD Komandan</label>
+                    <select v-model="statusFilter" @change="applyFilter" class="w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500">
+                        <option value="all">Semua Status</option>
+                        <option value="pending">Pending TTD Komandan</option>
+                        <option value="approved">Resmi Disetujui (Terbit)</option>
+                        <option value="rejected">Ditolak / Revisi</option>
+                    </select>
+                </div>
+
+                <div class="flex items-end gap-2">
+                    <button @click="applyFilter" class="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold uppercase rounded-xl transition-all">
+                        Filter
+                    </button>
+                    <button @click="resetFilter" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold uppercase rounded-xl transition-all">
+                        Reset
+                    </button>
+                </div>
+            </div>
+
+            <!-- Table Container -->
+            <div class="bg-white rounded-3xl shadow-xs border border-slate-100 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-100 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                <th class="py-4 px-6">No. SKHPP & Tanggal</th>
+                                <th class="py-4 px-6">Identitas Personel Utama</th>
+                                <th class="py-4 px-6">Jenis & Peruntukan</th>
+                                <th class="py-4 px-6">Anggota Pengikut</th>
+                                <th class="py-4 px-6 text-center">Status TTD</th>
+                                <th class="py-4 px-6 text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                            <tr v-for="skhpp in skhpps.data" :key="skhpp.id" class="hover:bg-slate-50/80 transition-colors">
+                                <td class="py-4 px-6">
+                                    <div class="font-bold text-slate-900">
+                                        {{ skhpp.nomor_skhpp || 'Draft (Pending Nomor)' }}
+                                    </div>
+                                    <div class="text-[10px] text-slate-400 mt-0.5">
+                                        Diajukan: {{ formatDate(skhpp.submitted_at || skhpp.created_at) }}
+                                    </div>
+                                </td>
+
+                                <td class="py-4 px-6">
+                                    <div class="flex items-center gap-3">
+                                        <img v-if="skhpp.foto_1" :src="'/storage/' + skhpp.foto_1" class="w-10 h-12 object-cover rounded-lg border border-slate-200 shadow-xs" />
+                                        <div>
+                                            <div class="font-bold text-slate-900">{{ skhpp.nama }}</div>
+                                            <div class="text-[10px] text-blue-600 font-semibold uppercase">
+                                                {{ skhpp.kategori_personel === 'militer' ? (skhpp.pangkat_korps_nrp || 'MILITER') : ('NIK: ' + (skhpp.nik || '-')) }}
+                                            </div>
+                                            <div class="text-[10px] text-slate-400">{{ skhpp.jabatan_pekerjaan }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <td class="py-4 px-6">
+                                    <span :class="skhpp.is_pernikahan ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'" class="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider">
+                                        {{ skhpp.is_pernikahan ? 'Pengajuan Nikah' : 'Kedinasan / General' }}
+                                    </span>
+                                    <div class="text-[10px] text-slate-500 mt-1 line-clamp-2 max-w-xs" :title="skhpp.peruntukan">
+                                        {{ skhpp.peruntukan }}
+                                    </div>
+                                </td>
+
+                                <td class="py-4 px-6">
+                                    <span v-if="skhpp.has_pengikut && skhpp.members?.length" class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-700 rounded-lg text-[10px] font-bold border border-amber-200/60">
+                                        👥 {{ skhpp.members.length }} Anggota (Ada Lampiran)
+                                    </span>
+                                    <span v-else class="text-slate-400 text-[10px]">
+                                        Perorangan (Tanpa Pengikut)
+                                    </span>
+                                </td>
+
+                                <td class="py-4 px-6 text-center">
+                                    <span v-if="skhpp.status === 'approved'" class="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1">
+                                        ✓ TERBIT (TTD QR)
+                                    </span>
+                                    <span v-else-if="skhpp.status === 'rejected'" class="px-3 py-1 bg-rose-100 text-rose-700 rounded-full text-[9px] font-black uppercase tracking-wider">
+                                        ✕ REVISI / DITOLAK
+                                    </span>
+                                    <span v-else class="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-[9px] font-black uppercase tracking-wider">
+                                        ⏳ PENDING TTD
+                                    </span>
+                                </td>
+
+                                <td class="py-4 px-6 text-right">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <Link :href="route('skhpp.show', skhpp.id)" 
+                                            class="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs"
+                                            title="Lihat SKHPP & Cetak Dokumen PDF">
+                                            Cetak PDF
+                                        </Link>
+
+                                        <template v-if="isCommander && skhpp.status === 'pending'">
+                                            <button @click="approveSkhpp(skhpp)" 
+                                                class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs"
+                                                title="Setujui & TTD QR Komandan">
+                                                TTD Komandan
+                                            </button>
+                                            <button @click="rejectSkhpp(skhpp)" 
+                                                class="px-3 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs"
+                                                title="Tolak Permohonan">
+                                                Tolak
+                                            </button>
+                                        </template>
+
+                                        <button @click="deleteSkhpp(skhpp)" 
+                                            class="p-1.5 bg-slate-100 text-slate-400 hover:text-rose-600 rounded-xl transition-all"
+                                            title="Hapus SKHPP">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <tr v-if="!skhpps.data || skhpps.data.length === 0">
+                                <td colspan="6" class="py-12 text-center text-slate-400 text-xs font-bold">
+                                    Belum ada permohonan penerbitan SKHPP terdaftar.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </AuthenticatedLayout>
+</template>
