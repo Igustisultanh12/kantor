@@ -223,22 +223,25 @@
             </tr>
         </table>
 
-        <!-- Pas Foto & Signature Block Komandan -->
+        <!-- Pas Foto 4x6 (Mepet TTD Komandan) & Signature Block Komandan -->
         <table style="width: 100%; margin-top: 15px;">
             <tr>
-                <!-- Kolom Pas Foto -->
-                <td style="vertical-align: top; padding-right: 20px; width: 1px; white-space: nowrap;">
+                <!-- Ruang Kosong Kiri -->
+                <td style="width: 30%;"></td>
+
+                <!-- Kolom Pas Foto 4x6 (Mepet TTD Komandan) -->
+                <td style="vertical-align: top; text-align: right; padding-right: 15px; width: 1px; white-space: nowrap;">
                     @if($foto1_base64)
-                        <img src="{{ $foto1_base64 }}" style="width: 3.5cm; height: 4.5cm; object-fit: cover; border: 1px solid #000; display: inline-block;" />
+                        <img src="{{ $foto1_base64 }}" style="width: 4cm; height: 6cm; object-fit: cover; border: 1px solid #000; display: inline-block; vertical-align: top;" />
                     @endif
                     @if($skhpp->is_pernikahan && $foto2_base64)
-                        <img src="{{ $foto2_base64 }}" style="width: 3.5cm; height: 4.5cm; object-fit: cover; border: 1px solid #000; margin-left: 5px; display: inline-block;" />
+                        <img src="{{ $foto2_base64 }}" style="width: 4cm; height: 6cm; object-fit: cover; border: 1px solid #000; margin-left: 5px; display: inline-block; vertical-align: top;" />
                     @endif
                 </td>
 
                 <!-- Kolom TTD Komandan -->
-                <td style="vertical-align: top;">
-                    <div style="width: 290px; margin-left: auto;">
+                <td style="vertical-align: top; width: 280px;">
+                    <div style="width: 280px;">
                         <div style="text-align: left;">Dikeluarkan di Surabaya</div>
                         <table style="width: 100%; border-bottom: 1px solid #000; margin-bottom: 6px;">
                             <tr>
