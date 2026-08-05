@@ -33,21 +33,26 @@ const resetFilter = () => {
 };
 
 const approveSkhpp = (skhpp) => {
-    const defaultSeq = (skhpp.nomor_urut || 1);
+    const defaultSeq = (skhpp.nomor_urut || '');
+    const katCode = (skhpp.kategori_personel === 'perusahaan') ? 'SKHPP-P (Mitra Kerja/Perusahaan)' : 'SKHPP-D (Dinas Militer & PNS)';
 
     Swal.fire({
         title: 'OTORISASI TTD KOMANDAN',
         html: `
             <div class="text-left text-xs space-y-3 font-sans">
-                <p class="text-slate-600">Nomor SKHPP akan diterbitkan & tersinkronisasi otomatis ke <b>Buku Agenda Surat SINDEN (Letter Logs)</b>:</p>
+                <div class="bg-blue-50 p-2.5 rounded-xl border border-blue-100">
+                    <p class="font-black text-blue-600 text-[10px] uppercase mb-0.5">${katCode}</p>
+                    <p class="font-bold text-slate-800">${skhpp.nama}</p>
+                </div>
                 
                 <div>
-                    <label class="block font-bold uppercase mb-1 text-slate-700">Nomor Urut SKHPP (Bisa diisi manual jika ada arsip terlewat)</label>
-                    <input id="swal-nomor-urut" type="number" value="${defaultSeq}" class="w-full text-xs font-bold p-2.5 border rounded-xl" placeholder="Masukkan nomor urut (contoh: 171)" />
+                    <label class="block font-bold uppercase mb-1 text-slate-700 text-[10px]">Nomor Urut ${skhpp.kategori_personel === 'perusahaan' ? 'SKHPP-P' : 'SKHPP-D'} (Isi untuk Loncati Nomor)</label>
+                    <input id="swal-nomor-urut" type="number" value="${defaultSeq}" class="w-full text-xs font-bold p-2.5 border rounded-xl" placeholder="Kosongkan untuk otomatis urutan selanjutnya (cth: ${skhpp.kategori_personel === 'perusahaan' ? '15' : '180'})" />
+                    <span class="text-[9px] text-slate-400 mt-1 block">*Penomoran SKHPP-P dan SKHPP-D terpisah & independen.</span>
                 </div>
 
                 <div>
-                    <label class="block font-bold uppercase mb-1 text-slate-700">Derajat Kecepatan / Prioritas (Logika Penyamaran Kode SKHPP)</label>
+                    <label class="block font-bold uppercase mb-1 text-slate-700 text-[10px]">Derajat Kecepatan / Prioritas Surat</label>
                     <select id="swal-priority" class="w-full text-xs font-bold p-2.5 border rounded-xl">
                         <option value="R" selected>R (RAHASIA) — Format: R / [NOMOR] / SKHPP / [BULAN] / [TAHUN]</option>
                         <option value="B">B (BIASA) — Format: B / [NOMOR] / SKHPP / [BULAN] / [TAHUN]</option>
@@ -70,6 +75,37 @@ const approveSkhpp = (skhpp) => {
         if (result.isConfirmed && result.value) {
             router.post(route('skhpp.approve', skhpp.id), result.value, {
                 onSuccess: () => Swal.fire('SUKSES', 'SKHPP Resmi disetujui & ditandatangani Komandan.', 'success')
+            });
+        }
+    });
+};
+
+const changeNomorSkhpp = (skhpp) => {
+    const katCode = (skhpp.kategori_personel === 'perusahaan') ? 'SKHPP-P' : 'SKHPP-D';
+    Swal.fire({
+        title: `ATUR NOMOR URUT ${katCode}`,
+        html: `
+            <div class="text-left text-xs space-y-3 font-sans">
+                <p class="text-slate-600">Atur atau ubah nomor urut khusus untuk <b>${skhpp.nama}</b> (${katCode}):</p>
+                <div>
+                    <label class="block font-bold uppercase mb-1 text-slate-700 text-[10px]">Nomor Urut Baru (${katCode})</label>
+                    <input id="swal-new-seq" type="number" value="${skhpp.nomor_urut || ''}" class="w-full text-xs font-bold p-2.5 border rounded-xl" placeholder="Ketik nomor urut (contoh: ${skhpp.kategori_personel === 'perusahaan' ? '15' : '180'})" />
+                    <span class="text-[9px] text-slate-400 mt-1 block">*Nomor urut ${katCode} berjalan independen tanpa mempengaruhi kategori lain.</span>
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Simpan Nomor',
+        confirmButtonColor: '#2563eb',
+        preConfirm: () => {
+            return document.getElementById('swal-new-seq').value;
+        }
+    }).then((result) => {
+        if (result.isConfirmed && result.value) {
+            router.post(route('skhpp.approve', skhpp.id), {
+                custom_nomor_urut: result.value
+            }, {
+                onSuccess: () => Swal.fire('BERHASIL', `Nomor urut ${katCode} berhasil diubah ke ${result.value}.`, 'success')
             });
         }
     });
@@ -279,13 +315,19 @@ const formatDate = (dateStr) => {
                                             Edit Data
                                         </Link>
 
-                                        <template v-if="isCommander && skhpp.status !== 'approved'">
-                                            <button @click="approveSkhpp(skhpp)" 
+                                        <template v-if="isCommander">
+                                            <button @click="changeNomorSkhpp(skhpp)" 
+                                                class="px-2.5 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs"
+                                                title="Atur / Loncati Nomor Urut SKHPP-P atau SKHPP-D">
+                                                🔢 Atur Nomor
+                                            </button>
+
+                                            <button v-if="skhpp.status !== 'approved'" @click="approveSkhpp(skhpp)" 
                                                 class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs"
                                                 title="Setujui & TTD QR Komandan">
                                                 TTD Komandan
                                             </button>
-                                            <button @click="rejectSkhpp(skhpp)" 
+                                            <button v-if="skhpp.status !== 'approved'" @click="rejectSkhpp(skhpp)" 
                                                 class="px-3 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs"
                                                 title="Tolak Permohonan">
                                                 Tolak
