@@ -6,500 +6,593 @@ import Swal from 'sweetalert2';
 import interact from 'interactjs';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Konfigurasi Worker PDF.js Core - Menggunakan jalur eksternal yang stabil
+// Konfigurasi Worker PDF.js Core
 const PDF_JS_VERSION = '3.11.174';
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.worker.min.js`;
 
-const props = defineProps({ requests: Object });
+const props = defineProps({ 
+  requests: Object,
+  skhppRequests: Object
+});
+
 const page = usePage();
 const user = computed(() => page.props.auth.user);
 const commanderSignature = computed(() => page.props.settings?.commander_signature || 'signatures/komandan_ttd.png');
 
+// State Active Tab
+const activeTab = ref('skhpp'); // 'skhpp' | 'pdf'
+
+// State Modals
 const isModalOpen = ref(false);
 const isRevisionModalOpen = ref(false);
 const isPreviewOpen = ref(false);
+const isSkhppPreviewOpen = ref(false);
+
 const selectedReqId = ref(null);
+const selectedSkhpp = ref(null);
+
 const isAdjusting = ref(false);
 const isLoadingPdf = ref(false);
 
+// Multi-Page PDF State
+const currentPage = ref(1);
+const totalPages = ref(1);
+const pdfDoc = ref(null);
+
+// Signature Drag Position
 const signaturePos = ref({ x: 50, y: 150 });
 const signatureSize = ref({ width: 100, height: 70 });
 
+// Forms
 const form = useForm({ subject: '', letter_number: '', file: null });
-const decisionForm = useForm({ status: '', x: 0, y: 0, width: 0, canvas_width: 0, note: '', file: null, _method: 'PATCH' });
+const decisionForm = useForm({ 
+  status: '', 
+  x: 0, 
+  y: 0, 
+  width: 0, 
+  canvas_width: 0, 
+  target_page: 1, 
+  note: '', 
+  file: null, 
+  _method: 'PATCH' 
+});
 
-// --- LOGIKA AUTO UPDATE TABEL (0.5 DETIK) ---
+// --- LOGIKA AUTO REFRESH TABEL ---
 let refreshTimer = null;
 const autoRefreshData = () => {
-    if (!isPreviewOpen.value && !isModalOpen.value && !isRevisionModalOpen.value && !form.processing && !decisionForm.processing) {
-        router.reload({ only: ['requests'], preserveScroll: true, preserveState: true });
-    }
+  if (!isPreviewOpen.value && !isSkhppPreviewOpen.value && !isModalOpen.value && !isRevisionModalOpen.value && !form.processing && !decisionForm.processing) {
+    router.reload({ only: ['requests', 'skhppRequests'], preserveScroll: true, preserveState: true });
+  }
 };
-onMounted(() => { refreshTimer = setInterval(autoRefreshData, 500); });
+onMounted(() => { refreshTimer = setInterval(autoRefreshData, 1000); });
 onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer); });
 
-// --- FUNGSI DOWNLOAD BERKAS ---
-const downloadFile = (filePath, subject) => {
-    const link = document.createElement('a');
-    link.href = `/storage/${filePath}`;
-    link.download = `SINDEN_${subject.replace(/\s+/g, '_')}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-};
-
-// --- FUNGSI HAPUS BERKAS ---
-const deleteRequest = (id) => {
-    Swal.fire({
-        title: 'Hapus Berkas?',
-        text: "Data akan dihapus permanen dari server!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#e11d48',
-        confirmButtonText: 'Ya, Hapus!'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            router.delete(route('signature.destroy', id), {
-                onSuccess: () => Swal.fire('Terhapus', 'Berkas berhasil dihapus.', 'success')
-            });
+// --- LOGIKA SKHPP APPROVE / REJECT ---
+const approveSkhpp = (skhpp) => {
+  Swal.fire({
+    title: 'SETUJUI & TTD SKHPP?',
+    html: `
+      <div class="text-left text-xs space-y-2">
+        <p><strong>Subjek:</strong> ${skhpp.nama}</p>
+        <p><strong>Pangkat/NRP/NIK:</strong> ${skhpp.pangkat_korps_nrp || skhpp.nik || '-'}</p>
+        <p><strong>Peruntukan:</strong> ${skhpp.peruntukan}</p>
+        <hr class="my-2"/>
+        <p class="text-emerald-600 font-bold">Dokumen akan otomatis diterbitkan nomor resmi, QR Code TTD Komandan, dan disinkronkan ke Buku Agenda SINDEN.</p>
+      </div>
+    `,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#10b981',
+    cancelButtonColor: '#64748b',
+    confirmButtonText: 'YA, SETUJUI & TERBITKAN',
+    cancelButtonText: 'BATAL'
+  }).then((res) => {
+    if (res.isConfirmed) {
+      router.post(route('skhpp.approve', skhpp.id), {}, {
+        onSuccess: () => {
+          isSkhppPreviewOpen.value = false;
+          Swal.fire('BERHASIL DISAHKAN', 'SKHPP Resmi telah ditandatangani Komandan.', 'success');
         }
-    });
+      });
+    }
+  });
 };
 
-// --- FUNGSI KHUSUS ADMIN: BERSIHKAN SELURUH DATA ---
-const clearAllData = () => {
-    Swal.fire({
-        title: 'BERSIHKAN SELURUH DATA?',
-        text: "Seluruh riwayat pengajuan dan file fisik akan dihapus permanen dari sistem!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#e11d48',
-        confirmButtonText: 'YA, BERSIHKAN TOTAL!',
-        cancelButtonText: 'BATAL'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            router.post(route('signature.clear-all'), {}, {
-                onSuccess: () => Swal.fire('Sistem Bersih', 'Seluruh riwayat telah dimusnahkan.', 'success'),
-                onError: () => Swal.fire('Gagal', 'Terjadi kesalahan sistem.', 'error')
-            });
+const rejectSkhpp = (skhpp) => {
+  Swal.fire({
+    title: 'TOLAK / MINTA REVISI SKHPP',
+    text: "Tuliskan catatan revisi untuk staf/operator pengaju:",
+    input: 'textarea',
+    inputPlaceholder: 'Tuliskan alasan penolakan atau instruksi revisi...',
+    showCancelButton: true,
+    confirmButtonColor: '#e11d48',
+    confirmButtonText: 'KIRIM REVISI',
+    cancelButtonText: 'BATAL',
+    inputValidator: (val) => { if (!val) return 'Catatan revisi wajib diisi!'; }
+  }).then((res) => {
+    if (res.isConfirmed) {
+      router.post(route('skhpp.reject', skhpp.id), { catatan_revisi: res.value }, {
+        onSuccess: () => {
+          isSkhppPreviewOpen.value = false;
+          Swal.fire('REVISI DIKIRIM', 'Catatan revisi berhasil dikirim ke pengaju.', 'warning');
         }
-    });
+      });
+    }
+  });
 };
 
-// --- LOGIKA RENDER PDF.JS CORE (PERBAIKAN UNTUK PDF MS WORD) ---
-const renderPdfToCanvas = async (pdfData) => {
+const openSkhppPreviewModal = (skhpp) => {
+  selectedSkhpp.value = skhpp;
+  isSkhppPreviewOpen.value = true;
+};
+
+// --- LOGIKA MULTI-PAGE PDF & TTD DRAGGABLE ---
+const renderPdfPage = async (pageNumber) => {
+  if (!pdfDoc.value) return;
+  isLoadingPdf.value = true;
+  try {
+    const pdfPage = await pdfDoc.value.getPage(pageNumber);
+    const canvas = document.getElementById('pdf-render-canvas');
+    const context = canvas.getContext('2d', { alpha: false });
+    const container = document.getElementById('pdf-render-container');
+
+    let availableWidth = container.clientWidth - 32;
+    let targetWidth = availableWidth > 750 ? 750 : availableWidth;
+
+    const viewport = pdfPage.getViewport({ scale: targetWidth / pdfPage.getViewport({ scale: 1 }).width });
+
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    const renderContext = {
+      canvasContext: context,
+      viewport: viewport,
+      intent: 'print'
+    };
+
+    await pdfPage.render(renderContext).promise;
+  } catch (err) {
+    console.error("Render Page Error:", err);
+  } finally {
+    isLoadingPdf.value = false;
+  }
+};
+
+const changePdfPage = async (delta) => {
+  const newPage = currentPage.value + delta;
+  if (newPage >= 1 && newPage <= totalPages.value) {
+    currentPage.value = newPage;
+    await renderPdfPage(currentPage.value);
+  }
+};
+
+const openPdfPreview = async (req) => {
+  selectedReqId.value = req.id;
+  isPreviewOpen.value = true;
+  isAdjusting.value = false;
+  currentPage.value = 1;
+  signaturePos.value = { x: 20, y: 100 };
+
+  await nextTick();
+  try {
     isLoadingPdf.value = true;
-    try {
-        // Penambahan konfigurasi cMap agar font khusus MS Word terbaca
-        const loadingTask = pdfjsLib.getDocument({ 
-            data: pdfData,
-            cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/cmaps/`,
-            cMapPacked: true,
-            disableFontFace: false // Mengaktifkan font bawaan PDF
-        });
-        
-        const pdf = await loadingTask.promise;
-        const pdfPage = await pdf.getPage(pdf.numPages);
-        
-        const canvas = document.getElementById('pdf-render-canvas');
-        const context = canvas.getContext('2d', { alpha: false }); // Optimasi performa & kejelasan
-        const container = document.getElementById('pdf-render-container');
+    const response = await fetch(`${window.location.origin}/storage/${req.file_path}?t=${Date.now()}`);
+    const buffer = await response.arrayBuffer();
 
-        let availableWidth = container.clientWidth - 32; 
-        let targetWidth = availableWidth > 750 ? 750 : availableWidth;
-        
-        // Optimasi resolusi render
-        const viewport = pdfPage.getViewport({ scale: targetWidth / pdfPage.getViewport({scale: 1}).width });
+    const loadingTask = pdfjsLib.getDocument({
+      data: buffer,
+      cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/cmaps/`,
+      cMapPacked: true,
+      disableFontFace: false
+    });
 
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
+    pdfDoc.value = await loadingTask.promise;
+    totalPages.value = pdfDoc.value.numPages;
+    currentPage.value = req.target_page || 1;
 
-        const renderContext = {
-            canvasContext: context,
-            viewport: viewport,
-            intent: 'print' // Memaksa render seluruh layer dokumen
-        };
-
-        await pdfPage.render(renderContext).promise;
-    } catch (error) {
-        console.error("Render Error:", error);
-        Swal.fire('Error', 'Radar gagal membaca dokumen. Pastikan PDF tidak diproteksi password.', 'error');
-    } finally {
-        isLoadingPdf.value = false;
-    }
-};
-
-const openPreview = async (req) => {
-    selectedReqId.value = req.id;
-    isPreviewOpen.value = true;
-    isAdjusting.value = false;
-    signaturePos.value = { x: 20, y: 100 };
-    await nextTick();
-    try {
-        isLoadingPdf.value = true;
-        // Tambahkan timestamp untuk memintas cache browser yang mungkin menyimpan file kosong
-        const response = await fetch(`${window.location.origin}/storage/${req.file_path}?t=${Date.now()}`);
-        const buffer = await response.arrayBuffer();
-        await renderPdfToCanvas(buffer);
-    } catch (e) {
-        Swal.fire('Error', 'File tidak dapat diakses di server', 'error');
-    } finally {
-        isLoadingPdf.value = false;
-    }
+    await renderPdfPage(currentPage.value);
+  } catch (e) {
+    Swal.fire('Error', 'File PDF tidak dapat dibaca atau diproteksi password.', 'error');
+  } finally {
+    isLoadingPdf.value = false;
+  }
 };
 
 const enableDrag = () => {
-    isAdjusting.value = true;
-    nextTick(() => {
-        interact('.drag-signature').draggable({
-            inertia: false,
-            modifiers: [interact.modifiers.restrictRect({ restriction: '#pdf-render-canvas', endOnly: true })],
-            listeners: { move(event) { signaturePos.value.x += event.dx; signaturePos.value.y += event.dy; } }
-        }).resizable({
-            edges: { right: true, bottom: true },
-            listeners: { move(event) {
-                signatureSize.value.width = event.rect.width;
-                signatureSize.value.height = event.rect.height;
-                signaturePos.value.x += event.deltaRect.left;
-                signaturePos.value.y += event.deltaRect.top;
-            }},
-            modifiers: [interact.modifiers.restrictSize({ min: { width: 50, height: 35 } })]
-        });
+  isAdjusting.value = true;
+  nextTick(() => {
+    interact('.drag-signature').draggable({
+      inertia: false,
+      modifiers: [interact.modifiers.restrictRect({ restriction: '#pdf-render-canvas', endOnly: true })],
+      listeners: { move(event) { signaturePos.value.x += event.dx; signaturePos.value.y += event.dy; } }
+    }).resizable({
+      edges: { right: true, bottom: true },
+      listeners: { move(event) {
+        signatureSize.value.width = event.rect.width;
+        signatureSize.value.height = event.rect.height;
+        signaturePos.value.x += event.deltaRect.left;
+        signaturePos.value.y += event.deltaRect.top;
+      }},
+      modifiers: [interact.modifiers.restrictSize({ min: { width: 50, height: 35 } })]
     });
+  });
 };
 
-const handleDecision = (status) => {
-    if (status === 'rejected') {
-        Swal.fire({
-            title: 'Tolak Berkas',
-            text: "Berikan alasan penolakan untuk staf:",
-            input: 'textarea',
-            showCancelButton: true,
-            confirmButtonText: 'Kirim Penolakan',
-            confirmButtonColor: '#e11d48',
-            inputValidator: (value) => { if (!value) return 'Alasan wajib diisi!' }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                decisionForm.status = 'rejected';
-                decisionForm.note = result.value;
-                decisionForm.patch(route('signature.update', selectedReqId.value), {
-                    onSuccess: () => { isPreviewOpen.value = false; Swal.fire('Berhasil', 'Berkas ditolak.', 'success'); }
-                });
-            }
+const handlePdfDecision = (status) => {
+  if (status === 'rejected') {
+    Swal.fire({
+      title: 'Tolak Berkas PDF',
+      text: "Berikan alasan penolakan untuk staf:",
+      input: 'textarea',
+      showCancelButton: true,
+      confirmButtonText: 'Kirim Penolakan',
+      confirmButtonColor: '#e11d48',
+      inputValidator: (value) => { if (!value) return 'Alasan wajib diisi!' }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        decisionForm.status = 'rejected';
+        decisionForm.note = result.value;
+        decisionForm.patch(route('signature.update', selectedReqId.value), {
+          onSuccess: () => { isPreviewOpen.value = false; Swal.fire('Berhasil', 'Berkas ditolak.', 'success'); }
         });
-        return;
-    }
-
-    const canvas = document.getElementById('pdf-render-canvas');
-    
-    decisionForm.status = 'approved';
-    decisionForm.x = parseFloat(signaturePos.value.x / canvas.width); 
-    decisionForm.y = parseFloat(signaturePos.value.y / canvas.height);
-    decisionForm.width = parseFloat(signatureSize.value.width / canvas.width);
-    decisionForm.canvas_width = canvas.width;
-    
-    decisionForm.patch(route('signature.update', selectedReqId.value), {
-        onSuccess: () => { 
-            isPreviewOpen.value = false; 
-            Swal.fire({ icon: 'success', title: 'Berhasil', text: 'TTD Terpasang Presisi', timer: 2000, showConfirmButton: false }); 
-        }
+      }
     });
+    return;
+  }
+
+  const canvas = document.getElementById('pdf-render-canvas');
+  
+  decisionForm.status = 'approved';
+  decisionForm.x = parseFloat(signaturePos.value.x / canvas.width); 
+  decisionForm.y = parseFloat(signaturePos.value.y / canvas.height);
+  decisionForm.width = parseFloat(signatureSize.value.width / canvas.width);
+  decisionForm.canvas_width = canvas.width;
+  decisionForm.target_page = currentPage.value; // Halaman target yang dipilih
+  
+  decisionForm.patch(route('signature.update', selectedReqId.value), {
+    onSuccess: () => { 
+      isPreviewOpen.value = false; 
+      Swal.fire({ icon: 'success', title: 'Berhasil', text: `TTD Terpasang Presisi pada Halaman ${currentPage.value}`, timer: 2000, showConfirmButton: false }); 
+    }
+  });
+};
+
+// Utilities
+const downloadFile = (filePath, subject) => {
+  const link = document.createElement('a');
+  link.href = `/storage/${filePath}`;
+  link.download = `SINDEN_${subject.replace(/\s+/g, '_')}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+const deleteRequest = (id) => {
+  Swal.fire({
+    title: 'Hapus Berkas?',
+    text: "Data akan dihapus permanen!",
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#e11d48',
+    confirmButtonText: 'Ya, Hapus!'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      router.delete(route('signature.destroy', id), {
+        onSuccess: () => Swal.fire('Terhapus', 'Berkas berhasil dihapus.', 'success')
+      });
+    }
+  });
 };
 
 const submitRequest = () => {
-    form.post(route('signature.store'), {
-        onSuccess: () => { isModalOpen.value = false; form.reset(); Swal.fire('Berhasil', 'Berkas dikirim.', 'success'); },
-    });
-};
-
-const submitRevision = () => {
-    decisionForm.post(route('signature.update', selectedReqId.value), {
-        forceFormData: true,
-        onSuccess: () => { isRevisionModalOpen.value = false; decisionForm.reset(); Swal.fire('Berhasil', 'Revisi dikirim.', 'success'); },
-    });
-};
-
-const closeModals = () => {
-    isModalOpen.value = false;
-    isRevisionModalOpen.value = false;
-    form.reset();
-    decisionForm.reset();
+  form.post(route('signature.store'), {
+    onSuccess: () => { isModalOpen.value = false; form.reset(); Swal.fire('Berhasil', 'Berkas dikirim.', 'success'); },
+  });
 };
 
 const getStatusClass = (status) => {
-    if (status === 'approved') return 'bg-emerald-50 text-emerald-700 border-emerald-100 shadow-sm';
-    if (status === 'rejected') return 'bg-rose-50 text-rose-700 border-rose-100 shadow-sm';
-    return 'bg-amber-50 text-amber-700 border-amber-100 shadow-sm';
-};
-
-const printPdf = () => {
-    const canvas = document.getElementById('pdf-render-canvas');
-    if (!canvas) {
-        Swal.fire('Error', 'Dokumen belum siap.', 'error');
-        return;
-    }
-
-    const qualityMultiplier = 3; 
-    const tempCanvas = document.createElement('canvas');
-    const tempCtx = tempCanvas.getContext('2d');
-
-    tempCanvas.width = canvas.width * qualityMultiplier;
-    tempCanvas.height = canvas.height * qualityMultiplier;
-    tempCtx.scale(qualityMultiplier, qualityMultiplier);
-    tempCtx.drawImage(canvas, 0, 0);
-
-    const dataUrl = tempCanvas.toDataURL('image/jpeg', 1.0);
-
-    let iframe = document.getElementById('print-iframe');
-    if (!iframe) {
-        iframe = document.createElement('iframe');
-        iframe.id = 'print-iframe';
-        iframe.style.position = 'fixed';
-        iframe.style.right = '0';
-        iframe.style.bottom = '0';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = '0';
-        document.body.appendChild(iframe);
-    }
-
-    const doc = iframe.contentWindow.document;
-    doc.open();
-    doc.write(`
-        <html>
-            <head>
-                <title>Cetak Dokumen HD</title>
-                <style>
-                    @page { size: A4; margin: 0; }
-                    body { margin: 0; padding: 0; background: #fff; text-align: center; }
-                    img { 
-                        width: 210mm; 
-                        height: auto;
-                        image-rendering: -webkit-optimize-contrast;
-                    }
-                </style>
-            </head>
-            <body>
-                <img src="${dataUrl}">
-                <script>
-                    window.onload = function() {
-                        setTimeout(() => {
-                            window.focus();
-                            window.print();
-                        }, 200);
-                    }
-                <\/script>
-            </body>
-        </html>
-    `);
-    doc.close();
+  if (status === 'approved') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  if (status === 'rejected') return 'bg-rose-50 text-rose-700 border-rose-200';
+  return 'bg-amber-50 text-amber-700 border-amber-200';
 };
 </script>
 
 <template>
-    <Head title="Validasi & TTE Digital" />
+  <Head title="Otoritas TTD Digital & SKHPP" />
 
-    <AuthenticatedLayout>
-        <div class="space-y-6 font-sans">
-            
-            <!-- Page Header Card -->
-            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <div class="flex items-center gap-2 mb-1">
-                        <h2 class="font-extrabold text-xl text-slate-900 uppercase tracking-tight">Otoritas Validasi & TTE Digital</h2>
-                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                    </div>
-                    <p class="text-xs text-slate-500 font-semibold">Sistem Validasi Tanda Tangan Elektronik & Pengesahan Berkas</p>
-                </div>
-
-                <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                    <button v-if="user.role !== 'komandan'" @click="isModalOpen = true" 
-                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-extrabold text-xs uppercase shadow-md shadow-blue-500/20 transition tracking-wider text-center">
-                        + Registrasi Berkas Baru
-                    </button>
-                    <button v-if="user.role === 'admin'" @click="clearAllData"
-                        class="bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 border border-rose-200 px-6 py-3 rounded-2xl font-extrabold text-xs uppercase transition tracking-wider text-center">
-                        🗑️ Bersihkan Riwayat Sistem
-                    </button>
-                </div>
-            </div>
-
-            <!-- Table Card -->
-            <div class="bg-white rounded-3xl shadow-xs border border-[#E2E8F0] overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead class="bg-slate-50 uppercase font-extrabold text-slate-500 text-[10px] tracking-wider border-b border-slate-100">
-                            <tr>
-                                <th class="p-4">Timestamp</th>
-                                <th class="p-4">Subjek Berkas</th>
-                                <th class="p-4 text-center">Status</th>
-                                <th class="p-4 text-right">Otoritas</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-indigo-50 uppercase font-bold text-slate-800 text-[11px]">
-                            <tr v-for="req in requests.data" :key="req.id" class="hover:bg-white transition-all group">
-                                <td class="p-6 text-slate-400 font-mono text-left">{{ new Date(req.created_at).toLocaleString('id-ID') }}</td>
-                                <td class="p-6 italic truncate max-w-[200px] text-left">
-                                    {{ req.subject }}
-                                    <div v-if="req.note" class="text-[8px] text-rose-500 lowercase font-normal italic mt-1 text-left">Alasan: {{ req.note }}</div>
-                                </td>
-                                <td class="p-6 text-center">
-                                    <span :class="getStatusClass(req.status)" class="px-5 py-2 rounded-full text-[9px] font-black border uppercase italic shadow-sm">
-                                        {{ req.status }}
-                                    </span>
-                                </td>
-                                <td class="p-6 text-right flex justify-end gap-2">
-                                    <button @click="openPreview(req)" class="bg-white text-indigo-600 border border-indigo-100 px-5 py-2.5 rounded-xl text-[9px] font-black uppercase shadow-sm">Preview</button>
-                                    <button v-if="req.status === 'approved'" 
-                                        @click="downloadFile(req.file_path, req.subject)" 
-                                        class="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-[9px] font-black uppercase shadow-lg hover:bg-emerald-700 transition-all text-center">
-                                        Download
-                                    </button>
-                                    <button v-if="user.role === 'admin' || user.id === req.user_id" 
-                                        @click="deleteRequest(req.id)"
-                                        class="bg-rose-50 text-rose-600 border border-rose-100 px-3 py-2.5 rounded-xl text-[9px] font-black uppercase hover:bg-rose-600 hover:text-white transition-all text-center">Hapus</button>
-                                    <button v-if="req.status === 'rejected' && user.id === req.user_id" 
-                                        @click="isRevisionModalOpen = true; selectedReqId = req.id"
-                                        class="bg-rose-600 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase shadow-lg shadow-rose-100 text-center">Revisi</button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="sm:hidden space-y-4">
-                <div v-for="req in requests.data" :key="req.id" 
-                    class="bg-white rounded-[2rem] p-5 shadow-sm border border-slate-100 active:scale-[0.98] transition-all text-left">
-                    <div class="flex justify-between items-start mb-3">
-                        <span :class="getStatusClass(req.status)" class="text-[8px] font-black uppercase px-2.5 py-1 rounded-lg border italic shadow-sm">
-                            {{ req.status }}
-                        </span>
-                        <span class="text-[9px] font-mono text-slate-400">{{ new Date(req.created_at).toLocaleDateString() }}</span>
-                    </div>
-                    <h4 class="text-sm font-black text-indigo-950 uppercase italic leading-tight mb-2 text-left">{{ req.subject }}</h4>
-                    <div v-if="req.note" class="bg-rose-50 p-2.5 rounded-xl border border-rose-100 mb-3 text-left">
-                        <p class="text-[9px] text-rose-600 font-bold leading-relaxed italic">⚠️ {{ req.note }}</p>
-                    </div>
-                    <div class="flex justify-between items-center mt-4">
-                        <div class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Oleh: {{ req.user?.name }}</div>
-                        <div class="flex gap-2">
-                            <button v-if="req.status === 'approved'" 
-                                @click.stop="downloadFile(req.file_path, req.subject)" 
-                                class="bg-emerald-600 text-white px-4 py-2 rounded-xl text-[8px] font-black uppercase italic shadow-md text-center">
-                                Download
-                            </button>
-                            <button @click.stop="openPreview(req)" class="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl text-[8px] font-black uppercase italic text-center">Lihat</button>
-                            <button v-if="user.role === 'admin' || user.id === req.user_id" @click.stop="deleteRequest(req.id)" class="bg-rose-50 text-rose-600 px-4 py-2 rounded-xl text-[8px] font-black uppercase italic text-center">Hapus</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+  <AuthenticatedLayout>
+    <div class="space-y-6 font-sans">
+      
+      <!-- Page Header Card -->
+      <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <h2 class="font-extrabold text-xl text-slate-900 uppercase tracking-tight">Otoritas Validasi TTD Digital & SKHPP</h2>
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+          </div>
+          <p class="text-xs text-slate-500 font-semibold">Pusat Otorisasi Tanda Tangan Elektronik Komandan & Pengesahan Surat</p>
         </div>
 
-        <button v-if="user.role !== 'komandan' && !isPreviewOpen" @click="isModalOpen = true"
-            class="sm:hidden fixed bottom-24 right-6 w-16 h-16 bg-indigo-600 text-white rounded-3xl shadow-2xl shadow-indigo-300 flex items-center justify-center active:scale-90 transition-all z-[100] border-4 border-white">
-            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+        <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <Link href="/skhpp/create" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-2xl font-extrabold text-xs uppercase shadow-md shadow-emerald-500/20 transition tracking-wider text-center">
+            + Pengajuan SKHPP Baru
+          </Link>
+          <button v-if="user.role !== 'komandan'" @click="isModalOpen = true" 
+            class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-2xl font-extrabold text-xs uppercase shadow-md shadow-blue-500/20 transition tracking-wider text-center">
+            + Upload PDF Berkas Lain
+          </button>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="flex border-b border-slate-200 gap-4">
+        <button 
+          @click="activeTab = 'skhpp'"
+          :class="activeTab === 'skhpp' ? 'border-blue-600 text-blue-600 font-black' : 'border-transparent text-slate-500 font-bold hover:text-slate-700'"
+          class="py-3 px-4 border-b-2 text-xs uppercase tracking-wider transition flex items-center gap-2"
+        >
+          <span>📜 PENGAJUAN SKHPP</span>
+          <span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-black">{{ skhppRequests?.data?.length || 0 }}</span>
         </button>
 
-        <div v-if="isPreviewOpen" class="fixed inset-0 z-[150] flex flex-col bg-slate-950 animate-in fade-in duration-300">
-            <div class="bg-white border-b px-4 py-4 flex justify-between items-center shadow-xl shrink-0 text-left">
-                <div class="flex flex-col truncate max-w-[50%]">
-                    <span class="text-indigo-600 text-[8px] font-black uppercase tracking-widest leading-none mb-1 text-left">Otorisasi Dokumen</span>
-                    <h3 class="text-[10px] sm:text-xs font-black text-slate-800 uppercase italic truncate leading-none text-left">{{ requests.data.find(r => r.id === selectedReqId)?.subject }}</h3>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button @click="printPdf" class="bg-emerald-600 text-white px-3 sm:px-5 py-2.5 rounded-xl text-[9px] font-black uppercase shadow-lg flex items-center gap-2 text-center">
-                        <span>🖨️</span> <span class="hidden sm:inline">Cetak</span>
+        <button 
+          @click="activeTab = 'pdf'"
+          :class="activeTab === 'pdf' ? 'border-blue-600 text-blue-600 font-black' : 'border-transparent text-slate-500 font-bold hover:text-slate-700'"
+          class="py-3 px-4 border-b-2 text-xs uppercase tracking-wider transition flex items-center gap-2"
+        >
+          <span>📑 BERKAS DINAS / PDF LAIN</span>
+          <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-black">{{ requests?.data?.length || 0 }}</span>
+        </button>
+      </div>
+
+      <!-- TAB 1: PENGAJUAN SKHPP -->
+      <div v-if="activeTab === 'skhpp'" class="bg-white rounded-3xl shadow-xs border border-[#E2E8F0] overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead class="bg-slate-50 uppercase font-extrabold text-slate-500 text-[10px] tracking-wider border-b border-slate-100">
+              <tr>
+                <th class="p-4">Tanggal Pengajuan</th>
+                <th class="p-4">Subjek / Nama</th>
+                <th class="p-4">Pangkat / NRP / NIK</th>
+                <th class="p-4">Peruntukan</th>
+                <th class="p-4 text-center">Status</th>
+                <th class="p-4 text-right">Aksi & Otoritas</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 uppercase font-bold text-slate-800 text-[11px]">
+              <tr v-for="skhpp in skhppRequests.data" :key="skhpp.id" class="hover:bg-slate-50/50 transition">
+                <td class="p-4 text-slate-400 font-mono">{{ new Date(skhpp.created_at).toLocaleDateString('id-ID') }}</td>
+                <td class="p-4 font-black text-slate-900">
+                  {{ skhpp.nama }}
+                  <span v-if="skhpp.kategori_personel" class="block text-[9px] text-blue-600 font-semibold">{{ skhpp.kategori_personel.toUpperCase() }}</span>
+                </td>
+                <td class="p-4 text-slate-600 font-mono">{{ skhpp.pangkat_korps_nrp || skhpp.nik || '-' }}</td>
+                <td class="p-4 text-slate-500 normal-case max-w-[200px] truncate" :title="skhpp.peruntukan">{{ skhpp.peruntukan }}</td>
+                <td class="p-4 text-center">
+                  <span :class="getStatusClass(skhpp.status)" class="px-3 py-1 rounded-full text-[9px] font-black border uppercase">
+                    {{ skhpp.status === 'approved' ? 'DISETUJUI' : (skhpp.status === 'rejected' ? 'REVISI' : 'PENDING TTD') }}
+                  </span>
+                </td>
+                <td class="p-4 text-right">
+                  <div class="flex justify-end gap-2 items-center">
+                    <button @click="openSkhppPreviewModal(skhpp)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase">
+                      🔍 Lihat SKHPP
                     </button>
-                    <button v-if="!isAdjusting && (user.role === 'komandan' || user.role === 'admin')" @click="enableDrag" class="bg-indigo-600 text-white px-3 sm:px-5 py-2.5 rounded-xl text-[9px] font-black uppercase shadow-lg text-center">Atur TTD</button>
-                    <button @click="isPreviewOpen = false" class="bg-rose-50 text-rose-600 px-4 py-2.5 rounded-xl text-[9px] font-black uppercase border border-rose-100 text-center">X</button>
-                </div>
-            </div>
+                    
+                    <template v-if="user.role === 'admin' || user.role === 'komandan'">
+                      <button v-if="skhpp.status === 'pending'" @click="approveSkhpp(skhpp)" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-[9px] font-black uppercase shadow-sm">
+                        ✅ Setujui & TTD
+                      </button>
+                      <button v-if="skhpp.status === 'pending'" @click="rejectSkhpp(skhpp)" class="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase">
+                        ❌ Tolak
+                      </button>
+                    </template>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="!skhppRequests?.data?.length">
+                <td colspan="6" class="p-8 text-center text-slate-400 italic text-xs">Belum ada permohonan SKHPP terdaftar.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-            <div class="flex-1 relative overflow-auto bg-slate-900/50 p-2 sm:p-12 custom-scrollbar flex justify-center items-start text-left" id="pdf-render-container">
-                <div v-if="isLoadingPdf" class="absolute inset-0 z-[200] flex items-center justify-center bg-slate-950/80">
-                    <div class="animate-spin border-4 border-indigo-500 border-t-transparent rounded-full w-10 h-10"></div>
-                </div>
-                <div class="relative bg-white shadow-2xl overflow-hidden rounded-sm" style="line-height: 0;">
-                    <canvas id="pdf-render-canvas"></canvas>
-                    <div v-if="isAdjusting" class="drag-signature absolute z-[200] cursor-move border-2 border-indigo-600 bg-indigo-50/20 backdrop-blur-[1px] shadow-2xl flex items-center justify-center touch-none text-left"
-                         :style="{ left: signaturePos.x + 'px', top: signaturePos.y + 'px', width: signatureSize.width + 'px', height: signatureSize.height + 'px' }">
-                        <img :src="'/storage/' + commanderSignature" class="w-full h-full object-contain pointer-events-none opacity-90" alt="TTD" />
-                        <div class="absolute -bottom-2 -right-2 w-7 h-7 bg-indigo-600 rounded-full border-4 border-white shadow-lg cursor-se-resize flex items-center justify-center text-center">
-                             <div class="w-1.5 h-1.5 bg-white rounded-full text-center"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+      <!-- TAB 2: PENGAJUAN BERKAS DINAS / PDF LAIN -->
+      <div v-if="activeTab === 'pdf'" class="bg-white rounded-3xl shadow-xs border border-[#E2E8F0] overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead class="bg-slate-50 uppercase font-extrabold text-slate-500 text-[10px] tracking-wider border-b border-slate-100">
+              <tr>
+                <th class="p-4">Timestamp</th>
+                <th class="p-4">Perihal Berkas</th>
+                <th class="p-4">Pengaju</th>
+                <th class="p-4 text-center">Status</th>
+                <th class="p-4 text-right">Otoritas</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 uppercase font-bold text-slate-800 text-[11px]">
+              <tr v-for="req in requests.data" :key="req.id" class="hover:bg-slate-50/50 transition">
+                <td class="p-4 text-slate-400 font-mono">{{ new Date(req.created_at).toLocaleString('id-ID') }}</td>
+                <td class="p-4">
+                  <div class="font-black text-slate-900">{{ req.subject }}</div>
+                  <div v-if="req.note" class="text-[9px] text-rose-500 font-normal italic mt-0.5">Alasan: {{ req.note }}</div>
+                </td>
+                <td class="p-4 text-slate-600 text-xs">{{ req.user?.name || 'Operator' }}</td>
+                <td class="p-4 text-center">
+                  <span :class="getStatusClass(req.status)" class="px-3 py-1 rounded-full text-[9px] font-black border uppercase">
+                    {{ req.status }}
+                  </span>
+                </td>
+                <td class="p-4 text-right">
+                  <div class="flex justify-end gap-2 items-center">
+                    <button @click="openPdfPreview(req)" class="bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 px-3.5 py-1.5 rounded-xl text-[9px] font-black uppercase">
+                      🔍 Periksa & Atur TTD
+                    </button>
+                    <button v-if="req.status === 'approved'" @click="downloadFile(req.file_path, req.subject)" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-xl text-[9px] font-black uppercase shadow-sm">
+                      📥 Unduh
+                    </button>
+                    <button v-if="user.role === 'admin' || user.id === req.user_id" @click="deleteRequest(req.id)" class="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white px-2.5 py-1.5 rounded-xl text-[9px] font-black uppercase">
+                      🗑️
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="!requests?.data?.length">
+                <td colspan="5" class="p-8 text-center text-slate-400 italic text-xs">Belum ada berkas PDF diajukan.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-            <div v-if="user.role === 'komandan' || user.role === 'admin'" class="bg-white border-t p-4 sm:p-6 flex justify-center gap-3 shrink-0 shadow-2xl pb-10 text-center">
-                <button v-if="isAdjusting" @click="handleDecision('approved')" :disabled="decisionForm.processing" class="flex-[2] max-w-[400px] flex items-center justify-center gap-2 bg-emerald-600 text-white py-5 rounded-[1.5rem] font-black text-[10px] sm:text-xs uppercase shadow-xl active:scale-95 transition-all text-center">KONFIRMASI TTD</button>
-                <button @click="handleDecision('rejected')" :disabled="decisionForm.processing" class="flex-1 max-w-[200px] bg-rose-500 text-white py-5 rounded-2xl font-black text-[10px] uppercase shadow-lg text-center">TOLAK</button>
-                <button v-if="isAdjusting" @click="isAdjusting = false" class="flex-1 max-w-[150px] bg-slate-100 text-slate-500 px-6 py-5 rounded-2xl font-black text-[10px] uppercase border border-slate-200 text-center">BATAL</button>
-            </div>
+    </div>
+
+    <!-- MODAL PRATINJAU SKHPP -->
+    <div v-if="isSkhppPreviewOpen && selectedSkhpp" class="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+      <div class="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-200 text-left">
+        <div class="flex items-center justify-between border-b pb-4">
+          <div>
+            <span class="text-[10px] font-bold uppercase tracking-wider text-blue-600 block">Detail Pengajuan SKHPP</span>
+            <h3 class="text-base font-black text-slate-900 uppercase">{{ selectedSkhpp.nama }}</h3>
+          </div>
+          <button @click="isSkhppPreviewOpen = false" class="text-slate-400 hover:text-slate-600 text-sm font-black">✕</button>
         </div>
 
-        <transition name="modal-pop">
-            <div v-if="isModalOpen" class="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-indigo-950/70 backdrop-blur-sm text-left">
-                <div class="relative bg-white w-full max-w-md rounded-t-[3rem] sm:rounded-[3rem] p-10 shadow-2xl border border-white/20 overflow-hidden text-left">
-                    <div v-if="form.progress" class="absolute top-0 left-0 w-full h-1.5 bg-slate-100 text-left">
-                        <div class="h-full bg-indigo-600 transition-all duration-300 shadow-[0_0_15px_#4f46e5]" :style="{ width: form.progress.percentage + '%' }"></div>
-                    </div>
-                    <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-8 sm:hidden text-center"></div>
-                    <h3 class="font-black text-xl text-indigo-950 uppercase italic text-center mb-8">Registrasi Berkas</h3>
-                    <form @submit.prevent="submitRequest" class="space-y-6 text-left">
-                        <input v-model="form.subject" type="text" class="w-full rounded-2xl border-slate-100 bg-slate-50 h-14 text-[11px] font-bold px-6 uppercase shadow-sm focus:ring-4 focus:ring-indigo-600/10 text-left" placeholder="PERIHAL BERKAS..." required>
-                        <div class="relative group w-full h-24 border-2 border-dashed border-indigo-100 rounded-3xl bg-indigo-50/20 flex items-center px-6 cursor-pointer overflow-hidden transition-all hover:border-indigo-500 text-left">
-                            <input type="file" @input="form.file = $event.target.files[0]" accept=".pdf" class="absolute inset-0 opacity-0 z-10 text-left" required />
-                            <div class="flex flex-col truncate w-full items-center text-center">
-                                <span class="text-[10px] font-black text-indigo-950 uppercase italic text-center">{{ form.file ? 'BERKAS SIAP' : 'PILIH BERKAS (PDF)' }}</span>
-                                <span class="text-[8px] text-slate-400 font-bold truncate mt-1 italic text-center">{{ form.file?.name }}</span>
-                            </div>
-                        </div>
-                        <button type="submit" :disabled="form.processing" class="w-full bg-indigo-600 text-white py-5 rounded-[2rem] font-black text-[10px] uppercase shadow-xl active:scale-95 transition-all text-center">KIRIM SEKARANG</button>
-                        <button type="button" @click="isModalOpen = false" class="w-full text-[9px] font-black uppercase text-slate-400 mb-4 text-center">Batalkan</button>
-                    </form>
-                </div>
-            </div>
-        </transition>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <span class="text-[10px] font-bold text-slate-400 block uppercase">Identitas (Pangkat/NRP/NIK)</span>
+            <span class="font-bold text-slate-800">{{ selectedSkhpp.pangkat_korps_nrp || selectedSkhpp.nik || '-' }}</span>
+          </div>
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <span class="text-[10px] font-bold text-slate-400 block uppercase">Jabatan / Pekerjaan</span>
+            <span class="font-semibold text-slate-800">{{ selectedSkhpp.jabatan_pekerjaan }}</span>
+          </div>
+          <div class="sm:col-span-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <span class="text-[10px] font-bold text-slate-400 block uppercase">Maksud & Peruntukan</span>
+            <span class="font-medium text-slate-700 leading-relaxed">{{ selectedSkhpp.peruntukan }}</span>
+          </div>
+          <div class="sm:col-span-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <span class="text-[10px] font-bold text-slate-400 block uppercase">Nomor SKHPP</span>
+            <span class="font-mono font-bold text-orange-600">{{ selectedSkhpp.nomor_skhpp || 'Draft (Otomatis saat disetujui Komandan)' }}</span>
+          </div>
+        </div>
 
-        <transition name="modal-pop">
-            <div v-if="isRevisionModalOpen" class="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-rose-950/70 backdrop-blur-sm text-left">
-                <div class="relative bg-white w-full max-w-md rounded-t-[3rem] sm:rounded-[3rem] p-10 shadow-2xl border border-white/20 overflow-hidden animate-in slide-in-from-bottom duration-300 text-left">
-                    <div v-if="decisionForm.progress" class="absolute top-0 left-0 w-full h-1.5 bg-slate-100 text-left">
-                        <div class="h-full bg-rose-500 transition-all duration-300 shadow-[0_0_10px_#f43f5e]" :style="{ width: decisionForm.progress.percentage + '%' }"></div>
-                    </div>
-                    <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-8 sm:hidden text-center"></div>
-                    <div class="text-center mb-8">
-                        <h3 class="font-black text-xl text-indigo-950 uppercase italic tracking-tighter text-center">Perbaikan Berkas</h3>
-                        <p class="text-[9px] text-rose-500 font-bold uppercase mt-2 italic tracking-widest text-center">Unggah file revisi terbaru</p>
-                    </div>
-                    <form @submit.prevent="submitRevision" class="space-y-6 text-left">
-                        <div class="relative w-full h-32 border-2 border-dashed border-rose-200 rounded-3xl bg-rose-50/20 flex items-center px-8 cursor-pointer overflow-hidden transition-all hover:border-rose-500 text-left">
-                            <input type="file" @input="decisionForm.file = $event.target.files[0]" accept=".pdf" class="absolute inset-0 opacity-0 cursor-pointer z-10 text-left" required />
-                            <div class="flex flex-col items-center w-full text-center">
-                                <span class="text-[10px] font-black text-rose-600 uppercase italic text-center">{{ decisionForm.file ? 'FILE REVISI SIAP' : 'PILIH FILE REVISI (PDF)' }}</span>
-                                <span class="text-[8px] text-slate-400 font-bold truncate mt-2 italic text-center">{{ decisionForm.file?.name }}</span>
-                            </div>
-                        </div>
-                        <button type="submit" :disabled="decisionForm.processing" class="w-full bg-rose-600 text-white py-5 rounded-[2rem] font-black text-[10px] uppercase shadow-xl active:scale-95 transition-all text-center">KIRIM PERBAIKAN</button>
-                        <button type="button" @click="closeModals" class="w-full text-[9px] font-black uppercase text-slate-400 mb-4 text-center">Nanti Saja</button>
-                    </form>
-                </div>
+        <div class="flex justify-between items-center pt-4 border-t gap-3">
+          <Link :href="`/skhpp/${selectedSkhpp.id}`" class="text-xs font-bold text-blue-600 hover:underline">
+            📄 Buka Halaman Cetak SKHPP Lengkap →
+          </Link>
+          <div class="flex gap-2">
+            <template v-if="(user.role === 'admin' || user.role === 'komandan') && selectedSkhpp.status === 'pending'">
+              <button @click="approveSkhpp(selectedSkhpp)" class="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase shadow-md">
+                ✅ Setujui & TTD
+              </button>
+              <button @click="rejectSkhpp(selectedSkhpp)" class="bg-rose-50 text-rose-600 border border-rose-200 px-4 py-2 rounded-xl text-xs font-bold uppercase">
+                ❌ Tolak
+              </button>
+            </template>
+            <button @click="isSkhppPreviewOpen = false" class="bg-slate-100 text-slate-600 px-4 py-2 rounded-xl text-xs font-bold uppercase">
+              Tutup
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL MULTI-PAGE PDF PREVIEW & ATUR TTD -->
+    <div v-if="isPreviewOpen" class="fixed inset-0 z-[150] flex flex-col bg-slate-950 animate-in fade-in duration-300">
+      
+      <!-- Top Navigation & Actions Bar -->
+      <div class="bg-white border-b px-4 py-3 flex justify-between items-center shadow-xl shrink-0">
+        <div class="flex items-center gap-3">
+          <span class="text-blue-600 text-[10px] font-black uppercase tracking-widest">VERIFIKASI PDF MULTI-HALAMAN</span>
+          
+          <!-- Page Controls (Halaman Lebih Dari Satu) -->
+          <div v-if="totalPages > 1" class="flex items-center gap-1.5 bg-slate-100 px-3 py-1 rounded-xl border border-slate-200 text-xs">
+            <button @click="changePdfPage(-1)" :disabled="currentPage <= 1" class="px-2 py-0.5 rounded bg-white font-bold text-slate-700 disabled:opacity-30 hover:bg-slate-200">◀</button>
+            <span class="font-bold text-slate-800">Halaman {{ currentPage }} / {{ totalPages }}</span>
+            <button @click="changePdfPage(1)" :disabled="currentPage >= totalPages" class="px-2 py-0.5 rounded bg-white font-bold text-slate-700 disabled:opacity-30 hover:bg-slate-200">▶</button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button v-if="!isAdjusting && (user.role === 'komandan' || user.role === 'admin')" @click="enableDrag" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-black uppercase shadow-md">
+            📍 Atur Posisi TTD (Hal. {{ currentPage }})
+          </button>
+          <button @click="isPreviewOpen = false" class="bg-rose-50 text-rose-600 px-3 py-2 rounded-xl text-xs font-black uppercase border border-rose-100">✕</button>
+        </div>
+      </div>
+
+      <!-- Canvas Render Area -->
+      <div class="flex-1 relative overflow-auto bg-slate-900/60 p-4 custom-scrollbar flex justify-center items-start" id="pdf-render-container">
+        <div v-if="isLoadingPdf" class="absolute inset-0 z-[200] flex items-center justify-center bg-slate-950/80">
+          <div class="animate-spin border-4 border-blue-500 border-t-transparent rounded-full w-10 h-10"></div>
+        </div>
+
+        <div class="relative bg-white shadow-2xl overflow-hidden rounded-sm" style="line-height: 0;">
+          <canvas id="pdf-render-canvas"></canvas>
+
+          <!-- Draggable Signature Box -->
+          <div v-if="isAdjusting" class="drag-signature absolute z-[200] cursor-move border-2 border-blue-600 bg-blue-500/20 backdrop-blur-[1px] shadow-2xl flex items-center justify-center touch-none"
+               :style="{ left: signaturePos.x + 'px', top: signaturePos.y + 'px', width: signatureSize.width + 'px', height: signatureSize.height + 'px' }">
+            <img :src="'/storage/' + commanderSignature" class="w-full h-full object-contain pointer-events-none opacity-90" alt="TTD Komandan" />
+            <div class="absolute -bottom-2 -right-2 w-6 h-6 bg-blue-600 rounded-full border-2 border-white shadow-lg cursor-se-resize flex items-center justify-center">
+              <div class="w-1.5 h-1.5 bg-white rounded-full"></div>
             </div>
-        </transition>
-    </AuthenticatedLayout>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Confirm / Reject Bar -->
+      <div v-if="user.role === 'komandan' || user.role === 'admin'" class="bg-white border-t p-4 flex justify-center gap-3 shrink-0 shadow-2xl">
+        <button v-if="isAdjusting" @click="handlePdfDecision('approved')" :disabled="decisionForm.processing" class="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg">
+          ✅ KONFIRMASI TTD HALAMAN {{ currentPage }}
+        </button>
+        <button @click="handlePdfDecision('rejected')" :disabled="decisionForm.processing" class="bg-rose-600 hover:bg-rose-700 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg">
+          ❌ TOLAK BERKAS
+        </button>
+        <button v-if="isAdjusting" @click="isAdjusting = false" class="bg-slate-100 text-slate-600 px-6 py-3.5 rounded-2xl font-black text-xs uppercase border border-slate-200">
+          BATAL
+        </button>
+      </div>
+
+    </div>
+
+    <!-- MODAL REGISTRASI BERKAS PDF BARU -->
+    <transition name="modal-pop">
+      <div v-if="isModalOpen" class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl border border-slate-100 space-y-6 text-left">
+          <div class="flex items-center justify-between border-b pb-4">
+            <h3 class="font-black text-base text-slate-900 uppercase">Registrasi Berkas Dinas (PDF)</h3>
+            <button @click="isModalOpen = false" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
+          </div>
+
+          <form @submit.prevent="submitRequest" class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Perihal / Subjek Surat</label>
+              <input v-model="form.subject" type="text" class="w-full rounded-xl border-slate-200 bg-slate-50 text-xs font-bold p-3 uppercase focus:ring-2 focus:ring-blue-500" placeholder="SURAT PERINTAH / NOTA DINAS..." required>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Unggah Berkas PDF (Dapat Lebih Dari 1 Halaman)</label>
+              <input type="file" @input="form.file = $event.target.files[0]" accept=".pdf" class="w-full text-xs text-slate-500 border border-slate-200 rounded-xl p-2 bg-slate-50" required />
+            </div>
+
+            <div class="flex justify-end gap-2 pt-4 border-t">
+              <button type="button" @click="isModalOpen = false" class="bg-slate-100 text-slate-600 px-4 py-2.5 rounded-xl text-xs font-bold uppercase">Batal</button>
+              <button type="submit" :disabled="form.processing" class="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-xs font-bold uppercase shadow-md">Kirim Berkas</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </transition>
+
+  </AuthenticatedLayout>
 </template>
 
 <style scoped>
 #pdf-render-canvas { display: block; margin: 0 auto; background-color: #fff; }
 .drag-signature { touch-action: none; user-select: none; }
-.custom-scrollbar::-webkit-scrollbar { width: 0px; }
-.modal-pop-enter-active { animation: sultan-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
-@keyframes sultan-pop { 
-    from { opacity: 0; transform: translateY(100px); } 
-    to { opacity: 1; transform: translateY(0); } 
-}
-@media (max-width: 640px) { .drag-signature { border-width: 1px; box-shadow: 0 0 20px rgba(79,70,229,0.3); } }
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
 </style>

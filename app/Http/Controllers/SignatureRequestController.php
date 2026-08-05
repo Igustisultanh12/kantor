@@ -18,14 +18,22 @@ class SignatureRequestController extends Controller
 {
     public function index() {
         $user = auth()->user();
-        $query = SignatureRequest::with('user');
+        
+        $sigQuery = SignatureRequest::with('user');
+        $skhppQuery = \App\Models\Skhpp::with(['submitter', 'approver', 'members']);
 
         if ($user->role !== 'admin' && $user->role !== 'komandan') {
-            $query->where('user_id', $user->id);
+            $sigQuery->where('user_id', $user->id);
+            $skhppQuery->where('user_id', $user->id);
         }
 
-        $requests = $query->latest()->paginate(15)->withQueryString();
-        return Inertia::render('Signature/Index', ['requests' => $requests]);
+        $requests = $sigQuery->latest()->paginate(15)->withQueryString();
+        $skhppRequests = $skhppQuery->latest()->paginate(15)->withQueryString();
+
+        return Inertia::render('Signature/Index', [
+            'requests' => $requests,
+            'skhppRequests' => $skhppRequests
+        ]);
     }
 
     public function store(Request $request) {
