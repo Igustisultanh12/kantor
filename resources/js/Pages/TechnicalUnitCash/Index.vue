@@ -504,46 +504,61 @@ const formatLongDate = (dateStr) => {
                     </div>
                 </template>
 
-                <!-- Tampilan 2: Mode Laporan Buku Kas Bulanan Lengkap (Tanpa Centangan) -->
+                <!-- Tampilan 2: Mode Laporan Buku Rekening Kas Dan Unit Teknis (Standard Buku Rekening) -->
                 <template v-else>
                     <div class="text-center mb-8 uppercase">
-                        <h3 style="margin: 0; font-size: 16px; font-weight: bold; text-decoration: underline;">REKENING KORAN BUKU KAS DAN UNIT TEKNIS</h3>
+                        <h3 style="margin: 0; font-size: 16px; font-weight: bold; text-decoration: underline; letter-spacing: 0.5px;">LAPORAN BUKU REKENING KAS DAN UNIT TEKNIS</h3>
                         <p style="margin: 8px 0 0 0; font-size: 11px; font-weight: bold;">
-                            BULAN: {{ selectedMonthName }} {{ filterYear }}
+                            PERIODE BULAN: {{ selectedMonthName }} {{ filterYear }}
                         </p>
                     </div>
 
+                    <!-- Tabel Format Buku Rekening Bank -->
                     <table class="w-full border-collapse border-[1.5px] border-black text-[10px]">
                         <thead>
-                            <tr style="background-color: #f2f2f2; text-transform: uppercase; font-weight: bold; text-align: center;">
-                                <th style="border: 1px solid #000; padding: 10px 4px; width: 5%;">NO</th>
-                                <th style="border: 1px solid #000; padding: 10px 4px; width: 15%;">TANGGAL</th>
-                                <th style="border: 1px solid #000; padding: 10px 4px; width: 35%; text-align: left;">KETERANGAN</th>
-                                <th style="border: 1px solid #000; padding: 10px 4px; width: 15%;">DEBIT</th>
-                                <th style="border: 1px solid #000; padding: 10px 4px; width: 15%;">KREDIT</th>
-                                <th style="border: 1px solid #000; padding: 10px 4px; width: 15%;">SALDO</th>
+                            <tr style="background-color: #e2e8f0; text-transform: uppercase; font-weight: bold; text-align: center; color: #000;">
+                                <th style="border: 1px solid #000; padding: 8px 4px; width: 5%;">NO</th>
+                                <th style="border: 1px solid #000; padding: 8px 4px; width: 14%;">TANGGAL</th>
+                                <th style="border: 1px solid #000; padding: 8px 6px; width: 36%; text-align: left;">URAIAN / KETERANGAN MUTASI REKENING</th>
+                                <th style="border: 1px solid #000; padding: 8px 6px; width: 15%; text-align: right;">DEBIT (MASUK)</th>
+                                <th style="border: 1px solid #000; padding: 8px 6px; width: 15%; text-align: right;">KREDIT (KELUAR)</th>
+                                <th style="border: 1px solid #000; padding: 8px 6px; width: 15%; text-align: right;">SALDO REKENING</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="(cash, index) in printableCashes" :key="cash.id">
-                                <td style="border: 1px solid #000; padding: 6px 4px; text-align: center;">{{ index + 1 }}</td>
-                                <td style="border: 1px solid #000; padding: 6px 4px; text-align: center;">{{ cash.date ? cash.date.substring(0, 10) : '' }}</td>
-                                <td style="border: 1px solid #000; padding: 6px 4px; text-transform: uppercase;">{{ cash.description }}</td>
-                                <td style="border: 1px solid #000; padding: 6px 4px; text-align: right;">{{ cash.debit > 0 ? formatRupiah(cash.debit) : '-' }}</td>
-                                <td style="border: 1px solid #000; padding: 6px 4px; text-align: right;">{{ cash.credit > 0 ? formatRupiah(cash.credit) : '-' }}</td>
-                                <td style="border: 1px solid #000; padding: 6px 4px; text-align: right; font-weight: bold;">{{ formatRupiah(cash.balance) }}</td>
+                            <tr v-for="(cash, index) in printableCashes" :key="cash.id" style="border-bottom: 1px solid #000;">
+                                <td style="border: 1px solid #000; padding: 6px 4px; text-align: center; font-weight: bold;">{{ index + 1 }}</td>
+                                <td style="border: 1px solid #000; padding: 6px 4px; text-align: center; font-weight: bold;">{{ cash.date ? cash.date.substring(0, 10) : '' }}</td>
+                                <td style="border: 1px solid #000; padding: 6px 6px; text-transform: uppercase;">{{ cash.description }}</td>
+                                <td style="border: 1px solid #000; padding: 6px 6px; text-align: right; color: #166534; font-family: 'Courier New', monospace; font-weight: bold;">
+                                    {{ cash.debit > 0 ? formatRupiah(cash.debit) : '-' }}
+                                </td>
+                                <td style="border: 1px solid #000; padding: 6px 6px; text-align: right; color: #991b1b; font-family: 'Courier New', monospace; font-weight: bold;">
+                                    {{ cash.credit > 0 ? formatRupiah(cash.credit) : '-' }}
+                                </td>
+                                <td style="border: 1px solid #000; padding: 6px 6px; text-align: right; font-weight: bold; font-family: 'Courier New', monospace; background-color: #f8fafc;">
+                                    {{ formatRupiah(cash.balance) }}
+                                </td>
                             </tr>
                             <tr v-if="printableCashes.length === 0">
-                                <td colspan="6" style="border: 1px solid #000; padding: 40px; text-align: center; font-weight: bold; color: #9ca3af;">DATA BULAN {{ selectedMonthName }} TIDAK DITEMUKAN</td>
+                                <td colspan="6" style="border: 1px solid #000; padding: 40px; text-align: center; font-weight: bold; color: #9ca3af;">MUTASI REKENING BULAN {{ selectedMonthName }} TIDAK DITEMUKAN</td>
                             </tr>
                         </tbody>
                     </table>
 
-                    <div style="margin-top: 15px; padding: 10px; border-left: 4px solid #000; background-color: #f9fafb; font-size: 11px; font-weight: bold; text-transform: uppercase;">
-                        <p style="margin: 0;">TOTAL DEBIT BULAN INI: {{ formatRupiah(totalDebit) }}</p>
-                        <p style="margin: 4px 0 0 0;">TOTAL KREDIT BULAN INI: {{ formatRupiah(totalCredit) }}</p>
-                        <div style="margin-top: 8px; border-top: 1px dashed #ccc; padding-top: 5px;">
-                            <p style="margin: 0; font-size: 12px;">SALDO AKHIR (TOTAL): {{ formatRupiah(props.totalSaldo) }}</p>
+                    <!-- Rincian Buku Rekening -->
+                    <div style="margin-top: 15px; padding: 12px; border-left: 4px solid #000; background-color: #f8fafc; font-size: 11px; font-weight: bold; text-transform: uppercase;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span>TOTAL MUTASI SETORAN (DEBIT):</span>
+                            <span style="font-family: 'Courier New', monospace; color: #166534;">+{{ formatRupiah(totalDebit) }}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                            <span>TOTAL MUTASI PENARIKAN (KREDIT):</span>
+                            <span style="font-family: 'Courier New', monospace; color: #991b1b;">-{{ formatRupiah(totalCredit) }}</span>
+                        </div>
+                        <div style="border-top: 1.5px dashed #000; padding-top: 6px; display: flex; justify-content: space-between; font-size: 12px;">
+                            <span>SALDO AKHIR REKENING DAN UNIT TEKNIS:</span>
+                            <span style="font-family: 'Courier New', monospace; font-weight: bold; color: #000;">{{ formatRupiah(props.totalSaldo) }}</span>
                         </div>
                     </div>
                 </template>
