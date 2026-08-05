@@ -148,13 +148,18 @@ class SkhppController extends Controller
         }
 
         // Sinkronisasi ke Antrean TTD Komandan (SignatureRequest)
-        SignatureRequest::create([
-            'title' => "Pengajuan SKHPP - {$skhpp->nama} (" . strtoupper($skhpp->kategori_personel) . ")",
-            'applicant_id' => $user->id,
-            'document_path' => $foto1Path, // Path referensi
-            'status' => 'pending',
-            'notes' => "Peruntukan: {$skhpp->peruntukan}"
-        ]);
+        try {
+            SignatureRequest::create([
+                'user_id' => $user->id,
+                'subject' => "Pengajuan SKHPP - {$skhpp->nama} (" . strtoupper(str_replace('_', ' ', $skhpp->kategori_personel)) . ")",
+                'letter_number' => "DRAFT SKHPP #" . $skhpp->id,
+                'file_path' => $foto1Path,
+                'status' => 'pending',
+                'note' => "Peruntukan: {$skhpp->peruntukan}"
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Gagal auto-sync SKHPP ke SignatureRequest: " . $e->getMessage());
+        }
 
         return redirect()->route('skhpp.index')->with('success', 'Permohonan SKHPP berhasil diterbitkan & dikirim ke Antrean TTD Komandan.');
     }
