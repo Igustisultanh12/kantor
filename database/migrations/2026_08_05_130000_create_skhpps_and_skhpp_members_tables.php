@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('skhpps', function (Blueprint $table) {
             $table->id();
-            $table->enum('kategori_personel', ['militer', 'sipil'])->default('militer');
+            $table->string('kategori_personel', 50)->default('militer');
             $table->boolean('is_pernikahan')->default(false);
             $table->string('nomor_skhpp')->nullable(); // Contoh: R/171/SKHPP/VIII/2026
             $table->integer('nomor_urut')->nullable();
