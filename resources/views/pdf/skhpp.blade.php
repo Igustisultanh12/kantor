@@ -45,10 +45,10 @@
     <!-- HALAMAN 1: DOKUMEN SKHPP UTAMA -->
     <div style="width: 100%;">
         
-        <!-- Kop Surat (Rata Tengah dalam Kop Block) -->
-        <div style="margin-bottom: 20px; width: 330px; text-align: center;">
-            <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt;">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
-            <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt;">DETASEMEN INTELIJEN</div>
+        <!-- Kop Surat (Rata Tengah dalam Kop Block, Tanpa Wrap pada V) -->
+        <div style="margin-bottom: 20px; width: 380px; text-align: center;">
+            <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt; white-space: nowrap;">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
+            <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt; white-space: nowrap;">DETASEMEN INTELIJEN</div>
             <div style="border-bottom: 2px solid #000; width: 100%; margin-top: 2px;"></div>
         </div>
 
@@ -289,9 +289,9 @@
         <table style="width: 100%; margin-bottom: 25px;">
             <tr>
                 <td style="width: 55%; vertical-align: top;">
-                    <div style="width: 330px; text-align: center;">
-                        <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt;">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
-                        <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt;">DETASEMEN INTELIJEN</div>
+                    <div style="width: 380px; text-align: center;">
+                        <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt; white-space: nowrap;">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
+                        <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt; white-space: nowrap;">DETASEMEN INTELIJEN</div>
                         <div style="border-bottom: 2px solid #000; width: 100%; margin-top: 2px;"></div>
                     </div>
                 </td>
