@@ -62,6 +62,7 @@ const decisionForm = useForm({
   width: 0, 
   canvas_width: 0, 
   target_page: 1, 
+  apply_to_all: false,
   note: '', 
   file: null, 
   _method: 'PATCH' 
@@ -272,7 +273,7 @@ const enableDrag = () => {
   });
 };
 
-const handlePdfDecision = (status) => {
+const handlePdfDecision = (status, applyAll = false) => {
   if (status === 'rejected') {
     Swal.fire({
       title: 'Tolak Berkas PDF',
@@ -302,11 +303,16 @@ const handlePdfDecision = (status) => {
   decisionForm.width = parseFloat(signatureSize.value.width / canvas.width);
   decisionForm.canvas_width = canvas.width;
   decisionForm.target_page = currentPage.value; // Halaman target yang dipilih
+  decisionForm.apply_to_all = applyAll;
   
+  const textMsg = applyAll 
+    ? `TTD Terpasang Presisi pada SELURUH HALAMAN (1 s.d. ${totalPages.value})`
+    : `TTD Terpasang Presisi pada Halaman ${currentPage.value}`;
+
   decisionForm.patch(route('signature.update', selectedReqId.value), {
     onSuccess: () => { 
       isPreviewOpen.value = false; 
-      Swal.fire({ icon: 'success', title: 'Berhasil', text: `TTD Terpasang Presisi pada Halaman ${currentPage.value}`, timer: 2000, showConfirmButton: false }); 
+      Swal.fire({ icon: 'success', title: 'Berhasil', text: textMsg, timer: 2500, showConfirmButton: false }); 
     }
   });
 };
@@ -780,15 +786,23 @@ const getStatusClass = (status) => {
         </div>
       </div>
 
+      <!-- Banner Petunjuk Multi-Halaman -->
+      <div v-if="totalPages > 1" class="bg-blue-50 border-t border-b border-blue-100 px-4 py-2.5 text-center text-xs font-bold text-blue-900 shrink-0 flex items-center justify-center gap-2 flex-wrap">
+        <span>💡 Dokumen ini memiliki <strong>{{ totalPages }} Halaman</strong>. Buka halaman tempat TTD berada menggunakan tombol ◀ ▶ di atas, atau pilih tempel di seluruh halaman.</span>
+      </div>
+
       <!-- Bottom Confirm / Reject Bar -->
-      <div v-if="user.role === 'komandan' || user.role === 'admin'" class="bg-white border-t p-4 flex justify-center gap-3 shrink-0 shadow-2xl">
-        <button v-if="isAdjusting" @click="handlePdfDecision('approved')" :disabled="decisionForm.processing" class="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg">
-          ✅ KONFIRMASI TTD HALAMAN {{ currentPage }}
+      <div v-if="user.role === 'komandan' || user.role === 'admin'" class="bg-white border-t p-4 flex flex-wrap justify-center gap-3 shrink-0 shadow-2xl">
+        <button v-if="isAdjusting" @click="handlePdfDecision('approved', false)" :disabled="decisionForm.processing" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg">
+          ✅ TEMPEL TTD HALAMAN {{ currentPage }} SAJA
         </button>
-        <button @click="handlePdfDecision('rejected')" :disabled="decisionForm.processing" class="bg-rose-600 hover:bg-rose-700 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg">
+        <button v-if="isAdjusting && totalPages > 1" @click="handlePdfDecision('approved', true)" :disabled="decisionForm.processing" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg">
+          🌐 TEMPEL DI SEMUA HALAMAN (1 s.d. {{ totalPages }})
+        </button>
+        <button @click="handlePdfDecision('rejected')" :disabled="decisionForm.processing" class="bg-rose-600 hover:bg-rose-700 text-white px-5 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg">
           ❌ TOLAK BERKAS
         </button>
-        <button v-if="isAdjusting" @click="isAdjusting = false" class="bg-slate-100 text-slate-600 px-6 py-3.5 rounded-2xl font-black text-xs uppercase border border-slate-200">
+        <button v-if="isAdjusting" @click="isAdjusting = false" class="bg-slate-100 text-slate-600 px-5 py-3.5 rounded-2xl font-black text-xs uppercase border border-slate-200">
           BATAL
         </button>
       </div>

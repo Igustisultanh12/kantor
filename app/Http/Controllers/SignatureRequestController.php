@@ -212,8 +212,9 @@ class SignatureRequestController extends Controller
                 $yRatio = (float)($request->y ?? $signatureRequest->y);
                 $wRatio = (float)($request->width ?? $signatureRequest->width);
                 $targetPage = (int)($request->target_page ?? $pageCount);
+                $applyToAll = !empty($request->apply_to_all);
 
-                Log::info("Data Diterima -> X: $xRatio, Y: $yRatio, Width: $wRatio, Target Hal: $targetPage");
+                Log::info("Data Diterima -> X: $xRatio, Y: $yRatio, Width: $wRatio, Target Hal: $targetPage, Apply All: " . ($applyToAll ? 'YES' : 'NO'));
 
                 for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
                     $templateId = $pdf->importPage($pageNo);
@@ -221,7 +222,7 @@ class SignatureRequestController extends Controller
                     $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
                     $pdf->useTemplate($templateId);
 
-                    if ($pageNo === $targetPage) {
+                    if ($applyToAll || $targetPage === 0 || $pageNo === $targetPage) {
                         $pdfW = $size['width'];
                         $pdfH = $size['height'];
                         $posX = $xRatio * $pdfW;
