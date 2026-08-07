@@ -43,27 +43,85 @@ const handleKeyDown = (event) => {
 };
 
 /**
- * SISTEM NOTIFIKASI
+ * SISTEM NOTIFIKASI REAL-TIME & IN-APP BELL
  */
-const isNotifOpen = ref(false);
-const notifications = ref([
-    { id: 1, title: 'Ulang Birthday', message: 'Hari ini ada personel yang berulang tahun. Silakan cek Periksa pada menu ucapan', time: 'Baru saja' },
-    { id: 2, title: 'Sistem SINDEN', message: 'Pangkalan data UcapanConfig berhasil disinkronisasi dengan jalur utama.', time: '1 Jam yang lalu' },
-]);
+import { router } from '@inertiajs/vue3';
 
-const showNotifDetail = (notif) => {
-    isNotifOpen.value = false; 
-    Swal.fire({
-        title: `<span class="uppercase font-bold text-sm tracking-wider text-slate-900">${notif.title}</span>`,
-        html: `<p class="text-xs font-medium text-slate-600 leading-relaxed">${notif.message}</p>`,
-        icon: 'info',
-        confirmButtonText: 'Tutup',
-        confirmButtonColor: '#2563eb',
-        customClass: {
-            popup: 'rounded-2xl border border-slate-100 shadow-xl',
-            confirmButton: 'rounded-xl text-[10px] font-bold uppercase px-6 py-2.5 tracking-wider'
+const isNotifOpen = ref(false);
+const notifications = ref([]);
+const unreadCount = ref(0);
+const isLoadingNotifs = ref(false);
+
+const fetchNotifications = async () => {
+    try {
+        isLoadingNotifs.value = true;
+        const res = await fetch(route('notifications.api'));
+        if (res.ok) {
+            const data = await res.json();
+            notifications.value = data.notifications || [];
+            unreadCount.value = data.unreadCount || 0;
         }
-    });
+    } catch (e) {
+        console.error("Gagal mengambil notifikasi sistem:", e);
+    } finally {
+        isLoadingNotifs.value = false;
+    }
+};
+
+const formatTimeAgo = (dateStr) => {
+    if (!dateStr) return 'Baru saja';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffSec = Math.floor((now - date) / 1000);
+    if (diffSec < 60) return 'Baru saja';
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m yang lalu`;
+    const diffHour = Math.floor(diffMin / 60);
+    if (diffHour < 24) return `${diffHour}j yang lalu`;
+    const diffDay = Math.floor(diffHour / 24);
+    return `${diffDay}hr yang lalu`;
+};
+
+const handleNotifClick = async (notif) => {
+    try {
+        await fetch(route('notifications.read', notif.id), {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': page.props.csrf_token,
+                'Accept': 'application/json'
+            }
+        });
+        notif.is_read = true;
+        if (unreadCount.value > 0) unreadCount.value--;
+    } catch (e) {}
+
+    isNotifOpen.value = false;
+
+    if (notif.link) {
+        router.visit(notif.link);
+    } else {
+        Swal.fire({
+            title: `<span class="uppercase font-bold text-sm tracking-wider text-slate-900">${notif.title}</span>`,
+            html: `<p class="text-xs font-medium text-slate-600 leading-relaxed">${notif.message}</p>`,
+            icon: notif.type || 'info',
+            confirmButtonText: 'Tutup',
+            confirmButtonColor: '#2563eb',
+        });
+    }
+};
+
+const markAllRead = async () => {
+    try {
+        await fetch(route('notifications.read-all'), {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': page.props.csrf_token,
+                'Accept': 'application/json'
+            }
+        });
+        notifications.value.forEach(n => n.is_read = true);
+        unreadCount.value = 0;
+    } catch (e) {}
 };
 
 /**
@@ -96,15 +154,21 @@ const checkMobile = () => {
     isMobile.value = window.innerWidth < 1024;
 };
 
+let notifTimer = null;
+
 onMounted(() => {
     checkMobile();
     window.addEventListener('resize', checkMobile);
     window.addEventListener('keydown', handleKeyDown);
+
+    fetchNotifications();
+    notifTimer = setInterval(fetchNotifications, 5000); // Poll notifikasi setiap 5 detik
 });
 
 onUnmounted(() => {
     window.removeEventListener('resize', checkMobile);
     window.removeEventListener('keydown', handleKeyDown);
+    if (notifTimer) clearInterval(notifTimer);
 });
 </script>
 
@@ -657,26 +721,48 @@ onUnmounted(() => {
                 <!-- Right Header Actions (Notif & Profile) -->
                 <div class="flex items-center gap-1.5 sm:gap-3 shrink-0">
                     
-                    <!-- Notifikasi Popover -->
+                    <!-- Notifikasi Popover (Lonceng Notifikasi Sistem Real-time) -->
                     <div class="relative">
-                        <button @click="isNotifOpen = !isNotifOpen" class="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition relative">
+                        <button @click="isNotifOpen = !isNotifOpen" class="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition relative flex items-center justify-center">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                             </svg>
-                            <span v-if="notifications.length > 0" class="absolute top-1.5 right-1.5 h-2 w-2 bg-blue-600 rounded-full animate-ping"></span>
-                            <span v-if="notifications.length > 0" class="absolute top-1.5 right-1.5 h-2 w-2 bg-blue-600 rounded-full"></span>
+                            <!-- Badge Indikator Bulatan Biru/Merah Real-Time -->
+                            <span v-if="unreadCount > 0" class="absolute top-1 right-1 h-3.5 w-3.5 bg-blue-600 rounded-full animate-ping opacity-75"></span>
+                            <span v-if="unreadCount > 0" class="absolute top-1 right-1 min-w-[14px] h-3.5 px-1 bg-blue-600 text-white font-extrabold text-[8px] rounded-full flex items-center justify-center border border-white shadow-xs">
+                                {{ unreadCount > 9 ? '9+' : unreadCount }}
+                            </span>
                         </button>
 
-                        <div v-if="isNotifOpen" class="absolute right-0 mt-3 w-72 sm:w-80 bg-white rounded-2xl shadow-xl border border-slate-100 p-4 z-50 animate-float-card">
+                        <div v-if="isNotifOpen" class="absolute right-0 mt-3 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 z-50 animate-float-card">
                             <div class="flex justify-between items-center pb-3 border-b border-slate-100">
-                                <h4 class="font-extrabold text-xs uppercase tracking-wider text-slate-800">Notifikasi Sistem</h4>
-                                <span class="text-[9px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">{{ notifications.length }} Baru</span>
+                                <div class="flex items-center gap-2">
+                                    <h4 class="font-extrabold text-xs uppercase tracking-wider text-slate-800">Notifikasi Sistem</h4>
+                                    <span v-if="unreadCount > 0" class="text-[9px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100">{{ unreadCount }} Belum Dibaca</span>
+                                </div>
+                                <button v-if="unreadCount > 0" @click="markAllRead" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 transition">
+                                    Tandai Semua Dibaca
+                                </button>
                             </div>
-                            <div class="divide-y divide-slate-50 max-h-64 overflow-y-auto my-2">
-                                <div v-for="notif in notifications" :key="notif.id" @click="showNotifDetail(notif)" class="py-2.5 px-2 hover:bg-slate-50 rounded-xl cursor-pointer transition">
-                                    <p class="text-xs font-bold text-slate-800 leading-snug">{{ notif.title }}</p>
-                                    <p class="text-[10px] text-slate-500 line-clamp-2 mt-0.5">{{ notif.message }}</p>
-                                    <span class="text-[8px] font-bold text-slate-400 mt-1 block">{{ notif.time }}</span>
+
+                            <div class="divide-y divide-slate-100 max-h-80 overflow-y-auto my-2 custom-scrollbar">
+                                <div v-for="notif in notifications" :key="notif.id" 
+                                    @click="handleNotifClick(notif)" 
+                                    :class="!notif.is_read ? 'bg-blue-50/50 hover:bg-blue-50' : 'hover:bg-slate-50'"
+                                    class="py-3 px-2.5 rounded-xl cursor-pointer transition flex items-start gap-3">
+                                    <div class="mt-0.5 shrink-0">
+                                        <span v-if="!notif.is_read" class="w-2 h-2 rounded-full bg-blue-600 block shadow-xs"></span>
+                                        <span v-else class="w-2 h-2 rounded-full bg-slate-200 block"></span>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-xs font-bold text-slate-800 leading-snug truncate">{{ notif.title }}</p>
+                                        <p class="text-[10px] text-slate-600 leading-relaxed mt-0.5 line-clamp-2">{{ notif.message }}</p>
+                                        <span class="text-[9px] font-semibold text-slate-400 mt-1 block">{{ formatTimeAgo(notif.created_at) }}</span>
+                                    </div>
+                                </div>
+
+                                <div v-if="notifications.length === 0" class="py-8 text-center text-slate-400 text-xs font-medium">
+                                    Belum ada notifikasi masuk.
                                 </div>
                             </div>
                         </div>

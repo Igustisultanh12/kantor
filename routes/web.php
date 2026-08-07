@@ -287,6 +287,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/skhpp/{id}/approve', [SkhppController::class, 'approve'])->name('skhpp.approve');
     Route::post('/skhpp/{id}/reject', [SkhppController::class, 'reject'])->name('skhpp.reject');
     Route::delete('/skhpp/{id}', [SkhppController::class, 'destroy'])->name('skhpp.destroy');
+
+    // System In-App Bell Notifications Routes
+    Route::get('/api/notifications', [\App\Http\Controllers\NotificationController::class, 'getNotifications'])->name('notifications.api');
+    Route::post('/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::post('/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
 });
 
 // Jalur Verifikasi Publik QR Code Scan TTD Komandan SKHPP

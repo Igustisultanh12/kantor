@@ -6,6 +6,7 @@ use App\Models\Skhpp;
 use App\Models\SkhppMember;
 use App\Models\SignatureRequest;
 use App\Models\User;
+use App\Models\AppNotification;
 use App\Services\WhatsappService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -163,25 +164,32 @@ class SkhppController extends Controller
             \Illuminate\Support\Facades\Log::warning("Gagal auto-sync SKHPP ke SignatureRequest: " . $e->getMessage());
         }
 
-        // Kirim Notifikasi WA ke Komandan
+        // Kirim Notifikasi Sistem In-App Bell & WA ke Komandan & Admin
         try {
             $komandan = User::where('role', 'komandan')->whereNotNull('phone')->first() 
                      ?? User::where('role', 'admin')->whereNotNull('phone')->first();
-            if ($komandan && $komandan->phone) {
-                $katName = ($skhpp->kategori_personel === 'perusahaan') ? 'SKHPP-P (Mitra Kerja/Perusahaan)' : 'SKHPP-D (Dinas Militer & PNS)';
-                $pesanKomandan = "📢 *SI SINDEN: PENGAJUAN SKHPP BARU*\n\n" .
-                                 "Mohon izin Komandan, terdapat pengajuan penerbitan SKHPP baru:\n\n" .
-                                 "📝 *Nama:* {$skhpp->nama}\n" .
-                                 "👤 *Pangkat/NRP/NIK:* " . ($skhpp->pangkat_korps_nrp ?: ($skhpp->nik ?: '-')) . "\n" .
-                                 "🏷️ *Kategori:* {$katName}\n" .
-                                 "🎯 *Peruntukan:* {$skhpp->peruntukan}\n" .
-                                 "👨‍💻 *Operator Pengaju:* {$user->name}\n\n" .
-                                 "Mohon izin untuk memeriksa berkas di Laman : https://sisinden.my.id/signature-requests";
+            $katName = ($skhpp->kategori_personel === 'perusahaan') ? 'SKHPP-P (Mitra Kerja/Perusahaan)' : 'SKHPP-D (Dinas Militer & PNS)';
+            $pesanKomandan = "📢 *SI SINDEN: PENGAJUAN SKHPP BARU*\n\n" .
+                             "Mohon izin Komandan, terdapat pengajuan penerbitan SKHPP baru:\n\n" .
+                             "📝 *Nama:* {$skhpp->nama}\n" .
+                             "👤 *Pangkat/NRP/NIK:* " . ($skhpp->pangkat_korps_nrp ?: ($skhpp->nik ?: '-')) . "\n" .
+                             "🏷️ *Kategori:* {$katName}\n" .
+                             "🎯 *Peruntukan:* {$skhpp->peruntukan}\n" .
+                             "👨‍💻 *Operator Pengaju:* {$user->name}\n\n" .
+                             "Mohon izin untuk memeriksa berkas di Laman : https://sisinden.my.id/signature-requests";
 
-                WhatsappService::sendMessage($komandan->phone, $pesanKomandan);
-            }
+            AppNotification::notify(
+                $komandan?->id,
+                'komandan',
+                'Pengajuan SKHPP Baru',
+                "Pengajuan SKHPP baru atas nama {$skhpp->nama} ({$katName}) oleh {$user->name}.",
+                'primary',
+                '/signature-requests',
+                $pesanKomandan,
+                $komandan?->phone
+            );
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::warning("Gagal kirim WA notif Komandan SKHPP baru: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning("Gagal kirim notif SKHPP baru: " . $e->getMessage());
         }
 
         return redirect()->route('skhpp.index')->with('success', 'Permohonan SKHPP berhasil diterbitkan & dikirim ke Antrean TTD Komandan.');
@@ -406,22 +414,29 @@ class SkhppController extends Controller
             \Illuminate\Support\Facades\Log::warning("Gagal auto-sync SKHPP ke LetterLog: " . $e->getMessage());
         }
 
-        // Kirim Notifikasi WA ke Operator / Pengaju
+        // Kirim Notifikasi Sistem In-App Bell & WA ke Operator / Pengaju
         try {
             $operator = User::find($skhpp->submitted_by);
-            if ($operator && $operator->phone) {
-                $katName = ($skhpp->kategori_personel === 'perusahaan') ? 'SKHPP-P' : 'SKHPP-D';
-                $pesanOperator = "✅ *SI SINDEN: SKHPP RESMI DISAHKAN & DITANDATANGANI*\n\n" .
-                                 "Laporan untuk Operator/Pengaju, SKHPP telah disetujui & ditandatangani Komandan:\n\n" .
-                                 "📝 *Nama:* {$skhpp->nama}\n" .
-                                 "🔢 *Nomor SKHPP:* {$formattedNo}\n" .
-                                 "🏷️ *Kategori:* {$katName}\n\n" .
-                                 "Dokumen resmi & QR Code TTD sudah terbit dan dapat diunduh di Laman : https://sisinden.my.id/skhpp";
+            $katName = ($skhpp->kategori_personel === 'perusahaan') ? 'SKHPP-P' : 'SKHPP-D';
+            $pesanOperator = "✅ *SI SINDEN: SKHPP RESMI DISAHKAN & DITANDATANGANI*\n\n" .
+                             "Laporan untuk Operator/Pengaju, SKHPP telah disetujui & ditandatangani Komandan:\n\n" .
+                             "📝 *Nama:* {$skhpp->nama}\n" .
+                             "🔢 *Nomor SKHPP:* {$formattedNo}\n" .
+                             "🏷️ *Kategori:* {$katName}\n\n" .
+                             "Dokumen resmi & QR Code TTD sudah terbit dan dapat diunduh di Laman : https://sisinden.my.id/skhpp";
 
-                WhatsappService::sendMessage($operator->phone, $pesanOperator);
-            }
+            AppNotification::notify(
+                $skhpp->submitted_by,
+                null,
+                'SKHPP Resmi Disahkan & TTD',
+                "SKHPP atas nama {$skhpp->nama} telah disetujui & ditandatangani Komandan (Nomor: {$formattedNo}).",
+                'success',
+                '/skhpp',
+                $pesanOperator,
+                $operator?->phone
+            );
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::warning("Gagal kirim WA notif Operator SKHPP disetujui: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning("Gagal kirim notif SKHPP disetujui: " . $e->getMessage());
         }
 
         return back()->with('success', "SKHPP Resmi disetujui Komandan! Nomor: {$formattedNo} (Tersinkron ke Buku Nomor Agenda)");
@@ -449,20 +464,27 @@ class SkhppController extends Controller
             'catatan_revisi' => $request->catatan_revisi
         ]);
 
-        // Kirim Notifikasi WA ke Operator / Pengaju
+        // Kirim Notifikasi Sistem In-App Bell & WA ke Operator / Pengaju
         try {
             $operator = User::find($skhpp->submitted_by);
-            if ($operator && $operator->phone) {
-                $pesanRevisi = "⚠️ *SI SINDEN: PERMOHONAN SKHPP MEMERLUKAN REVISI*\n\n" .
-                               "Laporan untuk Operator/Pengaju, pengajuan SKHPP dikembalikan Komandan untuk direvisi:\n\n" .
-                               "📝 *Nama:* {$skhpp->nama}\n" .
-                               "📌 *Catatan Revisi Komandan:* {$request->catatan_revisi}\n\n" .
-                               "Silakan lakukan perbaikan data pada Laman : https://sisinden.my.id/skhpp";
+            $pesanRevisi = "⚠️ *SI SINDEN: PERMOHONAN SKHPP MEMERLUKAN REVISI*\n\n" .
+                           "Laporan untuk Operator/Pengaju, pengajuan SKHPP dikembalikan Komandan untuk direvisi:\n\n" .
+                           "📝 *Nama:* {$skhpp->nama}\n" .
+                           "📌 *Catatan Revisi Komandan:* {$request->catatan_revisi}\n\n" .
+                           "Silakan lakukan perbaikan data pada Laman : https://sisinden.my.id/skhpp";
 
-                WhatsappService::sendMessage($operator->phone, $pesanRevisi);
-            }
+            AppNotification::notify(
+                $skhpp->submitted_by,
+                null,
+                'Revisi SKHPP Memerlukan Perbaikan',
+                "Permohonan SKHPP atas nama {$skhpp->nama} dikembalikan Komandan untuk direvisi: \"{$request->catatan_revisi}\".",
+                'warning',
+                '/skhpp',
+                $pesanRevisi,
+                $operator?->phone
+            );
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::warning("Gagal kirim WA notif Operator SKHPP revisi: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning("Gagal kirim notif SKHPP revisi: " . $e->getMessage());
         }
 
         return back()->with('warning', 'Pengajuan SKHPP ditolak / dikembalikan untuk revisi.');
@@ -613,7 +635,7 @@ class SkhppController extends Controller
             'tahun' => (int)$currentYear,
         ]);
 
-        // Kirim Notifikasi WA ke Operator & Komandan bahwa Nomor SKHPP telah dibooking
+        // Kirim Notifikasi Sistem In-App Bell & WA ke Operator & Komandan bahwa Nomor SKHPP telah dibooking
         try {
             $operator = User::find($skhpp->submitted_by);
             $komandan = User::where('role', 'komandan')->whereNotNull('phone')->first() 
@@ -629,14 +651,18 @@ class SkhppController extends Controller
                             "👨‍💻 *Diatur Oleh Admin:* {$user->name}\n\n" .
                             "Dokumen dapat dipantau di Laman : https://sisinden.my.id/skhpp";
 
-            if ($operator && $operator->phone) {
-                WhatsappService::sendMessage($operator->phone, $pesanBooking);
-            }
-            if ($komandan && $komandan->phone && $komandan->id !== $operator?->id) {
-                WhatsappService::sendMessage($komandan->phone, $pesanBooking);
-            }
+            AppNotification::notify(
+                $skhpp->submitted_by,
+                null,
+                'Nomor SKHPP Berhasil Dibooking',
+                "Admin {$user->name} telah mengatur nomor urut {$targetCode} menjadi {$formattedNo} untuk {$skhpp->nama}.",
+                'info',
+                '/skhpp',
+                $pesanBooking,
+                $operator?->phone
+            );
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::warning("Gagal kirim WA notif Booking Nomor: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning("Gagal kirim notif Booking Nomor: " . $e->getMessage());
         }
 
         return back()->with('success', "Nomor urut {$targetCode} berhasil diatur ke {$nextSeq} ({$formattedNo}) tanpa menyetujui TTD.");
@@ -659,25 +685,32 @@ class SkhppController extends Controller
             'submitted_at' => now(),
         ]);
 
-        // Kirim Notifikasi WA ke Komandan
+        // Kirim Notifikasi Sistem In-App Bell & WA ke Komandan
         try {
             $komandan = User::where('role', 'komandan')->whereNotNull('phone')->first() 
                      ?? User::where('role', 'admin')->whereNotNull('phone')->first();
-            if ($komandan && $komandan->phone) {
-                $katName = ($skhpp->kategori_personel === 'perusahaan') ? 'SKHPP-P (Mitra Kerja/Perusahaan)' : 'SKHPP-D (Dinas Militer & PNS)';
-                $pesan = "📢 *SI SINDEN: PENGAJUAN ULANG TTE SKHPP*\n\n" .
-                         "Mohon izin Komandan, terdapat permohonan SKHPP yang DIAJUKAN ULANG oleh Admin untuk otorisasi TTE Komandan:\n\n" .
-                         "📝 *Nama:* {$skhpp->nama}\n" .
-                         "👤 *Pangkat/NRP/NIK:* " . ($skhpp->pangkat_korps_nrp ?: ($skhpp->nik ?: '-')) . "\n" .
-                         "🏷️ *Kategori:* {$katName}\n" .
-                         "🎯 *Peruntukan:* {$skhpp->peruntukan}\n" .
-                         "👨‍💻 *Pengaju (Admin):* {$user->name}\n\n" .
-                         "Mohon izin untuk memeriksa & menyetujui berkas di Laman : https://sisinden.my.id/signature-requests";
-                
-                WhatsappService::sendMessage($komandan->phone, $pesan);
-            }
+            $katName = ($skhpp->kategori_personel === 'perusahaan') ? 'SKHPP-P (Mitra Kerja/Perusahaan)' : 'SKHPP-D (Dinas Militer & PNS)';
+            $pesan = "📢 *SI SINDEN: PENGAJUAN ULANG TTE SKHPP*\n\n" .
+                     "Mohon izin Komandan, terdapat permohonan SKHPP yang DIAJUKAN ULANG oleh Admin untuk otorisasi TTE Komandan:\n\n" .
+                     "📝 *Nama:* {$skhpp->nama}\n" .
+                     "👤 *Pangkat/NRP/NIK:* " . ($skhpp->pangkat_korps_nrp ?: ($skhpp->nik ?: '-')) . "\n" .
+                     "🏷️ *Kategori:* {$katName}\n" .
+                     "🎯 *Peruntukan:* {$skhpp->peruntukan}\n" .
+                     "👨‍💻 *Pengaju (Admin):* {$user->name}\n\n" .
+                     "Mohon izin untuk memeriksa & menyetujui berkas di Laman : https://sisinden.my.id/signature-requests";
+            
+            AppNotification::notify(
+                $komandan?->id,
+                'komandan',
+                'Pengajuan Ulang TTE SKHPP',
+                "Admin {$user->name} mengajukan ulang TTE SKHPP atas nama {$skhpp->nama} ke Komandan.",
+                'primary',
+                '/signature-requests',
+                $pesan,
+                $komandan?->phone
+            );
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::warning("WA Notif Ajukan Ulang failed: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning("Notif Ajukan Ulang failed: " . $e->getMessage());
         }
 
         return back()->with('success', "Permohonan SKHPP {$skhpp->nama} berhasil diajukan ulang ke TTD Komandan.");
