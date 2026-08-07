@@ -12,19 +12,28 @@ class WhatsappService
      */
     public static function sendMessage($target, $message)
     {
-        // 1. Bersihkan nomor (hilangkan spasi, strip, dll)
+        if (empty($target)) {
+            Log::warning("WhatsappService: Target phone number is empty.");
+            return;
+        }
+
+        // 1. Bersihkan nomor (hilangkan spasi, strip, tanda plus, dll)
         $phone = preg_replace('/[^0-9]/', '', $target);
 
-        // 2. Kirim perintah ke Server Node.js (wa-gateway)
+        // 2. Normalisasi nomor Indonesia (08xxx -> 628xxx)
+        if (str_starts_with($phone, '0')) {
+            $phone = '62' . substr($phone, 1);
+        }
+
+        // 3. Kirim perintah ke Server Node.js (wa-gateway)
         try {
-            // PERBAIKAN: Tambahkan /send di akhir URL
             $response = Http::timeout(10)->get("http://127.0.0.1:3000/send", [
                 'number' => $phone,
                 'msg'    => $message
             ]);
 
             if ($response->successful()) {
-                Log::info("WA Terkirim ke: $phone");
+                Log::info("WA Terkirim ke: {$phone}");
             } else {
                 Log::error("Server WA Port 3000 merespon gagal: " . $response->body());
             }

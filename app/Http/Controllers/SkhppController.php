@@ -297,6 +297,27 @@ class SkhppController extends Controller
             }
         }
 
+        // Kirim Notifikasi WA ke Komandan
+        try {
+            $komandan = User::where('role', 'komandan')->whereNotNull('phone')->first() 
+                     ?? User::where('role', 'admin')->whereNotNull('phone')->first();
+            if ($komandan && $komandan->phone) {
+                $katName = ($skhpp->kategori_personel === 'perusahaan') ? 'SKHPP-P (Mitra Kerja/Perusahaan)' : 'SKHPP-D (Dinas Militer & PNS)';
+                $pesanKomandan = "📢 *SI SINDEN: PERBAIKAN & PENGAJUAN ULANG SKHPP*\n\n" .
+                                 "Mohon izin Komandan, terdapat perbaikan data SKHPP oleh Operator yang diajukan ulang:\n\n" .
+                                 "📝 *Nama:* {$skhpp->nama}\n" .
+                                 "👤 *Pangkat/NRP/NIK:* " . ($skhpp->pangkat_korps_nrp ?: ($skhpp->nik ?: '-')) . "\n" .
+                                 "🏷️ *Kategori:* {$katName}\n" .
+                                 "🎯 *Peruntukan:* {$skhpp->peruntukan}\n" .
+                                 "👨‍💻 *Operator:* {$user->name}\n\n" .
+                                 "Mohon izin untuk memeriksa berkas di Laman : https://sisinden.my.id/signature-requests";
+
+                WhatsappService::sendMessage($komandan->phone, $pesanKomandan);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Gagal kirim WA notif Komandan perbaikan SKHPP: " . $e->getMessage());
+        }
+
         return redirect()->route('skhpp.index')->with('success', 'Data SKHPP berhasil diperbarui & diajukan ulang ke TTD Komandan.');
     }
 
@@ -591,6 +612,32 @@ class SkhppController extends Controller
             'bulan_romawi' => $romanMonth,
             'tahun' => (int)$currentYear,
         ]);
+
+        // Kirim Notifikasi WA ke Operator & Komandan bahwa Nomor SKHPP telah dibooking
+        try {
+            $operator = User::find($skhpp->submitted_by);
+            $komandan = User::where('role', 'komandan')->whereNotNull('phone')->first() 
+                     ?? User::where('role', 'admin')->whereNotNull('phone')->first();
+
+            $pesanBooking = "🔢 *SI SINDEN: NOMOR SKHPP BERHASIL DIBOOKING*\n\n" .
+                            "Laporan untuk Operator & Komandan, Admin telah mengatur/booking nomor urut SKHPP:\n\n" .
+                            "📝 *Nama Personel:* {$skhpp->nama}\n" .
+                            "🏷️ *Kategori:* {$targetCode}\n" .
+                            "🔢 *Nomor SKHPP Dibooking:* {$formattedNo}\n" .
+                            "🎯 *Peruntukan:* {$skhpp->peruntukan}\n" .
+                            "📌 *Status Berkas:* Pending TTD Komandan\n" .
+                            "👨‍💻 *Diatur Oleh Admin:* {$user->name}\n\n" .
+                            "Dokumen dapat dipantau di Laman : https://sisinden.my.id/skhpp";
+
+            if ($operator && $operator->phone) {
+                WhatsappService::sendMessage($operator->phone, $pesanBooking);
+            }
+            if ($komandan && $komandan->phone && $komandan->id !== $operator?->id) {
+                WhatsappService::sendMessage($komandan->phone, $pesanBooking);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Gagal kirim WA notif Booking Nomor: " . $e->getMessage());
+        }
 
         return back()->with('success', "Nomor urut {$targetCode} berhasil diatur ke {$nextSeq} ({$formattedNo}) tanpa menyetujui TTD.");
     }
