@@ -27,6 +27,7 @@ class SignatureRequest extends Model
         'y', 
         'width',
         'target_page',
+        'pages_data',
         'verification_code',
     ];
 

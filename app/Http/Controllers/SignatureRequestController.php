@@ -214,7 +214,12 @@ class SignatureRequestController extends Controller
                 $targetPage = (int)($request->target_page ?? $pageCount);
                 $applyToAll = !empty($request->apply_to_all);
 
-                Log::info("Data Diterima -> X: $xRatio, Y: $yRatio, Width: $wRatio, Target Hal: $targetPage, Apply All: " . ($applyToAll ? 'YES' : 'NO'));
+                $pagesData = null;
+                if (!empty($request->pages_data)) {
+                    $pagesData = is_string($request->pages_data) ? json_decode($request->pages_data, true) : $request->pages_data;
+                }
+
+                Log::info("Data Diterima -> X: $xRatio, Y: $yRatio, Width: $wRatio, Target Hal: $targetPage, Apply All: " . ($applyToAll ? 'YES' : 'NO') . ", PagesData: " . json_encode($pagesData));
 
                 for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
                     $templateId = $pdf->importPage($pageNo);
@@ -222,14 +227,29 @@ class SignatureRequestController extends Controller
                     $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
                     $pdf->useTemplate($templateId);
 
-                    if ($applyToAll || $targetPage === 0 || $pageNo === $targetPage) {
+                    $shouldStamp = false;
+                    $xR = $xRatio;
+                    $yR = $yRatio;
+                    $wR = $wRatio;
+
+                    if ($pagesData && is_array($pagesData) && (isset($pagesData[$pageNo]) || isset($pagesData[(string)$pageNo]))) {
+                        $pData = $pagesData[$pageNo] ?? $pagesData[(string)$pageNo];
+                        $shouldStamp = true;
+                        $xR = (float)($pData['x'] ?? $xRatio);
+                        $yR = (float)($pData['y'] ?? $yRatio);
+                        $wR = (float)($pData['width'] ?? $wRatio);
+                    } elseif ($applyToAll || $targetPage === 0 || $pageNo === $targetPage) {
+                        $shouldStamp = true;
+                    }
+
+                    if ($shouldStamp) {
                         $pdfW = $size['width'];
                         $pdfH = $size['height'];
-                        $posX = $xRatio * $pdfW;
-                        $posY = $yRatio * $pdfH;
-                        $ttdW = $wRatio * $pdfW;
+                        $posX = $xR * $pdfW;
+                        $posY = $yR * $pdfH;
+                        $ttdW = $wR * $pdfW;
 
-                        Log::info("Menempelkan TTD QR Code di Hal $pageNo (Posisi: $posX, $posY | Lebar: $ttdW)");
+                        Log::info("Menempelkan TTD QR Code di Hal $pageNo (Posisi Custom: X=$posX, Y=$posY | Lebar=$ttdW)");
                         $pdf->Image($signatureImg, $posX, $posY, $ttdW, $ttdW, 'PNG');
                     }
                 }
@@ -256,6 +276,7 @@ class SignatureRequestController extends Controller
                 $signatureRequest->y = $yRatio;
                 $signatureRequest->width = $wRatio;
                 $signatureRequest->target_page = $targetPage;
+                $signatureRequest->pages_data = is_array($request->pages_data) ? json_encode($request->pages_data) : $request->pages_data;
             }
 
             $signatureRequest->status = $request->status;

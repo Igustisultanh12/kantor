@@ -41,8 +41,9 @@ const pdfDoc = shallowRef(null);
 
 // Signature Drag Position
 // Signature Drag Position (Default 1:1 Presisi e-Materai Standard)
-const signaturePos = ref({ x: 200, y: 350 });
+const signaturePos = ref({ x: 100, y: 100 });
 const signatureSize = ref({ width: 90, height: 90 });
+const pageSignatures = ref({});
 
 // Forms
 const form = useForm({ 
@@ -63,6 +64,7 @@ const decisionForm = useForm({
   canvas_width: 0, 
   target_page: 1, 
   apply_to_all: false,
+  pages_data: null,
   note: '', 
   file: null, 
   _method: 'PATCH' 
@@ -188,11 +190,42 @@ const renderPdfPage = async (pageNumber) => {
   }
 };
 
+const saveCurrentPagePos = () => {
+  const canvas = document.getElementById('pdf-render-canvas');
+  if (canvas && isAdjusting.value) {
+    pageSignatures.value[currentPage.value] = {
+      x: parseFloat(signaturePos.value.x / canvas.width),
+      y: parseFloat(signaturePos.value.y / canvas.height),
+      width: parseFloat(signatureSize.value.width / canvas.width)
+    };
+  }
+};
+
+const loadPagePos = () => {
+  const canvas = document.getElementById('pdf-render-canvas');
+  if (!canvas) return;
+
+  if (pageSignatures.value[currentPage.value]) {
+    const pData = pageSignatures.value[currentPage.value];
+    signaturePos.value = { x: pData.x * canvas.width, y: pData.y * canvas.height };
+    const wPx = pData.width * canvas.width;
+    signatureSize.value = { width: wPx, height: wPx };
+  } else {
+    signaturePos.value = {
+      x: Math.max(10, canvas.width * 0.58),
+      y: Math.max(10, canvas.height * 0.72)
+    };
+    signatureSize.value = { width: 90, height: 90 };
+  }
+};
+
 const changePdfPage = async (delta) => {
+  saveCurrentPagePos();
   const newPage = currentPage.value + delta;
   if (newPage >= 1 && newPage <= totalPages.value) {
     currentPage.value = newPage;
     await renderPdfPage(currentPage.value);
+    loadPagePos();
   }
 };
 
@@ -201,6 +234,12 @@ const openPdfPreview = async (req) => {
   isPreviewOpen.value = true;
   isAdjusting.value = false;
   currentPage.value = 1;
+  pageSignatures.value = {};
+  if (req.pages_data) {
+    try {
+      pageSignatures.value = typeof req.pages_data === 'string' ? JSON.parse(req.pages_data) : req.pages_data;
+    } catch (e) {}
+  }
   signatureSize.value = { width: 90, height: 90 };
 
   await nextTick();
@@ -222,17 +261,7 @@ const openPdfPreview = async (req) => {
     currentPage.value = req.target_page || 1;
 
     await renderPdfPage(currentPage.value);
-
-    // Set default posisi otomatis di area TTD Komandan (Bawah Kanan)
-    const canvas = document.getElementById('pdf-render-canvas');
-    if (canvas) {
-      signaturePos.value = {
-        x: Math.max(10, canvas.width * 0.58),
-        y: Math.max(10, canvas.height * 0.72)
-      };
-    } else {
-      signaturePos.value = { x: 200, y: 350 };
-    }
+    loadPagePos();
   } catch (e) {
     Swal.fire('Error', 'File PDF tidak dapat dibaca atau diproteksi password.', 'error');
   } finally {
@@ -242,10 +271,10 @@ const openPdfPreview = async (req) => {
 
 const enableDrag = () => {
   isAdjusting.value = true;
+  saveCurrentPagePos();
   nextTick(() => {
     const canvas = document.getElementById('pdf-render-canvas');
     if (canvas) {
-      // Jika posisi belum diset presisi, kunci otomatis di posisi blok TTD Komandan
       if (signaturePos.value.x <= 50 || signaturePos.value.y <= 100) {
         signaturePos.value = {
           x: Math.max(10, canvas.width * 0.58),
@@ -257,16 +286,22 @@ const enableDrag = () => {
     interact('.drag-signature').draggable({
       inertia: false,
       modifiers: [interact.modifiers.restrictRect({ restriction: '#pdf-render-canvas', endOnly: true })],
-      listeners: { move(event) { signaturePos.value.x += event.dx; signaturePos.value.y += event.dy; } }
+      listeners: { 
+        move(event) { 
+          signaturePos.value.x += event.dx; 
+          signaturePos.value.y += event.dy;
+          saveCurrentPagePos();
+        } 
+      }
     }).resizable({
       edges: { right: true, bottom: true },
       listeners: { move(event) {
-        // Paksa aspek rasio 1:1 persis e-Materai (bujur sangkar presisi)
         const squareSize = Math.max(event.rect.width, event.rect.height);
         signatureSize.value.width = squareSize;
         signatureSize.value.height = squareSize;
         signaturePos.value.x += event.deltaRect.left;
         signaturePos.value.y += event.deltaRect.top;
+        saveCurrentPagePos();
       }},
       modifiers: [interact.modifiers.restrictSize({ min: { width: 50, height: 50 }, max: { width: 250, height: 250 } })]
     });
@@ -295,19 +330,25 @@ const handlePdfDecision = (status, applyAll = false) => {
     return;
   }
 
+  saveCurrentPagePos();
   const canvas = document.getElementById('pdf-render-canvas');
+  const configuredCount = Object.keys(pageSignatures.value).length;
   
   decisionForm.status = 'approved';
   decisionForm.x = parseFloat(signaturePos.value.x / canvas.width); 
   decisionForm.y = parseFloat(signaturePos.value.y / canvas.height);
   decisionForm.width = parseFloat(signatureSize.value.width / canvas.width);
   decisionForm.canvas_width = canvas.width;
-  decisionForm.target_page = currentPage.value; // Halaman target yang dipilih
+  decisionForm.target_page = currentPage.value;
   decisionForm.apply_to_all = applyAll;
+  decisionForm.pages_data = configuredCount > 0 ? JSON.stringify(pageSignatures.value) : null;
   
-  const textMsg = applyAll 
-    ? `TTD Terpasang Presisi pada SELURUH HALAMAN (1 s.d. ${totalPages.value})`
-    : `TTD Terpasang Presisi pada Halaman ${currentPage.value}`;
+  let textMsg = `TTD Terpasang Presisi pada Halaman ${currentPage.value}`;
+  if (configuredCount > 1 && !applyAll) {
+    textMsg = `TTD Terpasang Presisi pada ${configuredCount} Halaman Berbeda dengan Letak Custom!`;
+  } else if (applyAll) {
+    textMsg = `TTD Terpasang Presisi pada SELURUH HALAMAN (1 s.d. ${totalPages.value})`;
+  }
 
   decisionForm.patch(route('signature.update', selectedReqId.value), {
     onSuccess: () => { 
@@ -751,10 +792,13 @@ const getStatusClass = (status) => {
           <span class="text-blue-600 text-[10px] font-black uppercase tracking-widest">VERIFIKASI PDF MULTI-HALAMAN</span>
           
           <!-- Page Controls (Halaman Lebih Dari Satu) -->
-          <div v-if="totalPages > 1" class="flex items-center gap-1.5 bg-slate-100 px-3 py-1 rounded-xl border border-slate-200 text-xs">
+          <div v-if="totalPages > 1" class="flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-xl border border-slate-200 text-xs">
             <button @click="changePdfPage(-1)" :disabled="currentPage <= 1" class="px-2 py-0.5 rounded bg-white font-bold text-slate-700 disabled:opacity-30 hover:bg-slate-200">◀</button>
             <span class="font-bold text-slate-800">Halaman {{ currentPage }} / {{ totalPages }}</span>
             <button @click="changePdfPage(1)" :disabled="currentPage >= totalPages" class="px-2 py-0.5 rounded bg-white font-bold text-slate-700 disabled:opacity-30 hover:bg-slate-200">▶</button>
+            <span v-if="Object.keys(pageSignatures).length > 0" class="ml-1 px-2 py-0.5 bg-emerald-600 text-white rounded-md text-[10px] font-extrabold uppercase shadow-xs">
+              ✓ {{ Object.keys(pageSignatures).length }} Hal. Ter-Set Custom
+            </span>
           </div>
         </div>
 
