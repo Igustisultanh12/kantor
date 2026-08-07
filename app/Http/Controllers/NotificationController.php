@@ -56,6 +56,26 @@ class NotificationController extends Controller
     }
 
     /**
+     * Halaman Utama Lihat Semua Notifikasi
+     */
+    public function index(Request $request)
+    {
+        $user = $request->user();
+
+        $notifications = AppNotification::where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhere('role', $user->role)
+                  ->orWhereNull('role');
+            })
+            ->latest()
+            ->paginate(50);
+
+        return \Inertia\Inertia::render('Notifications/Index', [
+            'notifications' => $notifications
+        ]);
+    }
+
+    /**
      * Tandai Semua Notifikasi Telah Dibaca
      */
     public function markAllAsRead(Request $request)
@@ -70,5 +90,18 @@ class NotificationController extends Controller
         }
 
         return back()->with('success', 'Semua notifikasi ditandai dibaca.');
+    }
+
+    /**
+     * Hapus Notifikasi
+     */
+    public function destroy($id)
+    {
+        $notif = AppNotification::find($id);
+        if ($notif) {
+            $notif->delete();
+        }
+
+        return back()->with('success', 'Notifikasi berhasil dihapus.');
     }
 }
