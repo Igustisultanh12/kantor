@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cash;
+use App\Models\AppNotification;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -112,6 +113,17 @@ class CashController extends Controller
             'balance' => $currentBalance,
             'receipt_path' => $finalPathValue 
         ]);
+
+        $user = auth()->user();
+        $typeStr = ($request->debit > 0) ? "Pemasukan (Debit) Rp " . number_format($request->debit) : "Pengeluaran (Kredit) Rp " . number_format($request->credit);
+        AppNotification::notify(
+            null,
+            'admin',
+            'Transaksi Kas Unit Baru',
+            "Pencatatan {$typeStr} perihal \"{$request->description}\" oleh " . ($user?->name ?? 'Sistem') . ".",
+            'success',
+            '/cash'
+        );
 
         return back()->with('success', 'Transaksi Kas berhasil dicatat.');
     }

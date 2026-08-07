@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\SignatureRequest;
 use App\Models\AuditLog;
 use App\Models\Setting;
+use App\Models\AppNotification;
 use App\Services\WhatsappService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -66,16 +67,24 @@ class SignatureRequestController extends Controller
                 'width' => $request->width ?? 0.2,
             ]);
 
-            $komandan = User::where('role', 'komandan')->first();
-            if ($komandan && $komandan->phone) {
-                $pesan = "📢 *SI SINDEN: PEMBERITAHUAN*\n\n" .
-                         "Mohon izin Komandan, terdapat pengajuan berkas baru:\n\n" .
-                         "📝 *Perihal:* {$request->subject}\n" .
-                         "👤 *Pengaju:* " . auth()->user()->name . "\n\n" .
-                         "Mohon izin untuk memeriksa berkas di Laman : https://sisinden.my.id/signature-requests";
-                         
-                WhatsappService::sendMessage($komandan->phone, $pesan);
-            }
+            $komandan = User::where('role', 'komandan')->whereNotNull('phone')->first() 
+                     ?? User::where('role', 'admin')->whereNotNull('phone')->first();
+            $pesan = "📢 *SI SINDEN: PEMBERITAHUAN*\n\n" .
+                     "Mohon izin Komandan, terdapat pengajuan berkas baru:\n\n" .
+                     "📝 *Perihal:* {$request->subject}\n" .
+                     "👤 *Pengaju:* " . auth()->user()->name . "\n\n" .
+                     "Mohon izin untuk memeriksa berkas di Laman : https://sisinden.my.id/signature-requests";
+
+            AppNotification::notify(
+                $komandan?->id,
+                'komandan',
+                'Pengajuan TTD Digital PDF Baru',
+                "Pengajuan berkas PDF perihal \"{$request->subject}\" diajukan oleh " . auth()->user()->name . ".",
+                'primary',
+                '/signature-requests',
+                $pesan,
+                $komandan?->phone
+            );
 
             return back()->with('message', 'Permintaan Berhasil Dikirim.');
         } catch (\Exception $e) {
@@ -227,18 +236,29 @@ class SignatureRequestController extends Controller
             $signatureRequest->note = $request->note;
             $signatureRequest->save();
 
-            // Notifikasi WA
+            // Notifikasi Sistem In-App Bell & WA
             $targetUser = $signatureRequest->user;
-            if ($targetUser && $targetUser->phone) {
-                $statusMsg = ($request->status === 'approved') ? "✅ *TELAH DISAHKAN*" : "❌ *DITOLAK / PERLU REVISI*";
-                $ket = ($request->status === 'approved') ? "Silakan unduh berkas Anda." : "Alasan: _" . ($request->note ?? '-') . "_";
-                
-                $pesanWA = "📢 *SI SINDEN: STATUS BERKAS*\n\n" .
-                           "Berkas: *{$signatureRequest->subject}*\n" .
-                           "Status: {$statusMsg}\n\n" .
-                           "📝 {$ket}";
-                WhatsappService::sendMessage($targetUser->phone, $pesanWA);
-            }
+            $isApproved = ($request->status === 'approved');
+            $statusMsg = $isApproved ? "✅ *TELAH DISAHKAN*" : "❌ *DITOLAK / PERLU REVISI*";
+            $ket = $isApproved ? "Silakan unduh berkas Anda." : "Alasan: _" . ($request->note ?? '-') . "_";
+            
+            $pesanWA = "📢 *SI SINDEN: STATUS BERKAS*\n\n" .
+                       "Berkas: *{$signatureRequest->subject}*\n" .
+                       "Status: {$statusMsg}\n\n" .
+                       "📝 {$ket}";
+
+            AppNotification::notify(
+                $signatureRequest->user_id,
+                null,
+                $isApproved ? 'Berkas PDF Berhasil Ditandatangani TTD QR' : 'Berkas PDF Ditolak / Perlu Revisi',
+                $isApproved 
+                    ? "Berkas \"{$signatureRequest->subject}\" telah disahkan & ditandatangani Komandan."
+                    : "Berkas \"{$signatureRequest->subject}\" dikembalikan Komandan: \"{$request->note}\".",
+                $isApproved ? 'success' : 'warning',
+                '/signature-requests',
+                $pesanWA,
+                $targetUser?->phone
+            );
 
             AuditLog::create([
                 'user_id' => $user->id, 'admin_name' => $user->name,

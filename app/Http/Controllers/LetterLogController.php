@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\LetterSubCategory; 
 use App\Models\LetterLog;
+use App\Models\AppNotification;
 use Illuminate\Support\Facades\Log; // Amunisi Log
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -118,6 +119,16 @@ class LetterLogController extends Controller
 
             DB::commit();
             Log::info("Sukses Booking Nomor: {$fullNumber}");
+
+            $user = auth()->user();
+            AppNotification::notify(
+                null,
+                'admin',
+                'Nomor Surat Berhasil Di-Booking / Diarsip',
+                "Nomor surat {$fullNumber} perihal \"{$request->subject}\" berhasil dicatat di Agenda Surat oleh " . ($user?->name ?? 'Sistem') . ".",
+                'success',
+                '/letter-logs'
+            );
 
             return back()->with('success', "Nomor surat {$fullNumber} berhasil di-booking.");
             
