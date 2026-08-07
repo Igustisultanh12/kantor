@@ -519,12 +519,13 @@ class SkhppController extends Controller
             if ($sigReq) {
                 $skhpp = (object) [
                     'verification_code' => $sigReq->verification_code,
-                    'nama' => $sigReq->user?->name ?? 'Personel Denintel Kodaeral V',
-                    'pangkat_korps_nrp' => ($sigReq->user?->pangkat ?: 'TNI AL') . ($sigReq->user?->nrp ? (' / NRP ' . $sigReq->user->nrp) : ''),
+                    'document_title' => $sigReq->document_title ?: 'DOKUMEN RESMI DINAS',
+                    'nama' => $sigReq->person_name ?: ($sigReq->user?->name ?? 'Personel Denintel Kodaeral V'),
+                    'pangkat_korps_nrp' => $sigReq->pangkat_nrp ?: (($sigReq->user?->pangkat ?: 'TNI AL') . ($sigReq->user?->nrp ? (' / NRP ' . $sigReq->user->nrp) : '')),
                     'kategori_personel' => 'Dinas Militer & PNS',
                     'nomor_skhpp' => $sigReq->letter_number ?: ('DOC/' . $sigReq->id . '/' . date('Y')),
-                    'jabatan_pekerjaan' => 'Personel SINDEN Kodaeral V',
-                    'peruntukan' => $sigReq->subject ?: 'Dokumen Naskah Resmi TTD Digital Komandan',
+                    'jabatan_pekerjaan' => $sigReq->jabatan ?: 'Personel SINDEN Kodaeral V',
+                    'peruntukan' => $sigReq->peruntukan ?: ($sigReq->subject ?: 'Dokumen Naskah Resmi TTD Digital Komandan'),
                     'tanggal_skhpp' => $sigReq->updated_at,
                     'status' => 'approved',
                 ];

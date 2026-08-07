@@ -45,7 +45,16 @@ const signaturePos = ref({ x: 200, y: 350 });
 const signatureSize = ref({ width: 90, height: 90 });
 
 // Forms
-const form = useForm({ subject: '', letter_number: '', file: null });
+const form = useForm({ 
+  subject: '', 
+  document_title: '', 
+  letter_number: '', 
+  person_name: '', 
+  pangkat_nrp: '', 
+  jabatan: '', 
+  peruntukan: '', 
+  file: null 
+});
 const decisionForm = useForm({ 
   status: '', 
   x: 0, 
@@ -786,34 +795,66 @@ const getStatusClass = (status) => {
 
     </div>
 
-    <!-- MODAL REGISTRASI BERKAS PDF BARU -->
+    <!-- MODAL REGISTRASI BERKAS PDF BARU (LENGKAP SESUAI LAYOUT VERIFIKASI) -->
     <transition name="modal-pop">
-      <div v-if="isModalOpen" class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
-        <div class="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl border border-slate-100 space-y-6 text-left">
-          <div class="flex items-center justify-between border-b pb-4">
-            <h3 class="font-black text-base text-slate-900 uppercase">Registrasi Berkas Dinas (PDF)</h3>
-            <button @click="isModalOpen = false" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
+      <div v-if="isModalOpen" class="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-sm overflow-y-auto">
+        <div class="bg-white w-full max-w-xl rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5 text-left my-auto max-h-[90vh] flex flex-col">
+          <div class="flex items-center justify-between border-b pb-3 shrink-0">
+            <div>
+              <span class="text-[9px] font-black text-blue-600 uppercase tracking-widest block">REGISTRASI BERKAS & METADATA PUBLIC VERIFY</span>
+              <h3 class="font-black text-sm sm:text-base text-slate-900 uppercase leading-tight">Unggah Berkas Dinas (PDF)</h3>
+            </div>
+            <button @click="isModalOpen = false" class="text-slate-400 hover:text-slate-600 font-bold p-1">✕</button>
           </div>
 
-          <form @submit.prevent="submitRequest" class="space-y-4">
-            <div>
-              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Perihal / Subjek Surat</label>
-              <input v-model="form.subject" type="text" class="w-full rounded-xl border-slate-200 bg-slate-50 text-xs font-bold p-3 uppercase focus:ring-2 focus:ring-blue-500" placeholder="SURAT PERINTAH / NOTA DINAS..." required>
+          <form @submit.prevent="submitRequest" class="space-y-4 overflow-y-auto custom-scrollbar pr-1 flex-1">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[10px] font-extrabold text-slate-700 uppercase mb-1">Judul / Jenis Naskah Dinas</label>
+                <input v-model="form.document_title" type="text" class="w-full rounded-xl border-slate-200 bg-slate-50 text-xs font-bold p-2.5 uppercase focus:ring-2 focus:ring-blue-500" placeholder="SURAT PERINTAH / NOTA DINAS..." required>
+              </div>
+
+              <div>
+                <label class="block text-[10px] font-extrabold text-slate-700 uppercase mb-1">Nomor Surat Resmi / Agenda (Opsional)</label>
+                <input v-model="form.letter_number" type="text" class="w-full rounded-xl border-slate-200 bg-slate-50 text-xs font-bold p-2.5 uppercase focus:ring-2 focus:ring-blue-500" placeholder="Sprin / 15 / VIII / 2026...">
+              </div>
             </div>
 
             <div>
-              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Nomor Surat Dinas / Agenda (Opsional)</label>
-              <input v-model="form.letter_number" type="text" class="w-full rounded-xl border-slate-200 bg-slate-50 text-xs font-bold p-3 uppercase focus:ring-2 focus:ring-blue-500" placeholder="Contoh: Sprin / 15 / VIII / 2026">
+              <label class="block text-[10px] font-extrabold text-slate-700 uppercase mb-1">Perihal / Subjek Surat</label>
+              <input v-model="form.subject" type="text" class="w-full rounded-xl border-slate-200 bg-slate-50 text-xs font-bold p-2.5 uppercase focus:ring-2 focus:ring-blue-500" placeholder="Perihal Penugasan / Pengamanan Sektor..." required>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[10px] font-extrabold text-slate-700 uppercase mb-1">Nama Subjek / Personel (Opsional)</label>
+                <input v-model="form.person_name" type="text" class="w-full rounded-xl border-slate-200 bg-slate-50 text-xs font-bold p-2.5 uppercase focus:ring-2 focus:ring-blue-500" :placeholder="user?.name || 'Nama Personel...'">
+              </div>
+
+              <div>
+                <label class="block text-[10px] font-extrabold text-slate-700 uppercase mb-1">Pangkat / Korps / NRP / NIK (Opsional)</label>
+                <input v-model="form.pangkat_nrp" type="text" class="w-full rounded-xl border-slate-200 bg-slate-50 text-xs font-bold p-2.5 uppercase focus:ring-2 focus:ring-blue-500" :placeholder="(user?.pangkat || 'TNI AL') + ' / NRP ' + (user?.nrp || '12345')">
+              </div>
             </div>
 
             <div>
-              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Unggah Berkas PDF (Dapat Lebih Dari 1 Halaman)</label>
+              <label class="block text-[10px] font-extrabold text-slate-700 uppercase mb-1">Jabatan / Pekerjaan (Opsional)</label>
+              <input v-model="form.jabatan" type="text" class="w-full rounded-xl border-slate-200 bg-slate-50 text-xs font-bold p-2.5 uppercase focus:ring-2 focus:ring-blue-500" placeholder="Personel Denintel Kodaeral V...">
+            </div>
+
+            <div>
+              <label class="block text-[10px] font-extrabold text-slate-700 uppercase mb-1">Maksud & Peruntukan / Keperluan (Opsional)</label>
+              <textarea v-model="form.peruntukan" rows="2" class="w-full rounded-xl border-slate-200 bg-slate-50 text-xs font-bold p-2.5 uppercase focus:ring-2 focus:ring-blue-500" placeholder="Maksud & Keperluan Penerbitan Dokumen Resmi..."></textarea>
+            </div>
+
+            <div>
+              <label class="block text-[10px] font-extrabold text-slate-700 uppercase mb-1">Unggah Berkas PDF (Dapat Lebih Dari 1 Halaman)</label>
               <input type="file" @input="form.file = $event.target.files[0]" accept=".pdf" class="w-full text-xs text-slate-500 border border-slate-200 rounded-xl p-2 bg-slate-50" required />
             </div>
 
-            <div class="flex justify-end gap-2 pt-4 border-t">
+            <div class="flex justify-end gap-2 pt-4 border-t shrink-0">
               <button type="button" @click="isModalOpen = false" class="bg-slate-100 text-slate-600 px-4 py-2.5 rounded-xl text-xs font-bold uppercase">Batal</button>
-              <button type="submit" :disabled="form.processing" class="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-xs font-bold uppercase shadow-md">Kirim Berkas</button>
+              <button type="submit" :disabled="form.processing" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl text-xs font-black uppercase shadow-md">Kirim Berkas</button>
             </div>
           </form>
         </div>

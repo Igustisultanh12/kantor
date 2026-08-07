@@ -122,7 +122,7 @@ const formatDateIndo = (dateStr) => {
                 <!-- 1: Judul Dokumen -->
                 <div class="p-3 rounded-xl border border-white/10 bg-white/5 space-y-0.5">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Judul Dokumen Resmi</span>
-                  <p class="text-xs font-bold text-white uppercase leading-snug">SKHPP DENINTEL KODAERAL V</p>
+                  <p class="text-xs font-bold text-white uppercase leading-snug">{{ skhpp.document_title || 'SKHPP DENINTEL KODAERAL V' }}</p>
                   <p v-if="skhpp.kategori_personel === 'perusahaan'" class="text-[9px] font-bold text-blue-400 uppercase">MITRA KERJA TNI AL</p>
                 </div>
 

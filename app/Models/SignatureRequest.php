@@ -14,6 +14,11 @@ class SignatureRequest extends Model
     protected $fillable = [
         'user_id', 
         'subject', 
+        'document_title',
+        'person_name',
+        'pangkat_nrp',
+        'jabatan',
+        'peruntukan',
         'letter_number', 
         'file_path', 
         'status', 
@@ -23,7 +28,6 @@ class SignatureRequest extends Model
         'width',
         'target_page',
         'verification_code',
-        
     ];
 
     /**

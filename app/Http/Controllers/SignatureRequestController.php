@@ -40,12 +40,16 @@ class SignatureRequestController extends Controller
     public function store(Request $request) {
         $request->validate([
             'subject' => 'required|string|max:255',
-            'letter_number' => 'nullable|string|max:100',
-            'file' => 'required|mimes:pdf|max:10240', 
+            'document_title' => 'nullable|string|max:255',
+            'person_name' => 'nullable|string|max:255',
+            'pangkat_nrp' => 'nullable|string|max:255',
+            'jabatan' => 'nullable|string|max:255',
+            'peruntukan' => 'nullable|string|max:1000',
+            'letter_number' => 'nullable|string|max:255',
+            'file' => 'required|mimes:pdf|max:153600',
             'x' => 'nullable|numeric',
             'y' => 'nullable|numeric',
             'width' => 'nullable|numeric',
-            
         ]);
 
         try {
@@ -58,6 +62,11 @@ class SignatureRequestController extends Controller
             $signatureRequest = SignatureRequest::create([
                 'user_id' => auth()->id(),
                 'subject' => $request->subject,
+                'document_title' => $request->document_title ?: 'DOKUMEN RESMI DINAS',
+                'person_name' => $request->person_name ?: auth()->user()->name,
+                'pangkat_nrp' => $request->pangkat_nrp ?: ((auth()->user()->pangkat ?: 'TNI AL') . (auth()->user()->nrp ? (' / NRP ' . auth()->user()->nrp) : '')),
+                'jabatan' => $request->jabatan ?: 'Personel Denintel Kodaeral V',
+                'peruntukan' => $request->peruntukan ?: $request->subject,
                 'letter_number' => $request->letter_number,
                 'file_path' => $path,
                 'status' => 'pending',
