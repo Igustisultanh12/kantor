@@ -40,8 +40,9 @@ const totalPages = ref(1);
 const pdfDoc = shallowRef(null);
 
 // Signature Drag Position
-const signaturePos = ref({ x: 50, y: 150 });
-const signatureSize = ref({ width: 100, height: 70 });
+// Signature Drag Position (Default 1:1 Presisi e-Materai Standard)
+const signaturePos = ref({ x: 200, y: 350 });
+const signatureSize = ref({ width: 90, height: 90 });
 
 // Forms
 const form = useForm({ subject: '', letter_number: '', file: null });
@@ -190,7 +191,7 @@ const openPdfPreview = async (req) => {
   isPreviewOpen.value = true;
   isAdjusting.value = false;
   currentPage.value = 1;
-  signaturePos.value = { x: 20, y: 100 };
+  signatureSize.value = { width: 90, height: 90 };
 
   await nextTick();
   try {
@@ -211,6 +212,17 @@ const openPdfPreview = async (req) => {
     currentPage.value = req.target_page || 1;
 
     await renderPdfPage(currentPage.value);
+
+    // Set default posisi otomatis di area TTD Komandan (Bawah Kanan)
+    const canvas = document.getElementById('pdf-render-canvas');
+    if (canvas) {
+      signaturePos.value = {
+        x: Math.max(10, canvas.width * 0.58),
+        y: Math.max(10, canvas.height * 0.72)
+      };
+    } else {
+      signaturePos.value = { x: 200, y: 350 };
+    }
   } catch (e) {
     Swal.fire('Error', 'File PDF tidak dapat dibaca atau diproteksi password.', 'error');
   } finally {
@@ -221,6 +233,17 @@ const openPdfPreview = async (req) => {
 const enableDrag = () => {
   isAdjusting.value = true;
   nextTick(() => {
+    const canvas = document.getElementById('pdf-render-canvas');
+    if (canvas) {
+      // Jika posisi belum diset presisi, kunci otomatis di posisi blok TTD Komandan
+      if (signaturePos.value.x <= 50 || signaturePos.value.y <= 100) {
+        signaturePos.value = {
+          x: Math.max(10, canvas.width * 0.58),
+          y: Math.max(10, canvas.height * 0.72)
+        };
+      }
+    }
+
     interact('.drag-signature').draggable({
       inertia: false,
       modifiers: [interact.modifiers.restrictRect({ restriction: '#pdf-render-canvas', endOnly: true })],
@@ -228,12 +251,14 @@ const enableDrag = () => {
     }).resizable({
       edges: { right: true, bottom: true },
       listeners: { move(event) {
-        signatureSize.value.width = event.rect.width;
-        signatureSize.value.height = event.rect.height;
+        // Paksa aspek rasio 1:1 persis e-Materai (bujur sangkar presisi)
+        const squareSize = Math.max(event.rect.width, event.rect.height);
+        signatureSize.value.width = squareSize;
+        signatureSize.value.height = squareSize;
         signaturePos.value.x += event.deltaRect.left;
         signaturePos.value.y += event.deltaRect.top;
       }},
-      modifiers: [interact.modifiers.restrictSize({ min: { width: 50, height: 35 } })]
+      modifiers: [interact.modifiers.restrictSize({ min: { width: 50, height: 50 }, max: { width: 250, height: 250 } })]
     });
   });
 };
@@ -735,11 +760,10 @@ const getStatusClass = (status) => {
         <div class="relative bg-white shadow-2xl overflow-hidden rounded-sm" style="line-height: 0;">
           <canvas id="pdf-render-canvas"></canvas>
 
-          <!-- Draggable Signature Box (QR Code TTD Digital) -->
-          <div v-if="isAdjusting" class="drag-signature absolute z-[200] cursor-move border-2 border-blue-600 bg-white/95 backdrop-blur-[2px] shadow-2xl flex flex-col items-center justify-center touch-none text-center p-1"
+          <!-- Draggable Signature Box (Presisi 1:1 e-Materai TTD Digital) -->
+          <div v-if="isAdjusting" class="drag-signature absolute z-[200] cursor-move border-2 border-blue-600 bg-white shadow-2xl flex items-center justify-center touch-none text-center p-0.5"
                :style="{ left: signaturePos.x + 'px', top: signaturePos.y + 'px', width: signatureSize.width + 'px', height: signatureSize.height + 'px' }">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=SINDEN_PREVIEW" class="w-full h-full object-contain pointer-events-none max-h-[82%] border border-slate-300 p-0.5 rounded-sm" alt="QR Code TTD Digital" />
-            <span class="text-[7px] font-black text-emerald-700 uppercase tracking-tighter mt-0.5 truncate max-w-full pointer-events-none">✓ QR CODE TTD KOMANDAN</span>
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=SINDEN_PREVIEW" class="w-full h-full object-contain pointer-events-none" alt="QR Code TTD Digital" />
             <div class="absolute -bottom-2 -right-2 w-6 h-6 bg-blue-600 rounded-full border-2 border-white shadow-lg cursor-se-resize flex items-center justify-center">
               <div class="w-1.5 h-1.5 bg-white rounded-full"></div>
             </div>
@@ -775,6 +799,11 @@ const getStatusClass = (status) => {
             <div>
               <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Perihal / Subjek Surat</label>
               <input v-model="form.subject" type="text" class="w-full rounded-xl border-slate-200 bg-slate-50 text-xs font-bold p-3 uppercase focus:ring-2 focus:ring-blue-500" placeholder="SURAT PERINTAH / NOTA DINAS..." required>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Nomor Surat Dinas / Agenda (Opsional)</label>
+              <input v-model="form.letter_number" type="text" class="w-full rounded-xl border-slate-200 bg-slate-50 text-xs font-bold p-3 uppercase focus:ring-2 focus:ring-blue-500" placeholder="Contoh: Sprin / 15 / VIII / 2026">
             </div>
 
             <div>

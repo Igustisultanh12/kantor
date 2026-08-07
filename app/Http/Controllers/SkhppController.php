@@ -491,17 +491,47 @@ class SkhppController extends Controller
     }
 
     /**
-     * Halaman Publik Hasil Scan QR Code TTD Komandan (Validasi Legilitas Resmi)
+     * Halaman Publik Hasil Scan QR Code TTD Komandan (Validasi Legilitas Resmi SKHPP & Dokumen Dinas)
      */
     public function verify($code)
     {
+        $settings = \App\Models\Setting::pluck('value', 'key')->all();
+
+        // 1. Cek di tabel Skhpp
         $skhpp = Skhpp::with(['members', 'submitter', 'approver'])
             ->where('verification_code', $code)
             ->first();
 
-        $settings = \App\Models\Setting::pluck('value', 'key')->all();
+        // 2. Jika tidak ditemukan di Skhpp, Cek di tabel SignatureRequest (Dokumen PDF Umum / Naskah Dinas)
+        if (!$skhpp) {
+            $sigReq = \App\Models\SignatureRequest::with('user')
+                ->where('verification_code', $code)
+                ->where('status', 'approved')
+                ->first();
 
-        if (!$skhpp || $skhpp->status !== 'approved') {
+            if (!$sigReq) {
+                $sigReq = \App\Models\SignatureRequest::with('user')
+                    ->where('letter_number', $code)
+                    ->where('status', 'approved')
+                    ->first();
+            }
+
+            if ($sigReq) {
+                $skhpp = (object) [
+                    'verification_code' => $sigReq->verification_code,
+                    'nama' => $sigReq->user?->name ?? 'Personel Denintel Kodaeral V',
+                    'pangkat_korps_nrp' => ($sigReq->user?->pangkat ?: 'TNI AL') . ($sigReq->user?->nrp ? (' / NRP ' . $sigReq->user->nrp) : ''),
+                    'kategori_personel' => 'Dinas Militer & PNS',
+                    'nomor_skhpp' => $sigReq->letter_number ?: ('DOC/' . $sigReq->id . '/' . date('Y')),
+                    'jabatan_pekerjaan' => 'Personel SINDEN Kodaeral V',
+                    'peruntukan' => $sigReq->subject ?: 'Dokumen Naskah Resmi TTD Digital Komandan',
+                    'tanggal_skhpp' => $sigReq->updated_at,
+                    'status' => 'approved',
+                ];
+            }
+        }
+
+        if (!$skhpp || (is_object($skhpp) && isset($skhpp->status) && $skhpp->status !== 'approved')) {
             return Inertia::render('Skhpp/Verify', [
                 'skhpp' => null,
                 'verify_code' => $code,
