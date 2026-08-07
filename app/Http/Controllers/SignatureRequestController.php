@@ -160,6 +160,9 @@ class SignatureRequestController extends Controller
                 }
 
                 $originalPath = storage_path('app/public/' . $signatureRequest->file_path);
+                
+                // Otomatisasi Normalisasi PDF Versi Tinggi (PDF 1.5+ Compressed Object Streams) ke PDF 1.4 Kompatibel
+                $sourcePdfPath = $this->normalizePdfForFpdi($originalPath);
 
                 // Generate QR Code TTD Image
                 $verifyUrl = route('skhpp.verify', $signatureRequest->verification_code);
@@ -175,7 +178,8 @@ class SignatureRequestController extends Controller
                     $signatureImg = storage_path('app/public/' . ($signatureKey->value ?? 'signatures/komandan_ttd.png'));
                 }
 
-                Log::info("Path PDF: " . $originalPath);
+                Log::info("Path PDF Asli: " . $originalPath);
+                Log::info("Path PDF Source FPDI: " . $sourcePdfPath);
                 Log::info("Path TTD QR: " . $signatureImg);
 
                 if (!file_exists($signatureImg)) {
@@ -184,7 +188,15 @@ class SignatureRequestController extends Controller
                 }
 
                 $pdf = new Fpdi();
-                $pageCount = $pdf->setSourceFile($originalPath);
+                try {
+                    $pageCount = $pdf->setSourceFile($sourcePdfPath);
+                } catch (\Exception $e) {
+                    if (str_contains($e->getMessage(), 'compression technique')) {
+                        throw new \Exception('Dokumen PDF dikompresi versi tinggi (PDF 1.5+). Jalankan perintah `sudo apt-get install -y ghostscript qpdf` di terminal server aaPanel agar dapat di-decompress otomatis.');
+                    }
+                    throw $e;
+                }
+
                 Log::info("Jumlah Halaman PDF: " . $pageCount);
 
                 $xRatio = (float)($request->x ?? $signatureRequest->x);
@@ -208,7 +220,7 @@ class SignatureRequestController extends Controller
                         $ttdW = $wRatio * $pdfW;
 
                         Log::info("Menempelkan TTD QR Code di Hal $pageNo (Posisi: $posX, $posY | Lebar: $ttdW)");
-                        $pdf->Image($signatureImg, $posX, $posY, $ttdW, 0, 'PNG');
+                        $pdf->Image($signatureImg, $posX, $posY, $ttdW, $ttdW, 'PNG');
                     }
                 }
 
@@ -219,6 +231,10 @@ class SignatureRequestController extends Controller
 
                 if (file_exists($tempQrPath)) {
                     @unlink($tempQrPath);
+                }
+
+                if ($sourcePdfPath !== $originalPath && file_exists($sourcePdfPath)) {
+                    @unlink($sourcePdfPath);
                 }
 
                 if (Storage::disk('public')->exists($signatureRequest->file_path)) {
@@ -303,5 +319,47 @@ class SignatureRequestController extends Controller
             Log::error("Clear All Error: " . $e->getMessage());
             return back()->with('error', 'Gagal membersihkan data.');
         }
+    }
+
+    /**
+     * Helper Otomatis: Mengonversi PDF versi tinggi (PDF 1.5+ / Compressed Object Streams)
+     * menjadi PDF 1.4 kompatibel agar FPDI dapat membaca tanpa error parser.
+     */
+    private function normalizePdfForFpdi($inputPath)
+    {
+        if (!file_exists($inputPath)) {
+            return $inputPath;
+        }
+
+        $outputPath = storage_path('app/public/temp_norm_' . time() . '_' . uniqid() . '.pdf');
+
+        // 1. Coba konversi via Ghostscript (gs)
+        $cmdGs = "gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dNOPAUSE -dQUIET -dBATCH -sOutputFile=" . escapeshellarg($outputPath) . " " . escapeshellarg($inputPath);
+        @exec($cmdGs, $outGs, $codeGs);
+
+        if (file_exists($outputPath) && filesize($outputPath) > 0 && $codeGs === 0) {
+            Log::info("Normalisasi PDF via Ghostscript (gs) Berhasil: " . $outputPath);
+            return $outputPath;
+        }
+
+        // 2. Coba konversi via qpdf
+        $cmdQpdf = "qpdf --qdf --object-streams=disable " . escapeshellarg($inputPath) . " " . escapeshellarg($outputPath);
+        @exec($cmdQpdf, $outQpdf, $codeQpdf);
+
+        if (file_exists($outputPath) && filesize($outputPath) > 0 && $codeQpdf === 0) {
+            Log::info("Normalisasi PDF via qpdf Berhasil: " . $outputPath);
+            return $outputPath;
+        }
+
+        // 3. Coba konversi via pdftk
+        $cmdPdftk = "pdftk " . escapeshellarg($inputPath) . " output " . escapeshellarg($outputPath) . " uncompress";
+        @exec($cmdPdftk, $outPdftk, $codePdftk);
+
+        if (file_exists($outputPath) && filesize($outputPath) > 0 && $codePdftk === 0) {
+            Log::info("Normalisasi PDF via pdftk Berhasil: " . $outputPath);
+            return $outputPath;
+        }
+
+        return $inputPath;
     }
 }
