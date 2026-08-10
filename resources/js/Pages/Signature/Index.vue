@@ -934,7 +934,7 @@ const getStatusClass = (status) => {
 
     <!-- MODAL REGISTRASI BERKAS PDF BARU (LENGKAP SESUAI LAYOUT VERIFIKASI) -->
     <transition name="modal-pop">
-      <div v-if="isModalOpen" class="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-sm overflow-y-auto">
+      <div v-show="isModalOpen" class="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-sm overflow-y-auto">
         <div class="bg-white w-full max-w-xl rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5 text-left my-auto max-h-[90vh] flex flex-col">
           <div class="flex items-center justify-between border-b pb-3 shrink-0">
             <div>
@@ -986,7 +986,11 @@ const getStatusClass = (status) => {
 
             <div>
               <label class="block text-[10px] font-extrabold text-slate-700 uppercase mb-1">Unggah Berkas PDF (Dapat Lebih Dari 1 Halaman)</label>
-              <input type="file" @change="onOperatorFileSelect" accept=".pdf" class="w-full text-xs text-slate-500 border border-slate-200 rounded-xl p-2 bg-slate-50" required />
+              <input type="file" @change="onOperatorFileSelect" accept=".pdf" class="w-full text-xs text-slate-500 border border-slate-200 rounded-xl p-2 bg-slate-50" :required="!form.file" />
+              <div v-if="form.file" class="mt-2 text-xs font-bold text-emerald-800 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 flex items-center justify-between">
+                <span>Berkas Terpilih: <strong>{{ form.file.name }}</strong> ({{ (form.file.size / 1024 / 1024).toFixed(2) }} MB)</span>
+                <span class="text-[9px] bg-emerald-600 text-white px-2.5 py-0.5 rounded-full font-black uppercase">TERLAMPIR SIAP DIKIRIM</span>
+              </div>
             </div>
 
             <!-- Tombol Penentuan Posisi TTD Komandan oleh Operator -->
