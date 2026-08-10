@@ -262,6 +262,7 @@ const openOperatorPosPicker = async () => {
     Swal.fire('Perhatian', 'Harap pilih berkas PDF terlebih dahulu.', 'warning');
     return;
   }
+  isModalOpen.value = false; // Sembunyikan modal form registrasi agar pratinjau canvas terlihat 100% jelas!
   isOperatorConfiguring.value = true;
   isPreviewOpen.value = true;
   isAdjusting.value = true;
@@ -283,7 +284,16 @@ const saveOperatorPos = () => {
   }
   isPreviewOpen.value = false;
   isOperatorConfiguring.value = false;
-  Swal.fire({ icon: 'success', title: 'Posisi TTD Di-Set', text: `Letak TTD Komandan telah berhasil diset pada Halaman ${currentPage.value}`, timer: 2000, showConfirmButton: false });
+  isModalOpen.value = true; // Buka kembali modal form registrasi!
+  Swal.fire({ icon: 'success', title: 'Posisi TTD Di-Set', text: `Letak TTD Komandan telah berhasil diset pada Halaman ${currentPage.value}`, timer: 1800, showConfirmButton: false });
+};
+
+const closeOperatorPosPicker = () => {
+  isPreviewOpen.value = false;
+  if (isOperatorConfiguring.value) {
+    isOperatorConfiguring.value = false;
+    isModalOpen.value = true; // Buka kembali modal form registrasi jika dibatalkan!
+  }
 };
 
 const openPdfPreview = async (req) => {
@@ -865,7 +875,7 @@ const getStatusClass = (status) => {
           <button v-if="!isAdjusting && (user.role === 'komandan' || user.role === 'admin')" @click="enableDrag" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-black uppercase shadow-md">
             Atur Posisi TTD (Hal. {{ currentPage }})
           </button>
-          <button @click="isPreviewOpen = false" class="bg-rose-50 text-rose-600 px-3 py-2 rounded-xl text-xs font-black uppercase border border-rose-100">✕</button>
+          <button @click="closeOperatorPosPicker" class="bg-rose-50 text-rose-600 px-3 py-2 rounded-xl text-xs font-black uppercase border border-rose-100">✕</button>
         </div>
       </div>
 
@@ -899,7 +909,7 @@ const getStatusClass = (status) => {
         <button type="button" @click="saveOperatorPos" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg">
           SIMPAN POSISI LOKASI TTD INI ( HALAMAN {{ currentPage }} )
         </button>
-        <button type="button" @click="isPreviewOpen = false; isOperatorConfiguring = false;" class="bg-slate-100 text-slate-600 px-6 py-3.5 rounded-2xl font-black text-xs uppercase border border-slate-200">
+        <button type="button" @click="closeOperatorPosPicker" class="bg-slate-100 text-slate-600 px-6 py-3.5 rounded-2xl font-black text-xs uppercase border border-slate-200">
           BATAL
         </button>
       </div>
