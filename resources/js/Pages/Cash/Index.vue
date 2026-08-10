@@ -16,6 +16,7 @@ const user = computed(() => usePage().props.auth.user);
 const showPreview = ref(false);
 const previewImage = ref(null);
 const filterMonth = ref(new Date().getMonth() + 1); 
+const filterYear = ref(new Date().getFullYear());
 const searchQuery = ref(''); 
 
 const actualTotalSaldo = computed(() => {
