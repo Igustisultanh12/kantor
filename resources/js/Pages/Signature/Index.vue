@@ -826,15 +826,15 @@ const getStatusClass = (status) => {
         <!-- Modal Footer Actions (Mobile Friendly) -->
         <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center border-t border-slate-300 pt-3 gap-2.5 shrink-0">
           <Link :href="`/skhpp/${selectedSkhpp.id}`" class="text-[11px] sm:text-xs font-bold text-blue-600 hover:underline flex items-center justify-center sm:justify-start gap-1">
-            📄 Buka Halaman Cetak Lengkap (Dengan Lampiran Jika Ada) →
+            Buka Halaman Cetak Lengkap (Dengan Lampiran Jika Ada) →
           </Link>
           <div class="flex gap-2 w-full sm:w-auto">
             <template v-if="(user.role === 'admin' || user.role === 'komandan') && selectedSkhpp.status === 'pending'">
               <button @click="approveSkhpp(selectedSkhpp)" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-[11px] sm:text-xs font-black uppercase shadow-md text-center">
-                ✅ Setujui & TTD Komandan
+                Setujui & TTD Komandan
               </button>
               <button @click="rejectSkhpp(selectedSkhpp)" class="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2.5 rounded-xl text-[11px] sm:text-xs font-black uppercase shadow-md text-center">
-                ❌ Tolak / Minta Revisi
+                Tolak / Minta Revisi
               </button>
             </template>
           </div>
@@ -863,7 +863,7 @@ const getStatusClass = (status) => {
 
         <div class="flex items-center gap-2">
           <button v-if="!isAdjusting && (user.role === 'komandan' || user.role === 'admin')" @click="enableDrag" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-black uppercase shadow-md">
-            📍 Atur Posisi TTD (Hal. {{ currentPage }})
+            Atur Posisi TTD (Hal. {{ currentPage }})
           </button>
           <button @click="isPreviewOpen = false" class="bg-rose-50 text-rose-600 px-3 py-2 rounded-xl text-xs font-black uppercase border border-rose-100">✕</button>
         </div>
@@ -891,13 +891,13 @@ const getStatusClass = (status) => {
 
       <!-- Banner Petunjuk Multi-Halaman -->
       <div v-if="totalPages > 1" class="bg-blue-50 border-t border-b border-blue-100 px-4 py-2.5 text-center text-xs font-bold text-blue-900 shrink-0 flex items-center justify-center gap-2 flex-wrap">
-        <span>💡 Dokumen ini memiliki <strong>{{ totalPages }} Halaman</strong>. Buka halaman tempat TTD berada menggunakan tombol ◀ ▶ di atas, atau pilih tempel di seluruh halaman.</span>
+        <span>Dokumen ini memiliki <strong>{{ totalPages }} Halaman</strong>. Buka halaman tempat TTD berada menggunakan tombol ◀ ▶ di atas, atau pilih tempel di seluruh halaman.</span>
       </div>
 
       <!-- Bottom Bar untuk Operator (Save Position Only) -->
       <div v-if="isOperatorConfiguring" class="bg-white border-t p-4 flex justify-center gap-3 shrink-0 shadow-2xl">
         <button type="button" @click="saveOperatorPos" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg">
-          ✅ SIMPAN POSISI LOKASI TTD INI ( HALAMAN {{ currentPage }} )
+          SIMPAN POSISI LOKASI TTD INI ( HALAMAN {{ currentPage }} )
         </button>
         <button type="button" @click="isPreviewOpen = false; isOperatorConfiguring = false;" class="bg-slate-100 text-slate-600 px-6 py-3.5 rounded-2xl font-black text-xs uppercase border border-slate-200">
           BATAL
@@ -907,13 +907,13 @@ const getStatusClass = (status) => {
       <!-- Bottom Confirm / Reject Bar untuk Komandan & Admin -->
       <div v-else-if="user.role === 'komandan' || user.role === 'admin'" class="bg-white border-t p-4 flex flex-wrap justify-center gap-3 shrink-0 shadow-2xl">
         <button v-if="isAdjusting" @click="handlePdfDecision('approved', false)" :disabled="decisionForm.processing" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg">
-          ✅ SETUJUI & STAMP TTD DIGITAL (HAL. {{ currentPage }})
+          SETUJUI & STAMP TTD DIGITAL (HAL. {{ currentPage }})
         </button>
         <button v-if="isAdjusting && totalPages > 1" @click="handlePdfDecision('approved', true)" :disabled="decisionForm.processing" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg">
-          🌐 SETUJUI DI SEMUA HALAMAN (1 s.d. {{ totalPages }})
+          SETUJUI DI SEMUA HALAMAN (1 s.d. {{ totalPages }})
         </button>
         <button @click="handlePdfDecision('rejected')" :disabled="decisionForm.processing" class="bg-rose-600 hover:bg-rose-700 text-white px-5 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg">
-          ❌ TOLAK / MINTA REVISI BERKAS
+          TOLAK / MINTA REVISI BERKAS
         </button>
         <button v-if="isAdjusting" @click="isPreviewOpen = false" class="bg-slate-100 text-slate-600 px-5 py-3.5 rounded-2xl font-black text-xs uppercase border border-slate-200">
           BATAL
@@ -982,12 +982,12 @@ const getStatusClass = (status) => {
             <!-- Tombol Penentuan Posisi TTD Komandan oleh Operator -->
             <div v-if="form.file" class="bg-blue-50/80 p-3.5 rounded-2xl border border-blue-200 space-y-2">
               <div class="flex items-center justify-between">
-                <span class="text-[10px] font-black uppercase tracking-wider text-blue-900">📍 ATUR POSISI LOKASI TTD KOMANDAN</span>
+                <span class="text-[10px] font-black uppercase tracking-wider text-blue-900">ATUR POSISI LOKASI TTD KOMANDAN</span>
                 <span v-if="form.target_page" class="text-[9px] font-extrabold bg-blue-600 text-white px-2 py-0.5 rounded-full">Hal. {{ form.target_page }} Di-Set</span>
               </div>
               <p class="text-[10px] font-semibold text-slate-600">Geser & tandai posisi QR Code TTD Komandan pada lembar PDF ini agar Komandan dapat langsung melihat & menyetujui.</p>
               <button type="button" @click="openOperatorPosPicker" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-xl text-xs font-black uppercase shadow-md flex items-center justify-center gap-2">
-                <span>📍 Tandai / Atur Posisi TTD Komandan (Preview PDF)</span>
+                <span>Tandai / Atur Posisi TTD Komandan (Preview PDF)</span>
               </button>
             </div>
 
