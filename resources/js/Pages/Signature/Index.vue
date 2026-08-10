@@ -46,6 +46,7 @@ const signatureSize = ref({ width: 90, height: 90 });
 const pageSignatures = ref({});
 
 // Forms
+const isOperatorConfiguring = ref(false);
 const form = useForm({ 
   subject: '', 
   document_title: '', 
@@ -54,7 +55,12 @@ const form = useForm({
   pangkat_nrp: '', 
   jabatan: '', 
   peruntukan: '', 
-  file: null 
+  file: null,
+  x: 0.58,
+  y: 0.72,
+  width: 0.15,
+  target_page: 1,
+  pages_data: null
 });
 const decisionForm = useForm({ 
   status: '', 
@@ -229,10 +235,62 @@ const changePdfPage = async (delta) => {
   }
 };
 
+const onOperatorFileSelect = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  form.file = file;
+
+  try {
+    const buffer = await file.arrayBuffer();
+    const loadingTask = pdfjsLib.getDocument({
+      data: buffer,
+      cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/cmaps/`,
+      cMapPacked: true
+    });
+    const rawPdf = await loadingTask.promise;
+    pdfDoc.value = markRaw(rawPdf);
+    totalPages.value = pdfDoc.value.numPages;
+    currentPage.value = totalPages.value; // Default ke halaman akhir tempat TTD
+    pageSignatures.value = {};
+  } catch (err) {
+    console.error("Gagal membaca PDF untuk pratinjau:", err);
+  }
+};
+
+const openOperatorPosPicker = async () => {
+  if (!form.file) {
+    Swal.fire('Perhatian', 'Harap pilih berkas PDF terlebih dahulu.', 'warning');
+    return;
+  }
+  isOperatorConfiguring.value = true;
+  isPreviewOpen.value = true;
+  isAdjusting.value = true;
+  await nextTick();
+  await renderPdfPage(currentPage.value);
+  loadPagePos();
+  enableDrag();
+};
+
+const saveOperatorPos = () => {
+  saveCurrentPagePos();
+  const canvas = document.getElementById('pdf-render-canvas');
+  if (canvas) {
+    form.x = parseFloat(signaturePos.value.x / canvas.width);
+    form.y = parseFloat(signaturePos.value.y / canvas.height);
+    form.width = parseFloat(signatureSize.value.width / canvas.width);
+    form.target_page = currentPage.value;
+    form.pages_data = Object.keys(pageSignatures.value).length > 0 ? JSON.stringify(pageSignatures.value) : null;
+  }
+  isPreviewOpen.value = false;
+  isOperatorConfiguring.value = false;
+  Swal.fire({ icon: 'success', title: 'Posisi TTD Di-Set', text: `Letak TTD Komandan telah berhasil diset pada Halaman ${currentPage.value}`, timer: 2000, showConfirmButton: false });
+};
+
 const openPdfPreview = async (req) => {
   selectedReqId.value = req.id;
+  isOperatorConfiguring.value = false;
   isPreviewOpen.value = true;
-  isAdjusting.value = false;
+  isAdjusting.value = true;
   currentPage.value = 1;
   pageSignatures.value = {};
   if (req.pages_data) {
@@ -258,10 +316,11 @@ const openPdfPreview = async (req) => {
     const rawPdf = await loadingTask.promise;
     pdfDoc.value = markRaw(rawPdf);
     totalPages.value = pdfDoc.value.numPages;
-    currentPage.value = req.target_page || 1;
+    currentPage.value = req.target_page || totalPages.value;
 
     await renderPdfPage(currentPage.value);
     loadPagePos();
+    enableDrag();
   } catch (e) {
     Swal.fire('Error', 'File PDF tidak dapat dibaca atau diproteksi password.', 'error');
   } finally {
@@ -835,18 +894,28 @@ const getStatusClass = (status) => {
         <span>💡 Dokumen ini memiliki <strong>{{ totalPages }} Halaman</strong>. Buka halaman tempat TTD berada menggunakan tombol ◀ ▶ di atas, atau pilih tempel di seluruh halaman.</span>
       </div>
 
-      <!-- Bottom Confirm / Reject Bar -->
-      <div v-if="user.role === 'komandan' || user.role === 'admin'" class="bg-white border-t p-4 flex flex-wrap justify-center gap-3 shrink-0 shadow-2xl">
+      <!-- Bottom Bar untuk Operator (Save Position Only) -->
+      <div v-if="isOperatorConfiguring" class="bg-white border-t p-4 flex justify-center gap-3 shrink-0 shadow-2xl">
+        <button type="button" @click="saveOperatorPos" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg">
+          ✅ SIMPAN POSISI LOKASI TTD INI ( HALAMAN {{ currentPage }} )
+        </button>
+        <button type="button" @click="isPreviewOpen = false; isOperatorConfiguring = false;" class="bg-slate-100 text-slate-600 px-6 py-3.5 rounded-2xl font-black text-xs uppercase border border-slate-200">
+          BATAL
+        </button>
+      </div>
+
+      <!-- Bottom Confirm / Reject Bar untuk Komandan & Admin -->
+      <div v-else-if="user.role === 'komandan' || user.role === 'admin'" class="bg-white border-t p-4 flex flex-wrap justify-center gap-3 shrink-0 shadow-2xl">
         <button v-if="isAdjusting" @click="handlePdfDecision('approved', false)" :disabled="decisionForm.processing" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg">
-          ✅ TEMPEL TTD HALAMAN {{ currentPage }} SAJA
+          ✅ SETUJUI & STAMP TTD DIGITAL (HAL. {{ currentPage }})
         </button>
         <button v-if="isAdjusting && totalPages > 1" @click="handlePdfDecision('approved', true)" :disabled="decisionForm.processing" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg">
-          🌐 TEMPEL DI SEMUA HALAMAN (1 s.d. {{ totalPages }})
+          🌐 SETUJUI DI SEMUA HALAMAN (1 s.d. {{ totalPages }})
         </button>
         <button @click="handlePdfDecision('rejected')" :disabled="decisionForm.processing" class="bg-rose-600 hover:bg-rose-700 text-white px-5 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg">
-          ❌ TOLAK BERKAS
+          ❌ TOLAK / MINTA REVISI BERKAS
         </button>
-        <button v-if="isAdjusting" @click="isAdjusting = false" class="bg-slate-100 text-slate-600 px-5 py-3.5 rounded-2xl font-black text-xs uppercase border border-slate-200">
+        <button v-if="isAdjusting" @click="isPreviewOpen = false" class="bg-slate-100 text-slate-600 px-5 py-3.5 rounded-2xl font-black text-xs uppercase border border-slate-200">
           BATAL
         </button>
       </div>
@@ -907,7 +976,19 @@ const getStatusClass = (status) => {
 
             <div>
               <label class="block text-[10px] font-extrabold text-slate-700 uppercase mb-1">Unggah Berkas PDF (Dapat Lebih Dari 1 Halaman)</label>
-              <input type="file" @input="form.file = $event.target.files[0]" accept=".pdf" class="w-full text-xs text-slate-500 border border-slate-200 rounded-xl p-2 bg-slate-50" required />
+              <input type="file" @change="onOperatorFileSelect" accept=".pdf" class="w-full text-xs text-slate-500 border border-slate-200 rounded-xl p-2 bg-slate-50" required />
+            </div>
+
+            <!-- Tombol Penentuan Posisi TTD Komandan oleh Operator -->
+            <div v-if="form.file" class="bg-blue-50/80 p-3.5 rounded-2xl border border-blue-200 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-black uppercase tracking-wider text-blue-900">📍 ATUR POSISI LOKASI TTD KOMANDAN</span>
+                <span v-if="form.target_page" class="text-[9px] font-extrabold bg-blue-600 text-white px-2 py-0.5 rounded-full">Hal. {{ form.target_page }} Di-Set</span>
+              </div>
+              <p class="text-[10px] font-semibold text-slate-600">Geser & tandai posisi QR Code TTD Komandan pada lembar PDF ini agar Komandan dapat langsung melihat & menyetujui.</p>
+              <button type="button" @click="openOperatorPosPicker" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-xl text-xs font-black uppercase shadow-md flex items-center justify-center gap-2">
+                <span>📍 Tandai / Atur Posisi TTD Komandan (Preview PDF)</span>
+              </button>
             </div>
 
             <div class="flex justify-end gap-2 pt-4 border-t shrink-0">

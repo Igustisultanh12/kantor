@@ -50,6 +50,8 @@ class SignatureRequestController extends Controller
             'x' => 'nullable|numeric',
             'y' => 'nullable|numeric',
             'width' => 'nullable|numeric',
+            'target_page' => 'nullable|integer',
+            'pages_data' => 'nullable',
         ]);
 
         try {
@@ -71,9 +73,11 @@ class SignatureRequestController extends Controller
                 'file_path' => $path,
                 'status' => 'pending',
                 'verification_code' => 'DOC-' . strtoupper(\Illuminate\Support\Str::random(10)),
-                'x' => $request->x ?? 0.5,
-                'y' => $request->y ?? 0.5,
-                'width' => $request->width ?? 0.2,
+                'x' => $request->x ?? 0.58,
+                'y' => $request->y ?? 0.72,
+                'width' => $request->width ?? 0.15,
+                'target_page' => $request->target_page ?? 1,
+                'pages_data' => is_array($request->pages_data) ? json_encode($request->pages_data) : $request->pages_data,
             ]);
 
             $komandan = User::where('role', 'komandan')->whereNotNull('phone')->first() 
