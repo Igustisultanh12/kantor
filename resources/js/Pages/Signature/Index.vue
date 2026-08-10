@@ -299,7 +299,7 @@ const onOperatorFileSelect = async (e) => {
     const rawPdf = await loadingTask.promise;
     pdfDoc.value = markRaw(rawPdf);
     totalPages.value = pdfDoc.value.numPages;
-    currentPage.value = totalPages.value; // Default ke halaman akhir tempat TTD
+    currentPage.value = 1; // Default ke halaman pertama (halaman 1)
     pageSignatures.value = {};
   } catch (err) {
     console.error("Gagal membaca PDF untuk pratinjau:", err);
@@ -315,6 +315,7 @@ const openOperatorPosPicker = async () => {
   isOperatorConfiguring.value = true;
   isPreviewOpen.value = true;
   isAdjusting.value = true;
+  currentPage.value = 1; // Buka dari halaman 1
   await nextTick();
   await renderPdfPage(currentPage.value);
 
@@ -357,7 +358,7 @@ const openPdfPreview = async (req) => {
   isOperatorConfiguring.value = false;
   isPreviewOpen.value = true;
   isAdjusting.value = true;
-  currentPage.value = req.target_page || 1;
+  currentPage.value = 1; // Buka dari halaman 1 untuk Komandan
   pageSignatures.value = {};
   if (req.pages_data) {
     try {
@@ -387,7 +388,7 @@ const openPdfPreview = async (req) => {
     const rawPdf = await loadingTask.promise;
     pdfDoc.value = markRaw(rawPdf);
     totalPages.value = pdfDoc.value.numPages;
-    currentPage.value = req.target_page || totalPages.value;
+    currentPage.value = 1; // Selalu tampilkan dari halaman 1
 
     await renderPdfPage(currentPage.value);
     loadPagePos();
