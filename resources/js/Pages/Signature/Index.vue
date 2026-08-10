@@ -196,9 +196,18 @@ const renderPdfPage = async (pageNumber) => {
   }
 };
 
+const isCurrentPageActive = computed(() => {
+  return pageSignatures.value && !!pageSignatures.value[currentPage.value];
+});
+
+const activePagesList = computed(() => {
+  if (!pageSignatures.value) return [];
+  return Object.keys(pageSignatures.value).map(Number).sort((a, b) => a - b);
+});
+
 const saveCurrentPagePos = () => {
   const canvas = document.getElementById('pdf-render-canvas');
-  if (canvas && isAdjusting.value) {
+  if (canvas && isAdjusting.value && pageSignatures.value && pageSignatures.value[currentPage.value]) {
     pageSignatures.value[currentPage.value] = {
       x: parseFloat(signaturePos.value.x / canvas.width),
       y: parseFloat(signaturePos.value.y / canvas.height),
@@ -207,11 +216,51 @@ const saveCurrentPagePos = () => {
   }
 };
 
+const removeCurrentPageSignature = () => {
+  if (pageSignatures.value && pageSignatures.value[currentPage.value]) {
+    const updated = { ...pageSignatures.value };
+    delete updated[currentPage.value];
+    pageSignatures.value = updated;
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'info',
+      title: `TTD Halaman ${currentPage.value} Dihapus`,
+      showConfirmButton: false,
+      timer: 1500
+    });
+  }
+};
+
+const addCurrentPageSignature = () => {
+  const canvas = document.getElementById('pdf-render-canvas');
+  const canvasW = canvas ? canvas.width : 500;
+  const canvasH = canvas ? canvas.height : 700;
+
+  const updated = { ...pageSignatures.value };
+  updated[currentPage.value] = {
+    x: 0.58,
+    y: 0.72,
+    width: 0.15
+  };
+  pageSignatures.value = updated;
+  loadPagePos();
+  enableDrag();
+  Swal.fire({
+    toast: true,
+    position: 'top-end',
+    icon: 'success',
+    title: `TTD Ditambahkan di Halaman ${currentPage.value}`,
+    showConfirmButton: false,
+    timer: 1500
+  });
+};
+
 const loadPagePos = () => {
   const canvas = document.getElementById('pdf-render-canvas');
   if (!canvas) return;
 
-  if (pageSignatures.value[currentPage.value]) {
+  if (pageSignatures.value && pageSignatures.value[currentPage.value]) {
     const pData = pageSignatures.value[currentPage.value];
     signaturePos.value = { x: pData.x * canvas.width, y: pData.y * canvas.height };
     const wPx = pData.width * canvas.width;
@@ -262,12 +311,19 @@ const openOperatorPosPicker = async () => {
     Swal.fire('Perhatian', 'Harap pilih berkas PDF terlebih dahulu.', 'warning');
     return;
   }
-  isModalOpen.value = false; // Sembunyikan modal form registrasi agar pratinjau canvas terlihat 100% jelas!
+  isModalOpen.value = false;
   isOperatorConfiguring.value = true;
   isPreviewOpen.value = true;
   isAdjusting.value = true;
   await nextTick();
   await renderPdfPage(currentPage.value);
+
+  if (!pageSignatures.value || Object.keys(pageSignatures.value).length === 0) {
+    pageSignatures.value = {
+      [currentPage.value]: { x: 0.58, y: 0.72, width: 0.15 }
+    };
+  }
+
   loadPagePos();
   enableDrag();
 };
@@ -284,15 +340,15 @@ const saveOperatorPos = () => {
   }
   isPreviewOpen.value = false;
   isOperatorConfiguring.value = false;
-  isModalOpen.value = true; // Buka kembali modal form registrasi!
-  Swal.fire({ icon: 'success', title: 'Posisi TTD Di-Set', text: `Letak TTD Komandan telah berhasil diset pada Halaman ${currentPage.value}`, timer: 1800, showConfirmButton: false });
+  isModalOpen.value = true;
+  Swal.fire({ icon: 'success', title: 'Posisi TTD Di-Set', text: `Letak TTD Komandan diset pada ${activePagesList.value.length} Halaman (${activePagesList.value.join(', ')})`, timer: 2000, showConfirmButton: false });
 };
 
 const closeOperatorPosPicker = () => {
   isPreviewOpen.value = false;
   if (isOperatorConfiguring.value) {
     isOperatorConfiguring.value = false;
-    isModalOpen.value = true; // Buka kembali modal form registrasi jika dibatalkan!
+    isModalOpen.value = true;
   }
 };
 
@@ -301,12 +357,17 @@ const openPdfPreview = async (req) => {
   isOperatorConfiguring.value = false;
   isPreviewOpen.value = true;
   isAdjusting.value = true;
-  currentPage.value = 1;
+  currentPage.value = req.target_page || 1;
   pageSignatures.value = {};
   if (req.pages_data) {
     try {
       pageSignatures.value = typeof req.pages_data === 'string' ? JSON.parse(req.pages_data) : req.pages_data;
     } catch (e) {}
+  }
+  if (!pageSignatures.value || Object.keys(pageSignatures.value).length === 0) {
+    pageSignatures.value = {
+      [req.target_page || 1]: { x: req.x || 0.58, y: req.y || 0.72, width: req.width || 0.15 }
+    };
   }
   signatureSize.value = { width: 90, height: 90 };
 
@@ -865,15 +926,18 @@ const getStatusClass = (status) => {
             <button @click="changePdfPage(-1)" :disabled="currentPage <= 1" class="px-2 py-0.5 rounded bg-white font-bold text-slate-700 disabled:opacity-30 hover:bg-slate-200">◀</button>
             <span class="font-bold text-slate-800">Halaman {{ currentPage }} / {{ totalPages }}</span>
             <button @click="changePdfPage(1)" :disabled="currentPage >= totalPages" class="px-2 py-0.5 rounded bg-white font-bold text-slate-700 disabled:opacity-30 hover:bg-slate-200">▶</button>
-            <span v-if="Object.keys(pageSignatures).length > 0" class="ml-1 px-2 py-0.5 bg-emerald-600 text-white rounded-md text-[10px] font-extrabold uppercase shadow-xs">
-              ✓ {{ Object.keys(pageSignatures).length }} Hal. Ter-Set Custom
+            <span v-if="activePagesList.length > 0" class="ml-1 px-2.5 py-0.5 bg-blue-600 text-white rounded-md text-[10px] font-extrabold uppercase shadow-xs">
+              TTD Terpasang di {{ activePagesList.length }} Hal: (Hal. {{ activePagesList.join(', ') }})
             </span>
           </div>
         </div>
 
         <div class="flex items-center gap-2">
-          <button v-if="!isAdjusting && (user.role === 'komandan' || user.role === 'admin')" @click="enableDrag" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-black uppercase shadow-md">
-            Atur Posisi TTD (Hal. {{ currentPage }})
+          <button v-if="isAdjusting && isCurrentPageActive" @click="removeCurrentPageSignature" class="bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl text-xs font-black uppercase shadow-md">
+            Hapus TTD di Hal. {{ currentPage }}
+          </button>
+          <button v-else-if="isAdjusting && !isCurrentPageActive" @click="addCurrentPageSignature" class="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-black uppercase shadow-md">
+            + Pasang TTD di Hal. {{ currentPage }}
           </button>
           <button @click="closeOperatorPosPicker" class="bg-rose-50 text-rose-600 px-3 py-2 rounded-xl text-xs font-black uppercase border border-rose-100">✕</button>
         </div>
@@ -889,11 +953,22 @@ const getStatusClass = (status) => {
           <canvas id="pdf-render-canvas"></canvas>
 
           <!-- Draggable Signature Box (Presisi 1:1 e-Materai TTD Digital) -->
-          <div v-if="isAdjusting" class="drag-signature absolute z-[200] cursor-move border-2 border-blue-600 bg-white shadow-2xl flex items-center justify-center touch-none text-center p-0.5"
+          <div v-if="isAdjusting && isCurrentPageActive" class="drag-signature absolute z-[200] cursor-move border-2 border-blue-600 bg-white shadow-2xl flex items-center justify-center touch-none text-center p-0.5"
                :style="{ left: signaturePos.x + 'px', top: signaturePos.y + 'px', width: signatureSize.width + 'px', height: signatureSize.height + 'px' }">
             <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=SINDEN_PREVIEW" class="w-full h-full object-contain pointer-events-none" alt="QR Code TTD Digital" />
             <div class="absolute -bottom-2 -right-2 w-6 h-6 bg-blue-600 rounded-full border-2 border-white shadow-lg cursor-se-resize flex items-center justify-center">
               <div class="w-1.5 h-1.5 bg-white rounded-full"></div>
+            </div>
+          </div>
+
+          <!-- Overlay Halaman Tanpa TTD -->
+          <div v-else-if="isAdjusting && !isCurrentPageActive" class="absolute inset-0 bg-slate-950/30 backdrop-blur-[1px] flex flex-col items-center justify-center gap-3 z-[100] text-center p-4">
+            <div class="bg-white/95 p-5 rounded-2xl shadow-2xl border border-slate-200 max-w-xs space-y-2">
+              <span class="text-xs font-black uppercase text-slate-500 block">Halaman {{ currentPage }} Tanpa TTD</span>
+              <p class="text-[10px] text-slate-600 font-medium">Halaman ini dibuat tanpa tanda tangan Komandan.</p>
+              <button type="button" @click="addCurrentPageSignature" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-xl text-xs font-black uppercase shadow-md">
+                + Pasang TTD di Halaman {{ currentPage }}
+              </button>
             </div>
           </div>
         </div>
@@ -901,13 +976,13 @@ const getStatusClass = (status) => {
 
       <!-- Banner Petunjuk Multi-Halaman -->
       <div v-if="totalPages > 1" class="bg-blue-50 border-t border-b border-blue-100 px-4 py-2.5 text-center text-xs font-bold text-blue-900 shrink-0 flex items-center justify-center gap-2 flex-wrap">
-        <span>Dokumen ini memiliki <strong>{{ totalPages }} Halaman</strong>. Buka halaman tempat TTD berada menggunakan tombol ◀ ▶ di atas, atau pilih tempel di seluruh halaman.</span>
+        <span>Dokumen ini memiliki <strong>{{ totalPages }} Halaman</strong>. Buka halaman tempat TTD berada menggunakan tombol ◀ ▶ di atas, lalu pilih halaman mana saja yang ingin dipasang atau dihapus TTD-nya.</span>
       </div>
 
       <!-- Bottom Bar untuk Operator (Save Position Only) -->
       <div v-if="isOperatorConfiguring" class="bg-white border-t p-4 flex justify-center gap-3 shrink-0 shadow-2xl">
         <button type="button" @click="saveOperatorPos" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg">
-          SIMPAN POSISI LOKASI TTD INI ( HALAMAN {{ currentPage }} )
+          SIMPAN POSISI LOKASI TTD INI ( {{ activePagesList.length }} HALAMAN TERPILIH )
         </button>
         <button type="button" @click="closeOperatorPosPicker" class="bg-slate-100 text-slate-600 px-6 py-3.5 rounded-2xl font-black text-xs uppercase border border-slate-200">
           BATAL
@@ -917,7 +992,7 @@ const getStatusClass = (status) => {
       <!-- Bottom Confirm / Reject Bar untuk Komandan & Admin -->
       <div v-else-if="user.role === 'komandan' || user.role === 'admin'" class="bg-white border-t p-4 flex flex-wrap justify-center gap-3 shrink-0 shadow-2xl">
         <button v-if="isAdjusting" @click="handlePdfDecision('approved', false)" :disabled="decisionForm.processing" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg">
-          SETUJUI & STAMP TTD DIGITAL (HAL. {{ currentPage }})
+          SETUJUI & STAMP TTD DIGITAL ( PADA {{ activePagesList.length }} HALAMAN TERPILIH )
         </button>
         <button v-if="isAdjusting && totalPages > 1" @click="handlePdfDecision('approved', true)" :disabled="decisionForm.processing" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg">
           SETUJUI DI SEMUA HALAMAN (1 s.d. {{ totalPages }})
