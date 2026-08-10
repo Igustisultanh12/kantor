@@ -20,8 +20,14 @@ class CashController extends Controller
             return abort(403, 'Anda tidak memiliki otoritas akses kas.');
         }
 
+        // Kalibrasi ulang seluruh saldo pangkalan secara runtut kronologis
+        $this->recalculateBalances();
+
+        $allCashes = Cash::orderBy('date', 'asc')->orderBy('id', 'asc')->get();
+        $totalSaldo = $allCashes->last()?->balance ?? 0;
+
         // AMAN: Deteksi berlapis demi menjinakkan data lama string tunggal maupun data array baru
-        $cashes = Cash::orderBy('date', 'asc')->orderBy('id', 'asc')->get()->map(function($cash) {
+        $cashes = $allCashes->map(function($cash) {
             $urls = [];
             $rawPath = $cash->receipt_path;
             
@@ -70,8 +76,6 @@ class CashController extends Controller
             ];
         });
 
-        $totalSaldo = Cash::latest('id')->first()?->balance ?? 0;
-
         return Inertia::render('Cash/Index', [
             'cashes' => $cashes,
             'totalSaldo' => $totalSaldo
@@ -89,9 +93,6 @@ class CashController extends Controller
             'receipt_files.*' => 'nullable|file|mimes:jpeg,jpg,png,pdf|max:153600', 
         ]);
 
-        $lastBalance = Cash::latest('id')->first()?->balance ?? 0;
-        $currentBalance = $lastBalance + $request->debit - $request->credit;
-
         // Loop penyimpanan koleksi multi-berkas gambar/PDF
         $storedPaths = [];
         if ($request->hasFile('receipt_files')) {
@@ -102,7 +103,6 @@ class CashController extends Controller
 
         // PERBAIKAN: Paksa konversi array menjadi string JSON murni secara manual agar database tidak memicu error 500
         $finalPathValue = count($storedPaths) > 0 ? json_encode($storedPaths) : null;
-
         $dateFormatted = is_string($request->date) ? substr($request->date, 0, 10) : $request->date;
 
         Cash::create([
@@ -110,9 +110,12 @@ class CashController extends Controller
             'description' => $request->description,
             'debit' => $request->debit ?? 0,
             'credit' => $request->credit ?? 0,
-            'balance' => $currentBalance,
+            'balance' => 0,
             'receipt_path' => $finalPathValue 
         ]);
+
+        // Kalibrasi ulang seluruh saldo secara otomatis pasca pencatatan baru
+        $this->recalculateBalances();
 
         $user = auth()->user();
         $typeStr = ($request->debit > 0) ? "Pemasukan (Debit) Rp " . number_format($request->debit) : "Pengeluaran (Kredit) Rp " . number_format($request->credit);
@@ -239,8 +242,9 @@ class CashController extends Controller
 
     public function exportPdf()
     {
-        $cashes = Cash::orderBy('date', 'asc')->get();
-        $totalSaldo = Cash::latest('id')->first()?->balance ?? 0;
+        $this->recalculateBalances();
+        $cashes = Cash::orderBy('date', 'asc')->orderBy('id', 'asc')->get();
+        $totalSaldo = $cashes->last()?->balance ?? 0;
 
         $pdf = Pdf::loadView('pdf.cash_report', [
             'cashes' => $cashes,

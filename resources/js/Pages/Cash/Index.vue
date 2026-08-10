@@ -16,10 +16,14 @@ const user = computed(() => usePage().props.auth.user);
 const showPreview = ref(false);
 const previewImage = ref(null);
 const filterMonth = ref(new Date().getMonth() + 1); 
-const filterYear = ref(new Date().getFullYear());
 const searchQuery = ref(''); 
 
-// State Pemilihan Baris Transaksi untuk Cetak Laporan Kustom
+const actualTotalSaldo = computed(() => {
+    if (props.cashes && props.cashes.length > 0) {
+        return props.cashes[props.cashes.length - 1].balance;
+    }
+    return props.totalSaldo || 0;
+});
 const selectedCashIds = ref([]);
 
 // PENYESUAIAN MULTI-UPLOAD: State penampung kumpulan objek URL pratinjau
@@ -453,7 +457,7 @@ const formatLongDate = (dateStr) => {
                             <thead class="bg-slate-900 text-white font-black">
                                 <tr>
                                     <td colspan="5" class="p-5 text-right uppercase italic text-xs tracking-widest border-r border-slate-800">Total Saldo Saat Ini :</td>
-                                    <td colspan="2" class="p-5 text-right text-lg font-mono text-yellow-400">{{ formatRupiah(totalSaldo) }}</td>
+                                    <td colspan="2" class="p-5 text-right text-lg font-mono text-yellow-400">{{ formatRupiah(actualTotalSaldo) }}</td>
                                 </tr>
                             </thead>
                         </table>
@@ -555,7 +559,7 @@ const formatLongDate = (dateStr) => {
                         <p style="margin: 0;">TOTAL DEBIT BULAN INI: {{ formatRupiah(totalDebit) }}</p>
                         <p style="margin: 4px 0 0 0;">TOTAL KREDIT BULAN INI: {{ formatRupiah(totalCredit) }}</p>
                         <div style="margin-top: 8px; border-top: 1px dashed #ccc; padding-top: 5px;">
-                            <p style="margin: 0; font-size: 12px;">SALDO AKHIR (TOTAL): {{ formatRupiah(props.totalSaldo) }}</p>
+                            <p style="margin: 0; font-size: 12px;">SALDO AKHIR (TOTAL): {{ formatRupiah(actualTotalSaldo) }}</p>
                         </div>
                     </div>
                 </template>
