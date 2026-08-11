@@ -6,7 +6,19 @@
         
         <meta http-equiv="X-Frame-Options" content="deny">
 
-        <title inertia>{{ config('app.name', 'SI SINDEN') }}</title>
+        @php
+            $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+            $agencyName = $settings['agency_name'] ?? 'DENINTEL KODAERAL V';
+            $faviconPath = $settings['favicon'] ?? ($settings['agency_logo'] ?? null);
+            $faviconUrl = $faviconPath ? asset('storage/' . $faviconPath) : asset('favicon.ico');
+        @endphp
+
+        <title inertia>{{ config('app.name', 'SI SINDEN - ' . $agencyName) }}</title>
+
+        <!-- Dynamic Favicon Web Instansi -->
+        <link rel="icon" type="image/x-icon" href="{{ $faviconUrl }}">
+        <link rel="shortcut icon" type="image/x-icon" href="{{ $faviconUrl }}">
+        <link rel="apple-touch-icon" href="{{ $faviconUrl }}">
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,800,900&display=swap" rel="stylesheet" />
