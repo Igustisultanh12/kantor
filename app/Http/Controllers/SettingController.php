@@ -26,15 +26,18 @@ class SettingController extends Controller
             'agency_name' => 'required|string|max:255',
             'copyright' => 'required|string',
             'start_number' => 'required|integer|min:1', // Tambahan validasi nomor urut surat
+            'wa_notifications_enabled' => 'nullable|in:0,1',
             'logo' => 'nullable|image|max:2048', 
             'login_background' => 'nullable|image|max:5120', // Background login (Maks 5MB)
             'signature_file' => 'nullable|image|mimes:png|max:2048', // Validasi khusus PNG
             'favicon' => 'nullable|image|mimes:ico,png,jpg,jpeg|max:1024', // Tambahan validasi favicon (Maks 1MB)
         ]);
 
-        // 1. Update pengaturan teks (agency_name, copyright, dan start_number)
-        foreach ($request->only(['agency_name', 'copyright', 'start_number']) as $key => $value) {
-            Setting::updateOrCreate(['key' => $key], ['value' => $value]);
+        // 1. Update pengaturan teks (agency_name, copyright, start_number, wa_notifications_enabled)
+        foreach ($request->only(['agency_name', 'copyright', 'start_number', 'wa_notifications_enabled']) as $key => $value) {
+            if ($value !== null) {
+                Setting::updateOrCreate(['key' => $key], ['value' => (string)$value]);
+            }
         }
 
         // 2. Logika Update Logo Instansi

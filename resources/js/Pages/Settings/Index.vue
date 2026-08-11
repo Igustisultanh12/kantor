@@ -13,6 +13,7 @@ const form = useForm({
     agency_name: props.settings.agency_name || '',
     copyright: props.settings.copyright || '',
     start_number: props.settings.start_number || 1,
+    wa_notifications_enabled: props.settings.wa_notifications_enabled !== undefined ? String(props.settings.wa_notifications_enabled) : '1',
     logo: null,
     login_background: null,
     signature_file: null,
@@ -110,7 +111,7 @@ onUnmounted(() => { if (waInterval) clearInterval(waInterval); });
             </div>
 
             <!-- Status WA Gateway Card -->
-            <div class="bg-white p-8 rounded-3xl shadow-xs border border-slate-200 overflow-hidden">
+            <div class="bg-white p-8 rounded-3xl shadow-xs border border-slate-200 overflow-hidden space-y-6">
                 <div class="flex flex-col sm:flex-row justify-between items-center gap-6">
                     <div class="flex items-center gap-4">
                         <div :class="waData.status === 'CONNECTED' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'" 
@@ -145,6 +146,23 @@ onUnmounted(() => { if (waInterval) clearInterval(waInterval); });
                                 {{ char }}
                             </span>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Sakelar Kontrol Master Notifikasi Otomatis WhatsApp -->
+                <div class="pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                        <h4 class="text-xs font-black uppercase text-slate-900 tracking-wider">MODUL NOTIFIKASI OTOMATIS WHATSAPP</h4>
+                        <p class="text-[10px] text-slate-500 font-semibold mt-0.5">Aktifkan atau nonaktifkan pengiriman pesan WhatsApp otomatis ke HP pemohon saat ada pengajuan, pengesahan, atau revisi.</p>
+                    </div>
+                    <div class="flex items-center gap-3 bg-slate-50 p-2.5 px-4 rounded-2xl border border-slate-200">
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" :checked="form.wa_notifications_enabled === '1'" @change="form.wa_notifications_enabled = $event.target.checked ? '1' : '0'" class="sr-only peer" />
+                            <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                        </label>
+                        <span class="text-xs font-black uppercase tracking-wider" :class="form.wa_notifications_enabled === '1' ? 'text-emerald-600' : 'text-rose-600'">
+                            {{ form.wa_notifications_enabled === '1' ? 'NOTIFIKASI WA AKTIF' : 'NOTIFIKASI WA NONAKTIF' }}
+                        </span>
                     </div>
                 </div>
             </div>

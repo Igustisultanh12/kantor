@@ -12,6 +12,13 @@ class WhatsappService
      */
     public static function sendMessage($target, $message)
     {
+        // 0. Cek Pengaturan Master Admin (wa_notifications_enabled)
+        $enabled = \App\Models\Setting::where('key', 'wa_notifications_enabled')->value('value') ?? '1';
+        if ($enabled === '0') {
+            Log::info("WhatsappService: Notifikasi WA diblokir oleh Admin (Status Master: NONAKTIF). Target: {$target}");
+            return;
+        }
+
         if (empty($target)) {
             Log::warning("WhatsappService: Target phone number is empty.");
             return;
