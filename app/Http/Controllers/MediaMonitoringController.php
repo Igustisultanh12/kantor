@@ -145,11 +145,11 @@ class MediaMonitoringController extends Controller
     }
 
     /**
-     * Pemindaian Otomatis Multi-Kanal (Berita & Medsos) dengan Dukungan Pencarian Topik Khusus Mendalam
+     * Pemindaian Otomatis Multi-Kanal (Berita & Medsos) - 100% REAL OSINT PARSER
      */
     private function fetchLiveRssNews($clearSamples = false, $customTopic = null)
     {
-        // Jika pencarian topik khusus dilakukan, bersihkan berita umum lama agar hasil pencarian murni topik tersebut
+        // Jika pencarian topik khusus dilakukan, hapus data lama agar hasil pencarian murni topik tersebut
         if (!empty($customTopic)) {
             MediaMonitoring::where('source_name', 'NOT LIKE', '%Staf Intel%')->delete();
         } else if ($clearSamples) {
@@ -164,16 +164,18 @@ class MediaMonitoringController extends Controller
         $addedCount = 0;
 
         if (!empty($customTopic)) {
-            $cleanTopic = str_replace(['"', "'"], '', trim($customTopic));
+            // Normalisasi Typo Otomatis (misal: oknuk -> oknum, virna -> viral)
+            $normalizedTopic = str_ireplace(['oknuk', 'virna', 'pangk', 'tnial'], ['oknum', 'viral', 'pangkoarmada', 'tni al'], trim($customTopic));
+            $cleanTopic = str_replace(['"', "'"], '', $normalizedTopic);
             $encoded = urlencode($cleanTopic);
 
-            // Hanya panggil endpoint pencarian spesifik yang memuat kata kunci topik
             $sources = [
                 ['url' => "https://news.google.com/rss/search?q={$encoded}&hl=id&gl=ID&ceid=ID:id", 'type' => 'Portal Berita Online'],
                 ['url' => "https://news.google.com/rss/search?q={$encoded}+Surabaya&hl=id&gl=ID&ceid=ID:id", 'type' => 'Radar Regional Jatim'],
                 ['url' => "https://news.google.com/rss/search?q={$encoded}+TNI&hl=id&gl=ID&ceid=ID:id", 'type' => 'Kanal Pertahanan & TNI'],
-                ['url' => "https://news.google.com/rss/search?q={$encoded}+site:x.com+OR+site:twitter.com&hl=id&gl=ID&ceid=ID:id", 'type' => 'X (Twitter) Feed'],
                 ['url' => "https://news.google.com/rss/search?q={$encoded}+site:youtube.com&hl=id&gl=ID&ceid=ID:id", 'type' => 'YouTube Video Feed'],
+                ['url' => "https://news.google.com/rss/search?q={$encoded}+site:x.com+OR+site:twitter.com&hl=id&gl=ID&ceid=ID:id", 'type' => 'X (Twitter) Feed'],
+                ['url' => "https://www.youtube.com/feeds/videos.xml?search_query={$encoded}", 'type' => 'YouTube Official RSS'],
             ];
         } else {
             $sources = [
@@ -199,14 +201,31 @@ class MediaMonitoringController extends Controller
                 $body = $response->body();
                 $xml = @simplexml_load_string($body, 'SimpleXMLElement', LIBXML_NOCDATA);
 
-                if (!$xml || !isset($xml->channel->item)) continue;
+                if (!$xml) continue;
 
-                foreach ($xml->channel->item as $item) {
-                    if ($addedCount >= 30) break;
+                // Support standard RSS channel items and YouTube entry items
+                $items = isset($xml->channel->item) ? $xml->channel->item : (isset($xml->entry) ? $xml->entry : []);
 
-                    $rawTitle = trim((string)$item->title);
-                    $link = trim((string)$item->link);
-                    $pubDateStr = trim((string)$item->pubDate);
+                foreach ($items as $item) {
+                    if ($addedCount >= 35) break;
+
+                    // Support standard title & YouTube media/atom title
+                    $rawTitle = trim((string)($item->title ?? ''));
+                    if (empty($rawTitle) && isset($item->children('media', true)->group->title)) {
+                        $rawTitle = trim((string)$item->children('media', true)->group->title);
+                    }
+
+                    // Link resolution
+                    $link = '';
+                    if (isset($item->link)) {
+                        if (isset($item->link['href'])) {
+                            $link = (string)$item->link['href'];
+                        } else {
+                            $link = (string)$item->link;
+                        }
+                    }
+
+                    $pubDateStr = trim((string)($item->pubDate ?? ($item->published ?? '')));
                     $description = strip_tags(trim((string)($item->description ?? '')));
 
                     if (empty($rawTitle) || empty($link)) continue;
@@ -215,7 +234,7 @@ class MediaMonitoringController extends Controller
 
                     // PENTING: Jika melakukan pencarian topik khusus, BERITA WAJIB MEMUAT KATA KUNCI TOPIK!
                     if (!empty($customTopic)) {
-                        $topicKeywords = array_filter(explode(' ', strtolower($customTopic)));
+                        $topicKeywords = array_filter(explode(' ', strtolower($cleanTopic)));
                         $matchedTopic = false;
                         foreach ($topicKeywords as $kw) {
                             if (strlen($kw) >= 3 && str_contains($fullText, $kw)) {
@@ -224,7 +243,7 @@ class MediaMonitoringController extends Controller
                             }
                         }
                         if (!$matchedTopic) {
-                            continue; // Abaikan berita umum yang tidak ada hubungannya dengan topik!
+                            continue; // Abaikan berita yang tidak mengandung kata kunci topik!
                         }
                     } else {
                         // Jika pencarian topik umum, cek lokasi Kodaeral V
@@ -241,10 +260,10 @@ class MediaMonitoringController extends Controller
                         $title = implode(' - ', $parts);
                     }
 
-                    if (str_contains($link, 'x.com') || str_contains($link, 'twitter.com')) {
-                        $publisher = 'X (Twitter) Feed';
-                    } elseif (str_contains($link, 'youtube.com')) {
+                    if (str_contains($link, 'youtube.com') || str_contains($link, 'youtu.be')) {
                         $publisher = 'YouTube Video Feed';
+                    } elseif (str_contains($link, 'x.com') || str_contains($link, 'twitter.com')) {
+                        $publisher = 'X (Twitter) Feed';
                     } elseif (str_contains($link, 'instagram.com')) {
                         $publisher = 'Instagram Post';
                     }
@@ -255,7 +274,9 @@ class MediaMonitoringController extends Controller
                     $risk = $this->determineRisk($fullText);
                     $sentiment = $this->determineSentiment($fullText);
                     $location = $this->determineLocation($fullText);
-                    $summary = "Pemindaian AI OSINT ({$publisher}): Berita / postingan terkini terkait topik " . (!empty($customTopic) ? strtoupper($customTopic) : "Kodaeral V") . ". Memerlukan peninjauan berkala.";
+                    
+                    $summarySnippet = !empty($description) ? substr($description, 0, 160) . '...' : "Penayangan tayangan berita/dokumen publik seputar: \"{$title}\". Memerlukan pemantauan berkala.";
+                    $summary = "Analisis AI OSINT ({$publisher}): " . $summarySnippet;
 
                     MediaMonitoring::create([
                         'title' => $title,
@@ -277,67 +298,7 @@ class MediaMonitoringController extends Controller
             }
         }
 
-        // Jika pencarian topik khusus tidak menghasilkan apapun dari RSS (karena rate-limit Google), hasilkan penelusuran AI mendalam khusus topik tersebut!
-        if (!empty($customTopic) && $addedCount === 0) {
-            $addedCount = $this->generateDeepIntelSearchResults($customTopic);
-        }
-
         return $addedCount;
-    }
-
-    /**
-     * Mesin Penelusuran AI Mendalam jika Google RSS Terkendala Rate-Limit
-     */
-    private function generateDeepIntelSearchResults($topic)
-    {
-        $topicUpper = strtoupper($topic);
-        $encoded = urlencode($topic);
-
-        $results = [
-            [
-                'title' => "Laporan Pemantauan Publik & Isu Terkini Mengenai {$topicUpper} di Jawa Timur",
-                'source_name' => 'Portal Berita Online',
-                'category' => 'hankam',
-                'risk_level' => 'medium',
-                'sentiment' => 'neutral',
-                'summary' => "Hasil Penelusuran AI OSINT: Ditemukan rekaman informasi dan berita online terkini seputar topik \"{$topic}\" di wilayah Jawa Timur.",
-                'url' => "https://news.google.com/search?q={$encoded}",
-                'location' => 'Surabaya, Jawa Timur',
-                'published_at' => now()->subHours(1),
-            ],
-            [
-                'title' => "Cuitan & Perbincangan Netizen di Media Sosial Terkait {$topicUpper}",
-                'source_name' => 'X (Twitter) Feed',
-                'category' => 'sosbud',
-                'risk_level' => 'low',
-                'sentiment' => 'positive',
-                'summary' => "AI Social Scanner: Pemantauan tagar & cuitan publik di X (Twitter) memperlihatkan dinamika perhatian masyarakat mengenai \"{$topic}\".",
-                'url' => "https://x.com/search?q={$encoded}",
-                'location' => 'Wilayah Kodaeral V',
-                'published_at' => now()->subHours(3),
-            ],
-            [
-                'title' => "Tinjauan Video & Dokumentasi Informasi Mengenai {$topicUpper}",
-                'source_name' => 'YouTube Video Feed',
-                'category' => 'hankam',
-                'risk_level' => 'medium',
-                'sentiment' => 'neutral',
-                'summary' => "AI Video Scanner: Dokumentasi video tayangan berita & perbincangan publik mengenai \"{$topic}\" terpantau kondusif.",
-                'url' => "https://www.youtube.com/results?search_query={$encoded}",
-                'location' => 'Surabaya & Pesisir Jatim',
-                'published_at' => now()->subHours(6),
-            ],
-        ];
-
-        $count = 0;
-        foreach ($results as $res) {
-            if (!MediaMonitoring::where('title', $res['title'])->exists()) {
-                MediaMonitoring::create($res);
-                $count++;
-            }
-        }
-
-        return $count;
     }
 
     /**
