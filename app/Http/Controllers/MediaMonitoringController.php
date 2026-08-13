@@ -13,11 +13,6 @@ class MediaMonitoringController extends Controller
 {
     public function index(Request $request)
     {
-        // Jika belum pernah tarik berita asli atau berita kurang dari 3, tarik berita OSINT asli secara otomatis!
-        if (MediaMonitoring::where('source_name', 'NOT LIKE', '%Staf Intel%')->count() < 4) {
-            $this->fetchLiveRssNews(true);
-        }
-
         $query = MediaMonitoring::query();
 
         if ($request->filled('category') && $request->category !== 'all') {
@@ -285,11 +280,19 @@ class MediaMonitoringController extends Controller
     }
 
     /**
-     * Pengecekan Mutlak Wilayah Hukum / Kerja Kodaeral V (Jawa Timur, Pelabuhan, Pesisir)
+     * Pengecekan Mutlak Wilayah Hukum / Kerja Kodaeral V DAN Relevansi Isu Intelijen / Keamanan
      */
     private function isKodaeralVLocation($text)
     {
         $text = strtolower($text);
+
+        // Abaikan berita umum non-intelijen (harga emas, sekolah/pendidikan umum, hiburan)
+        $ignoreKeywords = ['harga emas', 'antam', 'kadisdik', 'kasek', 'sekolah', 'siswa', 'pelajar', 'kuliah', 'wisuda', 'artis', 'film', 'sinetron', 'sepak bola', 'liga'];
+        foreach ($ignoreKeywords as $ignore) {
+            if (str_contains($text, $ignore)) {
+                return false;
+            }
+        }
 
         $kodaeralKeywords = [
             'kodaeral', 'lantamal v', 'lantamal 5', 'denintel', 'surabaya', 'tanjung perak', 
@@ -300,13 +303,15 @@ class MediaMonitoringController extends Controller
             'gilimanuk', 'ntb', 'lembar', 'mataram', 'bima', 'koarmada ii', 'koarmada 2'
         ];
 
+        $hasLocation = false;
         foreach ($kodaeralKeywords as $kw) {
             if (str_contains($text, $kw)) {
-                return true;
+                $hasLocation = true;
+                break;
             }
         }
 
-        return false;
+        return $hasLocation;
     }
 
     private function generateExecutiveSummary($criticalCount, $negativeCount, $totalNews)
