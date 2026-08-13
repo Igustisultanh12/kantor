@@ -27,6 +27,8 @@ const form = useForm({
     url: ''
 });
 
+const customTopicQuery = ref('');
+
 const handleFilter = () => {
     router.get(route('media-monitoring.index'), {
         category: selectedCategory.value,
@@ -39,18 +41,45 @@ const resetFilter = () => {
     selectedCategory.value = 'all';
     selectedRisk.value = 'all';
     searchQuery.value = '';
+    customTopicQuery.value = '';
     handleFilter();
 };
 
-const refreshFeeds = () => {
+const refreshFeeds = (topic = null) => {
+    const targetTopic = typeof topic === 'string' ? topic : customTopicQuery.value;
+    
     Swal.fire({
-        title: 'Pemindaian AI OSINT...',
+        title: targetTopic ? `Memindai Topik: "${targetTopic}"...` : 'Pemindaian AI OSINT...',
         text: 'Menghubungkan ke portal berita online & media sosial terkini.',
         allowOutsideClick: false,
         didOpen: () => { Swal.showLoading(); }
     });
-    router.post(route('media-monitoring.refresh'), {}, {
-        onSuccess: () => { Swal.close(); }
+
+    router.post(route('media-monitoring.refresh'), { topic: targetTopic }, {
+        onSuccess: () => { 
+            Swal.close(); 
+            if (targetTopic) customTopicQuery.value = '';
+        }
+    });
+};
+
+const clearAllNews = () => {
+    Swal.fire({
+        title: 'Hapus Semua Berita EWS?',
+        text: 'Seluruh data berita di radar EWS akan dibersihkan.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        confirmButtonText: 'Ya, Hapus Semua',
+        cancelButtonText: 'Batal'
+    }).then((res) => {
+        if (res.isConfirmed) {
+            router.post(route('media-monitoring.clear-all'), {}, {
+                onSuccess: () => {
+                    Swal.fire('Terhapus!', 'Seluruh berita EWS berhasil dibersihkan.', 'success');
+                }
+            });
+        }
     });
 };
 
@@ -117,13 +146,30 @@ const getSentimentBadge = (sentiment) => {
                     </h2>
                     <p class="text-xs text-slate-500 font-semibold mt-1">Pemindaian Otomatis Berita OSINT, Sentimen Publik, & Peta Kerawanan Kodaeral V</p>
                 </div>
-                <div class="flex items-center gap-2.5 w-full sm:w-auto">
-                    <button @click="refreshFeeds" class="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-2xl text-xs font-black uppercase shadow-md flex items-center justify-center gap-2 transition active:scale-95">
+                <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+                    <button @click="refreshFeeds(null)" class="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-2xl text-xs font-black uppercase shadow-md flex items-center justify-center gap-2 transition active:scale-95">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                         <span>Sinkronkan AI News</span>
                     </button>
-                    <button @click="isModalOpen = true" class="flex-1 sm:flex-none bg-slate-900 hover:bg-slate-800 text-white px-5 py-3 rounded-2xl text-xs font-black uppercase shadow-md flex items-center justify-center gap-2 transition active:scale-95">
+                    <button @click="isModalOpen = true" class="flex-1 sm:flex-none bg-slate-900 hover:bg-slate-800 text-white px-4 py-3 rounded-2xl text-xs font-black uppercase shadow-md flex items-center justify-center gap-2 transition active:scale-95">
                         <span>+ Input Isu Berita</span>
+                    </button>
+                    <button @click="clearAllNews" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-4 py-3 rounded-2xl text-xs font-black uppercase shadow-xs flex items-center justify-center gap-1.5 transition active:scale-95" title="Kosongkan seluruh berita di radar EWS">
+                        🗑️ <span>Hapus Semua</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Custom Topic AI OSINT Scanner Widget -->
+            <div class="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 p-5 rounded-3xl shadow-md text-white flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+                <div class="space-y-1">
+                    <span class="text-[9px] font-black uppercase tracking-widest text-indigo-200">🔍 AI CUSTOM TOPIC SCANNER</span>
+                    <h3 class="text-sm font-extrabold">Pindai Berita & Medsos Berdasarkan Topik / Tokoh / Objek Spesifik</h3>
+                </div>
+                <div class="flex items-center gap-2 w-full md:w-auto">
+                    <input v-model="customTopicQuery" @keyup.enter="refreshFeeds()" type="text" placeholder="Contoh: Pangkoarmada II, Penyelundupan Rokok, Danlantamal..." class="w-full md:w-80 text-xs font-bold rounded-2xl border-0 bg-white/10 text-white placeholder-indigo-200/60 focus:ring-2 focus:ring-indigo-300 py-2.5 px-4" />
+                    <button @click="refreshFeeds()" class="bg-indigo-500 hover:bg-indigo-400 text-white px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider shrink-0 transition shadow-sm active:scale-95">
+                        🔍 Pindai Topik
                     </button>
                 </div>
             </div>

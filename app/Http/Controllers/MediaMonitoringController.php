@@ -131,19 +131,31 @@ class MediaMonitoringController extends Controller
         return back()->with('success', 'Data berita berhasil dihapus.');
     }
 
-    public function refreshFeeds()
+    public function clearAll()
     {
-        $newCount = $this->fetchLiveRssNews(true);
-        return back()->with('success', "AI OSINT Scanner berhasil menyegarkan data. {$newCount} berita asli terkini telah diambil dari portal online.");
+        MediaMonitoring::truncate();
+        return back()->with('success', 'Seluruh data berita di Radar EWS berhasil dibersihkan.');
+    }
+
+    public function refreshFeeds(Request $request)
+    {
+        $topic = $request->input('topic');
+        $newCount = $this->fetchLiveRssNews(true, $topic);
+        
+        $msg = $topic 
+            ? "AI OSINT Scanner berhasil memindai topik khusus: \"{$topic}\". {$newCount} berita/postingan relevan ditemukan."
+            : "AI OSINT Scanner berhasil menyegarkan data. {$newCount} berita asli terkini telah diambil dari portal online.";
+
+        return back()->with('success', $msg);
     }
 
     /**
-     * Pemindaian Otomatis Multi-Kanal KHUSUS WILAYAH KERJA KODAERAL V
+     * Pemindaian Otomatis Multi-Kanal KHUSUS WILAYAH KERJA KODAERAL V (Dapat Menerima Parameter Topik Khusus)
      */
-    private function fetchLiveRssNews($clearSamples = false)
+    private function fetchLiveRssNews($clearSamples = false, $customTopic = null)
     {
         // Bersihkan berita luar wilayah jika diminta
-        if ($clearSamples) {
+        if ($clearSamples && empty($customTopic)) {
             $all = MediaMonitoring::where('source_name', 'NOT LIKE', '%Staf Intel%')->get();
             foreach ($all as $item) {
                 if (!$this->isKodaeralVLocation($item->title . ' ' . $item->summary . ' ' . $item->location)) {
@@ -152,21 +164,31 @@ class MediaMonitoringController extends Controller
             }
         }
 
-        $sources = [
-            // Kanal Berita Utama & Maritim Khusus Kodaeral V / Jatim
-            'https://news.google.com/rss/search?q=TNI+AL+Surabaya&hl=id&gl=ID&ceid=ID:id',
-            'https://news.google.com/rss/search?q=Pelabuhan+Tanjung+Perak+Surabaya&hl=id&gl=ID&ceid=ID:id',
-            'https://news.google.com/rss/search?q=Maritim+Jawa+Timur&hl=id&gl=ID&ceid=ID:id',
-            'https://news.google.com/rss/search?q=Pengamanan+Surabaya&hl=id&gl=ID&ceid=ID:id',
-            'https://news.google.com/rss/search?q=Penyelundupan+Jawa+Timur&hl=id&gl=ID&ceid=ID:id',
-            'https://news.google.com/rss/search?q=Denintel+Kodaeral+V&hl=id&gl=ID&ceid=ID:id',
-            'https://jatim.antaranews.com/rss/terkini.xml',
+        if (!empty($customTopic)) {
+            $encodedTopic = urlencode($customTopic);
+            $sources = [
+                "https://news.google.com/rss/search?q={$encodedTopic}+Surabaya&hl=id&gl=ID&ceid=ID:id",
+                "https://news.google.com/rss/search?q={$encodedTopic}+Jawa+Timur&hl=id&gl=ID&ceid=ID:id",
+                "https://news.google.com/rss/search?q=site:x.com+OR+site:twitter.com+{$encodedTopic}&hl=id&gl=ID&ceid=ID:id",
+                "https://news.google.com/rss/search?q=site:youtube.com+{$encodedTopic}&hl=id&gl=ID&ceid=ID:id",
+            ];
+        } else {
+            $sources = [
+                // Kanal Berita Utama & Maritim Khusus Kodaeral V / Jatim
+                'https://news.google.com/rss/search?q=TNI+AL+Surabaya&hl=id&gl=ID&ceid=ID:id',
+                'https://news.google.com/rss/search?q=Pelabuhan+Tanjung+Perak+Surabaya&hl=id&gl=ID&ceid=ID:id',
+                'https://news.google.com/rss/search?q=Maritim+Jawa+Timur&hl=id&gl=ID&ceid=ID:id',
+                'https://news.google.com/rss/search?q=Pengamanan+Surabaya&hl=id&gl=ID&ceid=ID:id',
+                'https://news.google.com/rss/search?q=Penyelundupan+Jawa+Timur&hl=id&gl=ID&ceid=ID:id',
+                'https://news.google.com/rss/search?q=Denintel+Kodaeral+V&hl=id&gl=ID&ceid=ID:id',
+                'https://jatim.antaranews.com/rss/terkini.xml',
 
-            // Kanal Media Sosial OSINT Khusus Surabaya / Jatim
-            'https://news.google.com/rss/search?q=site:x.com+OR+site:twitter.com+Surabaya&hl=id&gl=ID&ceid=ID:id',
-            'https://news.google.com/rss/search?q=site:youtube.com+TNI+AL+Surabaya&hl=id&gl=ID&ceid=ID:id',
-            'https://news.google.com/rss/search?q=site:instagram.com+Surabaya+maritim&hl=id&gl=ID&ceid=ID:id',
-        ];
+                // Kanal Media Sosial OSINT Khusus Surabaya / Jatim
+                'https://news.google.com/rss/search?q=site:x.com+OR+site:twitter.com+Surabaya&hl=id&gl=ID&ceid=ID:id',
+                'https://news.google.com/rss/search?q=site:youtube.com+TNI+AL+Surabaya&hl=id&gl=ID&ceid=ID:id',
+                'https://news.google.com/rss/search?q=site:instagram.com+Surabaya+maritim&hl=id&gl=ID&ceid=ID:id',
+            ];
+        }
 
         $addedCount = 0;
 
