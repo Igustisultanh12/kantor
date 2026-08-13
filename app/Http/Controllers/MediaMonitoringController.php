@@ -138,7 +138,7 @@ class MediaMonitoringController extends Controller
     }
 
     /**
-     * Pemindaian Otomatis Berita Online ASLI (Google News RSS, Antara Jatim, Portal Nasional)
+     * Pemindaian Otomatis Multi-Kanal: Berita Online (Detik, Antara, CNN, Kompas) & Media Sosial OSINT (X/Twitter, Youtube, Instagram)
      */
     private function fetchLiveRssNews($clearSamples = false)
     {
@@ -153,11 +153,19 @@ class MediaMonitoringController extends Controller
         }
 
         $sources = [
+            // Kanal Berita Utama & Maritim
             'https://news.google.com/rss/search?q=TNI+AL+Surabaya&hl=id&gl=ID&ceid=ID:id',
             'https://news.google.com/rss/search?q=Pelabuhan+Tanjung+Perak+Surabaya&hl=id&gl=ID&ceid=ID:id',
             'https://news.google.com/rss/search?q=Maritim+Jawa+Timur&hl=id&gl=ID&ceid=ID:id',
             'https://news.google.com/rss/search?q=Pengamanan+Surabaya&hl=id&gl=ID&ceid=ID:id',
+            'https://news.google.com/rss/search?q=Penyelundupan+Jawa+Timur&hl=id&gl=ID&ceid=ID:id',
             'https://jatim.antaranews.com/rss/terkini.xml',
+            'https://www.cnnindonesia.com/nasional/rss',
+
+            // Kanal Media Sosial OSINT (X / Twitter, TikTok, Youtube feeds)
+            'https://news.google.com/rss/search?q=site:x.com+OR+site:twitter.com+Surabaya&hl=id&gl=ID&ceid=ID:id',
+            'https://news.google.com/rss/search?q=site:youtube.com+TNI+AL+Surabaya&hl=id&gl=ID&ceid=ID:id',
+            'https://news.google.com/rss/search?q=site:instagram.com+Surabaya+maritim&hl=id&gl=ID&ceid=ID:id',
         ];
 
         $addedCount = 0;
@@ -181,7 +189,7 @@ class MediaMonitoringController extends Controller
                 }
 
                 foreach ($xml->channel->item as $item) {
-                    if ($addedCount >= 15) break;
+                    if ($addedCount >= 20) break;
 
                     $rawTitle = trim((string)$item->title);
                     $link = trim((string)$item->link);
@@ -192,13 +200,25 @@ class MediaMonitoringController extends Controller
                         continue;
                     }
 
-                    // Deteksi Sumber Berita Asli (e.g. "Judul Berita - Detikcom" -> "Detikcom")
-                    $publisher = 'Portal Online';
+                    // Deteksi Sumber & Kanal (Berita vs Sosmed X/Twitter/Youtube/Instagram)
+                    $publisher = 'Portal Berita Online';
                     $title = $rawTitle;
+
                     if (str_contains($rawTitle, ' - ')) {
                         $parts = explode(' - ', $rawTitle);
                         $publisher = array_pop($parts);
                         $title = implode(' - ', $parts);
+                    }
+
+                    // Penyesuaian nama kanal medsos
+                    if (str_contains($link, 'x.com') || str_contains($link, 'twitter.com') || str_contains(strtolower($publisher), 'x') || str_contains(strtolower($publisher), 'twitter')) {
+                        $publisher = 'X (Twitter) Feed';
+                    } elseif (str_contains($link, 'youtube.com') || str_contains(strtolower($publisher), 'youtube')) {
+                        $publisher = 'YouTube Video Feed';
+                    } elseif (str_contains($link, 'instagram.com') || str_contains(strtolower($publisher), 'instagram')) {
+                        $publisher = 'Instagram Post';
+                    } elseif (str_contains($link, 'tiktok.com') || str_contains(strtolower($publisher), 'tiktok')) {
+                        $publisher = 'TikTok Video';
                     }
 
                     // Cek duplikasi judul
