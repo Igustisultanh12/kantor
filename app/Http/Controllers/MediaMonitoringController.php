@@ -149,7 +149,10 @@ class MediaMonitoringController extends Controller
      */
     private function fetchLiveRssNews($clearSamples = false, $customTopic = null)
     {
-        if ($clearSamples && empty($customTopic)) {
+        // Jika pencarian topik khusus dilakukan, bersihkan berita umum lama agar hasil pencarian murni topik tersebut
+        if (!empty($customTopic)) {
+            MediaMonitoring::where('source_name', 'NOT LIKE', '%Staf Intel%')->delete();
+        } else if ($clearSamples) {
             $all = MediaMonitoring::where('source_name', 'NOT LIKE', '%Staf Intel%')->get();
             foreach ($all as $item) {
                 if (!$this->isKodaeralVLocation($item->title . ' ' . $item->summary . ' ' . $item->location)) {
@@ -164,13 +167,13 @@ class MediaMonitoringController extends Controller
             $cleanTopic = str_replace(['"', "'"], '', trim($customTopic));
             $encoded = urlencode($cleanTopic);
 
+            // Hanya panggil endpoint pencarian spesifik yang memuat kata kunci topik
             $sources = [
-                ['url' => "https://news.google.com/rss/search?q={$encoded}+Surabaya&hl=id&gl=ID&ceid=ID:id", 'type' => 'Portal Berita Online'],
-                ['url' => "https://news.google.com/rss/search?q={$encoded}+Jawa+Timur&hl=id&gl=ID&ceid=ID:id", 'type' => 'Radar Regional Jatim'],
-                ['url' => "https://news.google.com/rss/search?q={$encoded}+TNI+AL&hl=id&gl=ID&ceid=ID:id", 'type' => 'Kanal Pertahanan & Maritim'],
-                ['url' => "https://news.google.com/rss/search?q={$encoded}+twitter&hl=id&gl=ID&ceid=ID:id", 'type' => 'X (Twitter) Feed'],
-                ['url' => "https://news.google.com/rss/search?q={$encoded}+youtube&hl=id&gl=ID&ceid=ID:id", 'type' => 'YouTube Video Feed'],
-                ['url' => "https://jatim.antaranews.com/rss/terkini.xml", 'type' => 'Antara Jatim'],
+                ['url' => "https://news.google.com/rss/search?q={$encoded}&hl=id&gl=ID&ceid=ID:id", 'type' => 'Portal Berita Online'],
+                ['url' => "https://news.google.com/rss/search?q={$encoded}+Surabaya&hl=id&gl=ID&ceid=ID:id", 'type' => 'Radar Regional Jatim'],
+                ['url' => "https://news.google.com/rss/search?q={$encoded}+TNI&hl=id&gl=ID&ceid=ID:id", 'type' => 'Kanal Pertahanan & TNI'],
+                ['url' => "https://news.google.com/rss/search?q={$encoded}+site:x.com+OR+site:twitter.com&hl=id&gl=ID&ceid=ID:id", 'type' => 'X (Twitter) Feed'],
+                ['url' => "https://news.google.com/rss/search?q={$encoded}+site:youtube.com&hl=id&gl=ID&ceid=ID:id", 'type' => 'YouTube Video Feed'],
             ];
         } else {
             $sources = [
@@ -208,10 +211,23 @@ class MediaMonitoringController extends Controller
 
                     if (empty($rawTitle) || empty($link)) continue;
 
-                    $fullText = $rawTitle . ' ' . $description;
+                    $fullText = strtolower($rawTitle . ' ' . $description);
 
-                    // Jika pencarian topik umum (bukan customTopic), cek lokasi Kodaeral V
-                    if (empty($customTopic)) {
+                    // PENTING: Jika melakukan pencarian topik khusus, BERITA WAJIB MEMUAT KATA KUNCI TOPIK!
+                    if (!empty($customTopic)) {
+                        $topicKeywords = array_filter(explode(' ', strtolower($customTopic)));
+                        $matchedTopic = false;
+                        foreach ($topicKeywords as $kw) {
+                            if (strlen($kw) >= 3 && str_contains($fullText, $kw)) {
+                                $matchedTopic = true;
+                                break;
+                            }
+                        }
+                        if (!$matchedTopic) {
+                            continue; // Abaikan berita umum yang tidak ada hubungannya dengan topik!
+                        }
+                    } else {
+                        // Jika pencarian topik umum, cek lokasi Kodaeral V
                         if (!$this->isKodaeralVLocation($fullText)) continue;
                     }
 
