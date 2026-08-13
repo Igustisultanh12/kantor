@@ -340,6 +340,31 @@ const getSentimentBadge = (sentiment) => {
                 </div>
             </div>
 
+            <!-- Pagination Bar (1, 2, 3, dst) -->
+            <div v-if="news.links && news.links.length > 3" class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div class="text-xs text-slate-500 font-extrabold uppercase">
+                    Menampilkan <span class="text-slate-900 font-black">{{ news.from || 0 }}</span> s/d <span class="text-slate-900 font-black">{{ news.to || 0 }}</span> dari <span class="text-indigo-600 font-black">{{ news.total }}</span> Berita EWS
+                </div>
+
+                <div class="flex items-center gap-1.5 flex-wrap justify-center">
+                    <template v-for="(link, key) in news.links" :key="key">
+                        <div v-if="link.url === null" 
+                             class="px-3.5 py-2 rounded-xl text-xs font-black uppercase text-slate-300 border border-slate-100 cursor-not-allowed select-none"
+                             v-html="link.label">
+                        </div>
+
+                        <Link v-else 
+                              :href="link.url"
+                              preserve-scroll
+                              preserve-state
+                              :class="link.active ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/30' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'"
+                              class="px-3.5 py-2 rounded-xl text-xs font-black transition active:scale-95 flex items-center justify-center min-w-[38px]"
+                              v-html="link.label">
+                        </Link>
+                    </template>
+                </div>
+            </div>
+
             <!-- Empty State -->
             <div v-else class="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-3">
                 <div class="text-4xl text-slate-300">🌐</div>
