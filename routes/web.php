@@ -209,6 +209,15 @@ Route::middleware('auth')->group(function () {
     Route::delete('/technical-cash/{id}', [TechnicalUnitCashController::class, 'destroy'])->name('technical-cash.destroy');
 
     // =========================================================================
+    // MODUL AI MEDIA MONITORING & EARLY WARNING SYSTEM (EWS)
+    // =========================================================================
+    Route::get('/media-monitoring', [\App\Http\Controllers\MediaMonitoringController::class, 'index'])->name('media-monitoring.index');
+    Route::post('/media-monitoring', [\App\Http\Controllers\MediaMonitoringController::class, 'store'])->name('media-monitoring.store');
+    Route::post('/media-monitoring/refresh', [\App\Http\Controllers\MediaMonitoringController::class, 'refreshFeeds'])->name('media-monitoring.refresh');
+    Route::patch('/media-monitoring/{mediaMonitoring}/toggle-pin', [\App\Http\Controllers\MediaMonitoringController::class, 'togglePin'])->name('media-monitoring.toggle-pin');
+    Route::delete('/media-monitoring/{mediaMonitoring}', [\App\Http\Controllers\MediaMonitoringController::class, 'destroy'])->name('media-monitoring.destroy');
+
+    // =========================================================================
     // FITUR KHUSUS ADMIN (OTORITAS TINGGI MONEV)
     // =========================================================================
     Route::middleware(['role:admin'])->group(function () {
