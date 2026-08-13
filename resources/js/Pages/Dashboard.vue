@@ -70,25 +70,6 @@ onMounted(() => {
                 </div>
             </div>
 
-            <!-- AI Media Monitoring & EWS Quick Alert Card -->
-            <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-xl border border-indigo-900/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div class="space-y-1.5 max-w-3xl">
-                    <div class="flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
-                        <span class="text-[10px] font-black uppercase tracking-widest text-indigo-300">RADAR AI MEDIA MONITORING & EARLY WARNING SYSTEM (EWS)</span>
-                    </div>
-                    <h3 class="text-base sm:text-lg font-extrabold tracking-tight text-white">
-                        Pemindaian Berita OSINT & Peta Kerawanan Wilayah Kodaeral V (Jawa Timur)
-                    </h3>
-                    <p class="text-xs text-slate-300 font-medium">
-                        Pantau isu kerawanan wilayah (IPOLEKSOSBUDHANKAM) dan sentimen media secara real-time.
-                    </p>
-                </div>
-                <Link :href="route('media-monitoring.index')" class="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-md shrink-0 transition">
-                    Buka Radar EWS →
-                </Link>
-            </div>
-
             <!-- Stats Widgets Row -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 

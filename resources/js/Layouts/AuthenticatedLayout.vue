@@ -205,9 +205,9 @@ onUnmounted(() => {
 
                     <!-- Mobile Sidebar Navigation Links -->
                     <nav class="px-4 py-4 space-y-5">
-                        <!-- UTAMA & EWS -->
+                        <!-- UTAMA -->
                         <div class="space-y-1">
-                            <p class="px-4 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Utama & Intel EWS</p>
+                            <p class="px-4 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Utama</p>
                             <Link 
                                 :href="route('dashboard')" 
                                 @click="isMobileMenuOpen = false"
@@ -216,16 +216,6 @@ onUnmounted(() => {
                             >
                                 <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                                 <span>Dashboard Utama</span>
-                            </Link>
-
-                            <Link 
-                                :href="route('media-monitoring.index')" 
-                                @click="isMobileMenuOpen = false"
-                                :class="route().current('media-monitoring.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'" 
-                                class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
-                            >
-                                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
-                                <span>Media Monitoring & EWS</span>
                             </Link>
                         </div>
 
@@ -467,9 +457,9 @@ onUnmounted(() => {
                 <!-- Sidebar Nav Menu -->
                 <nav class="px-4 py-3 space-y-5">
                     
-                    <!-- UTAMA & EWS -->
+                    <!-- UTAMA -->
                     <div class="space-y-1">
-                        <p class="px-5 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Utama & Intel EWS</p>
+                        <p class="px-5 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Utama</p>
                         <Link 
                             :href="route('dashboard')" 
                             :class="route().current('dashboard') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'" 
@@ -477,15 +467,6 @@ onUnmounted(() => {
                         >
                             <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                             <span>Dashboard Utama</span>
-                        </Link>
-
-                        <Link 
-                            :href="route('media-monitoring.index')" 
-                            :class="route().current('media-monitoring.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'" 
-                            class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
-                        >
-                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-indigo-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
-                            <span>Media Monitoring & EWS</span>
                         </Link>
                     </div>
 
