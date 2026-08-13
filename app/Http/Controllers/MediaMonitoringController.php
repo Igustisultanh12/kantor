@@ -138,31 +138,31 @@ class MediaMonitoringController extends Controller
     }
 
     /**
-     * Pemindaian Otomatis Multi-Kanal: Berita Online (Detik, Antara, CNN, Kompas) & Media Sosial OSINT (X/Twitter, Youtube, Instagram)
+     * Pemindaian Otomatis Multi-Kanal KHUSUS WILAYAH KERJA KODAERAL V
      */
     private function fetchLiveRssNews($clearSamples = false)
     {
-        // Bersihkan data sampel lama jika diminta agar hanya menampilkan berita asli
+        // Bersihkan berita luar wilayah jika diminta
         if ($clearSamples) {
-            MediaMonitoring::whereIn('title', [
-                'Patroli Gabungan Denintel Kodaeral V Imbau Nelayan Waspadai Cuaca Ekstrem Selat Madura',
-                'Laporan Pengawasan Alur Pelayaran Tanjung Perak Pasca Aksi Unjuk Rasa Buruh Pelabuhan',
-                'Penggagalan Upaya Penyelundupan Barang Tanpa Dokumen Resmi di Perairan Gresik',
-                'Pemantauan Sentimen Publik Terkait Pembangunan Infrastruktur Pesisir Sidoarjo'
-            ])->delete();
+            $all = MediaMonitoring::where('source_name', 'NOT LIKE', '%Staf Intel%')->get();
+            foreach ($all as $item) {
+                if (!$this->isKodaeralVLocation($item->title . ' ' . $item->summary . ' ' . $item->location)) {
+                    $item->delete();
+                }
+            }
         }
 
         $sources = [
-            // Kanal Berita Utama & Maritim
+            // Kanal Berita Utama & Maritim Khusus Kodaeral V / Jatim
             'https://news.google.com/rss/search?q=TNI+AL+Surabaya&hl=id&gl=ID&ceid=ID:id',
             'https://news.google.com/rss/search?q=Pelabuhan+Tanjung+Perak+Surabaya&hl=id&gl=ID&ceid=ID:id',
             'https://news.google.com/rss/search?q=Maritim+Jawa+Timur&hl=id&gl=ID&ceid=ID:id',
             'https://news.google.com/rss/search?q=Pengamanan+Surabaya&hl=id&gl=ID&ceid=ID:id',
             'https://news.google.com/rss/search?q=Penyelundupan+Jawa+Timur&hl=id&gl=ID&ceid=ID:id',
+            'https://news.google.com/rss/search?q=Denintel+Kodaeral+V&hl=id&gl=ID&ceid=ID:id',
             'https://jatim.antaranews.com/rss/terkini.xml',
-            'https://www.cnnindonesia.com/nasional/rss',
 
-            // Kanal Media Sosial OSINT (X / Twitter, TikTok, Youtube feeds)
+            // Kanal Media Sosial OSINT Khusus Surabaya / Jatim
             'https://news.google.com/rss/search?q=site:x.com+OR+site:twitter.com+Surabaya&hl=id&gl=ID&ceid=ID:id',
             'https://news.google.com/rss/search?q=site:youtube.com+TNI+AL+Surabaya&hl=id&gl=ID&ceid=ID:id',
             'https://news.google.com/rss/search?q=site:instagram.com+Surabaya+maritim&hl=id&gl=ID&ceid=ID:id',
@@ -189,7 +189,7 @@ class MediaMonitoringController extends Controller
                 }
 
                 foreach ($xml->channel->item as $item) {
-                    if ($addedCount >= 20) break;
+                    if ($addedCount >= 25) break;
 
                     $rawTitle = trim((string)$item->title);
                     $link = trim((string)$item->link);
@@ -197,6 +197,13 @@ class MediaMonitoringController extends Controller
                     $description = strip_tags(trim((string)($item->description ?? '')));
 
                     if (empty($rawTitle) || empty($link)) {
+                        continue;
+                    }
+
+                    $fullText = $rawTitle . ' ' . $description;
+
+                    // SYARAT MUTLAK: WAJIB TERMASUK DALAM WILAYAH KERJA KODAERAL V!
+                    if (!$this->isKodaeralVLocation($fullText)) {
                         continue;
                     }
 
@@ -226,7 +233,6 @@ class MediaMonitoringController extends Controller
                         continue;
                     }
 
-                    $fullText = $title . ' ' . $description;
                     $category = $this->determineCategory($fullText);
                     $risk = $this->determineRisk($fullText);
                     $sentiment = $this->determineSentiment($fullText);
@@ -256,17 +262,42 @@ class MediaMonitoringController extends Controller
         return $addedCount;
     }
 
+    /**
+     * Pengecekan Mutlak Wilayah Hukum / Kerja Kodaeral V (Jawa Timur, Pelabuhan, Pesisir)
+     */
+    private function isKodaeralVLocation($text)
+    {
+        $text = strtolower($text);
+
+        $kodaeralKeywords = [
+            'kodaeral', 'lantamal v', 'lantamal 5', 'denintel', 'surabaya', 'tanjung perak', 
+            'selat madura', 'gresik', 'sidoarjo', 'pasuruan', 'probolinggo', 'situbondo', 
+            'banyuwangi', 'malang', 'tuban', 'lamongan', 'madura', 'bangkalan', 'sampang', 
+            'pamekasan', 'sumenep', 'jawa timur', 'jatim', 'semarang', 'tanjung emas', 
+            'cilacap', 'tegal', 'pekalongan', 'jepara', 'rembang', 'bali', 'benoa', 
+            'gilimanuk', 'ntb', 'lembar', 'mataram', 'bima', 'koarmada ii', 'koarmada 2'
+        ];
+
+        foreach ($kodaeralKeywords as $kw) {
+            if (str_contains($text, $kw)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function generateExecutiveSummary($criticalCount, $negativeCount, $totalNews)
     {
         if ($criticalCount > 0) {
-            return "PERINGATAN DINI (EWS): Pemindaian AI OSINT mendeteksi {$criticalCount} isu berisiko TINGGI/KRITIS di Jawa Timur. Mayoritas dinamika terpusat pada bidang Pertahanan, Keamanan Maritim & Unjuk Rasa Warga. Disarankan peninjauan patroli intensif.";
+            return "PERINGATAN DINI (EWS): Pemindaian AI OSINT mendeteksi {$criticalCount} isu berisiko TINGGI/KRITIS khusus Wilayah Kerja Kodaeral V. Mayoritas dinamika terpusat pada bidang Pertahanan, Keamanan Maritim & Unjuk Rasa Warga. Disarankan peninjauan patroli intensif.";
         }
-        return "SITUASI KONDUSIF: Pemantauan berita OSINT terkini menunjukkan dinamika wilayah Kodaeral V (Jawa Timur & Maritim) dalam keadaan stabil dan terkendali. Tidak ditemukan ancaman kritis hari ini.";
+        return "SITUASI KONDUSIF: Pemantauan berita OSINT terkini menunjukkan dinamika Wilayah Kerja Kodaeral V (Surabaya, Selat Madura & Jatim) dalam keadaan stabil dan terkendali. Tidak ditemukan ancaman kritis hari ini.";
     }
 
     private function generateSummaryFromHeadline($title, $publisher, $category, $risk)
     {
-        return "Ringkasan AI OSINT ({$publisher}): Berita dipublikasikan terkait bidang " . strtoupper($category) . " dengan tingkat risiko " . strtoupper($risk) . ". Memerlukan peninjauan dan pemantauan berkala.";
+        return "Ringkasan AI OSINT ({$publisher}): Berita dipublikasikan terkait Wilayah Kodaeral V pada bidang " . strtoupper($category) . " dengan tingkat risiko " . strtoupper($risk) . ". Memerlukan pemantauan berkala.";
     }
 
     private function determineCategory($text)
@@ -300,13 +331,21 @@ class MediaMonitoringController extends Controller
         $text = strtolower($text);
         if (str_contains($text, 'tanjung perak')) return 'Tanjung Perak, Surabaya';
         if (str_contains($text, 'surabaya')) return 'Surabaya';
+        if (str_contains($text, 'selat madura')) return 'Selat Madura';
         if (str_contains($text, 'gresik')) return 'Gresik';
         if (str_contains($text, 'sidoarjo')) return 'Sidoarjo';
-        if (str_contains($text, 'selat madura') || str_contains($text, 'madura')) return 'Selat Madura';
-        if (str_contains($text, 'pasuruan')) return 'Pasuruan';
-        if (str_contains($text, 'malang')) return 'Malang';
         if (str_contains($text, 'banyuwangi')) return 'Banyuwangi';
+        if (str_contains($text, 'madura') || str_contains($text, 'bangkalan') || str_contains($text, 'sampang') || str_contains($text, 'pamekasan') || str_contains($text, 'sumenep')) return 'Madura';
         if (str_contains($text, 'tuban')) return 'Tuban';
-        return 'Jawa Timur';
+        if (str_contains($text, 'lamongan')) return 'Lamongan';
+        if (str_contains($text, 'pasuruan')) return 'Pasuruan';
+        if (str_contains($text, 'probolinggo')) return 'Probolinggo';
+        if (str_contains($text, 'situbondo')) return 'Situbondo';
+        if (str_contains($text, 'malang')) return 'Malang';
+        if (str_contains($text, 'semarang') || str_contains($text, 'tanjung emas')) return 'Semarang (Kodaeral V)';
+        if (str_contains($text, 'cilacap')) return 'Cilacap (Kodaeral V)';
+        if (str_contains($text, 'bali') || str_contains($text, 'benoa') || str_contains($text, 'gilimanuk')) return 'Bali (Kodaeral V)';
+        if (str_contains($text, 'ntb') || str_contains($text, 'lembar') || str_contains($text, 'mataram')) return 'NTB (Kodaeral V)';
+        return 'Wilayah Kerja Kodaeral V';
     }
 }
