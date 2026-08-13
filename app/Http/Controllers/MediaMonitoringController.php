@@ -13,9 +13,9 @@ class MediaMonitoringController extends Controller
 {
     public function index(Request $request)
     {
-        // Seed sampel data intelijen jika database masih kosong
-        if (MediaMonitoring::count() === 0) {
-            $this->seedInitialIntelData();
+        // Jika belum pernah tarik berita asli atau berita kurang dari 3, tarik berita OSINT asli secara otomatis!
+        if (MediaMonitoring::where('source_name', 'NOT LIKE', '%Staf Intel%')->count() < 4) {
+            $this->fetchLiveRssNews(true);
         }
 
         $query = MediaMonitoring::query();
@@ -133,140 +133,160 @@ class MediaMonitoringController extends Controller
 
     public function refreshFeeds()
     {
-        try {
-            // Simulasi sinkronisasi AI pemindaian berita online terkini (Google News RSS & Portal Maritim)
-            $response = Http::timeout(10)->get('https://news.google.com/rss/search?q=TNI+AL+Surabaya+maritim+Jatim&hl=id&gl=ID&ceid=ID:id');
-            
-            if ($response->successful()) {
-                $xml = simplexml_load_string($response->body());
-                $countAdded = 0;
+        $newCount = $this->fetchLiveRssNews(true);
+        return back()->with('success', "AI OSINT Scanner berhasil menyegarkan data. {$newCount} berita asli terkini telah diambil dari portal online.");
+    }
 
-                if ($xml && isset($xml->channel->item)) {
-                    foreach ($xml->channel->item as $item) {
-                        if ($countAdded >= 5) break;
-
-                        $title = (string)$item->title;
-                        $link = (string)$item->link;
-                        $pubDate = (string)$item->pubDate;
-
-                        if (!MediaMonitoring::where('title', $title)->exists()) {
-                            $category = $this->determineCategory($title);
-                            $risk = $this->determineRisk($title);
-                            $sentiment = $this->determineSentiment($title);
-
-                            MediaMonitoring::create([
-                                'title' => $title,
-                                'source_name' => 'Google News / Radar Portal',
-                                'category' => $category,
-                                'risk_level' => $risk,
-                                'sentiment' => $sentiment,
-                                'summary' => "Pemindaian AI OSINT: Berita terkini seputar kegiatan pertahanan maritim & dinamika wilayah Jawa Timur.",
-                                'url' => $link,
-                                'location' => 'Jawa Timur',
-                                'published_at' => $pubDate ? date('Y-m-d H:i:s', strtotime($pubDate)) : now(),
-                            ]);
-                            $countAdded++;
-                        }
-                    }
-                }
-                return back()->with('success', "AI OSINT Scanner berhasil menyegarkan data. {$countAdded} berita baru ditemukan.");
-            }
-        } catch (\Exception $e) {
-            Log::error("Gagal refresh RSS EWS: " . $e->getMessage());
+    /**
+     * Pemindaian Otomatis Berita Online ASLI (Google News RSS, Antara Jatim, Portal Nasional)
+     */
+    private function fetchLiveRssNews($clearSamples = false)
+    {
+        // Bersihkan data sampel lama jika diminta agar hanya menampilkan berita asli
+        if ($clearSamples) {
+            MediaMonitoring::whereIn('title', [
+                'Patroli Gabungan Denintel Kodaeral V Imbau Nelayan Waspadai Cuaca Ekstrem Selat Madura',
+                'Laporan Pengawasan Alur Pelayaran Tanjung Perak Pasca Aksi Unjuk Rasa Buruh Pelabuhan',
+                'Penggagalan Upaya Penyelundupan Barang Tanpa Dokumen Resmi di Perairan Gresik',
+                'Pemantauan Sentimen Publik Terkait Pembangunan Infrastruktur Pesisir Sidoarjo'
+            ])->delete();
         }
 
-        return back()->with('info', 'AI Radar EWS telah diperbarui dengan data intelijen terbaru.');
+        $sources = [
+            'https://news.google.com/rss/search?q=TNI+AL+Surabaya&hl=id&gl=ID&ceid=ID:id',
+            'https://news.google.com/rss/search?q=Pelabuhan+Tanjung+Perak+Surabaya&hl=id&gl=ID&ceid=ID:id',
+            'https://news.google.com/rss/search?q=Maritim+Jawa+Timur&hl=id&gl=ID&ceid=ID:id',
+            'https://news.google.com/rss/search?q=Pengamanan+Surabaya&hl=id&gl=ID&ceid=ID:id',
+            'https://jatim.antaranews.com/rss/terkini.xml',
+        ];
+
+        $addedCount = 0;
+
+        foreach ($sources as $sourceUrl) {
+            try {
+                $response = Http::withHeaders([
+                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept'     => 'application/xml, text/xml, */*'
+                ])->timeout(8)->get($sourceUrl);
+
+                if (!$response->successful()) {
+                    continue;
+                }
+
+                $body = $response->body();
+                $xml = @simplexml_load_string($body, 'SimpleXMLElement', LIBXML_NOCDATA);
+
+                if (!$xml || !isset($xml->channel->item)) {
+                    continue;
+                }
+
+                foreach ($xml->channel->item as $item) {
+                    if ($addedCount >= 15) break;
+
+                    $rawTitle = trim((string)$item->title);
+                    $link = trim((string)$item->link);
+                    $pubDateStr = trim((string)$item->pubDate);
+                    $description = strip_tags(trim((string)($item->description ?? '')));
+
+                    if (empty($rawTitle) || empty($link)) {
+                        continue;
+                    }
+
+                    // Deteksi Sumber Berita Asli (e.g. "Judul Berita - Detikcom" -> "Detikcom")
+                    $publisher = 'Portal Online';
+                    $title = $rawTitle;
+                    if (str_contains($rawTitle, ' - ')) {
+                        $parts = explode(' - ', $rawTitle);
+                        $publisher = array_pop($parts);
+                        $title = implode(' - ', $parts);
+                    }
+
+                    // Cek duplikasi judul
+                    if (MediaMonitoring::where('title', $title)->exists()) {
+                        continue;
+                    }
+
+                    $fullText = $title . ' ' . $description;
+                    $category = $this->determineCategory($fullText);
+                    $risk = $this->determineRisk($fullText);
+                    $sentiment = $this->determineSentiment($fullText);
+                    $location = $this->determineLocation($fullText);
+                    $summary = $this->generateSummaryFromHeadline($title, $publisher, $category, $risk);
+
+                    MediaMonitoring::create([
+                        'title' => $title,
+                        'source_name' => $publisher,
+                        'category' => $category,
+                        'risk_level' => $risk,
+                        'sentiment' => $sentiment,
+                        'summary' => $summary,
+                        'url' => $link,
+                        'location' => $location,
+                        'published_at' => $pubDateStr ? date('Y-m-d H:i:s', strtotime($pubDateStr)) : now(),
+                        'is_pinned' => ($risk === 'critical' || $risk === 'high'),
+                    ]);
+
+                    $addedCount++;
+                }
+            } catch (\Exception $e) {
+                Log::error("Gagal menarik berita RSS EWS dari {$sourceUrl}: " . $e->getMessage());
+            }
+        }
+
+        return $addedCount;
     }
 
     private function generateExecutiveSummary($criticalCount, $negativeCount, $totalNews)
     {
         if ($criticalCount > 0) {
-            return "PERINGATAN DINI (EWS): Terdeteksi {$criticalCount} isu berisiko TINGGI/KRITIS di wilayah Kodaeral V. Mayoritas dinamika terpusat pada bidang Keamanan Maritim & Unjuk Rasa Warga. Disarankan peninjauan patroli intensif.";
+            return "PERINGATAN DINI (EWS): Pemindaian AI OSINT mendeteksi {$criticalCount} isu berisiko TINGGI/KRITIS di Jawa Timur. Mayoritas dinamika terpusat pada bidang Pertahanan, Keamanan Maritim & Unjuk Rasa Warga. Disarankan peninjauan patroli intensif.";
         }
-        return "SITUASI KONDUSIF: Pemantauan media OSINT menunjukkan dinamika wilayah Kodaeral V (Jawa Timur & Maritim) dalam keadaan stabil dan terkendali. Tidak ditemukan ancaman kritis hari ini.";
+        return "SITUASI KONDUSIF: Pemantauan berita OSINT terkini menunjukkan dinamika wilayah Kodaeral V (Jawa Timur & Maritim) dalam keadaan stabil dan terkendali. Tidak ditemukan ancaman kritis hari ini.";
+    }
+
+    private function generateSummaryFromHeadline($title, $publisher, $category, $risk)
+    {
+        return "Ringkasan AI OSINT ({$publisher}): Berita dipublikasikan terkait bidang " . strtoupper($category) . " dengan tingkat risiko " . strtoupper($risk) . ". Memerlukan peninjauan dan pemantauan berkala.";
     }
 
     private function determineCategory($text)
     {
         $text = strtolower($text);
-        if (str_contains($text, 'politik') || str_contains($text, 'demo') || str_contains($text, 'pemilu') || str_contains($text, 'pilkada')) return 'politik';
-        if (str_contains($text, 'ekonomi') || str_contains($text, 'pasar') || str_contains($text, 'harga') || str_contains($text, 'pelabuhan')) return 'ekonomi';
-        if (str_contains($text, 'budaya') || str_contains($text, 'warga') || str_contains($text, 'masyarakat')) return 'sosbud';
-        if (str_contains($text, 'pancasila') || str_contains($text, 'paham') || str_contains($text, 'radikal')) return 'ideologi';
+        if (str_contains($text, 'politik') || str_contains($text, 'demo') || str_contains($text, 'pemilu') || str_contains($text, 'pilkada') || str_contains($text, 'dprd') || str_contains($text, 'bupati') || str_contains($text, 'walikota')) return 'politik';
+        if (str_contains($text, 'ekonomi') || str_contains($text, 'pasar') || str_contains($text, 'harga') || str_contains($text, 'pelabuhan') || str_contains($text, 'ekspor') || str_contains($text, 'impor') || str_contains($text, 'saham')) return 'ekonomi';
+        if (str_contains($text, 'budaya') || str_contains($text, 'warga') || str_contains($text, 'masyarakat') || str_contains($text, 'bansos') || str_contains($text, 'bencana') || str_contains($text, 'banjir')) return 'sosbud';
+        if (str_contains($text, 'pancasila') || str_contains($text, 'paham') || str_contains($text, 'radikal') || str_contains($text, 'teror')) return 'ideologi';
         return 'hankam';
     }
 
     private function determineRisk($text)
     {
         $text = strtolower($text);
-        if (str_contains($text, 'penyelundupan') || str_contains($text, 'bentrok') || str_contains($text, 'ancaman') || str_contains($text, 'kecelakaan laut')) return 'high';
-        if (str_contains($text, 'demo') || str_contains($text, 'sengketa') || str_contains($text, 'protes')) return 'medium';
+        if (str_contains($text, 'penyelundupan') || str_contains($text, 'bentrok') || str_contains($text, 'ancaman') || str_contains($text, 'kecelakaan') || str_contains($text, 'tenggelam') || str_contains($text, 'narkoba') || str_contains($text, 'teror')) return 'high';
+        if (str_contains($text, 'demo') || str_contains($text, 'sengketa') || str_contains($text, 'protes') || str_contains($text, 'macet') || str_contains($text, 'sidang')) return 'medium';
         return 'low';
     }
 
     private function determineSentiment($text)
     {
         $text = strtolower($text);
-        if (str_contains($text, 'sukses') || str_contains($text, 'aman') || str_contains($text, 'peresmian') || str_contains($text, 'bantuan')) return 'positive';
-        if (str_contains($text, 'tenggelam') || str_contains($text, 'penyelundupan') || str_contains($text, 'demo') || str_contains($text, 'konflik')) return 'negative';
+        if (str_contains($text, 'sukses') || str_contains($text, 'aman') || str_contains($text, 'peresmian') || str_contains($text, 'bantuan') || str_contains($text, 'juara') || str_contains($text, 'prestasi')) return 'positive';
+        if (str_contains($text, 'tenggelam') || str_contains($text, 'penyelundupan') || str_contains($text, 'demo') || str_contains($text, 'konflik') || str_contains($text, 'kecelakaan') || str_contains($text, 'korban')) return 'negative';
         return 'neutral';
     }
 
-    private function seedInitialIntelData()
+    private function determineLocation($text)
     {
-        $samples = [
-            [
-                'title' => 'Patroli Gabungan Denintel Kodaeral V Imbau Nelayan Waspadai Cuaca Ekstrem Selat Madura',
-                'source_name' => 'Antara Jatim',
-                'category' => 'hankam',
-                'risk_level' => 'low',
-                'sentiment' => 'positive',
-                'summary' => 'AI Summary: Kegiatan sosialisasi keselamatan pelayaran dan pemantauan situasi maritim berjalan lancar dan aman.',
-                'url' => 'https://jatim.antaranews.com',
-                'location' => 'Selat Madura',
-                'published_at' => now()->subHours(2),
-                'is_pinned' => false,
-            ],
-            [
-                'title' => 'Laporan Pengawasan Alur Pelayaran Tanjung Perak Pasca Aksi Unjuk Rasa Buruh Pelabuhan',
-                'source_name' => 'Radar Surabaya',
-                'category' => 'politik',
-                'risk_level' => 'medium',
-                'sentiment' => 'neutral',
-                'summary' => 'AI Summary: Aksi unjuk rasa penyesuaian tarif bongkar muat di Pelabuhan Tanjung Perak berlangsung tertib di bawah pengamanan aparat.',
-                'url' => 'https://radarsurabaya.jawapos.com',
-                'location' => 'Tanjung Perak, Surabaya',
-                'published_at' => now()->subHours(5),
-                'is_pinned' => true,
-            ],
-            [
-                'title' => 'Penggagalan Upaya Penyelundupan Barang Tanpa Dokumen Resmi di Perairan Gresik',
-                'source_name' => 'Detik Jatim',
-                'category' => 'hankam',
-                'risk_level' => 'high',
-                'sentiment' => 'negative',
-                'summary' => 'AI Summary: Tim patroli mengamankan 1 perahu motor ilegal yang membawa muatan tak berizin. Pelaku dalam pemeriksaan lanjut.',
-                'url' => 'https://www.detik.com/jatim',
-                'location' => 'Perairan Gresik',
-                'published_at' => now()->subHours(8),
-                'is_pinned' => true,
-            ],
-            [
-                'title' => 'Pemantauan Sentimen Publik Terkait Pembangunan Infrastruktur Pesisir Sidoarjo',
-                'source_name' => 'X / Twitter Intel Feed',
-                'category' => 'sosbud',
-                'risk_level' => 'low',
-                'sentiment' => 'positive',
-                'summary' => 'AI Summary: Tanggapan masyarakat pesisir Sidoarjo terhadap program penataan tanggul penahan rob terpantau sangat positif.',
-                'url' => 'https://twitter.com',
-                'location' => 'Pesisir Sidoarjo',
-                'published_at' => now()->subDay(),
-                'is_pinned' => false,
-            ]
-        ];
-
-        foreach ($samples as $sample) {
-            MediaMonitoring::create($sample);
-        }
+        $text = strtolower($text);
+        if (str_contains($text, 'tanjung perak')) return 'Tanjung Perak, Surabaya';
+        if (str_contains($text, 'surabaya')) return 'Surabaya';
+        if (str_contains($text, 'gresik')) return 'Gresik';
+        if (str_contains($text, 'sidoarjo')) return 'Sidoarjo';
+        if (str_contains($text, 'selat madura') || str_contains($text, 'madura')) return 'Selat Madura';
+        if (str_contains($text, 'pasuruan')) return 'Pasuruan';
+        if (str_contains($text, 'malang')) return 'Malang';
+        if (str_contains($text, 'banyuwangi')) return 'Banyuwangi';
+        if (str_contains($text, 'tuban')) return 'Tuban';
+        return 'Jawa Timur';
     }
 }
