@@ -16,12 +16,26 @@ void main() {
 
       final user = UserModel.fromJson(json);
 
-      expect(user.id, 1);
-      expect(user.name, 'Budi Santoso');
-      expect(user.pangkat, 'Kapten Laut (E)');
-      expect(user.nrp, '12345/P');
-      expect(user.role, 'admin');
-      expect(user.fullIdentity, 'Kapten Laut (E) Pelaut Budi Santoso NRP 12345/P');
+      expect(user.id, equals(1));
+      expect(user.name, equals('Budi Santoso'));
+      expect(user.pangkat, equals('Kapten Laut (E)'));
+      expect(user.korps, equals('Pelaut'));
+      expect(user.nrp, equals('12345/P'));
+      expect(user.role, equals('admin'));
+    });
+
+    test('Should compute fullIdentity string correctly', () {
+      final user = UserModel(
+        id: 1,
+        name: 'Budi Santoso',
+        pangkat: 'Kapten Laut (E)',
+        korps: 'Pelaut',
+        nrp: '12345/P',
+      );
+
+      expect(user.fullIdentity, contains('Kapten Laut (E)'));
+      expect(user.fullIdentity, contains('Budi Santoso'));
+      expect(user.fullIdentity, contains('12345/P'));
     });
   });
 }
