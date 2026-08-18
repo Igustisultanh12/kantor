@@ -22,9 +22,6 @@ dependencies:
   google_fonts: ^6.2.1
   qr_flutter: ^4.1.0
 
-dependency_overrides:
-  geolocator_android: ^4.6.4
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
