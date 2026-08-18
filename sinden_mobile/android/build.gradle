@@ -12,6 +12,7 @@ buildscript {
 
 gradle.beforeProject { p ->
     p.ext.flutter = [
+        source: '../..',
         compileSdkVersion: 35,
         minSdkVersion: 21,
         targetSdkVersion: 35,
@@ -25,6 +26,7 @@ allprojects {
         mavenCentral()
     }
     ext.flutter = [
+        source: '../..',
         compileSdkVersion: 35,
         minSdkVersion: 21,
         targetSdkVersion: 35,
@@ -36,6 +38,7 @@ rootProject.buildDir = '../build'
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
     project.ext.flutter = [
+        source: '../..',
         compileSdkVersion: 35,
         minSdkVersion: 21,
         targetSdkVersion: 35,

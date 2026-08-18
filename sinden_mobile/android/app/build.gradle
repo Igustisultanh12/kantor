@@ -17,6 +17,12 @@ def flutterVersionName = localProperties.getProperty('flutter.versionName') ?: '
 
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
+
+// Explicitly set flutter source on project ext BEFORE applying flutter.gradle
+project.ext.flutter = [
+    source: '../..'
+]
+
 apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 
 android {
