@@ -22,6 +22,10 @@ class AuthProvider with ChangeNotifier {
     _loadAuthData();
   }
 
+  Future<void> checkAuthStatus() async {
+    await _loadAuthData();
+  }
+
   Future<void> _loadAuthData() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString(AppConstants.keyToken);
