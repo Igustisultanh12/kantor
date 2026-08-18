@@ -16,22 +16,3 @@ subprojects {
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }
-
-subprojects {
-    afterEvaluate { project ->
-        if (project.extensions.findByName("android") != null) {
-            try {
-                project.android {
-                    compileSdkVersion 35
-                    buildToolsVersion "35.0.0"
-                    defaultConfig {
-                        minSdkVersion 21
-                        targetSdkVersion 35
-                    }
-                }
-            } catch (Exception e) {
-                // Ignore if property is read-only
-            }
-        }
-    }
-}
