@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { usePage, Link } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
@@ -23,8 +23,8 @@ const user = computed(() => page.props.auth.user);
  */
 const isNotifOpen = ref(false);
 const notifications = ref([
-    { id: 1, title: 'Ulang Birthday', message: 'Hari ini ada personel yang berulang tahun. Silakan cek Periksa pada menu ucapan', time: 'Baru saja', icon: '🎂' },
-    { id: 2, title: 'Sistem SINDEN', message: 'Pangkalan data UcapanConfig berhasil disinkronisasi dengan jalur utama.', time: '1 Jam yang lalu', icon: '✅' },
+    { id: 1, title: 'Ulang Birthday', message: 'Hari ini ada personel yang berulang tahun. Silakan cek Periksa pada menu ucapan', time: 'Baru saja', icon: '' },
+    { id: 2, title: 'Sistem SINDEN', message: 'Pangkalan data UcapanConfig berhasil disinkronisasi dengan jalur utama.', time: '1 Jam yang lalu', icon: '' },
 ]);
 
 const showNotifDetail = (notif) => {
@@ -97,8 +97,7 @@ const toggleSidebar = () => {
         
         <aside 
             v-if="!isMobile"
-            :class="isSidebarOpen ? 'w-72' : 'w-24'" 
-            class="hidden lg:flex flex-col bg-white border-r border-gray-100 transition-all duration-500 ease-in-out sticky top-0 h-screen z-50 shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
+            :class="isSidebarOpen ? 'w-72' : 'w-24'"class="hidden lg:flex flex-col bg-white border-r border-gray-100 transition-all duration-500 ease-in-out sticky top-0 h-screen z-50 shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
         >
             <div class="h-20 flex items-center px-6 border-b border-gray-50 mb-6 shrink-0">
                 <Link :href="route('dashboard')" class="flex items-center gap-3 overflow-hidden">
@@ -114,54 +113,47 @@ const toggleSidebar = () => {
                 <p v-if="isSidebarOpen" class="px-4 text-[9px] font-black text-gray-300 uppercase tracking-[0.2em] mb-4">Main Operational</p>
                 
                 <Link :href="route('dashboard')" @click="handleMenuClick"
-                      :class="route().current('dashboard') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50 hover:text-indigo-600'"
-                      class="flex items-center p-3.5 rounded-2xl transition-all group overflow-hidden">
-                    <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110">🏠</div>
+                      :class="route().current('dashboard') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50 hover:text-indigo-600'"class="flex items-center p-3.5 rounded-2xl transition-all group overflow-hidden">
+                    <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110"></div>
                     <span v-if="isSidebarOpen" class="ms-4 text-[11px] font-black uppercase tracking-widest whitespace-nowrap">Dashboard</span>
                 </Link>
 
                 <Link :href="route('letter-logs.index')" @click="handleMenuClick"
-                      :class="route().current('letter-logs.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50 hover:text-indigo-600'"
-                      class="flex items-center p-3.5 rounded-2xl transition-all group overflow-hidden">
-                    <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110">📖</div>
+                      :class="route().current('letter-logs.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50 hover:text-indigo-600'"class="flex items-center p-3.5 rounded-2xl transition-all group overflow-hidden">
+                    <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110"></div>
                     <span v-if="isSidebarOpen" class="ms-4 text-[11px] font-black uppercase tracking-widest whitespace-nowrap">Buku Nomor</span>
                 </Link>
 
                 <Link v-if="isAdmin" :href="route('categories.index')" @click="handleMenuClick"
-                      :class="route().current('categories.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50 hover:text-indigo-600'"
-                      class="flex items-center p-3.5 rounded-2xl transition-all group overflow-hidden">
-                    <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110">🗂️</div>
+                      :class="route().current('categories.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50 hover:text-indigo-600'"class="flex items-center p-3.5 rounded-2xl transition-all group overflow-hidden">
+                    <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110"></div>
                     <span v-if="isSidebarOpen" class="ms-4 text-[11px] font-black uppercase tracking-widest whitespace-nowrap">Manajemen Kategori</span>
                 </Link>
 
                 <Link v-if="isAdmin" :href="route('birthday.index')" @click="handleMenuClick"
-                      :class="route().current('birthday.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50 hover:text-indigo-600'"
-                      class="flex items-center p-3.5 rounded-2xl transition-all group overflow-hidden border-l-4 border-indigo-200">
-                    <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110">🎂</div>
+                      :class="route().current('birthday.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50 hover:text-indigo-600'"class="flex items-center p-3.5 rounded-2xl transition-all group overflow-hidden border-l-4 border-indigo-200">
+                    <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110"></div>
                     <div v-if="isSidebarOpen" class="flex flex-col text-left ms-4">
                         <span class="text-[11px] font-black uppercase whitespace-nowrap">Ucapan Personel</span>
                     </div>
                 </Link>
 
                 <Link :href="route('letters.index')" @click="handleMenuClick"
-                      :class="route().current('letters.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50 hover:text-indigo-600'"
-                      class="flex items-center p-3.5 rounded-2xl transition-all group overflow-hidden">
-                    <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110">📑</div>
+                      :class="route().current('letters.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50 hover:text-indigo-600'"class="flex items-center p-3.5 rounded-2xl transition-all group overflow-hidden">
+                    <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110"></div>
                     <span v-if="isSidebarOpen" class="ms-4 text-[11px] font-black uppercase tracking-widest whitespace-nowrap">Arsip Surat</span>
                 </Link>
 
                 <Link :href="route('signature.index')" @click="handleMenuClick"
-                      :class="route().current('signature.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50 hover:text-indigo-600'"
-                      class="flex items-center p-3.5 rounded-2xl transition-all group overflow-hidden">
-                    <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110">✍️</div>
+                      :class="route().current('signature.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50 hover:text-indigo-600'"class="flex items-center p-3.5 rounded-2xl transition-all group overflow-hidden">
+                    <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110"></div>
                     <span v-if="isSidebarOpen" class="ms-4 text-[11px] font-black uppercase tracking-widest whitespace-nowrap">Req TTD Komandan</span>
                 </Link>
                 
                 <Link :href="route('stamp.index')" 
                       :active="route().current('stamp.index')"
-                      :class="route().current('stamp.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50'"
-                      class="flex items-center p-3.5 rounded-2xl transition-all group overflow-hidden">
-                    <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110">🛡️</div>
+                      :class="route().current('stamp.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50'"class="flex items-center p-3.5 rounded-2xl transition-all group overflow-hidden">
+                    <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110"></div>
                     <div v-if="isSidebarOpen" class="flex flex-col text-left ms-4">
                         <span class="text-[11px] font-black uppercase">Otoritas Stempel</span>
                         <span class="text-[7px] font-bold opacity-60 uppercase">Eksekusi Validasi</span>
@@ -169,33 +161,29 @@ const toggleSidebar = () => {
                 </Link>
 
                 <Link :href="route('backup.index')" @click="handleMenuClick"
-                      :class="route().current('backup.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50 hover:text-indigo-600'"
-                      class="flex items-center p-3.5 rounded-2xl transition-all group mb-2 overflow-hidden">
-                    <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110">📂</div>
+                      :class="route().current('backup.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50 hover:text-indigo-600'"class="flex items-center p-3.5 rounded-2xl transition-all group mb-2 overflow-hidden">
+                    <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110"></div>
                     <span v-if="isSidebarOpen" class="ms-4 text-[11px] font-black uppercase tracking-widest whitespace-nowrap">PC File Backup</span>
                 </Link>
 
                 <Link v-if="canAccessCash" :href="route('cash.index')" @click="handleMenuClick"
-                      :class="route().current('cash.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50 hover:text-indigo-600'"
-                      class="flex items-center p-3.5 rounded-2xl transition-all group mb-2 overflow-hidden border-l-4"
+                      :class="route().current('cash.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50 hover:text-indigo-600'"class="flex items-center p-3.5 rounded-2xl transition-all group mb-2 overflow-hidden border-l-4"
                       :style="route().current('cash.*') ? '' : 'border-color: #10b981'">
-                    <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110">💰</div>
+                    <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110"></div>
                     <span v-if="isSidebarOpen" class="ms-4 text-[11px] font-black uppercase tracking-widest whitespace-nowrap">Buku Kas Denintel</span>
                 </Link>
 
                 <Link v-if="canAccessCommanderAccount" :href="route('commander.index')" @click="handleMenuClick"
-                      :class="route().current('commander.*') ? 'bg-red-600 text-white shadow-lg shadow-red-100' : 'text-gray-400 hover:bg-gray-50 hover:text-red-600'"
-                      class="flex items-center p-3.5 rounded-2xl transition-all group mb-2 overflow-hidden border-l-4"
+                      :class="route().current('commander.*') ? 'bg-red-600 text-white shadow-lg shadow-red-100' : 'text-gray-400 hover:bg-gray-50 hover:text-red-600'"class="flex items-center p-3.5 rounded-2xl transition-all group mb-2 overflow-hidden border-l-4"
                       :style="route().current('commander.*') ? '' : 'border-color: #ef4444'">
-                    <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110">💳</div>
+                    <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110"></div>
                     <span v-if="isSidebarOpen" class="ms-4 text-[11px] font-black uppercase tracking-widest whitespace-nowrap">Rekening Komandan</span>
                 </Link>
 
                 <Link :href="route('soldier-violations.index')" 
                       @click="handleMenuClick"
-                      :class="route().current('soldier-violations.*') ? 'bg-red-600 text-white shadow-lg shadow-red-100' : 'text-gray-400 hover:bg-gray-50 hover:text-red-600'"
-                      class="flex items-center p-3.5 rounded-2xl transition-all group overflow-hidden">
-                    <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110">⚖️</div>
+                      :class="route().current('soldier-violations.*') ? 'bg-red-600 text-white shadow-lg shadow-red-100' : 'text-gray-400 hover:bg-gray-50 hover:text-red-600'"class="flex items-center p-3.5 rounded-2xl transition-all group overflow-hidden">
+                    <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110"></div>
                     <span v-if="isSidebarOpen" class="ms-4 text-[11px] font-black uppercase tracking-widest whitespace-nowrap">Kasus Prajurit</span>
                 </Link>
 
@@ -203,9 +191,8 @@ const toggleSidebar = () => {
                     <p v-if="isSidebarOpen" class="px-4 text-[9px] font-black text-gray-300 uppercase tracking-[0.2em] mb-4">Intelijen Teritorial</p>
                     
                     <Link :href="route('activities.index')" @click="handleMenuClick"
-                          :class="route().current('activities.index') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50 hover:text-indigo-600'"
-                          class="flex items-center p-3.5 rounded-2xl transition-all group overflow-hidden">
-                        <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110">📍</div>
+                          :class="route().current('activities.index') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50 hover:text-indigo-600'"class="flex items-center p-3.5 rounded-2xl transition-all group overflow-hidden">
+                        <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110"></div>
                         <span v-if="isSidebarOpen" class="ms-4 text-[11px] font-black uppercase tracking-widest whitespace-nowrap">Peta Rencana</span>
                     </Link>
                 </div>
@@ -214,37 +201,32 @@ const toggleSidebar = () => {
                     <p v-if="isSidebarOpen" class="px-4 text-[9px] font-black text-gray-300 uppercase tracking-[0.2em] mb-4">Administration</p>
                     
                     <Link :href="route('admin.pess.dashboard')" @click="handleMenuClick"
-                          :class="route().current('admin.pess.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50 hover:text-indigo-600'"
-                          class="flex items-center p-3.5 rounded-2xl transition-all group mb-2 border-l-4 border-purple-500 overflow-hidden">
-                        <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110">🎖️</div>
+                          :class="route().current('admin.pess.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50 hover:text-indigo-600'"class="flex items-center p-3.5 rounded-2xl transition-all group mb-2 border-l-4 border-purple-500 overflow-hidden">
+                        <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110"></div>
                         <span v-if="isSidebarOpen" class="ms-4 text-[11px] font-black uppercase tracking-widest whitespace-nowrap">Antrean PESS Admin</span>
                     </Link>
 
                     <Link :href="route('users.index')" @click="handleMenuClick"
-                          :class="route().current('users.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50'"
-                          class="flex items-center p-3.5 rounded-2xl transition-all group mb-2 overflow-hidden">
-                        <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110">👤</div>
+                          :class="route().current('users.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50'"class="flex items-center p-3.5 rounded-2xl transition-all group mb-2 overflow-hidden">
+                        <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110"></div>
                         <span v-if="isSidebarOpen" class="ms-4 text-[11px] font-black uppercase tracking-widest whitespace-nowrap">Personel Akun</span>
                     </Link>
                     
                      <Link :href="route('visitor-logs.index')" @click="handleMenuClick"
-                          :class="route().current('visitor-logs.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50'"
-                          class="flex items-center p-3.5 rounded-2xl transition-all group mb-2 overflow-hidden">
-                        <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110">🛡️</div>
+                          :class="route().current('visitor-logs.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50'"class="flex items-center p-3.5 rounded-2xl transition-all group mb-2 overflow-hidden">
+                        <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110"></div>
                         <span v-if="isSidebarOpen" class="ms-4 text-[11px] font-black uppercase tracking-widest whitespace-nowrap">Log Keamanan</span>
                     </Link>
                     
                     <Link :href="route('audit-logs.index')" @click="handleMenuClick"
-                          :class="route().current('audit-logs.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50'"
-                          class="flex items-center p-3.5 rounded-2xl transition-all group mb-2 overflow-hidden">
-                        <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:rotate-12">🔍</div>
+                          :class="route().current('audit-logs.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50'"class="flex items-center p-3.5 rounded-2xl transition-all group mb-2 overflow-hidden">
+                        <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:rotate-12"></div>
                         <span v-if="isSidebarOpen" class="ms-4 text-[11px] font-black uppercase tracking-widest whitespace-nowrap">Audit Otoritas</span>
                     </Link>
                     
                     <Link :href="route('settings.index')" @click="handleMenuClick"
-                          :class="route().current('settings.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50'"
-                          class="flex items-center p-3.5 rounded-2xl transition-all group overflow-hidden">
-                        <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110">⚙️</div>
+                          :class="route().current('settings.*') ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-gray-50'"class="flex items-center p-3.5 rounded-2xl transition-all group overflow-hidden">
+                        <div class="min-w-[32px] flex justify-center text-lg transition-transform group-hover:scale-110"></div>
                         <span v-if="isSidebarOpen" class="ms-4 text-[11px] font-black uppercase tracking-widest whitespace-nowrap">Konfigurasi</span>
                     </Link>
                 </div>
@@ -254,7 +236,7 @@ const toggleSidebar = () => {
                 <div class="p-4 rounded-2xl border border-indigo-100/50" :class="isSidebarOpen ? 'bg-indigo-50/50' : ''">
                     <p v-if="isSidebarOpen" class="text-[8px] font-black text-indigo-400 uppercase tracking-[0.2em]">SiStem Intelijen Pro</p>
                     <p v-if="isSidebarOpen" class="text-[9px] font-black text-indigo-900 uppercase mt-1 italic">{{ user.role }} Mode</p>
-                    <p class="text-center text-lg" v-else>🎖️</p>
+                    <p class="text-center text-lg" v-else></p>
                 </div>
             </div>
         </aside>
@@ -286,7 +268,7 @@ const toggleSidebar = () => {
 
                     <div class="relative">
                         <button @click="isNotifOpen = !isNotifOpen" class="h-10 w-10 bg-white border border-gray-100 rounded-2xl flex items-center justify-center hover:bg-indigo-50 transition-all shadow-sm group">
-                            <span class="text-lg group-hover:scale-110 transition-transform">🔔</span>
+                            <span class="text-lg group-hover:scale-110 transition-transform"></span>
                             <div v-if="notifications.length > 0" class="absolute top-2 right-2.5 h-2 w-2 bg-red-500 border-2 border-white rounded-full"></div>
                         </button>
 
@@ -296,8 +278,7 @@ const toggleSidebar = () => {
                             </div>
                             <div class="max-h-80 overflow-y-auto custom-scrollbar">
                                 <div v-for="n in notifications" :key="n.id" 
-                                     @click="showNotifDetail(n)"
-                                     class="p-4 border-b border-gray-50 hover:bg-indigo-50/30 cursor-pointer transition flex gap-3">
+                                     @click="showNotifDetail(n)"class="p-4 border-b border-gray-50 hover:bg-indigo-50/30 cursor-pointer transition flex gap-3">
                                     <div class="h-10 w-10 bg-white rounded-2xl flex items-center justify-center shadow-sm text-sm border border-gray-100 shrink-0">
                                         {{ n.icon }}
                                     </div>
@@ -308,8 +289,7 @@ const toggleSidebar = () => {
                                     </div>
                                 </div>
                             </div>
-                            <div v-if="notifications.length === 0" class="p-10 text-center text-[10px] font-black text-slate-300 uppercase italic">
-                                Belum ada laporan
+                            <div v-if="notifications.length === 0" class="p-10 text-center text-[10px] font-black text-slate-300 uppercase italic"> Belum ada laporan
                             </div>
                         </div>
                     </div>
@@ -328,8 +308,7 @@ const toggleSidebar = () => {
                         </template>
                         <template #content>
                             <DropdownLink :href="route('profile.edit')"> Edit Profil </DropdownLink>
-                            <DropdownLink :href="route('logout')" method="post" as="button" class="text-red-600 font-bold uppercase text-[10px]"> 
-                                Keluar Sistem 
+                            <DropdownLink :href="route('logout')" method="post" as="button" class="text-red-600 font-bold uppercase text-[10px]"> Keluar Sistem 
                             </DropdownLink>
                         </template>
                     </Dropdown>
@@ -354,35 +333,34 @@ const toggleSidebar = () => {
             </main>
 
             <nav 
-                v-if="isMobile"
-                class="lg:hidden fixed bottom-0 inset-x-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 h-20 px-6 flex justify-around items-center z-[100] shadow-[0_-10px_30px_rgba(0,0,0,0.03)]"
+                v-if="isMobile"class="lg:hidden fixed bottom-0 inset-x-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 h-20 px-6 flex justify-around items-center z-[100] shadow-[0_-10px_30px_rgba(0,0,0,0.03)]"
             >
                 <Link :href="route('dashboard')" class="flex flex-col items-center gap-1 group">
-                    <div :class="route().current('dashboard') ? 'text-indigo-600 scale-110' : 'text-gray-300'" class="transition-all duration-300 text-lg">🏠</div>
+                    <div :class="route().current('dashboard') ? 'text-indigo-600 scale-110' : 'text-gray-300'" class="transition-all duration-300 text-lg"></div>
                     <span :class="route().current('dashboard') ? 'text-indigo-600 font-black' : 'text-gray-400 font-bold'" class="text-[8px] uppercase tracking-widest">Home</span>
                 </Link>
                 <Link :href="route('signature.index')" class="flex flex-col items-center gap-1 group">
-                    <div :class="route().current('signatures.*') ? 'text-indigo-600 scale-110' : 'text-gray-300'" class="transition-all duration-300 text-lg">🖋️</div>
+                    <div :class="route().current('signatures.*') ? 'text-indigo-600 scale-110' : 'text-gray-300'" class="transition-all duration-300 text-lg"></div>
                     <span :class="route().current('signatures.*') ? 'text-indigo-600 font-black' : 'text-gray-400 font-bold'" class="text-[8px] uppercase tracking-widest">TTE</span>
                 </Link>
 
                 <Link :href="route('letter-logs.index')" class="flex flex-col items-center gap-1 group">
-                    <div :class="route().current('letter-logs.*') ? 'text-indigo-600 scale-110' : 'text-gray-300'" class="transition-all duration-300 text-lg">📖</div>
+                    <div :class="route().current('letter-logs.*') ? 'text-indigo-600 scale-110' : 'text-gray-300'" class="transition-all duration-300 text-lg"></div>
                     <span :class="route().current('letter-logs.*') ? 'text-indigo-600 font-black' : 'text-gray-400 font-bold'" class="text-[8px] uppercase tracking-widest">Buku</span>
                 </Link>
 
                 <Link v-if="canAccessCash" :href="route('cash.index')" class="flex flex-col items-center gap-1 group">
-                    <div :class="route().current('cash.*') ? 'text-indigo-600 scale-110' : 'text-gray-300'" class="transition-all duration-300 text-lg">💰</div>
+                    <div :class="route().current('cash.*') ? 'text-indigo-600 scale-110' : 'text-gray-300'" class="transition-all duration-300 text-lg"></div>
                     <span :class="route().current('cash.*') ? 'text-indigo-600 font-black' : 'text-gray-400 font-bold'" class="text-[8px] uppercase tracking-widest">Kas</span>
                 </Link>
 
                 <Link v-if="canAccessCommanderAccount" :href="route('commander.index')" class="flex flex-col items-center gap-1 group">
-                    <div :class="route().current('commander.*') ? 'text-indigo-600 scale-110' : 'text-gray-300'" class="transition-all duration-300 text-lg">💳</div>
+                    <div :class="route().current('commander.*') ? 'text-indigo-600 scale-110' : 'text-gray-300'" class="transition-all duration-300 text-lg"></div>
                     <span :class="route().current('commander.*') ? 'text-indigo-600 font-black' : 'text-gray-400 font-bold'" class="text-[8px] uppercase tracking-widest">Rekening</span>
                 </Link>
 
                 <Link :href="route('profile.edit')" class="flex flex-col items-center gap-1 group">
-                    <div :class="route().current('profile.edit') ? 'text-indigo-600 scale-110' : 'text-gray-300'" class="transition-all duration-300 text-lg">👤</div>
+                    <div :class="route().current('profile.edit') ? 'text-indigo-600 scale-110' : 'text-gray-300'" class="transition-all duration-300 text-lg"></div>
                     <span :class="route().current('profile.edit') ? 'text-indigo-600 font-black' : 'text-gray-400 font-bold'" class="text-[8px] uppercase tracking-widest">Akun</span>
                 </Link>
             </nav>

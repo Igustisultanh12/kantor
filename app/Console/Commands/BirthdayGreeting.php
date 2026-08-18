@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Console\Commands;
 
@@ -26,7 +26,7 @@ class BirthdayGreeting extends Command
     {
         // Mendapatkan tanggal hari ini (Bulan-Tanggal)
         $today = now()->format('m-d');
-        $this->info("🛰️ Radar HUT Aktif: Memindai pangkalan untuk tanggal $today...");
+        $this->info(" Radar HUT Aktif: Memindai pangkalan untuk tanggal $today...");
 
         // 1. SCAN TARGET: PERSONEL PUNYA AKUN (USERS)
         // Mengambil data dari tabel users (pangkat, name, phone, birth_date)
@@ -49,7 +49,7 @@ class BirthdayGreeting extends Command
             $this->kirimPesan($p->phone, $p->name, $p->pangkat, "Personel Tidak Terdaftar");
         }
 
-        $this->info("✅ Selesai. Seluruh ucapan telah dipancarkan.");
+        $this->info(" Selesai. Seluruh ucapan telah dipancarkan.");
     }
 
     /**
@@ -59,7 +59,7 @@ class BirthdayGreeting extends Command
     {
         // Validasi Nomor Telepon
         if (!$phone) {
-            $this->error("⚠️ Gagal mengirim ke $name ($type): Nomor telepon tidak ditemukan.");
+            $this->error(" Gagal mengirim ke $name ($type): Nomor telepon tidak ditemukan.");
             return;
         }
 
@@ -87,15 +87,15 @@ class BirthdayGreeting extends Command
             ]);
 
             if ($response->successful()) {
-                $this->info("🚀 Berhasil mengirim ke: $identitasLengkap [$type]");
+                $this->info(" Berhasil mengirim ke: $identitasLengkap [$type]");
             } else {
                 Log::error("Gagal mengirim WA ke $identitasLengkap: " . $response->body());
-                $this->error("❌ Respon Gateway Gagal untuk: $identitasLengkap");
+                $this->error(" Respon Gateway Gagal untuk: $identitasLengkap");
             }
         } catch (\Exception $e) {
             // Log jika terjadi gangguan koneksi ke port 3000
             Log::error("Gangguan Radar WA Gateway: " . $e->getMessage());
-            $this->error("❌ Gagal menghubungi WA Gateway. Pastikan PM2 wa-gateway sedang aktif!");
+            $this->error(" Gagal menghubungi WA Gateway. Pastikan PM2 wa-gateway sedang aktif!");
         }
     }
 }

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers;
 
@@ -169,13 +169,13 @@ class SkhppController extends Controller
             $komandan = User::where('role', 'komandan')->whereNotNull('phone')->first() 
                      ?? User::where('role', 'admin')->whereNotNull('phone')->first();
             $katName = ($skhpp->kategori_personel === 'perusahaan') ? 'SKHPP-P (Mitra Kerja/Perusahaan)' : 'SKHPP-D (Dinas Militer & PNS)';
-            $pesanKomandan = "📢 *SI SINDEN: PENGAJUAN SKHPP BARU*\n\n" .
+            $pesanKomandan = " *SI SINDEN: PENGAJUAN SKHPP BARU*\n\n" .
                              "Mohon izin Komandan, terdapat pengajuan penerbitan SKHPP baru:\n\n" .
-                             "📝 *Nama:* {$skhpp->nama}\n" .
-                             "👤 *Pangkat/NRP/NIK:* " . ($skhpp->pangkat_korps_nrp ?: ($skhpp->nik ?: '-')) . "\n" .
-                             "🏷️ *Kategori:* {$katName}\n" .
-                             "🎯 *Peruntukan:* {$skhpp->peruntukan}\n" .
-                             "👨‍💻 *Operator Pengaju:* {$user->name}\n\n" .
+                             " *Nama:* {$skhpp->nama}\n" .
+                             " *Pangkat/NRP/NIK:* " . ($skhpp->pangkat_korps_nrp ?: ($skhpp->nik ?: '-')) . "\n" .
+                             " *Kategori:* {$katName}\n" .
+                             " *Peruntukan:* {$skhpp->peruntukan}\n" .
+                             " *Operator Pengaju:* {$user->name}\n\n" .
                              "Mohon izin untuk memeriksa berkas di Laman : https://sisinden.my.id/signature-requests";
 
             AppNotification::notify(
@@ -311,13 +311,13 @@ class SkhppController extends Controller
                      ?? User::where('role', 'admin')->whereNotNull('phone')->first();
             if ($komandan && $komandan->phone) {
                 $katName = ($skhpp->kategori_personel === 'perusahaan') ? 'SKHPP-P (Mitra Kerja/Perusahaan)' : 'SKHPP-D (Dinas Militer & PNS)';
-                $pesanKomandan = "📢 *SI SINDEN: PERBAIKAN & PENGAJUAN ULANG SKHPP*\n\n" .
+                $pesanKomandan = " *SI SINDEN: PERBAIKAN & PENGAJUAN ULANG SKHPP*\n\n" .
                                  "Mohon izin Komandan, terdapat perbaikan data SKHPP oleh Operator yang diajukan ulang:\n\n" .
-                                 "📝 *Nama:* {$skhpp->nama}\n" .
-                                 "👤 *Pangkat/NRP/NIK:* " . ($skhpp->pangkat_korps_nrp ?: ($skhpp->nik ?: '-')) . "\n" .
-                                 "🏷️ *Kategori:* {$katName}\n" .
-                                 "🎯 *Peruntukan:* {$skhpp->peruntukan}\n" .
-                                 "👨‍💻 *Operator:* {$user->name}\n\n" .
+                                 " *Nama:* {$skhpp->nama}\n" .
+                                 " *Pangkat/NRP/NIK:* " . ($skhpp->pangkat_korps_nrp ?: ($skhpp->nik ?: '-')) . "\n" .
+                                 " *Kategori:* {$katName}\n" .
+                                 " *Peruntukan:* {$skhpp->peruntukan}\n" .
+                                 " *Operator:* {$user->name}\n\n" .
                                  "Mohon izin untuk memeriksa berkas di Laman : https://sisinden.my.id/signature-requests";
 
                 WhatsappService::sendMessage($komandan->phone, $pesanKomandan);
@@ -418,11 +418,11 @@ class SkhppController extends Controller
         try {
             $operator = User::find($skhpp->submitted_by);
             $katName = ($skhpp->kategori_personel === 'perusahaan') ? 'SKHPP-P' : 'SKHPP-D';
-            $pesanOperator = "✅ *SI SINDEN: SKHPP RESMI DISAHKAN & DITANDATANGANI*\n\n" .
+            $pesanOperator = " *SI SINDEN: SKHPP RESMI DISAHKAN & DITANDATANGANI*\n\n" .
                              "Laporan untuk Operator/Pengaju, SKHPP telah disetujui & ditandatangani Komandan:\n\n" .
-                             "📝 *Nama:* {$skhpp->nama}\n" .
-                             "🔢 *Nomor SKHPP:* {$formattedNo}\n" .
-                             "🏷️ *Kategori:* {$katName}\n\n" .
+                             " *Nama:* {$skhpp->nama}\n" .
+                             " *Nomor SKHPP:* {$formattedNo}\n" .
+                             " *Kategori:* {$katName}\n\n" .
                              "Dokumen resmi & QR Code TTD sudah terbit dan dapat diunduh di Laman : https://sisinden.my.id/skhpp";
 
             AppNotification::notify(
@@ -467,10 +467,10 @@ class SkhppController extends Controller
         // Kirim Notifikasi Sistem In-App Bell & WA ke Operator / Pengaju
         try {
             $operator = User::find($skhpp->submitted_by);
-            $pesanRevisi = "⚠️ *SI SINDEN: PERMOHONAN SKHPP MEMERLUKAN REVISI*\n\n" .
+            $pesanRevisi = " *SI SINDEN: PERMOHONAN SKHPP MEMERLUKAN REVISI*\n\n" .
                            "Laporan untuk Operator/Pengaju, pengajuan SKHPP dikembalikan Komandan untuk direvisi:\n\n" .
-                           "📝 *Nama:* {$skhpp->nama}\n" .
-                           "📌 *Catatan Revisi Komandan:* {$request->catatan_revisi}\n\n" .
+                           " *Nama:* {$skhpp->nama}\n" .
+                           " *Catatan Revisi Komandan:* {$request->catatan_revisi}\n\n" .
                            "Silakan lakukan perbaikan data pada Laman : https://sisinden.my.id/skhpp";
 
             AppNotification::notify(
@@ -672,14 +672,14 @@ class SkhppController extends Controller
             $komandan = User::where('role', 'komandan')->whereNotNull('phone')->first() 
                      ?? User::where('role', 'admin')->whereNotNull('phone')->first();
 
-            $pesanBooking = "🔢 *SI SINDEN: NOMOR SKHPP BERHASIL DIBOOKING*\n\n" .
+            $pesanBooking = " *SI SINDEN: NOMOR SKHPP BERHASIL DIBOOKING*\n\n" .
                             "Laporan untuk Operator & Komandan, Admin telah mengatur/booking nomor urut SKHPP:\n\n" .
-                            "📝 *Nama Personel:* {$skhpp->nama}\n" .
-                            "🏷️ *Kategori:* {$targetCode}\n" .
-                            "🔢 *Nomor SKHPP Dibooking:* {$formattedNo}\n" .
-                            "🎯 *Peruntukan:* {$skhpp->peruntukan}\n" .
-                            "📌 *Status Berkas:* Pending TTD Komandan\n" .
-                            "👨‍💻 *Diatur Oleh Admin:* {$user->name}\n\n" .
+                            " *Nama Personel:* {$skhpp->nama}\n" .
+                            " *Kategori:* {$targetCode}\n" .
+                            " *Nomor SKHPP Dibooking:* {$formattedNo}\n" .
+                            " *Peruntukan:* {$skhpp->peruntukan}\n" .
+                            " *Status Berkas:* Pending TTD Komandan\n" .
+                            " *Diatur Oleh Admin:* {$user->name}\n\n" .
                             "Dokumen dapat dipantau di Laman : https://sisinden.my.id/skhpp";
 
             AppNotification::notify(
@@ -721,13 +721,13 @@ class SkhppController extends Controller
             $komandan = User::where('role', 'komandan')->whereNotNull('phone')->first() 
                      ?? User::where('role', 'admin')->whereNotNull('phone')->first();
             $katName = ($skhpp->kategori_personel === 'perusahaan') ? 'SKHPP-P (Mitra Kerja/Perusahaan)' : 'SKHPP-D (Dinas Militer & PNS)';
-            $pesan = "📢 *SI SINDEN: PENGAJUAN ULANG TTE SKHPP*\n\n" .
+            $pesan = " *SI SINDEN: PENGAJUAN ULANG TTE SKHPP*\n\n" .
                      "Mohon izin Komandan, terdapat permohonan SKHPP yang DIAJUKAN ULANG oleh Admin untuk otorisasi TTE Komandan:\n\n" .
-                     "📝 *Nama:* {$skhpp->nama}\n" .
-                     "👤 *Pangkat/NRP/NIK:* " . ($skhpp->pangkat_korps_nrp ?: ($skhpp->nik ?: '-')) . "\n" .
-                     "🏷️ *Kategori:* {$katName}\n" .
-                     "🎯 *Peruntukan:* {$skhpp->peruntukan}\n" .
-                     "👨‍💻 *Pengaju (Admin):* {$user->name}\n\n" .
+                     " *Nama:* {$skhpp->nama}\n" .
+                     " *Pangkat/NRP/NIK:* " . ($skhpp->pangkat_korps_nrp ?: ($skhpp->nik ?: '-')) . "\n" .
+                     " *Kategori:* {$katName}\n" .
+                     " *Peruntukan:* {$skhpp->peruntukan}\n" .
+                     " *Pengaju (Admin):* {$user->name}\n\n" .
                      "Mohon izin untuk memeriksa & menyetujui berkas di Laman : https://sisinden.my.id/signature-requests";
             
             AppNotification::notify(

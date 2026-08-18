@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, nextTick } from 'vue';
@@ -201,8 +201,7 @@ const handleManualUpload = (e) => {
             <div class="bg-white rounded-3xl shadow-xs border border-[#E2E8F0] overflow-hidden">
                 <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                     <h3 class="font-extrabold text-slate-900 uppercase text-xs tracking-wider flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-blue-600 animate-ping"></span>
-                        📡 Berkas Menunggu Validasi Stempel
+                        <span class="w-2 h-2 rounded-full bg-blue-600 animate-ping"></span> Berkas Menunggu Validasi Stempel
                     </h3>
                 </div>
                 <div class="overflow-x-auto">
@@ -221,7 +220,7 @@ const handleManualUpload = (e) => {
                                     <div class="text-[9px] text-slate-400 font-bold mt-0.5 uppercase">{{ doc.letter_number || 'NO-REF' }}</div>
                                 </td>
                                 <td class="p-4 text-[10px]">
-                                    <span class="text-emerald-600 font-extrabold uppercase tracking-wider">✓ DISAHKAN KOMANDAN</span>
+                                    <span class="text-emerald-600 font-extrabold uppercase tracking-wider"> DISAHKAN KOMANDAN</span>
                                 </td>
                                 <td class="p-4 text-right">
                                     <button @click="openStamping(doc)" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-2xl font-extrabold text-xs uppercase shadow-xs transition tracking-wider">LAKUKAN STEMPEL</button>
@@ -239,7 +238,7 @@ const handleManualUpload = (e) => {
             <div class="bg-white rounded-3xl shadow-xs border border-[#E2E8F0] overflow-hidden">
                 <div class="p-6 border-b border-slate-100 bg-emerald-50/40 flex justify-between items-center">
                     <h3 class="font-extrabold text-emerald-900 uppercase text-xs tracking-wider flex items-center gap-2">
-                        <span>✅</span> Riwayat Berkas Selesai Stempel
+                        <span></span> Riwayat Berkas Selesai Stempel
                     </h3>
                 </div>
                 <div class="overflow-x-auto">
@@ -255,7 +254,7 @@ const handleManualUpload = (e) => {
                                     <div class="text-[8px] text-slate-400 font-bold uppercase mt-1">{{ history.date }}</div>
                                 </td>
                                 <td class="p-6 text-right">
-                                    <a :href="history.file_url" target="_blank" class="bg-white border border-emerald-200 text-emerald-600 px-5 py-2 rounded-xl font-black text-[9px] uppercase hover:bg-emerald-600 hover:text-white transition-all shadow-sm">📄 LIHAT PDF</a>
+                                    <a :href="history.file_url" target="_blank" class="bg-white border border-emerald-200 text-emerald-600 px-5 py-2 rounded-xl font-black text-[9px] uppercase hover:bg-emerald-600 hover:text-white transition-all shadow-sm"> LIHAT PDF</a>
                                 </td>
                             </tr>
                         </tbody>
@@ -286,8 +285,7 @@ const handleManualUpload = (e) => {
             <div class="flex-1 overflow-auto bg-slate-900/90 relative p-10 custom-scrollbar" id="stamp-pdf-container">
                 <div id="pdf-render-wrapper" class="relative flex flex-col items-center">
                     
-                    <div v-if="isPdfReady" 
-                         class="drag-stamp absolute z-[3000] cursor-move border-2 border-emerald-500 bg-emerald-50/10 backdrop-blur-[1px] shadow-2xl flex items-center justify-center touch-none"
+                    <div v-if="isPdfReady"class="drag-stamp absolute z-[3000] cursor-move border-2 border-emerald-500 bg-emerald-50/10 backdrop-blur-[1px] shadow-2xl flex items-center justify-center touch-none"
                          :style="{ 
                             left: stampPos.x + 'px', 
                             top: (stampPos.y + (document.getElementById(`page-container-${currentPage}`)?.offsetTop || 0)) + 'px', 

@@ -1,6 +1,5 @@
-<x-app-layout>
-    <div class="flex h-[calc(100vh-65px)] bg-[#09090b] text-zinc-300" 
-         x-data="{ selectedSub: null, nextNumber: 'Pilih kategori...', isLoading: false }">
+﻿<x-app-layout>
+    <div class="flex h-[calc(100vh-65px)] bg-[#09090b] text-zinc-300"x-data="{ selectedSub: null, nextNumber: 'Pilih kategori...', isLoading: false }">
          
         
         <div class="w-80 bg-[#121214] border-r border-zinc-800 flex flex-col">
@@ -11,8 +10,7 @@
                 @foreach($subCategories as $sub)
                 <button 
                     @click="selectedSub = {{ $sub->id }}; fetchNomor({{ $sub->id }})"
-                    :class="selectedSub === {{ $sub->id }} ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'hover:bg-zinc-800 text-zinc-400'"
-                    class="w-full text-left px-4 py-4 rounded-xl transition-all duration-200 group flex justify-between items-center">
+                    :class="selectedSub === {{ $sub->id }} ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'hover:bg-zinc-800 text-zinc-400'"class="w-full text-left px-4 py-4 rounded-xl transition-all duration-200 group flex justify-between items-center">
                     <div>
                         <div class="text-sm font-semibold group-hover:text-white">{{ $sub->name }}</div>
                         <div class="text-[10px] opacity-50">{{ $sub->category->name }}</div>
@@ -34,21 +32,17 @@
                             
                             <div>
                                 <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Nomor Surat Tergenerate</label>
-                                <div class="mt-2 p-5 bg-[#09090b] border border-zinc-800 rounded-2xl text-2xl font-mono text-blue-400 tracking-tighter"
-                                     x-text="nextNumber">
+                                <div class="mt-2 p-5 bg-[#09090b] border border-zinc-800 rounded-2xl text-2xl font-mono text-blue-400 tracking-tighter"x-text="nextNumber">
                                 </div>
                             </div>
 
                             <div>
                                 <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Perihal / Subjek</label>
                                 <textarea name="subject" required 
-                                    class="mt-2 w-full bg-[#09090b] border border-zinc-800 rounded-2xl text-zinc-200 focus:border-blue-500 focus:ring-0 placeholder-zinc-700" 
-                                    rows="4" placeholder="Ketik perihal surat di sini..."></textarea>
+                                    class="mt-2 w-full bg-[#09090b] border border-zinc-800 rounded-2xl text-zinc-200 focus:border-blue-500 focus:ring-0 placeholder-zinc-700"rows="4" placeholder="Ketik perihal surat di sini..."></textarea>
                             </div>
 
-                            <button type="submit" :disabled="!selectedSub || isLoading" 
-                                class="w-full py-5 bg-white text-black font-black rounded-2xl hover:bg-zinc-200 disabled:opacity-20 transition-all uppercase tracking-widest text-sm">
-                                Simpan Arsip
+                            <button type="submit" :disabled="!selectedSub || isLoading"class="w-full py-5 bg-white text-black font-black rounded-2xl hover:bg-zinc-200 disabled:opacity-20 transition-all uppercase tracking-widest text-sm"> Simpan Arsip
                             </button>
                         </form>
                     </div>
@@ -80,8 +74,7 @@
         </div>
     </div>
 
-    <script>
-        function fetchNomor(id) {
+    <script> function fetchNomor(id) {
             fetch(`/get-nomor/${id}`)
                 .then(res => res.json())
                 .then(data => {

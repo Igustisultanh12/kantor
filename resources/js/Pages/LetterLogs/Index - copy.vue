@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { useForm, Head, router, Link, usePage } from '@inertiajs/vue3';
 import { ref, watch, computed } from 'vue';
@@ -217,11 +217,9 @@ const handleFileUpload = (event) => {
                     </div>
 
                     <div class="flex items-end h-full gap-2 mt-3 md:mt-0">
-                        <button @click="openPreview" class="px-5 py-2.5 bg-indigo-100 text-indigo-700 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-indigo-200 transition-all">
-                            Pratinjau
+                        <button @click="openPreview" class="px-5 py-2.5 bg-indigo-100 text-indigo-700 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-indigo-200 transition-all"> Pratinjau
                         </button>
-                        <button @click="downloadPDF" class="px-5 py-2.5 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-indigo-600 transition-all">
-                            Unduh PDF
+                        <button @click="downloadPDF" class="px-5 py-2.5 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-indigo-600 transition-all"> Unduh PDF
                         </button>
                     </div>
                 </div>
@@ -276,8 +274,7 @@ const handleFileUpload = (event) => {
                                 </div>
                             </div>
 
-                            <button :disabled="form.processing || !form.category_id" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all shadow-lg active:scale-95 disabled:opacity-50 text-center">
-                                Booking Nomor Sekarang
+                            <button :disabled="form.processing || !form.category_id" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all shadow-lg active:scale-95 disabled:opacity-50 text-center"> Booking Nomor Sekarang
                             </button>
                         </form>
                     </div>
@@ -309,7 +306,7 @@ const handleFileUpload = (event) => {
                                         <td class="px-8 py-5 text-right">
                                             <button v-if="!log.is_archived" @click="triggerUpload(log.id)" class="bg-white border border-indigo-200 text-indigo-600 px-4 py-2 rounded-xl text-[9px] font-black uppercase hover:bg-indigo-600 hover:text-white transition-all">Upload PDF</button>
                                             <div v-else class="flex flex-col items-end">
-                                                <span class="text-emerald-500 font-black text-[10px] uppercase italic">✓ Terarsip</span>
+                                                <span class="text-emerald-500 font-black text-[10px] uppercase italic"> Terarsip</span>
                                                 <span class="text-[8px] text-gray-400 font-bold uppercase mt-1 tracking-widest">Akses Digital Aktif</span>
                                             </div>
                                         </td>
@@ -379,9 +376,7 @@ const handleFileUpload = (event) => {
                             
                             <div class="border-t border-black w-full mb-2"></div>
                             
-                            <p class="mb-20">
-                                a.n. Komandan Detasemen Intelijen<br>
-                                Petugas Administrasi,
+                            <p class="mb-20"> a.n. Komandan Detasemen Intelijen<br> Petugas Administrasi,
                             </p>
                             
                             <p class="font-bold underline leading-none">{{ user.name }}</p>

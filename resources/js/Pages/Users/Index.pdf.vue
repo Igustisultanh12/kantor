@@ -1,5 +1,4 @@
-<script setup>
-import { Head } from '@inertiajs/vue3';
+﻿<script setup> import { Head } from '@inertiajs/vue3';
 import { onMounted } from 'vue';
 
 const props = defineProps({ users: Array, title: String, unit: String, date: String });

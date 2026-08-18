@@ -1,9 +1,8 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
     <title>Rekap Personel</title>
-    <style>
-        body { font-family: sans-serif; text-transform: uppercase; font-size: 10px; }
+    <style> body { font-family: sans-serif; text-transform: uppercase; font-size: 10px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { border: 1px solid black; padding: 8px; text-align: center; }
         .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid black; padding-bottom: 10px; }

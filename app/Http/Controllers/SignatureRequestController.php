@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers;
 
@@ -82,10 +82,10 @@ class SignatureRequestController extends Controller
 
             $komandan = User::where('role', 'komandan')->whereNotNull('phone')->first() 
                      ?? User::where('role', 'admin')->whereNotNull('phone')->first();
-            $pesan = "📢 *SI SINDEN: PEMBERITAHUAN*\n\n" .
+            $pesan = " *SI SINDEN: PEMBERITAHUAN*\n\n" .
                      "Mohon izin Komandan, terdapat pengajuan berkas baru:\n\n" .
-                     "📝 *Perihal:* {$request->subject}\n" .
-                     "👤 *Pengaju:* " . auth()->user()->name . "\n\n" .
+                     " *Perihal:* {$request->subject}\n" .
+                     " *Pengaju:* " . auth()->user()->name . "\n\n" .
                      "Mohon izin untuk memeriksa berkas di Laman : https://sisinden.my.id/signature-requests";
 
             AppNotification::notify(
@@ -132,10 +132,10 @@ class SignatureRequestController extends Controller
 
                 $komandan = User::where('role', 'komandan')->first();
                 if ($komandan && $komandan->phone) {
-                    $pesanRev = "🔄 *SI SINDEN: BERKAS TELAH DIREVISI*\n\n" .
+                    $pesanRev = " *SI SINDEN: BERKAS TELAH DIREVISI*\n\n" .
                                 "Mohon izin Komandan, berkas yang sebelumnya ditolak telah diperbaiki oleh staf:\n\n" .
-                                "📝 *Perihal:* {$signatureRequest->subject}\n" .
-                                "👤 *Oleh:* {$user->name}\n\n" .
+                                " *Perihal:* {$signatureRequest->subject}\n" .
+                                " *Oleh:* {$user->name}\n\n" .
                                 "Mohon izin untuk memeriksa berkas di : https://sisinden.my.id/signature-request";
                     WhatsappService::sendMessage($komandan->phone, $pesanRev);
                 }
@@ -290,13 +290,13 @@ class SignatureRequestController extends Controller
             // Notifikasi Sistem In-App Bell & WA
             $targetUser = $signatureRequest->user;
             $isApproved = ($request->status === 'approved');
-            $statusMsg = $isApproved ? "✅ *TELAH DISAHKAN*" : "❌ *DITOLAK / PERLU REVISI*";
+            $statusMsg = $isApproved ? " *TELAH DISAHKAN*" : " *DITOLAK / PERLU REVISI*";
             $ket = $isApproved ? "Silakan unduh berkas Anda." : "Alasan: _" . ($request->note ?? '-') . "_";
             
-            $pesanWA = "📢 *SI SINDEN: STATUS BERKAS*\n\n" .
+            $pesanWA = " *SI SINDEN: STATUS BERKAS*\n\n" .
                        "Berkas: *{$signatureRequest->subject}*\n" .
                        "Status: {$statusMsg}\n\n" .
-                       "📝 {$ket}";
+                       " {$ket}";
 
             AppNotification::notify(
                 $signatureRequest->user_id,

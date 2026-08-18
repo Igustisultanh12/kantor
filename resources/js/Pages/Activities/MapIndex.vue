@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
 import { ref, onMounted, computed, watch, nextTick } from 'vue';
@@ -112,8 +112,7 @@ const getNumberedIcon = (category, displayNumber) => {
         className: 'custom-numbered-marker',
         html: `
             <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
-                <div style="
-                    background-color: ${color};
+                <div style="background-color: ${color};
                     width: 26px;
                     height: 26px;
                     border-radius: 50% 50% 50% 0;
@@ -124,8 +123,7 @@ const getNumberedIcon = (category, displayNumber) => {
                     border: 2px solid white;
                     box-shadow: 0 2px 5px rgba(0,0,0,0.3);
                 ">
-                    <span style="
-                        transform: rotate(45deg);
+                    <span style="transform: rotate(45deg);
                         color: white;
                         font-weight: 900;
                         font-size: 10px;
@@ -386,7 +384,7 @@ const closeMainModal = () => {
                                 </h4>
                                 <p class="text-[10px] text-gray-600 mb-3 italic leading-relaxed">"{{ act.description }}"</p>
                                 <div class="flex items-center gap-1.5 pt-2 border-t border-gray-50">
-                                    <span class="text-[10px]">📍</span>
+                                    <span class="text-[10px]"></span>
                                     <span class="text-[9px] font-black text-gray-400 uppercase tracking-tighter">{{ act.location_name }}</span>
                                 </div>
                             </div>
@@ -454,7 +452,7 @@ const closeMainModal = () => {
 
                     <div class="space-y-2 text-left">
                         <label class="text-[10px] font-black text-indigo-600 uppercase ml-2 flex items-center gap-2">
-                            <span class="animate-pulse">🔍</span> Cari Alamat/Desa/Kecamatan:
+                            <span class="animate-pulse"></span> Cari Alamat/Desa/Kecamatan:
                         </label>
                         <div class="relative">
                             <input v-model="searchInput" @input="handleSearch" type="text" placeholder="Ketik nama lokasi..." class="w-full rounded-2xl border-2 border-indigo-50 bg-white h-12 text-xs font-bold px-4 focus:border-indigo-500 shadow-sm">
@@ -495,27 +493,27 @@ const closeMainModal = () => {
                 <h3 class="text-2xl font-black text-indigo-950 uppercase mt-4 leading-tight border-b-2 border-indigo-50 pb-4">{{ selectedActivity?.title }}</h3>
                 <div class="mt-8 space-y-6">
                     <div class="flex gap-4">
-                        <div class="h-10 w-10 bg-indigo-50 rounded-xl flex items-center justify-center text-xl shrink-0">📅</div>
+                        <div class="h-10 w-10 bg-indigo-50 rounded-xl flex items-center justify-center text-xl shrink-0"></div>
                         <div>
                             <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Waktu Pelaksanaan</p>
                             <p class="text-sm font-bold text-gray-700">{{ selectedActivity?.activity_date }}</p>
                         </div>
                     </div>
                     <div class="flex gap-4">
-                        <div class="h-10 w-10 bg-indigo-50 rounded-xl flex items-center justify-center text-xl shrink-0">📍</div>
+                        <div class="h-10 w-10 bg-indigo-50 rounded-xl flex items-center justify-center text-xl shrink-0"></div>
                         <div>
                             <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Lokasi Teritorial</p>
                             <p class="text-sm font-bold text-gray-700 uppercase leading-relaxed">{{ selectedActivity?.location_name }}</p>
                         </div>
                     </div>
                     <div class="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
-                        <p class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-3 flex items-center gap-2"><span>📝</span> Uraian Detail Rencana:</p>
+                        <p class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-3 flex items-center gap-2"><span></span> Uraian Detail Rencana:</p>
                         <p class="text-sm text-gray-600 italic leading-relaxed whitespace-pre-line">"{{ selectedActivity?.description || 'Tidak ada uraian detail terlampir.' }}"</p>
                     </div>
                 </div>
                 <div class="flex gap-3 mt-10">
-                    <button @click="openEditMode" class="flex-1 py-4 bg-indigo-50 text-indigo-600 rounded-2xl font-black uppercase text-[11px] tracking-widest hover:bg-indigo-600 hover:text-white transition-all active:scale-95">⚙️ Edit Plot</button>
-                    <button @click="deleteActivity(selectedActivity.id)" class="px-8 py-4 bg-red-50 text-red-600 rounded-2xl font-black uppercase text-[11px] tracking-widest hover:bg-red-600 hover:text-white transition-all border border-red-100 active:scale-95 shadow-lg shadow-red-100">🗑️ Hapus</button>
+                    <button @click="openEditMode" class="flex-1 py-4 bg-indigo-50 text-indigo-600 rounded-2xl font-black uppercase text-[11px] tracking-widest hover:bg-indigo-600 hover:text-white transition-all active:scale-95"> Edit Plot</button>
+                    <button @click="deleteActivity(selectedActivity.id)" class="px-8 py-4 bg-red-50 text-red-600 rounded-2xl font-black uppercase text-[11px] tracking-widest hover:bg-red-600 hover:text-white transition-all border border-red-100 active:scale-95 shadow-lg shadow-red-100"> Hapus</button>
                 </div>
             </div>
         </div>

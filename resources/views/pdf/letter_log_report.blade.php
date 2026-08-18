@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
@@ -93,8 +93,7 @@
 
     <div class="judul-container">
         <h3>LAPORAN REKAPITULASI PENOMORAN SURAT</h3>
-        <p style="font-size: 10px; font-weight: bold; margin-top: 5px;">
-            KATEGORI: {{ $category_name }}
+        <p style="font-size: 10px; font-weight: bold; margin-top: 5px;"> KATEGORI: {{ $category_name }}
         </p>
     </div>
 

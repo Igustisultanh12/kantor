@@ -1,5 +1,4 @@
-<script setup>
-defineProps({
+﻿<script setup> defineProps({
     value: {
         type: String,
     },

@@ -1,5 +1,4 @@
-<script setup>
-import InputError from '@/Components/InputError.vue';
+﻿<script setup> import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
@@ -38,28 +37,21 @@ const submit = () => {
 <template>
     <section>
         <header>
-            <h2 class="text-lg font-medium text-gray-900">
-                Informasi Personel
+            <h2 class="text-lg font-medium text-gray-900"> Informasi Personel
             </h2>
 
-            <p class="mt-1 text-sm text-gray-600">
-                Perbarui data Nama, Pangkat, NRP, dan Nomor WhatsApp Anda. Data akan tersimpan sesuai dengan besar-kecil huruf yang Anda ketikkan.
+            <p class="mt-1 text-sm text-gray-600"> Perbarui data Nama, Pangkat, NRP, dan Nomor WhatsApp Anda. Data akan tersimpan sesuai dengan besar-kecil huruf yang Anda ketikkan.
             </p>
         </header>
 
         <form
-            @submit.prevent="submit"
-            class="mt-6 space-y-6"
+            @submit.prevent="submit"class="mt-6 space-y-6"
         >
             <div>
                 <InputLabel for="name" value="Nama Lengkap" />
 
                 <TextInput
-                    id="name"
-                    type="text"
-                    class="mt-1 block w-full font-bold" 
-                    v-model="form.name"
-                    required
+                    id="name"type="text"class="mt-1 block w-full font-bold"v-model="form.name"required
                     autofocus
                     autocomplete="name"
                 />
@@ -71,12 +63,7 @@ const submit = () => {
                 <InputLabel for="pangkat" value="Pangkat" />
 
                 <TextInput
-                    id="pangkat"
-                    type="text"
-                    class="mt-1 block w-full"
-                    v-model="form.pangkat"
-                    placeholder="Contoh: Letnan Dua Laut (E)"
-                    required
+                    id="pangkat"type="text"class="mt-1 block w-full"v-model="form.pangkat"placeholder="Contoh: Letnan Dua Laut (E)"required
                 />
 
                 <InputError class="mt-2" :message="form.errors.pangkat" />
@@ -86,12 +73,7 @@ const submit = () => {
                 <InputLabel for="nrp" value="NRP" />
 
                 <TextInput
-                    id="nrp"
-                    type="text"
-                    class="mt-1 block w-full"
-                    v-model="form.nrp"
-                    placeholder="SILAHKAN ISIKAN NRP"
-                    required
+                    id="nrp"type="text"class="mt-1 block w-full"v-model="form.nrp"placeholder="SILAHKAN ISIKAN NRP"required
                 />
 
                 <InputError class="mt-2" :message="form.errors.nrp" />
@@ -101,12 +83,7 @@ const submit = () => {
                 <InputLabel for="phone" value="Nomor WhatsApp (Aktif)" />
 
                 <TextInput
-                    id="phone"
-                    type="text"
-                    class="mt-1 block w-full"
-                    v-model="form.phone"
-                    placeholder="Contoh: 08123456789"
-                    required
+                    id="phone"type="text"class="mt-1 block w-full"v-model="form.phone"placeholder="Contoh: 08123456789"required
                 />
 
                 <InputError class="mt-2" :message="form.errors.phone" />
@@ -120,11 +97,7 @@ const submit = () => {
                 <InputLabel for="email" value="Email" />
 
                 <TextInput
-                    id="email"
-                    type="email"
-                    class="mt-1 block w-full"
-                    v-model="form.email"
-                    required
+                    id="email"type="email"class="mt-1 block w-full"v-model="form.email"required
                     autocomplete="username"
                 />
 
@@ -132,23 +105,16 @@ const submit = () => {
             </div>
 
             <div v-if="mustVerifyEmail && user.email_verified_at === null">
-                <p class="mt-2 text-sm text-gray-800">
-                    Your email address is unverified.
+                <p class="mt-2 text-sm text-gray-800"> Your email address is unverified.
                     <Link
-                        :href="route('verification.send')"
-                        method="post"
-                        as="button"
-                        class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                    >
-                        Click here to re-send the verification email.
+                        :href="route('verification.send')"method="post"as="button"class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                    > Click here to re-send the verification email.
                     </Link>
                 </p>
 
                 <div
-                    v-show="status === 'verification-link-sent'"
-                    class="mt-2 text-sm font-medium text-green-600"
-                >
-                    A new verification link has been sent to your email address.
+                    v-show="status === 'verification-link-sent'"class="mt-2 text-sm font-medium text-green-600"
+                > A new verification link has been sent to your email address.
                 </div>
             </div>
 
@@ -156,16 +122,11 @@ const submit = () => {
                 <PrimaryButton :disabled="form.processing">Simpan Perubahan</PrimaryButton>
 
                 <Transition
-                    enter-active-class="transition ease-in-out"
-                    enter-from-class="opacity-0"
-                    leave-active-class="transition ease-in-out"
-                    leave-to-class="opacity-0"
+                    enter-active-class="transition ease-in-out"enter-from-class="opacity-0"leave-active-class="transition ease-in-out"leave-to-class="opacity-0"
                 >
                     <p
-                        v-if="form.recentlySuccessful"
-                        class="text-sm text-emerald-600 font-bold"
-                    >
-                        Berhasil Disimpan.
+                        v-if="form.recentlySuccessful"class="text-sm text-emerald-600 font-bold"
+                    > Berhasil Disimpan.
                     </p>
                 </Transition>
             </div>

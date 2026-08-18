@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
@@ -187,7 +187,7 @@ const downloadPDF = () => {
                 <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                     <div>
                         <h2 class="font-extrabold text-slate-900 uppercase tracking-tight text-lg sm:text-xl flex items-center gap-2">
-                            <span>🏢</span> Pencatatan Pembayaran Mitra
+                            <span></span> Pencatatan Pembayaran Mitra
                         </h2>
                         <p class="text-xs text-slate-500 font-semibold mt-0.5">Matriks Monitoring Setoran / Pembayaran Mitra Bulanan</p>
                     </div>
@@ -203,12 +203,12 @@ const downloadPDF = () => {
 
                         <!-- Tombol Tambah Mitra -->
                         <button @click="showCreateModal = true" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase shadow-sm flex items-center gap-2 transition active:scale-95">
-                            <span>➕</span> Tambah Mitra
+                            <span></span> Tambah Mitra
                         </button>
 
                         <!-- Tombol Pratinjau PDF -->
                         <button @click="openPreview" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase shadow-sm flex items-center gap-2 transition active:scale-95">
-                            <span>📄</span> Cetak PDF Matriks
+                            <span></span> Cetak PDF Matriks
                         </button>
                     </div>
                 </div>
@@ -217,12 +217,9 @@ const downloadPDF = () => {
                 <div class="bg-white p-4 rounded-2xl shadow-xs border border-[#E2E8F0] flex flex-col sm:flex-row justify-between items-center gap-4">
                     <div class="relative w-full sm:w-80">
                         <input 
-                            type="text" 
-                            v-model="searchQuery" 
-                            placeholder="Cari Nama Mitra, PT, No Tlp..." 
-                            class="w-full text-xs font-bold rounded-xl border-slate-200 py-2.5 pl-9 pr-8 bg-slate-50 focus:bg-white focus:ring-blue-500 focus:border-blue-600"
+                            type="text"v-model="searchQuery"placeholder="Cari Nama Mitra, PT, No Tlp..."class="w-full text-xs font-bold rounded-xl border-slate-200 py-2.5 pl-9 pr-8 bg-slate-50 focus:bg-white focus:ring-blue-500 focus:border-blue-600"
                         />
-                        <span class="absolute left-3 top-2.5 text-xs text-slate-400">🔍</span>
+                        <span class="absolute left-3 top-2.5 text-xs text-slate-400"></span>
                         <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-2.5 top-2.5 text-slate-400 hover:text-rose-500 text-xs font-bold">×</button>
                     </div>
 
@@ -259,17 +256,13 @@ const downloadPDF = () => {
                                         <div class="flex items-center justify-center gap-1">
                                             <button 
                                                 @click="moveMitra(mitra.id, 'up')" 
-                                                :disabled="index === 0" 
-                                                class="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-20 hover:bg-white rounded transition" 
-                                                title="Geser Ke Atas"
+                                                :disabled="index === 0"class="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-20 hover:bg-white rounded transition"title="Geser Ke Atas"
                                             >
                                                 ▲
                                             </button>
                                             <button 
                                                 @click="moveMitra(mitra.id, 'down')" 
-                                                :disabled="index === filteredMitras.length - 1" 
-                                                class="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-20 hover:bg-white rounded transition" 
-                                                title="Geser Ke Bawah"
+                                                :disabled="index === filteredMitras.length - 1"class="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-20 hover:bg-white rounded transition"title="Geser Ke Bawah"
                                             >
                                                 ▼
                                             </button>
@@ -299,12 +292,11 @@ const downloadPDF = () => {
                                     <!-- 12 Checkbox Bulan -->
                                     <td v-for="m in months" :key="m.id" class="p-2 text-center border-r border-slate-100 select-none">
                                         <button 
-                                            @click="togglePayment(mitra, m.id)" 
-                                            class="w-7 h-7 rounded-lg flex items-center justify-center transition-all transform active:scale-90 font-black text-sm mx-auto shadow-xs"
+                                            @click="togglePayment(mitra, m.id)"class="w-7 h-7 rounded-lg flex items-center justify-center transition-all transform active:scale-90 font-black text-sm mx-auto shadow-xs"
                                             :class="mitra.payment_matrix[m.id] ? 'bg-emerald-500 text-white border border-emerald-600 shadow-emerald-200' : 'bg-slate-100 text-slate-300 border border-slate-200 hover:bg-slate-200 hover:text-slate-500'"
                                             :title="`${mitra.nama} - Bulan ${m.full} ${selectedYear}: ${mitra.payment_matrix[m.id] ? 'Sudah Bayar (Klik untuk batal)' : 'Belum Bayar (Klik untuk lunas)'}`"
                                         >
-                                            <span v-if="mitra.payment_matrix[m.id]">✓</span>
+                                            <span v-if="mitra.payment_matrix[m.id]"></span>
                                             <span v-else class="text-xs opacity-40">-</span>
                                         </button>
                                     </td>
@@ -313,18 +305,17 @@ const downloadPDF = () => {
                                     <td class="p-3 text-center">
                                         <div class="flex justify-center gap-1.5 opacity-90 group-hover:opacity-100">
                                             <button @click="openEdit(mitra)" class="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition" title="Ubah Data">
-                                                ✏️
+                                                
                                             </button>
                                             <button @click="deleteMitra(mitra.id, mitra.nama)" class="p-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-600 hover:text-white transition" title="Hapus Data">
-                                                🗑️
+                                                
                                             </button>
                                         </div>
                                     </td>
                                 </tr>
 
                                 <tr v-if="filteredMitras.length === 0">
-                                    <td colspan="18" class="p-12 text-center text-slate-400 font-extrabold uppercase italic">
-                                        Belum Ada Data Mitra Terdaftar / Tidak Ditemukan.
+                                    <td colspan="18" class="p-12 text-center text-slate-400 font-extrabold uppercase italic"> Belum Ada Data Mitra Terdaftar / Tidak Ditemukan.
                                     </td>
                                 </tr>
                             </tbody>
@@ -339,7 +330,7 @@ const downloadPDF = () => {
         <div v-if="showCreateModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
             <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-5">
                 <div class="flex justify-between items-center border-b pb-3">
-                    <h3 class="font-extrabold uppercase text-xs tracking-wider text-slate-800">➕ Tambah Mitra Baru</h3>
+                    <h3 class="font-extrabold uppercase text-xs tracking-wider text-slate-800"> Tambah Mitra Baru</h3>
                     <button @click="showCreateModal = false" class="text-slate-400 hover:text-slate-600 font-bold text-xl">&times;</button>
                 </div>
 
@@ -376,7 +367,7 @@ const downloadPDF = () => {
         <div v-if="showEditModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
             <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-5">
                 <div class="flex justify-between items-center border-b pb-3">
-                    <h3 class="font-extrabold uppercase text-xs tracking-wider text-slate-800">✏️ Ubah Data Mitra</h3>
+                    <h3 class="font-extrabold uppercase text-xs tracking-wider text-slate-800"> Ubah Data Mitra</h3>
                     <button @click="showEditModal = false" class="text-slate-400 hover:text-slate-600 font-bold text-xl">&times;</button>
                 </div>
 
@@ -443,13 +434,12 @@ const downloadPDF = () => {
 
                             <!-- Value 12 Bulan Checkmarks -->
                             <td v-for="m in months" :key="m.id" style="border: 1px solid #000; padding: 5px 1px; text-align: center; font-weight: bold;">
-                                <span v-if="mitra.payment_matrix[m.id]" style="font-size: 12px;">✓</span>
+                                <span v-if="mitra.payment_matrix[m.id]" style="font-size: 12px;"></span>
                                 <span v-else style="color: #666;">-</span>
                             </td>
                         </tr>
                         <tr v-if="filteredMitras.length === 0">
-                            <td colspan="16" style="border: 1px solid #000; padding: 30px; text-align: center; font-weight: bold; color: #9ca3af;">
-                                BELUM ADA DATA MITRA TERDAFTAR
+                            <td colspan="16" style="border: 1px solid #000; padding: 30px; text-align: center; font-weight: bold; color: #9ca3af;"> BELUM ADA DATA MITRA TERDAFTAR
                             </td>
                         </tr>
                     </tbody>
@@ -473,8 +463,7 @@ const downloadPDF = () => {
                 </div>
                 <div class="p-6 border-t bg-slate-50 flex justify-end gap-3 font-extrabold">
                     <button @click="showPreviewModal = false" class="px-6 py-2.5 text-xs uppercase text-slate-500">Batal</button>
-                    <button @click="downloadPDF(); showPreviewModal = false" class="px-8 py-2.5 bg-blue-600 text-white rounded-xl text-xs uppercase tracking-wider shadow-md hover:bg-blue-700 transition">
-                        Download PDF Resmi
+                    <button @click="downloadPDF(); showPreviewModal = false" class="px-8 py-2.5 bg-blue-600 text-white rounded-xl text-xs uppercase tracking-wider shadow-md hover:bg-blue-700 transition"> Download PDF Resmi
                     </button>
                 </div>
             </div>

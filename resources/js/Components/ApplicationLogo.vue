@@ -1,5 +1,4 @@
-<script setup>
-import { computed } from 'vue';
+﻿<script setup> import { computed } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 
 const page = usePage();
@@ -15,8 +14,7 @@ const agencyName = computed(() => page.props.settings?.agency_name || 'Logo');
         <img 
             v-if="logoPath" 
             :src="'/storage/' + logoPath" 
-            :alt="agencyName" 
-            class="h-full w-full object-cover" 
+            :alt="agencyName"class="h-full w-full object-cover" 
         />
         
         <div 

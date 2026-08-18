@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
@@ -109,10 +109,9 @@ const levelConfig = (level) => {
             <div class="bg-white p-4 rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div class="relative w-full sm:w-80">
                     <input v-model="search" type="text" class="w-full rounded-2xl border-slate-200 bg-slate-50 text-xs font-bold py-3 pl-10 focus:ring-blue-500 focus:border-blue-600 placeholder:text-slate-400" placeholder="Nomor atau perihal..." />
-                    <span class="absolute left-3.5 top-3 text-sm text-slate-400">🔍</span>
+                    <span class="absolute left-3.5 top-3 text-sm text-slate-400"></span>
                 </div>
-                <div class="text-xs font-extrabold text-slate-500 uppercase tracking-wider bg-slate-50 px-4 py-2 rounded-xl">
-                    Total: <span class="text-blue-600 font-black">{{ letters.total || 0 }}</span> Berkas
+                <div class="text-xs font-extrabold text-slate-500 uppercase tracking-wider bg-slate-50 px-4 py-2 rounded-xl"> Total: <span class="text-blue-600 font-black">{{ letters.total || 0 }}</span> Berkas
                 </div>
             </div>
 
@@ -194,7 +193,7 @@ const levelConfig = (level) => {
             <div v-if="isEditing" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
                 <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" @click="isEditing = false"></div>
                 <div class="relative w-full max-w-xl bg-white border-4 border-gray-900 p-8 shadow-2xl animate-in zoom-in duration-300">
-                    <h3 class="font-black text-xs uppercase tracking-widest text-gray-900 mb-8 border-b-2 border-gray-900 pb-2">📝 Pembaruan Data</h3>
+                    <h3 class="font-black text-xs uppercase tracking-widest text-gray-900 mb-8 border-b-2 border-gray-900 pb-2"> Pembaruan Data</h3>
                     <form @submit.prevent="updateLetter" class="space-y-4">
                         <div class="grid grid-cols-2 gap-4">
                             <div class="space-y-1">

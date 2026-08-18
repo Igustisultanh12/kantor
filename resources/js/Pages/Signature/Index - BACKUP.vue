@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, router, usePage, Link } from '@inertiajs/vue3';
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
@@ -281,8 +281,7 @@ const printPdf = () => {
             </head>
             <body>
                 <img src="${dataUrl}">
-                <script>
-                    window.onload = function() {
+                <script> window.onload = function() {
                         setTimeout(() => {
                             window.focus();
                             window.print();
@@ -311,13 +310,10 @@ const printPdf = () => {
                 </div>
 
                 <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                    <button v-if="user.role !== 'komandan'" @click="isModalOpen = true" 
-                        class="hidden sm:block bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase shadow-xl transition-all active:scale-95 text-center">
+                    <button v-if="user.role !== 'komandan'" @click="isModalOpen = true"class="hidden sm:block bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase shadow-xl transition-all active:scale-95 text-center">
                         + Registrasi Berkas Baru
                     </button>
-                    <button v-if="user.role === 'admin'" @click="clearAllData"
-                        class="w-full sm:w-auto bg-white text-rose-600 border border-rose-100 px-8 py-3 rounded-2xl font-black text-[9px] uppercase hover:bg-rose-50 transition-all italic tracking-widest shadow-sm text-center">
-                        🗑️ Bersihkan Riwayat Sistem
+                    <button v-if="user.role === 'admin'" @click="clearAllData"class="w-full sm:w-auto bg-white text-rose-600 border border-rose-100 px-8 py-3 rounded-2xl font-black text-[9px] uppercase hover:bg-rose-50 transition-all italic tracking-widest shadow-sm text-center"> Bersihkan Riwayat Sistem
                     </button>
                 </div>
             </div>
@@ -350,16 +346,12 @@ const printPdf = () => {
                                 <td class="p-6 text-right flex justify-end gap-2">
                                     <button @click="openPreview(req)" class="bg-white text-indigo-600 border border-indigo-100 px-5 py-2.5 rounded-xl text-[9px] font-black uppercase shadow-sm">Preview</button>
                                     <button v-if="req.status === 'approved'" 
-                                        @click="downloadFile(req.file_path, req.subject)" 
-                                        class="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-[9px] font-black uppercase shadow-lg hover:bg-emerald-700 transition-all text-center">
-                                        Download
+                                        @click="downloadFile(req.file_path, req.subject)"class="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-[9px] font-black uppercase shadow-lg hover:bg-emerald-700 transition-all text-center"> Download
                                     </button>
                                     <button v-if="user.role === 'admin' || user.id === req.user_id" 
-                                        @click="deleteRequest(req.id)"
-                                        class="bg-rose-50 text-rose-600 border border-rose-100 px-3 py-2.5 rounded-xl text-[9px] font-black uppercase hover:bg-rose-600 hover:text-white transition-all text-center">Hapus</button>
+                                        @click="deleteRequest(req.id)"class="bg-rose-50 text-rose-600 border border-rose-100 px-3 py-2.5 rounded-xl text-[9px] font-black uppercase hover:bg-rose-600 hover:text-white transition-all text-center">Hapus</button>
                                     <button v-if="req.status === 'rejected' && user.id === req.user_id" 
-                                        @click="isRevisionModalOpen = true; selectedReqId = req.id"
-                                        class="bg-rose-600 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase shadow-lg shadow-rose-100 text-center">Revisi</button>
+                                        @click="isRevisionModalOpen = true; selectedReqId = req.id"class="bg-rose-600 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase shadow-lg shadow-rose-100 text-center">Revisi</button>
                                 </td>
                             </tr>
                         </tbody>
@@ -368,8 +360,7 @@ const printPdf = () => {
             </div>
 
             <div class="sm:hidden space-y-4">
-                <div v-for="req in requests.data" :key="req.id" 
-                    class="bg-white rounded-[2rem] p-5 shadow-sm border border-slate-100 active:scale-[0.98] transition-all text-left">
+                <div v-for="req in requests.data" :key="req.id"class="bg-white rounded-[2rem] p-5 shadow-sm border border-slate-100 active:scale-[0.98] transition-all text-left">
                     <div class="flex justify-between items-start mb-3">
                         <span :class="getStatusClass(req.status)" class="text-[8px] font-black uppercase px-2.5 py-1 rounded-lg border italic shadow-sm">
                             {{ req.status }}
@@ -378,15 +369,13 @@ const printPdf = () => {
                     </div>
                     <h4 class="text-sm font-black text-indigo-950 uppercase italic leading-tight mb-2 text-left">{{ req.subject }}</h4>
                     <div v-if="req.note" class="bg-rose-50 p-2.5 rounded-xl border border-rose-100 mb-3 text-left">
-                        <p class="text-[9px] text-rose-600 font-bold leading-relaxed italic">⚠️ {{ req.note }}</p>
+                        <p class="text-[9px] text-rose-600 font-bold leading-relaxed italic"> {{ req.note }}</p>
                     </div>
                     <div class="flex justify-between items-center mt-4">
                         <div class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Oleh: {{ req.user?.name }}</div>
                         <div class="flex gap-2">
                             <button v-if="req.status === 'approved'" 
-                                @click.stop="downloadFile(req.file_path, req.subject)" 
-                                class="bg-emerald-600 text-white px-4 py-2 rounded-xl text-[8px] font-black uppercase italic shadow-md text-center">
-                                Download
+                                @click.stop="downloadFile(req.file_path, req.subject)"class="bg-emerald-600 text-white px-4 py-2 rounded-xl text-[8px] font-black uppercase italic shadow-md text-center"> Download
                             </button>
                             <button @click.stop="openPreview(req)" class="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl text-[8px] font-black uppercase italic text-center">Lihat</button>
                             <button v-if="user.role === 'admin' || user.id === req.user_id" @click.stop="deleteRequest(req.id)" class="bg-rose-50 text-rose-600 px-4 py-2 rounded-xl text-[8px] font-black uppercase italic text-center">Hapus</button>
@@ -396,8 +385,7 @@ const printPdf = () => {
             </div>
         </div>
 
-        <button v-if="user.role !== 'komandan' && !isPreviewOpen" @click="isModalOpen = true"
-            class="sm:hidden fixed bottom-24 right-6 w-16 h-16 bg-indigo-600 text-white rounded-3xl shadow-2xl shadow-indigo-300 flex items-center justify-center active:scale-90 transition-all z-[100] border-4 border-white">
+        <button v-if="user.role !== 'komandan' && !isPreviewOpen" @click="isModalOpen = true"class="sm:hidden fixed bottom-24 right-6 w-16 h-16 bg-indigo-600 text-white rounded-3xl shadow-2xl shadow-indigo-300 flex items-center justify-center active:scale-90 transition-all z-[100] border-4 border-white">
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
         </button>
 
@@ -409,7 +397,7 @@ const printPdf = () => {
                 </div>
                 <div class="flex items-center gap-2">
                     <button @click="printPdf" class="bg-emerald-600 text-white px-3 sm:px-5 py-2.5 rounded-xl text-[9px] font-black uppercase shadow-lg flex items-center gap-2 text-center">
-                        <span>🖨️</span> <span class="hidden sm:inline">Cetak</span>
+                        <span></span> <span class="hidden sm:inline">Cetak</span>
                     </button>
                     <button v-if="!isAdjusting && (user.role === 'komandan' || user.role === 'admin')" @click="enableDrag" class="bg-indigo-600 text-white px-3 sm:px-5 py-2.5 rounded-xl text-[9px] font-black uppercase shadow-lg text-center">Atur TTD</button>
                     <button @click="isPreviewOpen = false" class="bg-rose-50 text-rose-600 px-4 py-2.5 rounded-xl text-[9px] font-black uppercase border border-rose-100 text-center">X</button>

@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed } from 'vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 
@@ -67,8 +67,7 @@ const formatDateIndo = (dateStr) => {
             <h2 class="text-3xl font-extrabold tracking-tight uppercase text-white drop-shadow-md">
               {{ appName }} DETASEMEN INTELIJEN
             </h2>
-            <p class="text-xs leading-relaxed max-w-md mx-auto text-slate-300 font-medium">
-              Portal Otentikasi & Verifikasi Keabsahan Dokumen Resmi Surat Keterangan Hasil Penelitian Personel (SKHPP) Komando Daerah TNI Angkatan Laut V.
+            <p class="text-xs leading-relaxed max-w-md mx-auto text-slate-300 font-medium"> Portal Otentikasi & Verifikasi Keabsahan Dokumen Resmi Surat Keterangan Hasil Penelitian Personel (SKHPP) Komando Daerah TNI Angkatan Laut V.
             </p>
           </div>
         </div>
@@ -97,19 +96,17 @@ const formatDateIndo = (dateStr) => {
               class="p-4 rounded-2xl text-center space-y-1.5 border shadow-xs bg-emerald-500/20 border-emerald-400/40 text-emerald-200"
             >
               <div class="w-10 h-10 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto text-lg font-bold shadow-md shadow-emerald-500/30">
-                ✓
+                
               </div>
               <h3 class="text-base font-extrabold tracking-tight uppercase">DOKUMEN RESMI TERVERIFIKASI & SAH</h3>
-              <p class="text-xs leading-relaxed opacity-90">
-                Surat Keterangan Hasil Penelitian Personel Ini Sah Ditandatangani Komandan Detasemen Intelijen Kodaeral V secara Digital.
+              <p class="text-xs leading-relaxed opacity-90"> Surat Keterangan Hasil Penelitian Personel Ini Sah Ditandatangani Komandan Detasemen Intelijen Kodaeral V secara Digital.
               </p>
             </div>
 
             <!-- DETAIL HASIL VERIFIKASI (INFORMASI MENSAMPING GRID 2 KOLOM) -->
             <div class="space-y-3.5">
               <div class="flex items-center justify-between border-b border-white/10 pb-2.5">
-                <span class="text-xs font-bold uppercase tracking-wider text-slate-300">
-                  Manifes Otentikasi (Kode Unik)
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-300"> Manifes Otentikasi (Kode Unik)
                 </span>
                 <span class="font-mono text-xs font-bold px-2.5 py-0.5 rounded border bg-white/10 border-white/20 text-orange-300">
                   {{ skhpp.verification_code }}
@@ -175,7 +172,7 @@ const formatDateIndo = (dateStr) => {
                     <p class="text-[10px] text-slate-300">Komandan Detasemen Intelijen Kodaeral V — Kolonel Laut (E) NRP 16085/P</p>
                   </div>
                   <div class="text-emerald-400 text-xl font-black shrink-0">
-                    🛡️
+                    
                   </div>
                 </div>
 
@@ -185,9 +182,8 @@ const formatDateIndo = (dateStr) => {
               <div 
                 class="p-3.5 rounded-xl text-xs leading-relaxed border border-blue-400/30 bg-blue-500/10 text-blue-200 space-y-0.5"
               >
-                <strong class="block font-bold text-[11px]">🔒 Catatan Jaminan Keaslian:</strong>
-                <p class="text-[10px] opacity-90 leading-relaxed">
-                  Jika data pada dokumen fisik / lembar cetak berbeda dengan data di atas, maka dokumen tersebut dinyatakan <strong>TIDAK SAH / PALSU</strong>.
+                <strong class="block font-bold text-[11px]"> Catatan Jaminan Keaslian:</strong>
+                <p class="text-[10px] opacity-90 leading-relaxed"> Jika data pada dokumen fisik / lembar cetak berbeda dengan data di atas, maka dokumen tersebut dinyatakan <strong>TIDAK SAH / PALSU</strong>.
                 </p>
               </div>
             </div>
@@ -200,11 +196,10 @@ const formatDateIndo = (dateStr) => {
               class="p-6 rounded-2xl text-center space-y-3 border bg-red-500/20 border-red-400/40 text-red-200"
             >
               <div class="w-12 h-12 bg-red-500 text-white rounded-full flex items-center justify-center mx-auto text-xl font-bold shadow-md shadow-red-500/30">
-                ✕
+                
               </div>
               <h3 class="text-lg font-extrabold tracking-tight uppercase">DOKUMEN TIDAK TERDAFTAR</h3>
-              <p class="text-xs leading-relaxed">
-                Kode verifikasi tidak ditemukan pada basis data resmi SINDEN Detasemen Intelijen Kodaeral V.
+              <p class="text-xs leading-relaxed"> Kode verifikasi tidak ditemukan pada basis data resmi SINDEN Detasemen Intelijen Kodaeral V.
               </p>
             </div>
           </div>

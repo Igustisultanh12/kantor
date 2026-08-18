@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, router, usePage, Link } from '@inertiajs/vue3';
 import { ref, shallowRef, markRaw, computed, nextTick, onMounted, onUnmounted } from 'vue';
@@ -107,8 +107,7 @@ const approveSkhpp = (skhpp) => {
           <span class="text-[9px] text-slate-400 mt-1 block">*Penomoran SKHPP-P dan SKHPP-D terpisah & independen.</span>
         </div>
 
-        <p class="text-emerald-700 font-bold text-[10px] bg-emerald-50 p-2 rounded-lg border border-emerald-200">
-          ✓ Diterbitkan nomor resmi ${katCode}, QR Code TTD Komandan, dan tersinkron ke Buku Agenda.
+        <p class="text-emerald-700 font-bold text-[10px] bg-emerald-50 p-2 rounded-lg border border-emerald-200"> Diterbitkan nomor resmi ${katCode}, QR Code TTD Komandan, dan tersinkron ke Buku Agenda.
         </p>
       </div>
     `,
@@ -570,8 +569,7 @@ const getStatusClass = (status) => {
           <Link href="/skhpp/create" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-2xl font-extrabold text-xs uppercase shadow-md shadow-emerald-500/20 transition tracking-wider text-center">
             + Pengajuan SKHPP Baru
           </Link>
-          <button v-if="user.role !== 'komandan'" @click="isModalOpen = true" 
-            class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-2xl font-extrabold text-xs uppercase shadow-md shadow-blue-500/20 transition tracking-wider text-center">
+          <button v-if="user.role !== 'komandan'" @click="isModalOpen = true"class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-2xl font-extrabold text-xs uppercase shadow-md shadow-blue-500/20 transition tracking-wider text-center">
             + Upload PDF Berkas Lain
           </button>
         </div>
@@ -581,19 +579,17 @@ const getStatusClass = (status) => {
       <div class="flex border-b border-slate-200 gap-4">
         <button 
           @click="activeTab = 'skhpp'"
-          :class="activeTab === 'skhpp' ? 'border-blue-600 text-blue-600 font-black' : 'border-transparent text-slate-500 font-bold hover:text-slate-700'"
-          class="py-3 px-4 border-b-2 text-xs uppercase tracking-wider transition flex items-center gap-2"
+          :class="activeTab === 'skhpp' ? 'border-blue-600 text-blue-600 font-black' : 'border-transparent text-slate-500 font-bold hover:text-slate-700'"class="py-3 px-4 border-b-2 text-xs uppercase tracking-wider transition flex items-center gap-2"
         >
-          <span>📜 PENGAJUAN SKHPP</span>
+          <span> PENGAJUAN SKHPP</span>
           <span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-black">{{ skhppRequests?.data?.length || 0 }}</span>
         </button>
 
         <button 
           @click="activeTab = 'pdf'"
-          :class="activeTab === 'pdf' ? 'border-blue-600 text-blue-600 font-black' : 'border-transparent text-slate-500 font-bold hover:text-slate-700'"
-          class="py-3 px-4 border-b-2 text-xs uppercase tracking-wider transition flex items-center gap-2"
+          :class="activeTab === 'pdf' ? 'border-blue-600 text-blue-600 font-black' : 'border-transparent text-slate-500 font-bold hover:text-slate-700'"class="py-3 px-4 border-b-2 text-xs uppercase tracking-wider transition flex items-center gap-2"
         >
-          <span>📑 BERKAS DINAS / PDF LAIN</span>
+          <span> BERKAS DINAS / PDF LAIN</span>
           <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-black">{{ requests?.data?.length || 0 }}</span>
         </button>
       </div>
@@ -628,21 +624,18 @@ const getStatusClass = (status) => {
                 </td>
                 <td class="p-4 text-right">
                   <div class="flex justify-end gap-2 items-center">
-                    <button @click="openSkhppPreviewModal(skhpp)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase">
-                      🔍 Lihat SKHPP
+                    <button @click="openSkhppPreviewModal(skhpp)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase"> Lihat SKHPP
                     </button>
                     
                     <template v-if="user.role === 'admin' || user.role === 'komandan'">
-                      <button v-if="skhpp.status === 'pending'" @click="approveSkhpp(skhpp)" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-[9px] font-black uppercase shadow-sm">
-                        ✅ Setujui & TTD
+                      <button v-if="skhpp.status === 'pending'" @click="approveSkhpp(skhpp)" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-[9px] font-black uppercase shadow-sm"> Setujui & TTD
                       </button>
-                      <button v-if="skhpp.status === 'pending'" @click="rejectSkhpp(skhpp)" class="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase">
-                        ❌ Tolak
+                      <button v-if="skhpp.status === 'pending'" @click="rejectSkhpp(skhpp)" class="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase"> Tolak
                       </button>
                     </template>
 
                     <button v-if="user.role === 'admin' || user.id === skhpp.user_id" @click="deleteSkhpp(skhpp.id)" class="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white px-2.5 py-1.5 rounded-xl text-[9px] font-black uppercase" title="Hapus & Cabut Validasi QR">
-                      🗑️
+                      
                     </button>
                   </div>
                 </td>
@@ -683,14 +676,12 @@ const getStatusClass = (status) => {
                 </td>
                 <td class="p-4 text-right">
                   <div class="flex justify-end gap-2 items-center">
-                    <button @click="openPdfPreview(req)" class="bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 px-3.5 py-1.5 rounded-xl text-[9px] font-black uppercase">
-                      🔍 Periksa & Atur TTD
+                    <button @click="openPdfPreview(req)" class="bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 px-3.5 py-1.5 rounded-xl text-[9px] font-black uppercase"> Periksa & Atur TTD
                     </button>
-                    <button v-if="req.status === 'approved'" @click="downloadFile(req.file_path, req.subject)" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-xl text-[9px] font-black uppercase shadow-sm">
-                      📥 Unduh
+                    <button v-if="req.status === 'approved'" @click="downloadFile(req.file_path, req.subject)" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-xl text-[9px] font-black uppercase shadow-sm"> Unduh
                     </button>
                     <button v-if="user.role === 'admin' || user.id === req.user_id" @click="deleteRequest(req.id)" class="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white px-2.5 py-1.5 rounded-xl text-[9px] font-black uppercase">
-                      🗑️
+                      
                     </button>
                   </div>
                 </td>
@@ -717,21 +708,18 @@ const getStatusClass = (status) => {
           </div>
 
           <div class="flex items-center gap-1.5 flex-wrap w-full sm:w-auto">
-            <Link :href="`/skhpp/${selectedSkhpp.id}/edit`" class="flex-1 sm:flex-none bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase shadow-sm text-center flex items-center justify-center gap-1">
-              ✏️ Koreksi
+            <Link :href="`/skhpp/${selectedSkhpp.id}/edit`" class="flex-1 sm:flex-none bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase shadow-sm text-center flex items-center justify-center gap-1"> Koreksi
             </Link>
 
             <template v-if="(user.role === 'admin' || user.role === 'komandan') && selectedSkhpp.status === 'pending'">
-              <button @click="approveSkhpp(selectedSkhpp)" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase shadow-md text-center flex items-center justify-center gap-1">
-                ✅ Setujui
+              <button @click="approveSkhpp(selectedSkhpp)" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase shadow-md text-center flex items-center justify-center gap-1"> Setujui
               </button>
-              <button @click="rejectSkhpp(selectedSkhpp)" class="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white px-3 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase shadow-sm text-center flex items-center justify-center gap-1">
-                ❌ Tolak
+              <button @click="rejectSkhpp(selectedSkhpp)" class="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white px-3 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase shadow-sm text-center flex items-center justify-center gap-1"> Tolak
               </button>
             </template>
 
             <button @click="isSkhppPreviewOpen = false" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase">
-              ✕
+              
             </button>
           </div>
         </div>
@@ -749,14 +737,11 @@ const getStatusClass = (status) => {
 
             <!-- Judul & Nomor SKHPP -->
             <div class="text-center my-3 sm:my-4">
-                <div class="font-bold text-[10pt] sm:text-[12pt] underline uppercase tracking-tight">
-                    SURAT KETERANGAN HASIL PENELITIAN PERSONEL
+                <div class="font-bold text-[10pt] sm:text-[12pt] underline uppercase tracking-tight"> SURAT KETERANGAN HASIL PENELITIAN PERSONEL
                 </div>
-                <div v-if="selectedSkhpp.kategori_personel === 'perusahaan'" class="font-bold text-[9pt] sm:text-[11pt] uppercase">
-                    MITRA KERJA TNI ANGKATAN LAUT
+                <div v-if="selectedSkhpp.kategori_personel === 'perusahaan'" class="font-bold text-[9pt] sm:text-[11pt] uppercase"> MITRA KERJA TNI ANGKATAN LAUT
                 </div>
-                <div class="text-[10pt] sm:text-[12pt] font-normal mt-0.5">
-                    Nomor : {{ selectedSkhpp.nomor_skhpp || ('R / ' + (selectedSkhpp.nomor_urut || '....') + ' / SKHPP / ' + (selectedSkhpp.bulan_romawi || 'VIII') + ' / ' + (selectedSkhpp.tahun || '2026')) }}
+                <div class="text-[10pt] sm:text-[12pt] font-normal mt-0.5"> Nomor : {{ selectedSkhpp.nomor_skhpp || ('R / ' + (selectedSkhpp.nomor_urut || '....') + ' / SKHPP / ' + (selectedSkhpp.bulan_romawi || 'VIII') + ' / ' + (selectedSkhpp.tahun || '2026')) }}
                 </div>
             </div>
 
@@ -764,15 +749,13 @@ const getStatusClass = (status) => {
             <div class="space-y-2 sm:space-y-3 text-[10pt] sm:text-[12pt]">
                 <div class="flex items-start">
                     <span class="w-5 sm:w-6 shrink-0">1.</span>
-                    <div>
-                        Dasar : {{ selectedSkhpp.surat_pengantar }}
+                    <div> Dasar : {{ selectedSkhpp.surat_pengantar }}
                     </div>
                 </div>
 
                 <div class="flex items-start">
                     <span class="w-5 sm:w-6 shrink-0">2.</span>
-                    <div>
-                        Dengan ini menerangkan bahwa hasil penelitian terhadap :
+                    <div> Dengan ini menerangkan bahwa hasil penelitian terhadap :
                     </div>
                 </div>
 
@@ -823,22 +806,19 @@ const getStatusClass = (status) => {
 
                 <div class="flex items-start font-normal mt-2">
                     <span class="w-5 sm:w-6 shrink-0">2.</span>
-                    <div>
-                        Hasil Penelitian Personel <span class="font-bold">Memenuhi Syarat</span>
+                    <div> Hasil Penelitian Personel <span class="font-bold">Memenuhi Syarat</span>
                     </div>
                 </div>
 
                 <div class="flex items-start">
                     <span class="w-5 sm:w-6 shrink-0">3.</span>
-                    <div>
-                        SKHPP ini diberikan {{ selectedSkhpp.peruntukan }}
+                    <div> SKHPP ini diberikan {{ selectedSkhpp.peruntukan }}
                     </div>
                 </div>
 
                 <div class="flex items-start">
                     <span class="w-5 sm:w-6 shrink-0">4.</span>
-                    <div>
-                        Apabila kemudian terdapat kekeliruan, SKHPP ini akan dicabut dan diadakan pembetulan seperlunya.
+                    <div> Apabila kemudian terdapat kekeliruan, SKHPP ini akan dicabut dan diadakan pembetulan seperlunya.
                     </div>
                 </div>
             </div>
@@ -865,15 +845,14 @@ const getStatusClass = (status) => {
                         <span>pada tanggal</span>
                         <span>{{ selectedSkhpp.tanggal_skhpp ? new Date(selectedSkhpp.tanggal_skhpp).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '5 Agustus 2026' }}</span>
                     </div>
-                    <div class="font-normal text-center whitespace-nowrap mt-1 leading-snug">
-                        Komandan Detasemen Intelijen Kodaeral V,
+                    <div class="font-normal text-center whitespace-nowrap mt-1 leading-snug"> Komandan Detasemen Intelijen Kodaeral V,
                     </div>
 
                     <!-- QR Code TTD Status -->
                     <div class="my-2 py-1 text-center min-h-[85px] sm:min-h-[95px] flex items-center justify-center">
                         <div v-if="selectedSkhpp.status === 'approved'" class="text-center space-y-1">
                             <img :src="`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(window.location.origin + '/verify-skhpp/' + selectedSkhpp.verification_code)}`" class="w-[75px] h-[75px] sm:w-[85px] sm:h-[85px] border border-slate-300 p-0.5 rounded-sm mx-auto block" />
-                            <span class="text-[7px] sm:text-[8px] font-bold text-emerald-700 block">✓ TERVERIFIKASI TTD DIGITAL</span>
+                            <span class="text-[7px] sm:text-[8px] font-bold text-emerald-700 block"> TERVERIFIKASI TTD DIGITAL</span>
                         </div>
                         <div v-else class="h-[75px] sm:h-[85px] w-full flex items-center justify-center border border-dashed border-slate-300 text-[9pt] sm:text-[10px] text-slate-400 font-sans italic bg-slate-50">
                             [ PENDING TTD KOMANDAN ]
@@ -897,16 +876,13 @@ const getStatusClass = (status) => {
 
         <!-- Modal Footer Actions (Mobile Friendly) -->
         <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center border-t border-slate-300 pt-3 gap-2.5 shrink-0">
-          <Link :href="`/skhpp/${selectedSkhpp.id}`" class="text-[11px] sm:text-xs font-bold text-blue-600 hover:underline flex items-center justify-center sm:justify-start gap-1">
-            Buka Halaman Cetak Lengkap (Dengan Lampiran Jika Ada) →
+          <Link :href="`/skhpp/${selectedSkhpp.id}`" class="text-[11px] sm:text-xs font-bold text-blue-600 hover:underline flex items-center justify-center sm:justify-start gap-1"> Buka Halaman Cetak Lengkap (Dengan Lampiran Jika Ada) →
           </Link>
           <div class="flex gap-2 w-full sm:w-auto">
             <template v-if="(user.role === 'admin' || user.role === 'komandan') && selectedSkhpp.status === 'pending'">
-              <button @click="approveSkhpp(selectedSkhpp)" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-[11px] sm:text-xs font-black uppercase shadow-md text-center">
-                Setujui & TTD Komandan
+              <button @click="approveSkhpp(selectedSkhpp)" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-[11px] sm:text-xs font-black uppercase shadow-md text-center"> Setujui & TTD Komandan
               </button>
-              <button @click="rejectSkhpp(selectedSkhpp)" class="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2.5 rounded-xl text-[11px] sm:text-xs font-black uppercase shadow-md text-center">
-                Tolak / Minta Revisi
+              <button @click="rejectSkhpp(selectedSkhpp)" class="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2.5 rounded-xl text-[11px] sm:text-xs font-black uppercase shadow-md text-center"> Tolak / Minta Revisi
               </button>
             </template>
           </div>
@@ -927,20 +903,18 @@ const getStatusClass = (status) => {
             <button @click="changePdfPage(-1)" :disabled="currentPage <= 1" class="px-2 py-0.5 rounded bg-white font-bold text-slate-700 disabled:opacity-30 hover:bg-slate-200">◀</button>
             <span class="font-bold text-slate-800">Halaman {{ currentPage }} / {{ totalPages }}</span>
             <button @click="changePdfPage(1)" :disabled="currentPage >= totalPages" class="px-2 py-0.5 rounded bg-white font-bold text-slate-700 disabled:opacity-30 hover:bg-slate-200">▶</button>
-            <span v-if="activePagesList.length > 0" class="ml-1 px-2.5 py-0.5 bg-blue-600 text-white rounded-md text-[10px] font-extrabold uppercase shadow-xs">
-              TTD Terpasang di {{ activePagesList.length }} Hal: (Hal. {{ activePagesList.join(', ') }})
+            <span v-if="activePagesList.length > 0" class="ml-1 px-2.5 py-0.5 bg-blue-600 text-white rounded-md text-[10px] font-extrabold uppercase shadow-xs"> TTD Terpasang di {{ activePagesList.length }} Hal: (Hal. {{ activePagesList.join(', ') }})
             </span>
           </div>
         </div>
 
         <div class="flex items-center gap-2">
-          <button v-if="isAdjusting && isCurrentPageActive" @click="removeCurrentPageSignature" class="bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl text-xs font-black uppercase shadow-md">
-            Hapus TTD di Hal. {{ currentPage }}
+          <button v-if="isAdjusting && isCurrentPageActive" @click="removeCurrentPageSignature" class="bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl text-xs font-black uppercase shadow-md"> Hapus TTD di Hal. {{ currentPage }}
           </button>
           <button v-else-if="isAdjusting && !isCurrentPageActive" @click="addCurrentPageSignature" class="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-black uppercase shadow-md">
             + Pasang TTD di Hal. {{ currentPage }}
           </button>
-          <button @click="closeOperatorPosPicker" class="bg-rose-50 text-rose-600 px-3 py-2 rounded-xl text-xs font-black uppercase border border-rose-100">✕</button>
+          <button @click="closeOperatorPosPicker" class="bg-rose-50 text-rose-600 px-3 py-2 rounded-xl text-xs font-black uppercase border border-rose-100"></button>
         </div>
       </div>
 
@@ -982,27 +956,21 @@ const getStatusClass = (status) => {
 
       <!-- Bottom Bar untuk Operator (Save Position Only) -->
       <div v-if="isOperatorConfiguring" class="bg-white border-t p-4 flex justify-center gap-3 shrink-0 shadow-2xl">
-        <button type="button" @click="saveOperatorPos" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg">
-          SIMPAN POSISI LOKASI TTD INI ( {{ activePagesList.length }} HALAMAN TERPILIH )
+        <button type="button" @click="saveOperatorPos" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg"> SIMPAN POSISI LOKASI TTD INI ( {{ activePagesList.length }} HALAMAN TERPILIH )
         </button>
-        <button type="button" @click="closeOperatorPosPicker" class="bg-slate-100 text-slate-600 px-6 py-3.5 rounded-2xl font-black text-xs uppercase border border-slate-200">
-          BATAL
+        <button type="button" @click="closeOperatorPosPicker" class="bg-slate-100 text-slate-600 px-6 py-3.5 rounded-2xl font-black text-xs uppercase border border-slate-200"> BATAL
         </button>
       </div>
 
       <!-- Bottom Confirm / Reject Bar untuk Komandan & Admin -->
       <div v-else-if="user.role === 'komandan' || user.role === 'admin'" class="bg-white border-t p-4 flex flex-wrap justify-center gap-3 shrink-0 shadow-2xl">
-        <button v-if="isAdjusting" @click="handlePdfDecision('approved', false)" :disabled="decisionForm.processing" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg">
-          SETUJUI & STAMP TTD DIGITAL ( PADA {{ activePagesList.length }} HALAMAN TERPILIH )
+        <button v-if="isAdjusting" @click="handlePdfDecision('approved', false)" :disabled="decisionForm.processing" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg"> SETUJUI & STAMP TTD DIGITAL ( PADA {{ activePagesList.length }} HALAMAN TERPILIH )
         </button>
-        <button v-if="isAdjusting && totalPages > 1" @click="handlePdfDecision('approved', true)" :disabled="decisionForm.processing" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg">
-          SETUJUI DI SEMUA HALAMAN (1 s.d. {{ totalPages }})
+        <button v-if="isAdjusting && totalPages > 1" @click="handlePdfDecision('approved', true)" :disabled="decisionForm.processing" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg"> SETUJUI DI SEMUA HALAMAN (1 s.d. {{ totalPages }})
         </button>
-        <button @click="handlePdfDecision('rejected')" :disabled="decisionForm.processing" class="bg-rose-600 hover:bg-rose-700 text-white px-5 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg">
-          TOLAK / MINTA REVISI BERKAS
+        <button @click="handlePdfDecision('rejected')" :disabled="decisionForm.processing" class="bg-rose-600 hover:bg-rose-700 text-white px-5 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg"> TOLAK / MINTA REVISI BERKAS
         </button>
-        <button v-if="isAdjusting" @click="isPreviewOpen = false" class="bg-slate-100 text-slate-600 px-5 py-3.5 rounded-2xl font-black text-xs uppercase border border-slate-200">
-          BATAL
+        <button v-if="isAdjusting" @click="isPreviewOpen = false" class="bg-slate-100 text-slate-600 px-5 py-3.5 rounded-2xl font-black text-xs uppercase border border-slate-200"> BATAL
         </button>
       </div>
 
@@ -1017,7 +985,7 @@ const getStatusClass = (status) => {
               <span class="text-[9px] font-black text-blue-600 uppercase tracking-widest block">REGISTRASI BERKAS & METADATA PUBLIC VERIFY</span>
               <h3 class="font-black text-sm sm:text-base text-slate-900 uppercase leading-tight">Unggah Berkas Dinas (PDF)</h3>
             </div>
-            <button @click="isModalOpen = false" class="text-slate-400 hover:text-slate-600 font-bold p-1">✕</button>
+            <button @click="isModalOpen = false" class="text-slate-400 hover:text-slate-600 font-bold p-1"></button>
           </div>
 
           <form @submit.prevent="submitRequest" class="space-y-4 overflow-y-auto custom-scrollbar pr-1 flex-1">

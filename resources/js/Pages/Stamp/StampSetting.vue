@@ -1,5 +1,4 @@
-<script setup>
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+﻿<script setup> import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { ref, computed, nextTick } from 'vue';
 import Swal from 'sweetalert2';
@@ -90,8 +89,7 @@ const startTest = () => {
                                 <span class="text-[8px] text-slate-400 font-bold truncate mt-1 italic">{{ form.stamp_file?.name }}</span>
                             </div>
                         </div>
-                        <button type="submit" :disabled="form.processing || !form.stamp_file" class="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 disabled:opacity-50">
-                            GANTI STEMPEL SEKARANG
+                        <button type="submit" :disabled="form.processing || !form.stamp_file" class="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 disabled:opacity-50"> GANTI STEMPEL SEKARANG
                         </button>
                     </form>
                 </div>
@@ -104,8 +102,7 @@ const startTest = () => {
                             <p class="text-[10px] font-bold text-slate-400 uppercase leading-relaxed tracking-widest">Klik tombol di bawah untuk mencoba pergerakan stempel pada dokumen</p>
                         </div>
 
-                        <div v-show="isTesting" 
-                             class="drag-stamp-test absolute z-[100] cursor-move border-2 border-emerald-500 bg-emerald-50/30 backdrop-blur-[1px] shadow-2xl flex items-center justify-center touch-none"
+                        <div v-show="isTesting"class="drag-stamp-test absolute z-[100] cursor-move border-2 border-emerald-500 bg-emerald-50/30 backdrop-blur-[1px] shadow-2xl flex items-center justify-center touch-none"
                              :style="{ left: stampPos.x + 'px', top: stampPos.y + 'px', width: stampSize.width + 'px', height: stampSize.height + 'px' }">
                             <img :src="'/storage/' + currentStamp" class="w-full h-full object-contain pointer-events-none opacity-80" alt="Test Stempel" />
                             <div class="absolute -bottom-2 -right-2 w-6 h-6 bg-emerald-600 rounded-full border-2 border-white shadow-lg flex items-center justify-center">
@@ -114,8 +111,7 @@ const startTest = () => {
                         </div>
                     </div>
 
-                    <button @click="startTest" v-if="!isTesting" class="mt-6 px-8 py-3 bg-emerald-50 text-emerald-600 rounded-xl font-black text-[10px] uppercase shadow-sm hover:bg-emerald-600 hover:text-white transition-all">
-                        UJI COBA DRAG STEMPEL
+                    <button @click="startTest" v-if="!isTesting" class="mt-6 px-8 py-3 bg-emerald-50 text-emerald-600 rounded-xl font-black text-[10px] uppercase shadow-sm hover:bg-emerald-600 hover:text-white transition-all"> UJI COBA DRAG STEMPEL
                     </button>
                     <p v-else class="mt-4 text-[9px] font-black text-emerald-600 uppercase italic">Radar Aktif: Gerakkan stempel untuk simulasi penempatan.</p>
                 </div>

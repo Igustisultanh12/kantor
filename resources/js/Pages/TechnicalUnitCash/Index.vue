@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, usePage, router } from '@inertiajs/vue3'; 
 import { ref, computed } from 'vue';
@@ -273,22 +273,19 @@ const formatLongDate = (dateStr) => {
                 <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                     <div>
                         <h2 class="font-extrabold text-slate-900 uppercase tracking-tight text-lg sm:text-xl flex items-center gap-2">
-                            <span>🛠️</span> Pembukuan Kas Dan Unit Teknis
+                            <span></span> Pembukuan Kas Dan Unit Teknis
                         </h2>
                         <p class="text-xs text-slate-500 font-semibold mt-0.5">Sistem Pengelolaan Keuangan & Anggaran Operasional Dan Unit Teknis</p>
                     </div>
                     
                     <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200 font-bold w-full lg:w-auto">
                         <div class="flex flex-col flex-1 sm:flex-initial">
-                            <label class="text-[9px] text-blue-600 ml-1 mb-1 uppercase font-extrabold tracking-wider">🔎 Cari Transaksi</label>
+                            <label class="text-[9px] text-blue-600 ml-1 mb-1 uppercase font-extrabold tracking-wider"> Cari Transaksi</label>
                             <div class="relative">
                                 <input 
-                                    type="text" 
-                                    v-model="searchQuery" 
-                                    placeholder="Ketik uraian / nominal..." 
-                                    class="text-xs font-bold rounded-xl border-slate-200 py-2 w-full sm:w-56 focus:ring-blue-500 focus:border-blue-600 pl-8 bg-white"
+                                    type="text"v-model="searchQuery"placeholder="Ketik uraian / nominal..."class="text-xs font-bold rounded-xl border-slate-200 py-2 w-full sm:w-56 focus:ring-blue-500 focus:border-blue-600 pl-8 bg-white"
                                 />
-                                <span class="absolute left-2.5 top-2.5 text-xs text-slate-400">🔍</span>
+                                <span class="absolute left-2.5 top-2.5 text-xs text-slate-400"></span>
                                 <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-2 top-2 text-slate-400 hover:text-rose-500 text-sm">×</button>
                             </div>
                         </div>
@@ -305,7 +302,7 @@ const formatLongDate = (dateStr) => {
                                 <input type="number" v-model="filterYear" class="w-20 text-xs font-bold rounded-xl border-slate-200 py-2 bg-white" />
                             </div>
                             <button @click="openPreview" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase shadow-sm flex items-center gap-2 mt-4 whitespace-nowrap transition">
-                                <span>📄</span> {{ selectedCashIds.length > 0 ? `Pratinjau PDF (${selectedCashIds.length} Terpilih)` : 'Pratinjau PDF' }}
+                                <span></span> {{ selectedCashIds.length > 0 ? `Pratinjau PDF (${selectedCashIds.length} Terpilih)` : 'Pratinjau PDF' }}
                             </button>
                         </div>
                     </div>
@@ -314,25 +311,24 @@ const formatLongDate = (dateStr) => {
                 <!-- Form Tambah Transaksi Card -->
                 <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0]">
                     <h3 class="font-extrabold mb-6 uppercase text-xs tracking-wider text-slate-700 flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        ➕ Tambah Log Transaksi Kas Dan Unit Teknis
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Tambah Log Transaksi Kas Dan Unit Teknis
                     </h3>
                     <form @submit.prevent="submit" class="space-y-6 font-bold">
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                             <div class="flex flex-col">
-                                <label class="text-[10px] text-slate-400 mb-1 uppercase tracking-wider ml-1">📅 Tanggal</label>
+                                <label class="text-[10px] text-slate-400 mb-1 uppercase tracking-wider ml-1"> Tanggal</label>
                                 <input type="date" v-model="form.date" class="rounded-2xl border-slate-200 text-xs font-bold focus:ring-blue-500 focus:border-blue-600 py-3 bg-slate-50" required />
                             </div>
                             <div class="flex flex-col">
-                                <label class="text-[10px] text-slate-400 mb-1 uppercase tracking-wider ml-1">📝 Uraian / Keterangan</label>
+                                <label class="text-[10px] text-slate-400 mb-1 uppercase tracking-wider ml-1"> Uraian / Keterangan</label>
                                 <input type="text" v-model="form.description" placeholder="Masukkan keterangan pengeluaran / operasional..." class="rounded-2xl border-slate-200 text-xs font-bold focus:ring-blue-500 focus:border-blue-600 py-3 bg-slate-50" required />
                             </div>
                             <div class="flex flex-col p-3 bg-emerald-50/60 rounded-2xl border border-emerald-100">
-                                <label class="text-[10px] text-emerald-700 mb-1 uppercase font-extrabold tracking-wider ml-1">📥 Debit (Masuk)</label>
+                                <label class="text-[10px] text-emerald-700 mb-1 uppercase font-extrabold tracking-wider ml-1"> Debit (Masuk)</label>
                                 <input type="number" v-model="form.debit" class="w-full bg-transparent border-none text-sm focus:ring-0 font-mono font-bold text-emerald-800" />
                             </div>
                             <div class="flex flex-col p-3 bg-rose-50/60 rounded-2xl border border-rose-100">
-                                <label class="text-[10px] text-rose-700 mb-1 uppercase font-extrabold tracking-wider ml-1">📤 Kredit (Keluar)</label>
+                                <label class="text-[10px] text-rose-700 mb-1 uppercase font-extrabold tracking-wider ml-1"> Kredit (Keluar)</label>
                                 <input type="number" v-model="form.credit" class="w-full bg-transparent border-none text-sm focus:ring-0 font-mono font-bold text-rose-800" />
                             </div>
                         </div>
@@ -341,22 +337,20 @@ const formatLongDate = (dateStr) => {
                             <div class="flex gap-3 flex-wrap">
                                 <div v-for="(prev, i) in receiptPreviews" :key="i" class="w-14 h-14 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-center overflow-hidden">
                                     <img v-if="!prev.is_pdf" :src="prev.url" class="w-full h-full object-cover" />
-                                    <span v-else class="text-[8px] text-rose-500 font-black uppercase text-center p-0.5 leading-none">📄 PDF</span>
+                                    <span v-else class="text-[8px] text-rose-500 font-black uppercase text-center p-0.5 leading-none"> PDF</span>
                                 </div>
                                 <span v-if="receiptPreviews.length === 0" class="text-[10px] text-slate-400 font-bold uppercase tracking-tight text-center px-1">Belum Ada Nota Bukti Terpilih</span>
                             </div>
                             <div class="flex-1 text-center md:text-left">
-                                <label class="cursor-pointer bg-white border border-slate-200 px-5 py-2.5 rounded-xl text-[10px] font-extrabold uppercase text-blue-600 hover:bg-blue-600 hover:text-white transition shadow-xs inline-block">
-                                    📁 Unggah Lampiran Multi-Nota Bukti
+                                <label class="cursor-pointer bg-white border border-slate-200 px-5 py-2.5 rounded-xl text-[10px] font-extrabold uppercase text-blue-600 hover:bg-blue-600 hover:text-white transition shadow-xs inline-block"> Unggah Lampiran Multi-Nota Bukti
                                     <input type="file" @change="handleReceiptChange" class="hidden" accept="image/jpeg,image/jpg,image/png,application/pdf" multiple />
                                 </label>
                                 <p class="text-[9px] text-slate-400 mt-1.5 font-bold uppercase tracking-tight">Mendukung banyak gambar / PDF sekaligus (Max 150MB)</p>
-                                <p v-if="form.receipt_files.length > 0" class="text-[9px] text-emerald-600 mt-1 uppercase font-extrabold">✓ Terpilih: {{ form.receipt_files.length }} File Berkas</p>
+                                <p v-if="form.receipt_files.length > 0" class="text-[9px] text-emerald-600 mt-1 uppercase font-extrabold"> Terpilih: {{ form.receipt_files.length }} File Berkas</p>
                             </div>
                         </div>
 
-                        <button :disabled="form.processing" class="w-full bg-blue-600 text-white font-extrabold py-3.5 rounded-2xl uppercase hover:bg-blue-700 transition shadow-md shadow-blue-500/20 active:scale-95 disabled:opacity-50 text-xs tracking-wider">
-                            💾 Simpan ke Buku Kas Dan Unit Teknis
+                        <button :disabled="form.processing" class="w-full bg-blue-600 text-white font-extrabold py-3.5 rounded-2xl uppercase hover:bg-blue-700 transition shadow-md shadow-blue-500/20 active:scale-95 disabled:opacity-50 text-xs tracking-wider"> Simpan ke Buku Kas Dan Unit Teknis
                         </button>
                     </form>
                 </div>
@@ -365,8 +359,7 @@ const formatLongDate = (dateStr) => {
                     <div class="p-4 bg-slate-50 border-b flex justify-between items-center flex-wrap gap-3">
                         <div class="flex items-center gap-3">
                             <h3 class="font-black uppercase text-[10px] text-slate-400 tracking-[0.2em]">Log Transaksi Kas Dan Unit Teknis</h3>
-                            <span v-if="searchQuery" class="text-[10px] font-black bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full uppercase">
-                                Ditemukan: {{ filteredCashes.length }} Hasil
+                            <span v-if="searchQuery" class="text-[10px] font-black bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full uppercase"> Ditemukan: {{ filteredCashes.length }} Hasil
                             </span>
                         </div>
 
@@ -377,8 +370,7 @@ const formatLongDate = (dateStr) => {
                                 <span>Pilih Semua</span>
                             </label>
                             <span class="text-slate-300">|</span>
-                            <span class="text-[11px] font-bold text-slate-500">
-                                Terpilih untuk Cetak: <strong class="text-rose-600 font-extrabold">{{ selectedCashIds.length }}</strong> / {{ filteredCashes.length }}
+                            <span class="text-[11px] font-bold text-slate-500"> Terpilih untuk Cetak: <strong class="text-rose-600 font-extrabold">{{ selectedCashIds.length }}</strong> / {{ filteredCashes.length }}
                             </span>
                             <button v-if="selectedCashIds.length > 0" @click="selectedCashIds = []" class="text-[10px] font-extrabold text-rose-500 hover:underline ms-1">
                                 (Batal Pilih)
@@ -403,8 +395,7 @@ const formatLongDate = (dateStr) => {
                             </thead>
                             <tbody class="font-bold">
                                 <tr v-for="cash in filteredCashes" :key="cash.id" 
-                                    :class="selectedCashIds.includes(cash.id) ? 'bg-rose-50/60 border-rose-200' : 'border-b hover:bg-green-50/30'"
-                                    class="transition-colors group"
+                                    :class="selectedCashIds.includes(cash.id) ? 'bg-rose-50/60 border-rose-200' : 'border-b hover:bg-green-50/30'"class="transition-colors group"
                                 >
                                     <td class="p-4 text-center">
                                         <input type="checkbox" :value="cash.id" v-model="selectedCashIds" class="rounded border-slate-300 text-rose-600 focus:ring-rose-500 w-4 h-4 cursor-pointer" />
@@ -418,8 +409,7 @@ const formatLongDate = (dateStr) => {
                                             <span @click="openDetail(cash)" class="text-slate-900 cursor-pointer hover:text-indigo-600 hover:underline transition-all">
                                                 {{ cash.description }}
                                             </span>
-                                            <span v-if="cash.receipt_urls && cash.receipt_urls.length > 0" @click="openDetail(cash)" class="text-[9px] text-emerald-600 font-extrabold tracking-wider w-max cursor-pointer">
-                                                📎 Terlampir {{ cash.receipt_urls.length }} Nota Bukti Fisik
+                                            <span v-if="cash.receipt_urls && cash.receipt_urls.length > 0" @click="openDetail(cash)" class="text-[9px] text-emerald-600 font-extrabold tracking-wider w-max cursor-pointer"> Terlampir {{ cash.receipt_urls.length }} Nota Bukti Fisik
                                             </span>
                                         </div>
                                     </td>
@@ -429,8 +419,8 @@ const formatLongDate = (dateStr) => {
                                     <td class="p-4 text-right bg-slate-50 font-black text-indigo-900 font-mono">{{ formatRupiah(cash.balance) }}</td>
                                     <td class="p-4 text-center bg-slate-100/50">
                                         <div class="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button @click="editTransaction(cash)" class="p-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-600 hover:text-white transition shadow-sm" title="Edit Transaksi">✏️</button>
-                                            <button @click="deleteTransaction(cash.id)" class="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-600 hover:text-white transition shadow-sm" title="Hapus Transaksi">🗑️</button>
+                                            <button @click="editTransaction(cash)" class="p-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-600 hover:text-white transition shadow-sm" title="Edit Transaksi"></button>
+                                            <button @click="deleteTransaction(cash.id)" class="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-600 hover:text-white transition shadow-sm" title="Hapus Transaksi"></button>
                                         </div>
                                     </td>
                                 </tr>
@@ -465,8 +455,7 @@ const formatLongDate = (dateStr) => {
                 <template v-if="selectedCashIds.length > 0">
                     <div class="text-center mb-8 uppercase">
                         <h3 style="margin: 0; font-size: 16px; font-weight: bold; text-decoration: underline;">LAPORAN PERINCIAN REIMBURSEMENT (REMBES) DAN UNIT TEKNIS</h3>
-                        <p style="margin: 8px 0 0 0; font-size: 11px; font-weight: bold;">
-                            BULAN: {{ selectedMonthName }} {{ filterYear }} | TOTAL {{ printableCashes.length }} TRANSAKSI TERPILIH
+                        <p style="margin: 8px 0 0 0; font-size: 11px; font-weight: bold;"> BULAN: {{ selectedMonthName }} {{ filterYear }} | TOTAL {{ printableCashes.length }} TRANSAKSI TERPILIH
                         </p>
                     </div>
 
@@ -509,8 +498,7 @@ const formatLongDate = (dateStr) => {
                 <template v-else>
                     <div class="text-center mb-8 uppercase">
                         <h3 style="margin: 0; font-size: 15px; font-weight: bold; text-decoration: underline; letter-spacing: 0.5px;">LAPORAN BUKU REKENING KAS DAN UNIT TEKNIS</h3>
-                        <p style="margin: 8px 0 0 0; font-size: 11px; font-weight: bold;">
-                            PERIODE BULAN: {{ selectedMonthName }} {{ filterYear }}
+                        <p style="margin: 8px 0 0 0; font-size: 11px; font-weight: bold;"> PERIODE BULAN: {{ selectedMonthName }} {{ filterYear }}
                         </p>
                     </div>
 
@@ -613,7 +601,7 @@ const formatLongDate = (dateStr) => {
 
                 <div class="flex-1 grid grid-cols-1 md:grid-cols-3 overflow-hidden bg-slate-50">
                     <div class="p-6 border-r border-slate-200 bg-white space-y-5 overflow-y-auto">
-                        <h4 class="text-[10px] font-black text-indigo-900 uppercase tracking-widest border-b pb-2">📋 Identitas Catatan</h4>
+                        <h4 class="text-[10px] font-black text-indigo-900 uppercase tracking-widest border-b pb-2"> Identitas Catatan</h4>
                         <div>
                             <label class="text-[9px] font-black text-gray-400 uppercase">Keterangan / Uraian:</label>
                             <p class="text-sm font-black text-slate-800 uppercase leading-relaxed mt-0.5">{{ selectedTransaction?.description }}</p>
@@ -621,7 +609,7 @@ const formatLongDate = (dateStr) => {
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="text-[9px] font-black text-gray-400 uppercase">Tanggal Buku:</label>
-                                <p class="text-xs font-bold text-slate-700 mt-0.5">📅 {{ selectedTransaction?.date ? selectedTransaction.date.substring(0, 10) : '' }}</p>
+                                <p class="text-xs font-bold text-slate-700 mt-0.5"> {{ selectedTransaction?.date ? selectedTransaction.date.substring(0, 10) : '' }}</p>
                             </div>
                             <div>
                                 <label class="text-[9px] font-black text-gray-400 uppercase">ID Log:</label>
@@ -630,7 +618,7 @@ const formatLongDate = (dateStr) => {
                         </div>
 
                         <hr class="border-slate-100" />
-                        <h4 class="text-[10px] font-black text-indigo-900 uppercase tracking-widest border-b pb-2">💰 Rincian Nominal</h4>
+                        <h4 class="text-[10px] font-black text-indigo-900 uppercase tracking-widest border-b pb-2"> Rincian Nominal</h4>
                         <div class="space-y-3">
                             <div class="flex justify-between items-center p-3 bg-green-50 rounded-xl border border-green-100">
                                 <span class="text-[10px] text-green-700 font-black uppercase">Debit (Masuk)</span>
@@ -648,11 +636,10 @@ const formatLongDate = (dateStr) => {
                             <div v-for="(file, i) in selectedTransaction.receipt_urls" :key="i" class="bg-white p-4 rounded-2xl shadow-md border border-slate-200 flex flex-col items-center">
                                 <iframe v-if="file.is_pdf" :src="file.url" class="w-full h-96 rounded-xl border"></iframe>
                                 <img v-else :src="file.url" class="max-w-full max-h-[500px] object-contain rounded-xl shadow-sm" />
-                                <a :href="file.url" target="_blank" class="mt-3 text-[10px] font-extrabold text-blue-600 hover:underline uppercase">🔍 Buka Berkas Ukuran Penuh</a>
+                                <a :href="file.url" target="_blank" class="mt-3 text-[10px] font-extrabold text-blue-600 hover:underline uppercase"> Buka Berkas Ukuran Penuh</a>
                             </div>
                         </div>
-                        <div v-else class="text-center text-slate-400 font-bold uppercase text-xs">
-                            📷 Tidak ada lampiran nota fisik untuk transaksi ini.
+                        <div v-else class="text-center text-slate-400 font-bold uppercase text-xs"> Tidak ada lampiran nota fisik untuk transaksi ini.
                         </div>
                     </div>
                 </div>
@@ -663,32 +650,32 @@ const formatLongDate = (dateStr) => {
         <div v-if="showEditModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <div class="bg-white rounded-[2rem] shadow-2xl max-w-lg w-full p-6 space-y-6">
                 <div class="flex justify-between items-center border-b pb-3">
-                    <h3 class="font-black text-slate-900 uppercase text-xs tracking-wider">✏️ Koreksi Log Transaksi Dan Unit Teknis</h3>
+                    <h3 class="font-black text-slate-900 uppercase text-xs tracking-wider"> Koreksi Log Transaksi Dan Unit Teknis</h3>
                     <button @click="showEditModal = false" class="text-slate-400 hover:text-slate-600 font-bold text-xl">&times;</button>
                 </div>
 
                 <form @submit.prevent="submitEdit" class="space-y-4 font-bold text-xs">
                     <div>
-                        <label class="block text-[10px] text-slate-400 uppercase mb-1">📅 Tanggal</label>
+                        <label class="block text-[10px] text-slate-400 uppercase mb-1"> Tanggal</label>
                         <input type="date" v-model="editForm.date" class="w-full rounded-xl border-slate-200 text-xs font-bold py-2.5" required />
                     </div>
                     <div>
-                        <label class="block text-[10px] text-slate-400 uppercase mb-1">📝 Uraian Keterangan</label>
+                        <label class="block text-[10px] text-slate-400 uppercase mb-1"> Uraian Keterangan</label>
                         <input type="text" v-model="editForm.description" class="w-full rounded-xl border-slate-200 text-xs font-bold py-2.5" required />
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-[10px] text-emerald-600 uppercase mb-1">📥 Debit (Masuk)</label>
+                            <label class="block text-[10px] text-emerald-600 uppercase mb-1"> Debit (Masuk)</label>
                             <input type="number" v-model="editForm.debit" class="w-full rounded-xl border-slate-200 text-xs font-bold py-2.5" />
                         </div>
                         <div>
-                            <label class="block text-[10px] text-rose-600 uppercase mb-1">📤 Kredit (Keluar)</label>
+                            <label class="block text-[10px] text-rose-600 uppercase mb-1"> Kredit (Keluar)</label>
                             <input type="number" v-model="editForm.credit" class="w-full rounded-xl border-slate-200 text-xs font-bold py-2.5" />
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-[10px] text-slate-400 uppercase mb-1">📁 Upload Ulang Multi-Nota (Opsional)</label>
+                        <label class="block text-[10px] text-slate-400 uppercase mb-1"> Upload Ulang Multi-Nota (Opsional)</label>
                         <input type="file" @change="handleEditReceiptChange" class="w-full text-xs font-bold text-slate-500" multiple />
                     </div>
 

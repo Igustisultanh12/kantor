@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers;
 
@@ -56,9 +56,9 @@ class PESSAdminController extends Controller
 
         // Kirim Tembakan Notifikasi WhatsApp Otomatis ke Handphone Personel
         if ($request->status === 'approved') {
-            $pesan = "✅ *SISTEM PORTAL PESS & SI SINDEN*\nHalo *{$applicant->nama_lengkap}*,\nPengajuan pembuatan akun Portal PESS Anda telah *DISETUJUI*.\nSilakan login kembali untuk melengkapi data Riwayat Hidup guna sinkronisasi berkas.";
+            $pesan = " *SISTEM PORTAL PESS & SI SINDEN*\nHalo *{$applicant->nama_lengkap}*,\nPengajuan pembuatan akun Portal PESS Anda telah *DISETUJUI*.\nSilakan login kembali untuk melengkapi data Riwayat Hidup guna sinkronisasi berkas.";
         } else {
-            $pesan = "❌ *SISTEM PORTAL PESS & SI SINDEN*\nHalo *{$applicant->nama_lengkap}*,\nMohon maaf, pengajuan pendaftaran akun portal PESS Anda *DITOLAK* oleh Admin karena ketidaksesuaian data awal.";
+            $pesan = " *SISTEM PORTAL PESS & SI SINDEN*\nHalo *{$applicant->nama_lengkap}*,\nMohon maaf, pengajuan pendaftaran akun portal PESS Anda *DITOLAK* oleh Admin karena ketidaksesuaian data awal.";
         }
         
         WhatsappService::sendMessage($applicant->no_wa, $pesan);
@@ -113,7 +113,7 @@ class PESSAdminController extends Controller
         if ($request->status_verifikasi === 'REJECTED') {
             $submission->update(['status' => 'rejected_files']);
             
-            $pesanText = "❌ *PORTAL PESS & SI SINDEN*\nHalo *{$applicant->nama_lengkap}*,\nSistem mendeteksi kesalahan pada berkas/data pengajuan Anda.\nCatatan Admin: *{$request->catatan_admin}*.\n\nSilakan login kembali ke portal PESS Anda untuk melakukan perbaikan data.";
+            $pesanText = " *PORTAL PESS & SI SINDEN*\nHalo *{$applicant->nama_lengkap}*,\nSistem mendeteksi kesalahan pada berkas/data pengajuan Anda.\nCatatan Admin: *{$request->catatan_admin}*.\n\nSilakan login kembali ke portal PESS Anda untuk melakukan perbaikan data.";
             WhatsappService::sendMessage($applicant->no_wa, $pesanText);
             
             return redirect()->back()->with('message', 'Pengajuan dikembalikan ke pangkalan PESS pemohon.');
@@ -171,7 +171,7 @@ class PESSAdminController extends Controller
             ? "Secara Daring (Online) melalui tautan virtual berikut: " . $request->lokasi_link 
             : "Secara luring (Tatap Muka/Langsung) bertempat di: " . $request->lokasi_link;
 
-        $pesan = "📢 *UNDANGAN WAWANCARA SELECTION SYSTEM (PESS - SINDEN)*\nHalo *{$applicant->nama_lengkap}*,\nPengajuan Clearance Anda telah disetujui untuk melanjutkan ke tahap *Wawancara (Khusus)*.\n\n🗓️ Waktu Pelaksanaan: *{$request->waktu}*\n📌 Metode Instansi: *{$metodeTeks}*\n\nHarap mempersiapkan diri dan hadir tepat waktu sesuai jadwal operasional.";
+        $pesan = " *UNDANGAN WAWANCARA SELECTION SYSTEM (PESS - SINDEN)*\nHalo *{$applicant->nama_lengkap}*,\nPengajuan Clearance Anda telah disetujui untuk melanjutkan ke tahap *Wawancara (Khusus)*.\n\n Waktu Pelaksanaan: *{$request->waktu}*\n Metode Instansi: *{$metodeTeks}*\n\nHarap mempersiapkan diri dan hadir tepat waktu sesuai jadwal operasional.";
         
         WhatsappService::sendMessage($applicant->no_wa, $pesan);
 
@@ -319,7 +319,7 @@ class PESSAdminController extends Controller
         ]);
 
         // TEMBAK NOTIFIKASI KEMENANGAN AKHIR VIA WHATSAPP PEMOHON
-        $pesanSukses = "🎉 *SECURITY CLEARANCE (SC) RESMI TERBIT - SINKODV*\nHalo *{$applicant->nama_lengkap}*,\nKami informasikan bahwa berkas pengajuan Security Clearance Anda telah melalui verifikasi ketat petugas SINKODV dan telah *RESMI DITERBITKAN* oleh Asintel.\n\nSurat SC fisik dapat diambil Sintel Kodaeral V atau diunduh langsung lewat aplikasi PESS Anda. Selamat!";
+        $pesanSukses = " *SECURITY CLEARANCE (SC) RESMI TERBIT - SINKODV*\nHalo *{$applicant->nama_lengkap}*,\nKami informasikan bahwa berkas pengajuan Security Clearance Anda telah melalui verifikasi ketat petugas SINKODV dan telah *RESMI DITERBITKAN* oleh Asintel.\n\nSurat SC fisik dapat diambil Sintel Kodaeral V atau diunduh langsung lewat aplikasi PESS Anda. Selamat!";
         WhatsappService::sendMessage($applicant->no_wa, $pesanSukses);
 
         return redirect()->back()->with('message', 'Surat Security Clearance (SC) berhasil diterbitkan dan disahkan oleh Asintel.');

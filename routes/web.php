@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
@@ -153,10 +153,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/soldier-violations', [SoldierViolationController::class, 'index'])->name('soldier-violations.index');
     Route::post('/soldier-violations', [SoldierViolationController::class, 'store'])->name('soldier-violations.store');
     
-    // ⚔️ AMANKAN POSISI DI ATAS WILDCARD {id} agar kebal dari respons 405
+    //  AMANKAN POSISI DI ATAS WILDCARD {id} agar kebal dari respons 405
     Route::get('/soldier-violations/preview-file', [SoldierViolationController::class, 'previewDocx'])->name('soldier-violations.preview-file');
     
-    // ⚔️ KALIBRASI METODE MATCH: Bypass proteksi data biner multipart/form-data
+    //  KALIBRASI METODE MATCH: Bypass proteksi data biner multipart/form-data
     Route::match(['post', 'put'], '/soldier-violations/{id}', [SoldierViolationController::class, 'update'])->name('soldier-violations.update');
     
     Route::delete('/soldier-violations/{id}/delete-update', [SoldierViolationController::class, 'deleteUpdate'])->name('soldier-violations.delete-update');

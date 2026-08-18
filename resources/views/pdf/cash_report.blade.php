@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
@@ -136,8 +136,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="6" class="text-center" style="padding: 30px; font-style: italic;">
-                    Belum ada transmisi data kas pada pangkalan database.
+                <td colspan="6" class="text-center" style="padding: 30px; font-style: italic;"> Belum ada transmisi data kas pada pangkalan database.
                 </td>
             </tr>
             @endforelse
@@ -145,8 +144,7 @@
         <tfoot>
             <tr class="footer-total">
                 <td colspan="5" class="text-right" style="padding: 10px; text-transform: uppercase;">Total Saldo Akhir :</td>
-                <td class="text-right font-mono" style="padding: 10px; font-size: 11px;">
-                    Rp {{ number_format($totalSaldo, 0, ',', '.') }}
+                <td class="text-right font-mono" style="padding: 10px; font-size: 11px;"> Rp {{ number_format($totalSaldo, 0, ',', '.') }}
                 </td>
             </tr>
         </tfoot>

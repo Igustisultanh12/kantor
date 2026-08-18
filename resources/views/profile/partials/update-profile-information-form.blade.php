@@ -1,4 +1,4 @@
-<section>
+﻿<section>
     <header>
         <h2 class="text-lg font-medium text-gray-900">
             {{ __('Profile Information') }}
@@ -52,11 +52,8 @@
 
             @if (session('status') === 'profile-updated')
                 <p
-                    x-data="{ show: true }"
-                    x-show="show"
-                    x-transition
-                    x-init="setTimeout(() => show = false, 2000)"
-                    class="text-sm text-gray-600"
+                    x-data="{ show: true }"x-show="show"x-transition
+                    x-init="setTimeout(() => show = false, 2000)"class="text-sm text-gray-600"
                 >{{ __('Saved.') }}</p>
             @endif
         </div>

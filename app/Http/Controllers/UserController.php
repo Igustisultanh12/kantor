@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers;
 
@@ -110,10 +110,10 @@ class UserController extends Controller
                     $targetPhone = '62' . substr($targetPhone, 1);
                 }
 
-                $pesanWA = "🔐 *AKTIVASI AKSES SI SINDEN*\n\n" .
+                $pesanWA = " *AKTIVASI AKSES SI SINDEN*\n\n" .
                            "{$sapaan}, *{$user->pangkat} {$user->name}*.\n" .
                            "Mohon izin, akun SINDEN Anda telah dibuat.\n\n" .
-                           "📍 *Detail Aktivasi:*\n" .
+                           " *Detail Aktivasi:*\n" .
                            "• Jabatan: *{$roleLabel}*\n" .
                            "• NRP: *{$user->nrp}*\n" .
                            "• Token: *{$activationToken}*\n\n" .

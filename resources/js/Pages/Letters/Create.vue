@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { ref, watch, computed, onMounted } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, Link, router } from '@inertiajs/vue3';
@@ -233,18 +233,18 @@ const submit = () => {
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div @click="triggerFileInput" class="flex flex-col items-center justify-center p-6 border-2 border-slate-200 border-dashed rounded-3xl hover:border-blue-500 hover:bg-blue-50/40 transition cursor-pointer group">
                                 <input ref="fileInput" type="file" class="hidden" accept=".pdf" @change="e => form.file = e.target.files[0]">
-                                <span class="text-[20px] mb-1">📂</span>
+                                <span class="text-[20px] mb-1"></span>
                                 <span class="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider">Cari di Komputer</span>
                             </div>
                             <div @click="startScan" class="flex flex-col items-center justify-center p-6 border-2 border-emerald-200 border-dashed rounded-3xl hover:border-emerald-500 hover:bg-emerald-50/40 transition cursor-pointer group">
-                                <span class="text-[20px] mb-1">{{ isScanning ? '⏳' : '🖨️' }}</span>
+                                <span class="text-[20px] mb-1">{{ isScanning ? '' : '' }}</span>
                                 <span class="text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider">Tarik dari Printer</span>
                             </div>
                         </div>
 
                         <div v-if="form.file" class="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex items-center justify-between">
                             <div class="flex items-center gap-3">
-                                <span class="text-xl">📄</span>
+                                <span class="text-xl"></span>
                                 <div class="flex flex-col leading-none">
                                     <span class="text-[10px] font-extrabold text-slate-900 uppercase truncate max-w-[200px]">{{ form.file.name }}</span>
                                     <span class="text-[8px] text-slate-400 font-bold uppercase mt-1 italic">{{ (form.file.size / 1024 / 1024).toFixed(2) }} MB</span>
@@ -257,9 +257,7 @@ const submit = () => {
 
                 <div class="mt-8 flex items-center justify-end space-x-4 border-t border-slate-100 pt-6">
                     <Link :href="route('letters.index')" class="text-xs font-extrabold text-slate-400 uppercase tracking-wider hover:text-slate-800 transition">Batal</Link>
-                    <button type="submit" :disabled="form.processing || !form.file"
-                            class="bg-blue-600 text-white px-8 py-3.5 rounded-2xl font-extrabold uppercase text-xs tracking-wider hover:bg-blue-700 shadow-md shadow-blue-500/20 disabled:opacity-50 transition-all active:scale-95">
-                        Simpan Arsip
+                    <button type="submit" :disabled="form.processing || !form.file"class="bg-blue-600 text-white px-8 py-3.5 rounded-2xl font-extrabold uppercase text-xs tracking-wider hover:bg-blue-700 shadow-md shadow-blue-500/20 disabled:opacity-50 transition-all active:scale-95"> Simpan Arsip
                     </button>
                 </div>
             </form>

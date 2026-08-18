@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import InputError from '@/Components/InputError.vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
@@ -60,8 +60,7 @@ const submit = () => {
                         <h2 class="text-3xl font-extrabold tracking-tight uppercase text-white drop-shadow-md">
                             {{ appName }}
                         </h2>
-                        <p class="text-xs leading-relaxed max-w-md mx-auto text-slate-300 font-medium">
-                            Verifikasi Token Otoritas Reset — Intelligence Digital System SINDEN Detasemen Intelijen.
+                        <p class="text-xs leading-relaxed max-w-md mx-auto text-slate-300 font-medium"> Verifikasi Token Otoritas Reset — Intelligence Digital System SINDEN Detasemen Intelijen.
                         </p>
                     </div>
                 </div>
@@ -76,38 +75,26 @@ const submit = () => {
                 <div class="w-full max-w-md p-8 sm:p-10 rounded-2xl shadow-2xl bg-slate-900/90 backdrop-blur-md border border-white/10 text-white animate-float-card">
                     <div class="mb-6">
                         <h3 class="text-xl font-bold text-white uppercase tracking-tight">Verifikasi Token Reset</h3>
-                        <p class="text-xs mt-1 text-slate-300 font-medium leading-relaxed">
-                            Minta Token 6-Digit ke Admin Sistem untuk memperbarui password Anda.
+                        <p class="text-xs mt-1 text-slate-300 font-medium leading-relaxed"> Minta Token 6-Digit ke Admin Sistem untuk memperbarui password Anda.
                         </p>
                     </div>
 
                     <form @submit.prevent="submit" class="space-y-4">
                         <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider mb-1 text-slate-300">
-                                Email Dinas *
+                            <label class="block text-xs font-semibold uppercase tracking-wider mb-1 text-slate-300"> Email Dinas *
                             </label>
                             <input 
-                                type="email" 
-                                v-model="form.email" 
-                                class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white" 
-                                placeholder="Masukkan email dinas Anda"
-                                required 
+                                type="email"v-model="form.email"class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white"placeholder="Masukkan email dinas Anda"required 
                                 autofocus
                             />
                             <InputError class="mt-1 text-xs text-red-400" :message="form.errors.email" />
                         </div>
 
                         <div class="p-4 bg-white/5 rounded-xl border border-white/10 text-center">
-                            <label class="block text-xs font-bold uppercase tracking-wider mb-2 text-orange-400">
-                                Token 6-Digit (Dari Admin) *
+                            <label class="block text-xs font-bold uppercase tracking-wider mb-2 text-orange-400"> Token 6-Digit (Dari Admin) *
                             </label>
                             <input 
-                                type="text" 
-                                v-model.number="form.token" 
-                                maxlength="6"
-                                class="w-full px-4 py-3 rounded-lg border text-xl font-black tracking-[0.5em] text-center outline-none transition duration-150 bg-slate-950 border-orange-500/40 text-orange-400 placeholder-slate-600 focus:ring-2 focus:ring-orange-500" 
-                                placeholder="000000" 
-                                required 
+                                type="text"v-model.number="form.token"maxlength="6"class="w-full px-4 py-3 rounded-lg border text-xl font-black tracking-[0.5em] text-center outline-none transition duration-150 bg-slate-950 border-orange-500/40 text-orange-400 placeholder-slate-600 focus:ring-2 focus:ring-orange-500"placeholder="000000"required 
                                 @input="form.token = $event.target.value.replace(/[^0-9]/g, '')"
                             />
                             <InputError class="mt-1 text-xs text-red-400" :message="form.errors.token" />
@@ -115,28 +102,18 @@ const submit = () => {
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-semibold uppercase tracking-wider mb-1 text-slate-300">
-                                    Password Baru *
+                                <label class="block text-xs font-semibold uppercase tracking-wider mb-1 text-slate-300"> Password Baru *
                                 </label>
                                 <input 
-                                    type="password" 
-                                    v-model="form.password" 
-                                    class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white" 
-                                    placeholder="••••••••" 
-                                    required 
+                                    type="password"v-model="form.password"class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white"placeholder="••••••••"required 
                                 />
                             </div>
 
                             <div>
-                                <label class="block text-xs font-semibold uppercase tracking-wider mb-1 text-slate-300">
-                                    Konfirmasi *
+                                <label class="block text-xs font-semibold uppercase tracking-wider mb-1 text-slate-300"> Konfirmasi *
                                 </label>
                                 <input 
-                                    type="password" 
-                                    v-model="form.password_confirmation" 
-                                    class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white" 
-                                    placeholder="••••••••" 
-                                    required 
+                                    type="password"v-model="form.password_confirmation"class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white"placeholder="••••••••"required 
                                 />
                             </div>
                         </div>
@@ -144,11 +121,10 @@ const submit = () => {
 
                         <button 
                             type="submit" 
-                            :disabled="form.processing" 
-                            class="w-full py-3.5 px-4 mt-2 text-white text-xs font-black uppercase tracking-wider rounded-lg shadow-lg bg-orange-500 hover:bg-orange-600 shadow-orange-500/20 transition duration-150 disabled:opacity-50 cursor-pointer flex justify-center items-center gap-2"
+                            :disabled="form.processing"class="w-full py-3.5 px-4 mt-2 text-white text-xs font-black uppercase tracking-wider rounded-lg shadow-lg bg-orange-500 hover:bg-orange-600 shadow-orange-500/20 transition duration-150 disabled:opacity-50 cursor-pointer flex justify-center items-center gap-2"
                         >
                             <span>Perbarui Password Akses</span>
-                            <span>➔</span>
+                            <span></span>
                         </button>
                     </form>
 

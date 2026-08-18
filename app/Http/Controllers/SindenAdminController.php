@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers;
 
@@ -105,7 +105,7 @@ class ApplicantController extends Controller
         // Jika ada berkas yang salah/tidak valid
         if ($request->status_verifikasi === 'REJECTED') {
             $submission->update(['status' => 'rejected_files']);
-            WhatsappService::sendMessage($applicant->no_wa, "❌ *SI SINDEN*: Mohon maaf *{$applicant->nama_lengkap}*, berkas pengajuan Anda ditolak/perlu perbaikan. Silakan login kembali ke portal PESS.");
+            WhatsappService::sendMessage($applicant->no_wa, " *SI SINDEN*: Mohon maaf *{$applicant->nama_lengkap}*, berkas pengajuan Anda ditolak/perlu perbaikan. Silakan login kembali ke portal PESS.");
             return redirect()->back()->with('message', 'Pengajuan dikembalikan ke pemohon.');
         }
 
@@ -158,7 +158,7 @@ class ApplicantController extends Controller
 
         // Kirim Notifikasi WhatsApp & Aplikasi ke Pemohon
         $metodeTeks = $request->metode === 'daring' ? "Secara Daring (Online) via Link: " . $request->lokasi_link : "Secara Langsung (Tatap Muka) di: " . $request->lokasi_link;
-        $pesan = "📢 *UNDANGAN WAWANCARA SI SINDEN*\nHalo *{$applicant->nama_lengkap}*,\nPengajuan Pernikahan Anda melanjutkan ke tahap Wawancara.\n\n🗓️ Waktu: *{$request->waktu}*\n📌 Metode: *{$metodeTeks}*\n\nMohon hadir tepat waktu dengan mengenakan pakaian dinas resmi/rapi.";
+        $pesan = " *UNDANGAN WAWANCARA SI SINDEN*\nHalo *{$applicant->nama_lengkap}*,\nPengajuan Pernikahan Anda melanjutkan ke tahap Wawancara.\n\n Waktu: *{$request->waktu}*\n Metode: *{$metodeTeks}*\n\nMohon hadir tepat waktu dengan mengenakan pakaian dinas resmi/rapi.";
         
         WhatsappService::sendMessage($applicant->no_wa, $pesan);
 
@@ -271,7 +271,7 @@ class ApplicantController extends Controller
         ]);
 
         // Notifikasi Akhir: Security Clearance Sukses Terbit!
-        WhatsappService::sendMessage($applicant->no_wa, "🎉 *SECURITY CLEARANCE TERBIT*\nHalo *{$applicant->nama_lengkap}*,\nSurat Security Clearance (SC) Anda telah resmi diterbitkan oleh Asintel melalui Sistem SINKODV.");
+        WhatsappService::sendMessage($applicant->no_wa, " *SECURITY CLEARANCE TERBIT*\nHalo *{$applicant->nama_lengkap}*,\nSurat Security Clearance (SC) Anda telah resmi diterbitkan oleh Asintel melalui Sistem SINKODV.");
 
         return redirect()->back()->with('message', 'Surat Security Clearance (SC) Berhasil Terbit Berstatus Inkrah.');
     }

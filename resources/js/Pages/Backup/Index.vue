@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ref, onMounted } from 'vue';
@@ -141,7 +141,7 @@ onMounted(() => {
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight uppercase font-black">📡 Pusat Backup & Otoritas Akses</h2>
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight uppercase font-black"> Pusat Backup & Otoritas Akses</h2>
         </template>
 
         <div class="py-12">
@@ -149,7 +149,7 @@ onMounted(() => {
 
                 <div v-if="isAdmin && pendingRequests.length > 0" class="bg-amber-50 border-l-4 border-amber-400 p-6 shadow-sm rounded-lg">
                     <h3 class="text-lg font-bold text-amber-800 mb-4 uppercase flex items-center gap-2">
-                        <span>⚠️ Antrean Pengajuan Akses</span>
+                        <span> Antrean Pengajuan Akses</span>
                     </h3>
                     <div class="grid grid-cols-1 gap-3">
                         <div v-for="req in pendingRequests" :key="req.id" class="bg-white p-4 rounded border flex justify-between items-center shadow-sm">
@@ -158,8 +158,7 @@ onMounted(() => {
                                 <p class="text-xs text-gray-400 italic">Meminta Akses: {{ req.pc_name }}</p>
                             </div>
                             <div class="flex gap-2">
-                                <button @click="approvePersonel(req.id)" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-xs font-bold transition flex items-center gap-1">
-                                    ✅ Setujui
+                                <button @click="approvePersonel(req.id)" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-xs font-bold transition flex items-center gap-1"> Setujui
                                 </button>
                             </div>
                         </div>
@@ -179,7 +178,7 @@ onMounted(() => {
 
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 border-t-4 border-blue-800">
                     <h3 class="text-lg font-bold mb-4 text-blue-800 border-b pb-2 uppercase flex items-center gap-2">
-                        <span>🖥️ Penyimpanan PC Saya</span>
+                        <span> Penyimpanan PC Saya</span>
                     </h3>
                     <div v-if="myPcs.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div v-for="pc in myPcs" :key="pc.id" class="border rounded-xl p-5 bg-slate-50 relative overflow-hidden group hover:shadow-lg transition">
@@ -202,29 +201,26 @@ onMounted(() => {
                                 </div>
                             </div>
 
-                            <Link :href="route('backup.explore', pc.id)" class="mt-6 block w-full text-center bg-blue-700 hover:bg-blue-800 text-white py-3 rounded-lg font-bold transition shadow-md uppercase text-sm">
-                                📂 MASUK DAFTAR PC
+                            <Link :href="route('backup.explore', pc.id)" class="mt-6 block w-full text-center bg-blue-700 hover:bg-blue-800 text-white py-3 rounded-lg font-bold transition shadow-md uppercase text-sm"> MASUK DAFTAR PC
                             </Link>
                         </div>
                     </div>
                     <div v-else class="text-center py-10 bg-gray-50 rounded-xl border-2 border-dashed">
                         <p class="text-gray-400 italic">Belum ada PC yang terdeteksi.</p>
-                        <button @click="checkAksesStatus" class="mt-4 bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-xs font-bold hover:bg-blue-200 transition">
-                            Ajukan Otoritas Akses
+                        <button @click="checkAksesStatus" class="mt-4 bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-xs font-bold hover:bg-blue-200 transition"> Ajukan Otoritas Akses
                         </button>
                     </div>
                 </div>
 
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                    <h3 class="text-lg font-bold mb-4 text-green-800 border-b pb-2 uppercase">🌐 Penyimpanan Publik (Anggota)</h3>
+                    <h3 class="text-lg font-bold mb-4 text-green-800 border-b pb-2 uppercase"> Penyimpanan Publik (Anggota)</h3>
                     <div v-if="publicPcs.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div v-for="pc in publicPcs" :key="pc.id" class="border rounded-lg p-4 hover:border-green-500 transition-all bg-white shadow-sm">
                             <p class="text-[9px] font-bold text-gray-400 uppercase mb-1">{{ pc.pc_name }}</p>
                             <p class="font-bold text-gray-800 leading-tight">{{ pc.user.name }}</p>
                             <p class="text-[10px] text-gray-500 mb-3">{{ pc.user.pangkat }} / {{ pc.user.nrp }}</p>
                             
-                            <Link :href="route('backup.explore', pc.id)" class="block w-full text-center bg-gray-50 hover:bg-green-600 hover:text-white text-gray-600 py-2 rounded font-bold text-[10px] transition uppercase border">
-                                📂 Buka Penyimpanan
+                            <Link :href="route('backup.explore', pc.id)" class="block w-full text-center bg-gray-50 hover:bg-green-600 hover:text-white text-gray-600 py-2 rounded font-bold text-[10px] transition uppercase border"> Buka Penyimpanan
                             </Link>
                         </div>
                     </div>
@@ -233,7 +229,7 @@ onMounted(() => {
 
                 <div v-if="isAdmin" class="bg-slate-900 overflow-hidden shadow-sm sm:rounded-lg p-6 text-white border-b-8 border-red-600">
                     <h3 class="text-lg font-bold mb-4 text-red-400 border-b border-slate-700 pb-2 uppercase flex items-center gap-2">
-                        <span>🛡️ Keamanan IP Kantor</span>
+                        <span> Keamanan IP Kantor</span>
                     </h3>
                     <form @submit.prevent="submitNetwork" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                         <div class="flex flex-col gap-1">
@@ -246,7 +242,7 @@ onMounted(() => {
                         </div>
                         <div class="flex flex-col justify-end">
                             <button type="submit" :disabled="networkForm.processing" class="bg-red-600 hover:bg-red-700 text-white font-bold rounded py-2 transition shadow-lg text-sm uppercase">
-                                {{ networkForm.processing ? 'Memproses...' : '➕ Tambah Radar' }}
+                                {{ networkForm.processing ? 'Memproses...' : ' Tambah Radar' }}
                             </button>
                         </div>
                     </form>

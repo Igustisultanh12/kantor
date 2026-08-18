@@ -1,5 +1,4 @@
-<script setup>
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+﻿<script setup> import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { useForm, Head, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
@@ -93,9 +92,7 @@ const submitSub = (categoryId) => {
                             </div>
 
                             <button :disabled="form.processing" 
-                                    :class="form.category_type === 'telegram' ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20'"
-                                    class="w-full text-white py-3.5 rounded-2xl font-extrabold uppercase text-xs tracking-wider transition shadow-md disabled:opacity-50 active:scale-95">
-                                Simpan {{ form.category_type === 'telegram' ? 'Telegram' : 'Kategori' }}
+                                    :class="form.category_type === 'telegram' ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20'"class="w-full text-white py-3.5 rounded-2xl font-extrabold uppercase text-xs tracking-wider transition shadow-md disabled:opacity-50 active:scale-95"> Simpan {{ form.category_type === 'telegram' ? 'Telegram' : 'Kategori' }}
                             </button>
                         </form>
                     </div>
@@ -137,8 +134,7 @@ const submitSub = (categoryId) => {
                                 <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-xl text-[9px] font-black tracking-widest hover:bg-indigo-700 transition shadow-md">TAMBAH</button>
                             </form>
                         </template>
-                        <div v-else class="text-center py-4 bg-amber-50/30 rounded-2xl border border-dashed border-amber-100 text-amber-600 text-[10px] font-bold italic tracking-widest uppercase">
-                            Mode Telegram: Tanpa Sub-Jenis
+                        <div v-else class="text-center py-4 bg-amber-50/30 rounded-2xl border border-dashed border-amber-100 text-amber-600 text-[10px] font-bold italic tracking-widest uppercase"> Mode Telegram: Tanpa Sub-Jenis
                         </div>
                     </div>
                 </div>

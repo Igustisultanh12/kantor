@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
@@ -84,10 +84,10 @@ const formatRupiah = (val) => {
                 
                 <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 w-full md:w-auto">
                     <button v-if="canEdit" @click="openCreateModal" class="flex-1 md:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl text-xs font-extrabold uppercase shadow-sm transition tracking-wider flex items-center gap-2">
-                        <span>📝</span> Catat Mutasi
+                        <span></span> Catat Mutasi
                     </button>
                     <a :href="route('commander.pdf')" target="_blank" class="flex-1 md:flex-none justify-center bg-slate-900 hover:bg-slate-800 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl text-xs font-extrabold uppercase shadow-sm transition tracking-wider flex items-center gap-2">
-                        <span>🖨</span> Cetak Laporan
+                        <span></span> Cetak Laporan
                     </a>
                 </div>
             </div>
@@ -100,7 +100,7 @@ const formatRupiah = (val) => {
                         <p class="text-xl sm:text-2xl font-black text-emerald-600 mt-1 font-mono">{{ formatRupiah(stats.total_masuk) }}</p>
                     </div>
                     <div class="w-10 sm:w-12 h-10 sm:h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg sm:text-xl font-bold">
-                        📥
+                        
                     </div>
                 </div>
 
@@ -110,7 +110,7 @@ const formatRupiah = (val) => {
                         <p class="text-xl sm:text-2xl font-black text-rose-600 mt-1 font-mono">{{ formatRupiah(stats.total_keluar) }}</p>
                     </div>
                     <div class="w-10 sm:w-12 h-10 sm:h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center text-lg sm:text-xl font-bold">
-                        📤
+                        
                     </div>
                 </div>
 
@@ -120,7 +120,7 @@ const formatRupiah = (val) => {
                         <p class="text-xl sm:text-2xl font-black text-blue-700 mt-1 font-mono">{{ formatRupiah(stats.saldo_akhir) }}</p>
                     </div>
                     <div class="w-10 sm:w-12 h-10 sm:h-12 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center text-lg sm:text-xl font-bold">
-                        💰
+                        
                     </div>
                 </div>
             </div>

@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
@@ -107,30 +107,25 @@ const deletePersonnel = (id) => {
     <Head title="Radar HUT Personel" />
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-black text-indigo-950 uppercase tracking-[0.2em] text-sm">🛰️ Radar & Manajemen HUT Personel</h2>
+            <h2 class="font-black text-indigo-950 uppercase tracking-[0.2em] text-sm"> Radar & Manajemen HUT Personel</h2>
         </template>
 
         <div class="py-6 space-y-6 text-left">
             <div class="bg-white p-6 rounded-3xl shadow-sm border border-indigo-50">
                 <div class="flex items-center gap-3 mb-4">
-                    <div class="h-8 w-8 bg-indigo-600 rounded-full flex items-center justify-center text-white text-xs">⚙️</div>
+                    <div class="h-8 w-8 bg-indigo-600 rounded-full flex items-center justify-center text-white text-xs"></div>
                     <h3 class="font-black text-xs uppercase tracking-widest text-slate-700">Konfigurasi Ucapan Otomatis</h3>
                 </div>
                 <div class="space-y-4">
                     <textarea 
-                        v-model="settingForm.birthday_message" 
-                        rows="4" 
-                        class="w-full rounded-2xl border-gray-100 text-sm font-bold italic p-4 focus:ring-indigo-500"
-                        placeholder="Contoh: Selamat Ulang Tahun {name}, Jalesveva Jayamahe!"
+                        v-model="settingForm.birthday_message"rows="4"class="w-full rounded-2xl border-gray-100 text-sm font-bold italic p-4 focus:ring-indigo-500"placeholder="Contoh: Selamat Ulang Tahun {name}, Jalesveva Jayamahe!"
                     ></textarea>
                     <div class="flex justify-between items-center">
                         <p class="text-[10px] text-gray-400 font-bold uppercase italic">* Gunakan <span class="text-indigo-600 font-black">{name}</span> untuk memanggil pangkat & nama secara otomatis.</p>
                         <div class="flex gap-2">
-                            <button @click="isTestModalOpen = true" class="bg-amber-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase shadow-lg hover:bg-amber-600 transition">
-                                🧪 Tes Ucapan
+                            <button @click="isTestModalOpen = true" class="bg-amber-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase shadow-lg hover:bg-amber-600 transition"> Tes Ucapan
                             </button>
-                            <button @click="saveSettings" class="bg-indigo-600 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase shadow-lg hover:bg-indigo-700 transition">
-                                Simpan Template
+                            <button @click="saveSettings" class="bg-indigo-600 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase shadow-lg hover:bg-indigo-700 transition"> Simpan Template
                             </button>
                         </div>
                     </div>
@@ -175,7 +170,7 @@ const deletePersonnel = (id) => {
 
             <div v-else class="space-y-6">
                 <div class="bg-white p-6 rounded-3xl border-2 border-dashed border-gray-200">
-                    <h3 class="text-[10px] font-black text-gray-400 uppercase mb-4 tracking-widest">➕ Daftarkan Personel Baru ke Radar</h3>
+                    <h3 class="text-[10px] font-black text-gray-400 uppercase mb-4 tracking-widest"> Daftarkan Personel Baru ke Radar</h3>
                     <form @submit.prevent="submitPersonnel" class="grid grid-cols-1 md:grid-cols-5 gap-4">
                         <input v-model="personnelForm.pangkat" type="text" placeholder="Pangkat" class="rounded-xl border-gray-200 text-xs font-black uppercase italic" required />
                         <input v-model="personnelForm.name" type="text" placeholder="Nama Lengkap" class="rounded-xl border-gray-200 text-xs font-bold uppercase italic" required />
@@ -203,7 +198,7 @@ const deletePersonnel = (id) => {
                                 <td class="p-4 text-gray-400">{{ p.phone }}</td>
                                 <td class="p-4">{{ p.birth_date }}</td>
                                 <td class="p-4 text-center">
-                                    <button @click="deletePersonnel(p.id)" class="text-red-400 hover:text-red-700 transition">🗑️</button>
+                                    <button @click="deletePersonnel(p.id)" class="text-red-400 hover:text-red-700 transition"></button>
                                 </td>
                             </tr>
                         </tbody>
@@ -215,7 +210,7 @@ const deletePersonnel = (id) => {
         <div v-if="isTestModalOpen" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
             <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl border border-indigo-50">
                 <div class="text-center mb-6">
-                    <div class="h-12 w-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-3 text-xl">🧪</div>
+                    <div class="h-12 w-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-3 text-xl"></div>
                     <h3 class="font-black text-indigo-950 uppercase tracking-widest text-sm">Uji Coba Radiogram</h3>
                     <p class="text-[10px] text-gray-400 font-bold uppercase mt-1 italic">Pilih target untuk simulasi pengiriman</p>
                 </div>

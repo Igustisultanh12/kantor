@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, Link, router } from '@inertiajs/vue3'; 
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'; 
@@ -71,8 +71,7 @@ watch(searchQuery, (value) => {
 
 const filteredContents = computed(() => {
     if (!searchQuery.value) return props.contents;
-    return props.contents.filter(item => 
-        item.file_name.toLowerCase().includes(searchQuery.value.toLowerCase())
+    return props.contents.filter(item => item.file_name.toLowerCase().includes(searchQuery.value.toLowerCase())
     );
 });
 
@@ -310,35 +309,30 @@ onUnmounted(() => {
             <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div class="flex items-center gap-4">
                     <Link v-if="currentFolderId" 
-                          :href="route('backup.explore', { id: pc.id, folder: parentFolderId })"
-                          class="bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-800 p-2.5 rounded-2xl transition shadow-xs flex items-center justify-center w-11 h-11"
-                          title="Kembali Mundur">
+                          :href="route('backup.explore', { id: pc.id, folder: parentFolderId })"class="bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-800 p-2.5 rounded-2xl transition shadow-xs flex items-center justify-center w-11 h-11"title="Kembali Mundur">
                         <span class="font-black text-lg">←</span>
                     </Link>
 
                     <div>
-                        <h2 class="font-extrabold text-xl text-slate-900 uppercase tracking-tight">
-                            📦 Explorer: {{ pc.pc_name }}
+                        <h2 class="font-extrabold text-xl text-slate-900 uppercase tracking-tight"> Explorer: {{ pc.pc_name }}
                         </h2>
                         <p class="text-xs text-slate-500 font-semibold mt-0.5">Sistem Manajemen File & Penyimpanan Cadangan Logistik SINDEN</p>
                     </div>
                 </div>
                 
-                <Link :href="route('backup.index')" class="bg-slate-900 hover:bg-slate-800 text-white px-5 py-3 rounded-2xl text-xs font-extrabold uppercase shadow-sm transition tracking-wider">
-                    Kembali ke Radar
+                <Link :href="route('backup.index')" class="bg-slate-900 hover:bg-slate-800 text-white px-5 py-3 rounded-2xl text-xs font-extrabold uppercase shadow-sm transition tracking-wider"> Kembali ke Radar
                 </Link>
             </div>
 
             <!-- Deep Scan Search Bar & Breadcrumbs -->
             <div class="bg-white p-4 rounded-3xl shadow-xs border border-[#E2E8F0] space-y-4">
                 <div class="relative">
-                    <input v-model="searchQuery" type="text" placeholder="Cari Berkas (Deep Scan Sub-Folder)..." 
-                            class="w-full rounded-2xl border-slate-200 bg-slate-50 font-bold text-xs py-3.5 pl-10 focus:ring-blue-500 focus:border-blue-600 placeholder:text-slate-400" />
-                    <span class="absolute left-3.5 top-3 text-sm text-slate-400">🔍</span>
+                    <input v-model="searchQuery" type="text" placeholder="Cari Berkas (Deep Scan Sub-Folder)..."class="w-full rounded-2xl border-slate-200 bg-slate-50 font-bold text-xs py-3.5 pl-10 focus:ring-blue-500 focus:border-blue-600 placeholder:text-slate-400" />
+                    <span class="absolute left-3.5 top-3 text-sm text-slate-400"></span>
                 </div>
 
                 <div v-if="searchQuery" class="px-4 py-2.5 bg-blue-50 border-l-4 border-blue-600 text-blue-700 text-[10px] font-extrabold uppercase rounded-r-xl flex items-center gap-2 animate-pulse">
-                    <span>📡</span> Menampilkan hasil pencarian di seluruh Folder...
+                    <span></span> Menampilkan hasil pencarian di seluruh Folder...
                 </div>
 
                 <nav class="flex bg-slate-50 px-5 py-3 rounded-2xl border border-slate-200">
@@ -364,14 +358,14 @@ onUnmounted(() => {
                         <div class="flex items-center gap-2 bg-slate-100 p-2 rounded-xl border border-slate-200">
                             <input id="file-input" type="file" @change="handleFileUpload" :disabled="isUploading" class="text-[10px] font-bold" />
                             <button @click="submitUpload" :disabled="uploadForm.processing || isUploading" class="bg-blue-700 hover:bg-blue-800 text-white px-5 py-2 rounded-lg text-xs font-black uppercase transition flex items-center gap-2">
-                                {{ isUploading ? 'MENGIRIM...' : '🚀 Unggah Berkas' }}
+                                {{ isUploading ? 'MENGIRIM...' : ' Unggah Berkas' }}
                             </button>
                         </div>
                     </div>
 
                     <div v-if="isUploading" class="bg-blue-50 p-4 rounded-xl border border-blue-200 animate-pulse">
                         <div class="flex justify-between items-center mb-2">
-                            <span class="text-blue-600 font-black text-xs uppercase italic">🛰 Progres : {{ uploadProgress }}%</span>
+                            <span class="text-blue-600 font-black text-xs uppercase italic"> Progres : {{ uploadProgress }}%</span>
                             <span class="text-blue-800 font-mono text-[10px] font-bold">Speed: {{ uploadSpeed }}</span>
                         </div>
                         <div class="w-full bg-blue-200 rounded-full h-3 overflow-hidden shadow-inner">
@@ -383,7 +377,7 @@ onUnmounted(() => {
                 <div v-if="isExtracting" class="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/90 backdrop-blur-sm p-4">
                     <div class="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-8 border-t-8 border-indigo-600">
                         <div class="text-center space-y-4">
-                            <div class="inline-block p-4 bg-indigo-50 rounded-full animate-bounce">📦</div>
+                            <div class="inline-block p-4 bg-indigo-50 rounded-full animate-bounce"></div>
                             <h3 class="font-black uppercase tracking-tighter text-lg text-indigo-900">Membongkar ZIP</h3>
                             <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Target: {{ activeExtractItem?.file_name }}</p>
                             
@@ -414,8 +408,7 @@ onUnmounted(() => {
 
                             <p class="text-[9px] text-slate-400 italic font-medium">SINDEN sedang melakukan dekompresi file, mohon jangan keluar dari halaman...</p>
 
-                            <button @click="cancelExtraction" class="w-full mt-4 bg-red-50 hover:bg-red-100 text-red-600 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all">
-                                🛑 Batalkan Operasi
+                            <button @click="cancelExtraction" class="w-full mt-4 bg-red-50 hover:bg-red-100 text-red-600 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"> Batalkan Operasi
                             </button>
                         </div>
                     </div>
@@ -434,12 +427,11 @@ onUnmounted(() => {
                         <tbody class="text-sm">
                             <tr v-for="item in filteredContents" :key="item.id" 
                                 @dblclick="item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: item.id })) : openPreview(item)"
-                                @contextmenu.stop="openContextMenu($event, item)"
-                                class="border-b hover:bg-blue-50 cursor-pointer transition select-none group">
+                                @contextmenu.stop="openContextMenu($event, item)"class="border-b hover:bg-blue-50 cursor-pointer transition select-none group">
                                 <td class="p-4">
                                     <div class="flex items-center gap-3">
-                                        <span v-if="item.is_folder" class="text-2xl">📂</span>
-                                        <span v-else class="text-2xl">📄</span>
+                                        <span v-if="item.is_folder" class="text-2xl"></span>
+                                        <span v-else class="text-2xl"></span>
                                         <div>
                                             <p class="font-black text-gray-800 uppercase tracking-tighter">{{ item.file_name }}</p>
                                             <p class="text-[10px] text-gray-400 font-bold uppercase">{{ item.is_folder ? 'Folder Strategis' : item.file_type }}</p>
@@ -455,21 +447,19 @@ onUnmounted(() => {
                                 <td class="p-4 text-right">
                                     <div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition">
                                         <button v-if="!item.is_folder && (item.file_type?.toLowerCase() === 'zip' || item.file_name?.toLowerCase().endsWith('.zip'))" 
-                                                @click="handleExtract(item)" 
-                                                class="bg-indigo-100 text-indigo-700 p-2 rounded-lg hover:bg-indigo-200" 
-                                                title="Ekstrak Paket ZIP">
-                                            📦
+                                                @click="handleExtract(item)"class="bg-indigo-100 text-indigo-700 p-2 rounded-lg hover:bg-indigo-200"title="Ekstrak Paket ZIP">
+                                            
                                         </button>
-                                        <button v-if="!item.is_folder" @click="openPreview(item)" class="bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200" title="Preview">👁️</button>
-                                        <a v-if="!item.is_folder" :href="route('backup.download', item.id)" class="bg-green-100 text-green-700 p-2 rounded-lg hover:bg-green-200" title="Download">📥</a>
-                                        <button @click="deleteItem(item)" class="bg-red-100 text-red-700 p-2 rounded-lg hover:bg-red-200" title="Hapus">🗑️</button>
+                                        <button v-if="!item.is_folder" @click="openPreview(item)" class="bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200" title="Preview"></button>
+                                        <a v-if="!item.is_folder" :href="route('backup.download', item.id)" class="bg-green-100 text-green-700 p-2 rounded-lg hover:bg-green-200" title="Download"></a>
+                                        <button @click="deleteItem(item)" class="bg-red-100 text-red-700 p-2 rounded-lg hover:bg-red-200" title="Hapus"></button>
                                     </div>
                                 </td>
                             </tr>
                             <tr v-if="filteredContents.length === 0">
                                 <td colspan="4" class="p-20 text-center">
                                     <div class="flex flex-col items-center opacity-30">
-                                        <span class="text-6xl mb-4">📭</span>
+                                        <span class="text-6xl mb-4"></span>
                                         <p class="font-black uppercase italic"> Files tidak ditemukan</p>
                                     </div>
                                 </td>
@@ -491,33 +481,27 @@ onUnmounted(() => {
         </div>
 
         <div v-if="contextMenu.show" 
-             :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }"
-             class="fixed z-[100] bg-white border border-slate-200 shadow-2xl rounded-xl w-52 py-2 text-[11px] font-black text-gray-700 uppercase tracking-tighter">
+             :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }"class="fixed z-[100] bg-white border border-slate-200 shadow-2xl rounded-xl w-52 py-2 text-[11px] font-black text-gray-700 uppercase tracking-tighter">
             
-            <div @click="contextMenu.item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: contextMenu.item.id })) : openPreview(contextMenu.item)" 
-                 class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
-                <span>👁️</span> BUKA ITEM
+            <div @click="contextMenu.item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: contextMenu.item.id })) : openPreview(contextMenu.item)"class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
+                <span></span> BUKA ITEM
             </div>
             
             <div v-if="!contextMenu.item.is_folder && (contextMenu.item.file_type?.toLowerCase() === 'zip' || contextMenu.item.file_name?.toLowerCase().endsWith('.zip'))"
-                 @click="handleExtract(contextMenu.item)"
-                 class="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white cursor-pointer flex items-center gap-3 transition font-black">
-                <span>📦</span> EKSTRAK BERKAS (ZIP)
+                 @click="handleExtract(contextMenu.item)"class="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white cursor-pointer flex items-center gap-3 transition font-black">
+                <span></span> EKSTRAK BERKAS (ZIP)
             </div>
             
             <div class="border-t my-1 border-slate-100"></div>
-            <div @click="handleRename(contextMenu.item)" 
-                 class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
-                <span>✏️</span> UBAH NAMA
+            <div @click="handleRename(contextMenu.item)"class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
+                <span></span> UBAH NAMA
             </div>
-            <div @click="showProperties(contextMenu.item)" 
-                 class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
-                <span>📊</span> PROPERTIES
+            <div @click="showProperties(contextMenu.item)"class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
+                <span></span> PROPERTIES
             </div>
             <div class="border-t my-1 border-slate-100"></div>
-            <div @click="deleteItem(contextMenu.item)" 
-                 class="px-4 py-2 hover:bg-red-600 hover:text-white cursor-pointer flex items-center gap-3 transition text-red-600">
-                <span>🗑️</span> Hapus
+            <div @click="deleteItem(contextMenu.item)"class="px-4 py-2 hover:bg-red-600 hover:text-white cursor-pointer flex items-center gap-3 transition text-red-600">
+                <span></span> Hapus
             </div>
         </div>
 
@@ -525,7 +509,7 @@ onUnmounted(() => {
             <div class="bg-white w-full max-w-6xl h-[90vh] rounded-[2rem] flex flex-col relative overflow-hidden shadow-2xl border-t-8 border-blue-600">
                 <div class="p-5 border-b flex justify-between items-center bg-slate-50">
                     <div class="flex items-center gap-3">
-                        <span class="text-xl">📄</span>
+                        <span class="text-xl"></span>
                         <h3 class="font-black text-sm uppercase tracking-tighter">Preview Dokumen Strategis</h3>
                     </div>
                     <button @click="closePreview" class="bg-red-500 text-white px-6 py-2 rounded-xl font-black text-xs hover:bg-red-600 transition shadow-lg">TUTUP</button>

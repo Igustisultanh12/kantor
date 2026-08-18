@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { useForm, Head, Link, usePage } from '@inertiajs/vue3';
 import InputError from '@/Components/InputError.vue';
 import { computed } from 'vue';
@@ -60,8 +60,7 @@ const submit = () => {
                         <h2 class="text-3xl font-extrabold tracking-tight uppercase text-white drop-shadow-md">
                             {{ appName }}
                         </h2>
-                        <p class="text-xs leading-relaxed max-w-md mx-auto text-slate-300 font-medium">
-                            Aktivasi Otoritas Akun Personel — Intelligence Digital System SINDEN Detasemen Intelijen.
+                        <p class="text-xs leading-relaxed max-w-md mx-auto text-slate-300 font-medium"> Aktivasi Otoritas Akun Personel — Intelligence Digital System SINDEN Detasemen Intelijen.
                         </p>
                     </div>
                 </div>
@@ -76,75 +75,53 @@ const submit = () => {
                 <div class="w-full max-w-md p-8 sm:p-10 rounded-2xl shadow-2xl bg-slate-900/90 backdrop-blur-md border border-white/10 text-white animate-float-card">
                     <div class="mb-8">
                         <h3 class="text-xl font-bold text-white uppercase tracking-tight">Aktivasi Personel</h3>
-                        <p class="text-xs mt-1 text-slate-300 font-medium">
-                            Masukkan NRP dan Token Aktivasi yang telah dikirimkan oleh sistem ke WhatsApp Anda.
+                        <p class="text-xs mt-1 text-slate-300 font-medium"> Masukkan NRP dan Token Aktivasi yang telah dikirimkan oleh sistem ke WhatsApp Anda.
                         </p>
                     </div>
 
                     <form @submit.prevent="submit" class="space-y-5">
                         <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-300">
-                                NRP Personel *
+                            <label class="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-300"> NRP Personel *
                             </label>
                             <input 
-                                type="text" 
-                                v-model="form.nrp" 
-                                class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white uppercase font-bold placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white" 
-                                placeholder="Masukkan NRP Anda"
-                                required 
+                                type="text"v-model="form.nrp"class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white uppercase font-bold placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white"placeholder="Masukkan NRP Anda"required 
                                 autofocus
                             />
                             <InputError class="mt-1 text-xs text-red-400" :message="form.errors.nrp" />
                         </div>
 
                         <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-300">
-                                Token Aktivasi (Cek WA) *
+                            <label class="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-300"> Token Aktivasi (Cek WA) *
                             </label>
                             <input 
-                                type="text" 
-                                v-model="form.token" 
-                                class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white font-mono font-bold uppercase placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white" 
-                                placeholder="SINDEN-XXXXXX" 
-                                required 
+                                type="text"v-model="form.token"class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white font-mono font-bold uppercase placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white"placeholder="SINDEN-XXXXXX"required 
                             />
                             <InputError class="mt-1 text-xs text-red-400" :message="form.errors.token" />
                         </div>
 
                         <div class="pt-2 border-t border-white/10">
-                            <label class="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-300">
-                                Buat Password Baru *
+                            <label class="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-300"> Buat Password Baru *
                             </label>
                             <input 
-                                type="password" 
-                                v-model="form.password" 
-                                class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white" 
-                                placeholder="Minimal 8 Karakter" 
-                                required 
+                                type="password"v-model="form.password"class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white"placeholder="Minimal 8 Karakter"required 
                             />
                             <InputError class="mt-1 text-xs text-red-400" :message="form.errors.password" />
                         </div>
 
                         <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-300">
-                                Konfirmasi Password *
+                            <label class="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-300"> Konfirmasi Password *
                             </label>
                             <input 
-                                type="password" 
-                                v-model="form.password_confirmation" 
-                                class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white" 
-                                placeholder="Ulangi Password Baru" 
-                                required 
+                                type="password"v-model="form.password_confirmation"class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white"placeholder="Ulangi Password Baru"required 
                             />
                         </div>
 
                         <button 
                             type="submit" 
-                            :disabled="form.processing" 
-                            class="w-full py-3.5 px-4 text-white text-xs font-black uppercase tracking-wider rounded-lg shadow-lg bg-orange-500 hover:bg-orange-600 shadow-orange-500/20 transition duration-150 disabled:opacity-50 cursor-pointer flex justify-center items-center gap-2"
+                            :disabled="form.processing"class="w-full py-3.5 px-4 text-white text-xs font-black uppercase tracking-wider rounded-lg shadow-lg bg-orange-500 hover:bg-orange-600 shadow-orange-500/20 transition duration-150 disabled:opacity-50 cursor-pointer flex justify-center items-center gap-2"
                         >
                             <span>Aktifkan Otoritas Akun</span>
-                            <span>➔</span>
+                            <span></span>
                         </button>
                     </form>
 

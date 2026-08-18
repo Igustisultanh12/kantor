@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3'; 
 import { onMounted, onUnmounted, ref, watch } from 'vue';
@@ -91,14 +91,14 @@ const formatTime = (dateStr) => {
 
                 <div class="flex items-center gap-3">
                     <button @click="confirmDeleteLogs" class="bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 px-4 py-2.5 rounded-2xl text-xs font-extrabold uppercase border border-rose-200 shadow-xs transition tracking-wider flex items-center gap-2">
-                        <span>🗑️</span> Musnahkan Riwayat Log
+                        <span></span> Musnahkan Riwayat Log
                     </button>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="bg-white p-6 rounded-3xl shadow-xs border border-[#E2E8F0] flex items-center gap-5">
-                    <div class="h-14 w-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center font-black text-xl shadow-xs">📊</div>
+                    <div class="h-14 w-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center font-black text-xl shadow-xs"></div>
                     <div>
                         <p class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Total Akses Masuk</p>
                         <p class="text-2xl font-black text-slate-900 mt-0.5">{{ logs.total }} <span class="text-xs font-semibold text-slate-400">Record Terdeteksi</span></p>
@@ -120,16 +120,11 @@ const formatTime = (dateStr) => {
                     
                     <div class="relative w-full md:w-72">
                         <input 
-                            v-model="search"
-                            type="text" 
-                            placeholder="Cari Nama / NRP / IP..." 
-                            class="w-full bg-white border-gray-200 rounded-2xl text-xs font-bold px-5 py-3 focus:ring-indigo-500 focus:border-indigo-500 transition-all shadow-sm"
+                            v-model="search"type="text"placeholder="Cari Nama / NRP / IP..."class="w-full bg-white border-gray-200 rounded-2xl text-xs font-bold px-5 py-3 focus:ring-indigo-500 focus:border-indigo-500 transition-all shadow-sm"
                         />
                     </div>
                     
-                    <button @click="confirmDeleteLogs" 
-                        class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-red-900/20 active:scale-95">
-                        ⚠️ Hapus Riwayat
+                    <button @click="confirmDeleteLogs"class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-red-900/20 active:scale-95"> Hapus Riwayat
                     </button>
                     
                 </div>
@@ -178,11 +173,9 @@ const formatTime = (dateStr) => {
                                 </td>
                                 <td class="px-8 py-4 text-right">
                                     <button 
-                                        @click="openMap(log.location)"
-                                        class="inline-flex items-center gap-2 bg-white border border-gray-200 text-indigo-600 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm disabled:opacity-30 disabled:grayscale"
+                                        @click="openMap(log.location)"class="inline-flex items-center gap-2 bg-white border border-gray-200 text-indigo-600 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm disabled:opacity-30 disabled:grayscale"
                                         :disabled="!log.location || !log.location.includes('GPS:')"
-                                    >
-                                        📍 Buka Peta
+                                    > Buka Peta
                                     </button>
                                 </td>
                             </tr>
@@ -191,8 +184,7 @@ const formatTime = (dateStr) => {
                 </div>
 
                 <div class="p-6 bg-gray-50/50 border-t border-gray-50 flex justify-between items-center">
-                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                        Data: {{ logs.from || 0 }} - {{ logs.to || 0 }} dari {{ logs.total }} Akses
+                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest"> Data: {{ logs.from || 0 }} - {{ logs.to || 0 }} dari {{ logs.total }} Akses
                     </span>
                     <div class="flex gap-2">
                         <Link v-if="logs.prev_page_url" :href="logs.prev_page_url" class="px-5 py-2 bg-white border border-gray-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 transition-all shadow-sm">Sebelumnya</Link>

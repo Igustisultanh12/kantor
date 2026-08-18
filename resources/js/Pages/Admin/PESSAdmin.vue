@@ -1,13 +1,11 @@
-<template>
+﻿<template>
   <div class="min-h-screen bg-[#F8F9FD] text-slate-800 p-4 sm:p-6 lg:p-8" style="font-family: 'Arial', sans-serif;">
     
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-200 pb-6 mb-6 gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-slate-900 tracking-tight uppercase">
-          DASHBOARD ADMIN PESS
+        <h1 class="text-2xl font-bold text-slate-900 tracking-tight uppercase"> DASHBOARD ADMIN PESS
         </h1>
-        <p class="text-xs font-semibold text-slate-500 tracking-wide mt-1">
-          Sistem Verifikasi Berkas & Security Clearance Portal
+        <p class="text-xs font-semibold text-slate-500 tracking-wide mt-1"> Sistem Verifikasi Berkas & Security Clearance Portal
         </p>
       </div>
       <div class="flex items-center space-x-2 bg-white border border-gray-200 px-4 py-2 rounded-xl shadow-sm">
@@ -42,19 +40,16 @@
     </div>
 
     <div class="flex space-x-2 border-b border-gray-200 mb-6">
-      <button @click="currentTab = 'submissions'" :class="currentTab === 'submissions' ? 'border-b-2 border-indigo-600 text-indigo-600 font-black' : 'text-slate-500 font-bold'" class="px-4 py-2 text-xs uppercase tracking-wider focus:outline-none transition">
-        📡 Antrean Berkas PESS
+      <button @click="currentTab = 'submissions'" :class="currentTab === 'submissions' ? 'border-b-2 border-indigo-600 text-indigo-600 font-black' : 'text-slate-500 font-bold'" class="px-4 py-2 text-xs uppercase tracking-wider focus:outline-none transition"> Antrean Berkas PESS
       </button>
-      <button @click="currentTab = 'applicants'" :class="currentTab === 'applicants' ? 'border-b-2 border-indigo-600 text-indigo-600 font-black' : 'text-slate-500 font-bold'" class="px-4 py-2 text-xs uppercase tracking-wider focus:outline-none transition">
-        👥 Manajemen Akun Personel
+      <button @click="currentTab = 'applicants'" :class="currentTab === 'applicants' ? 'border-b-2 border-indigo-600 text-indigo-600 font-black' : 'text-slate-500 font-bold'" class="px-4 py-2 text-xs uppercase tracking-wider focus:outline-none transition"> Manajemen Akun Personel
       </button>
     </div>
 
     <div v-if="currentTab === 'submissions'" class="bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden">
       <div class="bg-slate-50/80 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
         <h2 class="text-xs font-black text-slate-700 tracking-widest uppercase flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
-          Daftar Antrean Masuk (Portal PESS)
+          <span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span> Daftar Antrean Masuk (Portal PESS)
         </h2>
         <span class="text-[10px] font-mono font-bold text-slate-400">Koneksi: Terhubung ke Si Sinden</span>
       </div>
@@ -91,41 +86,36 @@
               <td class="p-4 text-center">
                 <button v-if="sub.status === 'verifying' || sub.status === 'rejected_files'" 
                         @click="openVerifyModal(sub)" 
-                        :disabled="isLoading"
-                        class="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase tracking-wider rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-50">
+                        :disabled="isLoading"class="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase tracking-wider rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-50">
                   {{ isLoading ? 'Memproses...' : 'Cek Berkas' }}
                 </button>
 
                 <button v-if="sub.status === 'wawancara_ready'" 
                         @click="openInterviewModal(sub)" 
-                        :disabled="isLoading"
-                        class="w-full sm:w-auto px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 text-[10px] font-black uppercase tracking-wider rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-50">
+                        :disabled="isLoading"class="w-full sm:w-auto px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 text-[10px] font-black uppercase tracking-wider rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-50">
                   {{ isLoading ? 'Memproses...' : 'Plot Wawancara' }}
                 </button>
 
                 <button v-if="sub.status === 'wawancara_process'" 
                         @click="openSkhppModal(sub)" 
-                        :disabled="isLoading"
-                        class="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-wider rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-50">
+                        :disabled="isLoading"class="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-wider rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-50">
                   {{ isLoading ? 'Memproses...' : 'Terbit SKHPP' }}
                 </button>
 
                 <button v-if="sub.status === 'skhpp_pending_digital'" 
                         @click="executeSignKomandan(sub.id)" 
-                        :disabled="isLoading"
-                        class="w-full sm:w-auto px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-black uppercase tracking-wider rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-50 border border-purple-400/30">
+                        :disabled="isLoading"class="w-full sm:w-auto px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-black uppercase tracking-wider rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-50 border border-purple-400/30">
                   {{ isLoading ? 'Mohon Tunggu...' : 'Sign Digital' }}
                 </button>
 
                 <button v-if="sub.status === 'skhpp_complete'" 
                         @click="forwardToSinkodv(sub.id)" 
-                        :disabled="isLoading"
-                        class="w-full sm:w-auto px-4 py-2 bg-slate-900 hover:bg-black text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-50">
-                  {{ isLoading ? 'Mengirim...' : 'Kirim SINKODV ➔' }}
+                        :disabled="isLoading"class="w-full sm:w-auto px-4 py-2 bg-slate-900 hover:bg-black text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-50">
+                  {{ isLoading ? 'Mengirim...' : 'Kirim SINKODV ' }}
                 </button>
 
-                <span v-if="sub.status === 'sinkodv_verification'" class="text-[10px] text-slate-400 font-bold italic uppercase tracking-wider animate-pulse">📡 Proses Verifikasi SINKODV</span>
-                <span v-if="sub.status === 'sc_published'" class="text-[10px] text-emerald-600 font-black uppercase tracking-widest flex items-center justify-center gap-1">✅ SC Selesai Terbit</span>
+                <span v-if="sub.status === 'sinkodv_verification'" class="text-[10px] text-slate-400 font-bold italic uppercase tracking-wider animate-pulse"> Proses Verifikasi SINKODV</span>
+                <span v-if="sub.status === 'sc_published'" class="text-[10px] text-emerald-600 font-black uppercase tracking-widest flex items-center justify-center gap-1"> SC Selesai Terbit</span>
               </td>
             </tr>
             <tr v-if="submissions.length === 0">
@@ -138,8 +128,7 @@
 
     <div v-if="currentTab === 'applicants'" class="bg-white border border-gray-200 shadow-sm rounded-2xl overflow-hidden">
       <div class="bg-slate-50/80 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-        <h2 class="text-xs font-black text-slate-700 tracking-widest uppercase flex items-center gap-2">
-          👥 Otoritas Akses Akun Portal PESS
+        <h2 class="text-xs font-black text-slate-700 tracking-widest uppercase flex items-center gap-2"> Otoritas Akses Akun Portal PESS
         </h2>
       </div>
 
@@ -190,18 +179,16 @@
       <div class="bg-white max-w-xl w-full p-6 rounded-2xl shadow-xl space-y-4 border border-gray-200 text-left transition-all">
         <div class="flex justify-between items-center border-b border-gray-200 pb-3">
           <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest">Verifikasi Berkas Lampiran</h3>
-          <button @click="activeModal = null" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
+          <button @click="activeModal = null" class="text-slate-400 hover:text-slate-600 font-bold text-lg"></button>
         </div>
         
         <div class="bg-slate-50 p-4 rounded-xl border border-gray-200 text-xs text-slate-700 space-y-3">
           <p><strong class="text-slate-500">Nama Pendaftar:</strong> <span class="text-slate-900 uppercase font-bold">{{ selectedSub?.applicant?.nama_lengkap || '-' }}</span></p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
-            <a v-if="selectedSub?.generated_pdf_path" :href="'/storage/' + selectedSub.generated_pdf_path" target="_blank" class="flex items-center justify-center gap-2 p-2.5 bg-indigo-50 border border-indigo-200 rounded-xl font-black text-indigo-600 hover:bg-indigo-100 text-center uppercase tracking-wider">
-              📄 Lihat Master DRH (PDF)
+            <a v-if="selectedSub?.generated_pdf_path" :href="'/storage/' + selectedSub.generated_pdf_path" target="_blank" class="flex items-center justify-center gap-2 p-2.5 bg-indigo-50 border border-indigo-200 rounded-xl font-black text-indigo-600 hover:bg-indigo-100 text-center uppercase tracking-wider"> Lihat Master DRH (PDF)
             </a>
             <template v-for="(path, key) in selectedSub?.attachment_paths" :key="key">
-              <a v-if="path" :href="'/storage/' + path" target="_blank" class="flex items-center justify-center gap-2 p-2.5 bg-white border border-gray-200 rounded-xl font-bold text-slate-700 hover:bg-slate-50 text-center uppercase truncate">
-                📎 File: {{ key.replace('_', ' ') }}
+              <a v-if="path" :href="'/storage/' + path" target="_blank" class="flex items-center justify-center gap-2 p-2.5 bg-white border border-gray-200 rounded-xl font-bold text-slate-700 hover:bg-slate-50 text-center uppercase truncate"> File: {{ key.replace('_', ' ') }}
               </a>
             </template>
           </div>
@@ -235,7 +222,7 @@
       <div class="bg-white max-w-md w-full p-6 rounded-2xl shadow-xl space-y-4 border border-gray-200 text-left">
         <div class="flex justify-between items-center border-b border-gray-200 pb-3">
           <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest">Penjadwalan Wawancara Pemohon</h3>
-          <button @click="activeModal = null" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
+          <button @click="activeModal = null" class="text-slate-400 hover:text-slate-600 font-bold text-lg"></button>
         </div>
         <div class="space-y-3">
           <div>
@@ -265,7 +252,7 @@
       <div class="bg-white max-w-md w-full p-6 rounded-2xl shadow-xl space-y-4 border border-gray-200 text-left">
         <div class="flex justify-between items-center border-b border-gray-200 pb-3">
           <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest">Unggah Hasil Format SKHPP</h3>
-          <button @click="activeModal = null" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
+          <button @click="activeModal = null" class="text-slate-400 hover:text-slate-600 font-bold text-lg"></button>
         </div>
         <div class="space-y-3">
           <div>
@@ -291,7 +278,7 @@
       <div class="bg-white max-w-md w-full p-6 rounded-2xl shadow-xl space-y-4 border border-gray-200 text-left">
         <div class="flex justify-between items-center border-b border-gray-200 pb-3">
           <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest">Koreksi Data Primer Personel</h3>
-          <button @click="activeModal = null" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
+          <button @click="activeModal = null" class="text-slate-400 hover:text-slate-600 font-bold text-lg"></button>
         </div>
         <div class="space-y-3">
           <div>
@@ -479,7 +466,7 @@ const submitEditApplicant = () => {
 
 // 4. Eksekusi Penghapusan Akun Permanen (Auto-Cascade)
 const deleteAccount = (id) => {
-  if (confirm('🚨 PERINGATAN MILITER: Menghapus akun pendaftar ini akan memusnahkan seluruh file riwayat pengajuan DRH mereka secara permanen dari pangkalan radar Si Sinden! Lanjutkan?')) {
+  if (confirm(' PERINGATAN MILITER: Menghapus akun pendaftar ini akan memusnahkan seluruh file riwayat pengajuan DRH mereka secara permanen dari pangkalan radar Si Sinden! Lanjutkan?')) {
     isLoading.value = true;
     router.delete(`/admin/applicants/${id}/delete`, {
       onFinish: () => { isLoading.value = false; }

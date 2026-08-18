@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, usePage, router, Link } from '@inertiajs/vue3';
 // PERBAIKAN: Menambahkan onMounted dan onUnmounted agar tidak error
@@ -254,8 +254,7 @@ onUnmounted(() => {
                 </div>
                 
                 <div class="flex gap-2 sm:gap-3 w-full md:w-auto">
-                    <button @click="openPreview" class="flex-1 md:flex-none px-4 sm:px-5 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 text-slate-700 rounded-2xl font-extrabold text-xs uppercase shadow-xs hover:bg-slate-100 transition tracking-wider">
-                        📄 Pratinjau Rekap
+                    <button @click="openPreview" class="flex-1 md:flex-none px-4 sm:px-5 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 text-slate-700 rounded-2xl font-extrabold text-xs uppercase shadow-xs hover:bg-slate-100 transition tracking-wider"> Pratinjau Rekap
                     </button>
                     <button @click="showAddModal = true" class="flex-1 md:flex-none px-4 sm:px-5 py-2.5 sm:py-3 bg-blue-600 text-white rounded-2xl font-extrabold text-xs uppercase shadow-md shadow-blue-500/20 hover:bg-blue-700 transition tracking-wider">
                         + Tambah Personel
@@ -303,23 +302,15 @@ onUnmounted(() => {
                                         </svg>
                                     </button>
                                     <button @click="toggleMitraAccess(user)" 
-                                        :class="user.can_access_mitra ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-600 hover:text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-700 hover:text-white'"
-                                        class="px-2.5 py-1.5 text-[8px] font-black uppercase rounded-lg transition-all shadow-xs"
-                                        title="Toggle Hak Akses Modul Mitra">
-                                        Mitra: {{ user.can_access_mitra ? 'AKTIF' : 'OFF' }}
+                                        :class="user.can_access_mitra ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-600 hover:text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-700 hover:text-white'"class="px-2.5 py-1.5 text-[8px] font-black uppercase rounded-lg transition-all shadow-xs"title="Toggle Hak Akses Modul Mitra"> Mitra: {{ user.can_access_mitra ? 'AKTIF' : 'OFF' }}
                                     </button>
                                     <button @click="toggleTechnicalCashAccess(user)" 
-                                        :class="user.can_access_technical_cash ? 'bg-cyan-100 text-cyan-800 hover:bg-cyan-600 hover:text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-700 hover:text-white'"
-                                        class="px-2.5 py-1.5 text-[8px] font-black uppercase rounded-lg transition-all shadow-xs"
-                                        title="Toggle Hak Akses Buku Kas Dan Unit Teknis">
-                                        Kas Teknis: {{ user.can_access_technical_cash ? 'AKTIF' : 'OFF' }}
+                                        :class="user.can_access_technical_cash ? 'bg-cyan-100 text-cyan-800 hover:bg-cyan-600 hover:text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-700 hover:text-white'"class="px-2.5 py-1.5 text-[8px] font-black uppercase rounded-lg transition-all shadow-xs"title="Toggle Hak Akses Buku Kas Dan Unit Teknis"> Kas Teknis: {{ user.can_access_technical_cash ? 'AKTIF' : 'OFF' }}
                                     </button>
-                                    <button @click="requestToken(user)" class="px-3 py-2 bg-amber-100 text-amber-700 text-[8px] font-black uppercase rounded-lg hover:bg-amber-500 hover:text-white transition-all shadow-sm">
-                                        Req Token
+                                    <button @click="requestToken(user)" class="px-3 py-2 bg-amber-100 text-amber-700 text-[8px] font-black uppercase rounded-lg hover:bg-amber-500 hover:text-white transition-all shadow-sm"> Req Token
                                     </button>
                                     <button @click="startConfirmation(user)" 
-                                        :class="user.is_active ? 'border-rose-500 text-rose-500 hover:bg-rose-500 hover:text-white' : 'bg-indigo-600 text-white hover:bg-indigo-700'"
-                                        class="px-5 py-2 font-black text-[9px] uppercase rounded-xl shadow-lg transition-all active:scale-95 border-2 border-transparent">
+                                        :class="user.is_active ? 'border-rose-500 text-rose-500 hover:bg-rose-500 hover:text-white' : 'bg-indigo-600 text-white hover:bg-indigo-700'"class="px-5 py-2 font-black text-[9px] uppercase rounded-xl shadow-lg transition-all active:scale-95 border-2 border-transparent">
                                         {{ user.is_active ? 'SUSPEND' : 'AKTIFKAN' }}
                                     </button>
                                     <button @click="deleteUser(user)" class="p-2 text-gray-300 hover:text-rose-600 transition-colors text-lg">
@@ -333,13 +324,11 @@ onUnmounted(() => {
             </div>
 
             <div class="mt-8 flex items-center justify-between px-4">
-                <div class="text-[10px] font-bold text-gray-400 uppercase italic">
-                    Showing {{ users.from }} to {{ users.to }} of {{ users.total }} Personnels
+                <div class="text-[10px] font-bold text-gray-400 uppercase italic"> Showing {{ users.from }} to {{ users.to }} of {{ users.total }} Personnels
                 </div>
                 <div class="flex gap-1">
                     <Link v-for="(link, index) in users.links" :key="index"
-                        :href="link.url || '#'"
-                        v-html="link.label"
+                        :href="link.url || '#'"v-html="link.label"
                         :class="[
                             'px-4 py-2 rounded-xl text-[10px] font-black transition-all border',
                             link.active ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-gray-400 border-gray-100 hover:bg-gray-50',
@@ -511,7 +500,7 @@ onUnmounted(() => {
         <div v-if="showPasswordModal" class="fixed inset-0 bg-indigo-950/20 backdrop-blur-md flex items-center justify-center z-[100] p-6">
             <div class="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl border border-indigo-50 p-10 animate-in fade-in zoom-in duration-300">
                 <div class="text-center mb-8">
-                    <div class="h-16 w-16 bg-rose-50 text-rose-600 rounded-3xl flex items-center justify-center text-2xl mx-auto mb-4 animate-bounce">🛡️</div>
+                    <div class="h-16 w-16 bg-rose-50 text-rose-600 rounded-3xl flex items-center justify-center text-2xl mx-auto mb-4 animate-bounce"></div>
                     <h3 class="text-sm font-black text-indigo-950 uppercase tracking-[0.1em]">Otoritas Admin</h3>
                     <p class="text-[9px] text-gray-400 font-bold uppercase mt-2 italic">Konfirmasi password untuk merubah izin akses</p>
                 </div>

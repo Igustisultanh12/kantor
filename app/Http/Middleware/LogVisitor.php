@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Middleware;
 
@@ -69,7 +69,7 @@ class LogVisitor
                             $speed = $distance / $timeDiffHours;
                             if ($speed > 250 && $distance > 10) {
                                 $isSuspicious = true;
-                                $location = "⚠️ INDIKASI MANIPULASI (Kec: " . round($speed) . " km/jam)";
+                                $location = " INDIKASI MANIPULASI (Kec: " . round($speed) . " km/jam)";
                             }
                         }
                     }

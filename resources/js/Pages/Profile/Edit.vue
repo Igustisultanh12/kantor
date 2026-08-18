@@ -1,5 +1,4 @@
-<script setup>
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+﻿<script setup> import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DeleteUserForm from './Partials/DeleteUserForm.vue';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue';
@@ -32,8 +31,7 @@ defineProps({
                 <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0]">
                     <UpdateProfileInformationForm
                         :must-verify-email="mustVerifyEmail"
-                        :status="status"
-                        class="max-w-xl"
+                        :status="status"class="max-w-xl"
                     />
                 </div>
 

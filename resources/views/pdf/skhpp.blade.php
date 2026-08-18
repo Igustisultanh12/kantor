@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
@@ -54,12 +54,10 @@
 
         <!-- Judul Surat -->
         <div style="text-align: center; margin-top: 15px; margin-bottom: 25px;">
-            <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt;">
-                SURAT KETERANGAN HASIL PENELITIAN PERSONEL(SKHPP)
+            <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt;"> SURAT KETERANGAN HASIL PENELITIAN PERSONEL(SKHPP)
             </div>
             @if($skhpp->kategori_personel === 'perusahaan')
-            <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt;">
-                MITRA KERJA TNI ANGKATAN LAUT
+            <div style="font-weight: normal; text-transform: uppercase; font-size: 12pt;"> MITRA KERJA TNI ANGKATAN LAUT
             </div>
             @endif
             <div style="font-weight: normal; font-size: 12pt; margin-top: 3px;">
@@ -201,8 +199,7 @@
         <table style="width: 100%; margin-bottom: 10px;">
             <tr>
                 <td style="width: 30px; vertical-align: top; font-weight: normal;">2.</td>
-                <td style="vertical-align: top;">
-                    Hasil Penelitian Personel <span style="font-weight: bold;">Memenuhi Syarat</span>
+                <td style="vertical-align: top;"> Hasil Penelitian Personel <span style="font-weight: bold;">Memenuhi Syarat</span>
                 </td>
             </tr>
         </table>
@@ -211,8 +208,7 @@
         <table style="width: 100%; margin-bottom: 10px;">
             <tr>
                 <td style="width: 30px; vertical-align: top; font-weight: normal;">3.</td>
-                <td style="vertical-align: top; text-align: justify;">
-                    SKHPP ini diberikan {{ $skhpp->peruntukan }}.
+                <td style="vertical-align: top; text-align: justify;"> SKHPP ini diberikan {{ $skhpp->peruntukan }}.
                 </td>
             </tr>
         </table>
@@ -221,8 +217,7 @@
         <table style="width: 100%; margin-bottom: 15px;">
             <tr>
                 <td style="width: 30px; vertical-align: top; font-weight: normal;">4.</td>
-                <td style="vertical-align: top; text-align: justify;">
-                    Apabila kemudian terdapat kekeliruan, SKHPP ini akan dicabut dan diadakan pembetulan seperlunya.
+                <td style="vertical-align: top; text-align: justify;"> Apabila kemudian terdapat kekeliruan, SKHPP ini akan dicabut dan diadakan pembetulan seperlunya.
                 </td>
             </tr>
         </table>
@@ -254,8 +249,7 @@
                             </tr>
                         </table>
                         
-                        <div style="font-weight: normal; line-height: 1.2; text-align: center; white-space: nowrap; margin-top: 4px;">
-                            Komandan Detasemen Intelijen Kodaeral V,
+                        <div style="font-weight: normal; line-height: 1.2; text-align: center; white-space: nowrap; margin-top: 4px;"> Komandan Detasemen Intelijen Kodaeral V,
                         </div>
 
                         <!-- TTD QR Code Rata Tengah -->
@@ -310,8 +304,7 @@
         </table>
 
         <!-- Judul Lampiran -->
-        <div style="text-align: center; font-weight: normal; text-transform: uppercase; margin-bottom: 15px; font-size: 12pt;">
-            DAFTAR NAMA-NAMA ANGGOTA PENGIKUT
+        <div style="text-align: center; font-weight: normal; text-transform: uppercase; margin-bottom: 15px; font-size: 12pt;"> DAFTAR NAMA-NAMA ANGGOTA PENGIKUT
         </div>
 
         <!-- Tabel Anggota Pengikut -->
@@ -342,8 +335,7 @@
                 <td style="width: 50%;"></td>
                 <td style="width: 50%; text-align: center;">
                     <div style="text-align: center; width: 280px; margin: 0 auto; font-weight: normal;">
-                        <div style="line-height: 1.2; white-space: nowrap;">
-                            Komandan Detasemen Intelijen Kodaeral V,
+                        <div style="line-height: 1.2; white-space: nowrap;"> Komandan Detasemen Intelijen Kodaeral V,
                         </div>
                         <div style="height: 95px; margin-top: 5px; margin-bottom: 5px; text-align: center;">
                             @if($qr_base64 && $skhpp->status === 'approved')

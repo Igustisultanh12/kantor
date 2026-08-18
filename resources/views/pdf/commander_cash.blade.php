@@ -1,9 +1,8 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
     <title>LAPORAN REKENING KOMANDAN</title>
-    <style>
-        body {
+    <style> body {
             font-family: Arial, sans-serif;
             font-size: 11px;
             color: #000;
@@ -119,8 +118,7 @@
             </tr>
             <tr style="background-color: #f2f2f2; font-weight: bold; font-size: 12px;">
                 <td colspan="2" class="text-right uppercase">SALDO AKHIR KOMANDAN :</td>
-                <td colspan="2" class="text-center" style="color: #4f46e5;">
-                    Rp {{ number_format($saldo, 2, ',', '.') }}
+                <td colspan="2" class="text-center" style="color: #4f46e5;"> Rp {{ number_format($saldo, 2, ',', '.') }}
                 </td>
             </tr>
         </tbody>

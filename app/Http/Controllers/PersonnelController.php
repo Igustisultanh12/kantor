@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers;
 
@@ -47,7 +47,7 @@ class PersonnelController extends Controller
         $finalMessage = str_replace('{name}', $identitas, $request->message_template);
 
         // LOG: Upaya pengiriman radiogram tes
-        Log::info("🛰️ Memulai Tes Ucapan ke: $identitas ($request->phone)");
+        Log::info(" Memulai Tes Ucapan ke: $identitas ($request->phone)");
 
         try {
             // Memancarkan pesan ke WA Gateway Port 3000
@@ -62,11 +62,11 @@ class PersonnelController extends Controller
                 return back()->with('success', 'Radiogram tes berhasil dipancarkan ke ' . $identitas);
             }
             
-            Log::warning("⚠️ Gateway merespons Gagal untuk $identitas. Respon: " . $response->body());
+            Log::warning(" Gateway merespons Gagal untuk $identitas. Respon: " . $response->body());
             return back()->with('error', 'Gateway merespons dengan kegagalan.');
 
         } catch (\Exception $e) {
-            Log::error("❌ Gagal menghubungi WA Gateway. Pesan: " . $e->getMessage());
+            Log::error(" Gagal menghubungi WA Gateway. Pesan: " . $e->getMessage());
             return back()->with('error', 'Radar gagal menghubungi WA Gateway. Pastikan PM2 Aktif!');
         }
     }
@@ -84,7 +84,7 @@ class PersonnelController extends Controller
         $personnel = Personnel::create($request->all());
 
         // LOG: Penambahan personel eksternal baru
-        Log::info("👤 Personel Non-Akun baru ditambahkan: $personnel->pangkat $personnel->name oleh " . auth()->user()->name);
+        Log::info(" Personel Non-Akun baru ditambahkan: $personnel->pangkat $personnel->name oleh " . auth()->user()->name);
 
         return back()->with('success', 'Personel Non-Akun berhasil ditambahkan.');
     }
@@ -101,7 +101,7 @@ class PersonnelController extends Controller
         ]);
 
         // LOG: Pembaruan data personel internal
-        Log::info("📝 Data Personel Akun Diperbarui: $user->pangkat $user->name oleh " . auth()->user()->name);
+        Log::info(" Data Personel Akun Diperbarui: $user->pangkat $user->name oleh " . auth()->user()->name);
 
         return back()->with('success', 'Data personel telah diperbarui.');
     }
@@ -114,7 +114,7 @@ class PersonnelController extends Controller
         $personnel->delete();
 
         // LOG: Penghapusan personel dari radar
-        Log::warning("🗑️ Personel Non-Akun Dihapus: $namaPersonel oleh " . auth()->user()->name);
+        Log::warning(" Personel Non-Akun Dihapus: $namaPersonel oleh " . auth()->user()->name);
 
         return back()->with('success', 'Personel telah dihapus dari sistem.');
     }
@@ -134,7 +134,7 @@ class PersonnelController extends Controller
         );
 
         // LOG: Perubahan konfigurasi template
-        Log::info("⚙️ Template ucapan dikalibrasi ulang oleh " . auth()->user()->name);
+        Log::info(" Template ucapan dikalibrasi ulang oleh " . auth()->user()->name);
 
         return back()->with('success', 'Template ucapan ulang tahun telah diperbarui.');
     }

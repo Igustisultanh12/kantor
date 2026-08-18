@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Middleware;
 
@@ -15,7 +15,7 @@ class OfficeOnly
         $clientIp = $request->header('CF-Connecting-IP') ?? $request->ip();
 
         // ==========================================================
-        // 🚀 OPERASI TEMBAK LANGSUNG (DEBUG MODE)
+        //  OPERASI TEMBAK LANGSUNG (DEBUG MODE)
         // Lepas tanda komentar (//) pada baris di bawah ini untuk 
         // memaksa IP muncul di layar putih browser.
         // ==========================================================

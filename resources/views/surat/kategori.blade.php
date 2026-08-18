@@ -1,14 +1,14 @@
-<x-app-layout>
+﻿<x-app-layout>
     <div class="flex h-[calc(100vh-65px)] bg-[#09090b] text-zinc-300">
         
         <div class="w-64 bg-[#121214] border-r border-zinc-800 p-6 flex flex-col">
             <h3 class="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] mb-8">Admin Panel</h3>
             <nav class="space-y-4">
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-3 text-sm text-zinc-500 hover:text-white transition">
-                    <span>🏠</span> Dashboard POS
+                    <span></span> Dashboard POS
                 </a>
                 <a href="{{ route('kategori.index') }}" class="flex items-center gap-3 text-sm text-white font-semibold">
-                    <span class="p-1.5 bg-blue-600 rounded-md text-xs">⚙️</span> Pengaturan Kategori
+                    <span class="p-1.5 bg-blue-600 rounded-md text-xs"></span> Pengaturan Kategori
                 </a>
             </nav>
         </div>
@@ -53,7 +53,7 @@
                                 <td class="px-8 py-6 text-right">
                                     <form action="{{ route('kategori.destroy', $sub->id) }}" method="POST" onsubmit="return confirm('Hapus kategori ini?')">
                                         @csrf @method('DELETE')
-                                        <button class="text-zinc-600 hover:text-red-500 transition">🗑️</button>
+                                        <button class="text-zinc-600 hover:text-red-500 transition"></button>
                                     </form>
                                 </td>
                             </tr>

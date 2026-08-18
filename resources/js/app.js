@@ -1,4 +1,4 @@
-import '../css/app.css';
+﻿import '../css/app.css';
 import './bootstrap';
 
 import { createInertiaApp } from '@inertiajs/vue3';
@@ -10,8 +10,7 @@ const appName = import.meta.env.VITE_APP_NAME || 'SI SINDEN - DENINTEL KODAERAL 
 
 createInertiaApp({
     title: (title) => title ? `${title} - ${appName}` : appName,
-    resolve: (name) =>
-        resolvePageComponent(
+    resolve: (name) => resolvePageComponent(
             `./Pages/${name}.vue`,
             import.meta.glob('./Pages/**/*.vue'),
         ),

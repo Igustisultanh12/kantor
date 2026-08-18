@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers\API;
 
@@ -102,14 +102,14 @@ class SindenToSinkodvController extends Controller
             ]);
 
             // Tembakkan Notifikasi Kemenangan/Kelulusan via WhatsApp Pemohon
-            $pesan = "🎉 *SECURITY CLEARANCE (SC) RESMI TERBIT*\nHalo *{$applicant->nama_lengkap}*,\nKami informasikan dari pangkalan *SINKODV* bahwa Surat Security Clearance (SC) Anda telah resmi *DITERBITKAN* dan ditandatangani oleh Asintel.\n\nBerkas fisik dapat diambil di kantor Detasemen Intelijen atau diunduh melalui portal PESS Anda.";
+            $pesan = " *SECURITY CLEARANCE (SC) RESMI TERBIT*\nHalo *{$applicant->nama_lengkap}*,\nKami informasikan dari pangkalan *SINKODV* bahwa Surat Security Clearance (SC) Anda telah resmi *DITERBITKAN* dan ditandatangani oleh Asintel.\n\nBerkas fisik dapat diambil di kantor Detasemen Intelijen atau diunduh melalui portal PESS Anda.";
             WhatsappService::sendMessage($applicant->no_wa, $pesan);
 
             return response()->json(['status' => 'inkrah', 'message' => 'Pangkalan data Sinden berhasil diupdate, SC terbit.'], 200);
         } else {
             $submission->update(['status' => 'sinkodv_rejected']);
             
-            $pesan = "❌ *NOTIFIKASI SINKODV*\nHalo *{$applicant->nama_lengkap}*,\nBerdasarkan hasil verifikasi akhir staf SINKODV, pengajuan Anda dinyatakan *DITOLAK/DITANGGUHKAN*.\nCatatan: {$request->catatan_asintel}";
+            $pesan = " *NOTIFIKASI SINKODV*\nHalo *{$applicant->nama_lengkap}*,\nBerdasarkan hasil verifikasi akhir staf SINKODV, pengajuan Anda dinyatakan *DITOLAK/DITANGGUHKAN*.\nCatatan: {$request->catatan_asintel}";
             WhatsappService::sendMessage($applicant->no_wa, $pesan);
 
             return response()->json(['status' => 'rejected', 'message' => 'Status penolakan berhasil dicatat.'], 200);

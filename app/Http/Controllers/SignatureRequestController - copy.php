@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers;
 
@@ -59,10 +59,10 @@ class SignatureRequestController extends Controller
 
             $komandan = User::where('role', 'komandan')->first();
             if ($komandan && $komandan->phone) {
-                $pesan = "📢 *SI SINDEN: PEMBERITAHUAN*\n\n" .
+                $pesan = " *SI SINDEN: PEMBERITAHUAN*\n\n" .
                          "Mohon izin Komandan, terdapat pengajuan berkas baru:\n\n" .
-                         "📝 *Perihal:* {$request->subject}\n" .
-                         "👤 *Pengaju:* " . auth()->user()->name . "\n\n" .
+                         " *Perihal:* {$request->subject}\n" .
+                         " *Pengaju:* " . auth()->user()->name . "\n\n" .
                          "Mohon izin untuk memeriksa berkas di Laman : https://sisinden.my.id/signature-requests";
                          
                 WhatsappService::sendMessage($komandan->phone, $pesan);
@@ -101,10 +101,10 @@ class SignatureRequestController extends Controller
 
                 $komandan = User::where('role', 'komandan')->first();
                 if ($komandan && $komandan->phone) {
-                    $pesanRev = "🔄 *SI SINDEN: BERKAS TELAH DIREVISI*\n\n" .
+                    $pesanRev = " *SI SINDEN: BERKAS TELAH DIREVISI*\n\n" .
                                 "Mohon izin Komandan, berkas yang sebelumnya ditolak telah diperbaiki oleh staf:\n\n" .
-                                "📝 *Perihal:* {$signatureRequest->subject}\n" .
-                                "👤 *Oleh:* {$user->name}\n\n" .
+                                " *Perihal:* {$signatureRequest->subject}\n" .
+                                " *Oleh:* {$user->name}\n\n" .
                                 "Mohon izin untuk memeriksa berkas di : https://sisinden.my.id/signature-request";
                     WhatsappService::sendMessage($komandan->phone, $pesanRev);
                 }
@@ -180,17 +180,17 @@ class SignatureRequestController extends Controller
             $targetUser = $signatureRequest->user;
             if ($targetUser && $targetUser->phone) {
                 if ($request->status === 'approved') {
-                    $statusMsg = "✅ *TELAH DISAHKAN*";
+                    $statusMsg = " *TELAH DISAHKAN*";
                     $ket = "Silakan unduh berkas Anda.";
                 } else {
-                    $statusMsg = "❌ *DITOLAK / PERLU REVISI*";
+                    $statusMsg = " *DITOLAK / PERLU REVISI*";
                     $ket = "Alasan: _" . ($request->note ?? '-') . "_";
                 }
                 
-                $pesanWA = "📢 *SI SINDEN: STATUS BERKAS*\n\n" .
+                $pesanWA = " *SI SINDEN: STATUS BERKAS*\n\n" .
                            "Berkas: *{$signatureRequest->subject}*\n" .
                            "Status: {$statusMsg}\n\n" .
-                           "📝 {$ket}";
+                           " {$ket}";
                 WhatsappService::sendMessage($targetUser->phone, $pesanWA);
             }
 

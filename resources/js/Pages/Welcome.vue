@@ -1,5 +1,4 @@
-<script setup>
-import { computed } from 'vue';
+﻿<script setup> import { computed } from 'vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 
 const props = defineProps({
@@ -53,35 +52,27 @@ const agencyName = computed(() => props.settings?.agency_name || 'Denintel Kodae
                 <span class="text-[9px] font-black uppercase tracking-[0.3em] text-indigo-300">System Secure & Active</span>
             </div>
 
-            <h1 class="text-6xl md:text-8xl font-black tracking-tighter uppercase leading-none mb-6">
-                SELAMAT DATANG <br>
-                <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-fuchsia-400 italic">
-                    SI SINDEN
+            <h1 class="text-6xl md:text-8xl font-black tracking-tighter uppercase leading-none mb-6"> SELAMAT DATANG <br>
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-fuchsia-400 italic"> SI SINDEN
                 </span>
             </h1>
 
             <div class="flex flex-col md:flex-row items-center justify-center gap-4">
                 <Link
                     v-if="$page.props.auth.user "
-                    :href="route('dashboard')"
-                    class="px-10 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-[0_0_40px_rgba(79,70,229,0.3)] active:scale-95"
-                >
-                    Access Command Center
+                    :href="route('dashboard')"class="px-10 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-[0_0_40px_rgba(79,70,229,0.3)] active:scale-95"
+                > Access Command Center
                 </Link>
 
                 <template v-else>
                     <Link
-                        :href="route('login')"
-                        class="px-12 py-4 bg-white text-black rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all hover:shadow-[0_0_30px_rgba(255,255,255,0.2)] active:scale-95"
-                    >
-                        Otoritas Login
+                        :href="route('login')"class="px-12 py-4 bg-white text-black rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all hover:shadow-[0_0_30px_rgba(255,255,255,0.2)] active:scale-95"
+                    > Otoritas Login
                     </Link>
                     <Link
                         v-if="canRegister"
-                        :href="route('register')"
-                        class="px-12 py-4 bg-white/5 backdrop-blur-md border border-white/10 text-white rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all hover:bg-white/10 active:scale-95"
-                    >
-                        Registrasi Personel
+                        :href="route('register')"class="px-12 py-4 bg-white/5 backdrop-blur-md border border-white/10 text-white rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all hover:bg-white/10 active:scale-95"
+                    > Registrasi Personel
                     </Link>
                 </template>
             </div>

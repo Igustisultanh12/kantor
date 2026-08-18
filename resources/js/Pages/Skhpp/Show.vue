@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, onMounted } from 'vue';
@@ -99,13 +99,10 @@ const formatDateIndo = (dateStr) => {
                 </div>
 
                 <div class="flex items-center gap-3">
-                    <button v-if="isCommander && skhpp.status === 'pending'" @click="approveSkhpp"
-                        class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow-md transition-all">
-                        ✓ TTD Komandan Sekarang
+                    <button v-if="isCommander && skhpp.status === 'pending'" @click="approveSkhpp"class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow-md transition-all"> TTD Komandan Sekarang
                     </button>
 
-                    <button @click="downloadPdf" :disabled="isExporting"
-                        class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center gap-2">
+                    <button @click="downloadPdf" :disabled="isExporting"class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                         <span>{{ isExporting ? 'Mengeksport PDF...' : 'Unduh Dokumen PDF' }}</span>
                     </button>
@@ -264,24 +261,21 @@ const formatDateIndo = (dateStr) => {
                             <!-- Poin 2: Hasil (Nomor 2 Sesuai SISFOPERS) -->
                             <div class="flex items-start pt-1">
                                 <span class="w-8 font-normal shrink-0">2.</span>
-                                <div class="flex-1">
-                                    Hasil Penelitian Personel <span class="font-bold">Memenuhi Syarat</span>
+                                <div class="flex-1"> Hasil Penelitian Personel <span class="font-bold">Memenuhi Syarat</span>
                                 </div>
                             </div>
 
                             <!-- Poin 3: Peruntukan -->
                             <div class="flex items-start pt-1">
                                 <span class="w-8 font-normal shrink-0">3.</span>
-                                <div class="flex-1">
-                                    SKHPP ini diberikan {{ skhpp.peruntukan }}.
+                                <div class="flex-1"> SKHPP ini diberikan {{ skhpp.peruntukan }}.
                                 </div>
                             </div>
 
                             <!-- Poin 4: Penutup -->
                             <div class="flex items-start pt-1">
                                 <span class="w-8 font-normal shrink-0">4.</span>
-                                <div class="flex-1">
-                                    Apabila kemudian terdapat kekeliruan, SKHPP ini akan dicabut dan diadakan pembetulan seperlunya.
+                                <div class="flex-1"> Apabila kemudian terdapat kekeliruan, SKHPP ini akan dicabut dan diadakan pembetulan seperlunya.
                                 </div>
                             </div>
                         </div>
@@ -311,8 +305,7 @@ const formatDateIndo = (dateStr) => {
                                     <span>pada tanggal</span>
                                     <span>{{ formatDateIndo(skhpp.tanggal_skhpp || skhpp.approved_at || skhpp.created_at) }}</span>
                                 </div>
-                                <div class="font-normal text-center whitespace-nowrap mt-1 leading-snug">
-                                    Komandan Detasemen Intelijen Kodaeral V,
+                                <div class="font-normal text-center whitespace-nowrap mt-1 leading-snug"> Komandan Detasemen Intelijen Kodaeral V,
                                 </div>
 
                                 <!-- QR Code Digital Signature -->
@@ -320,7 +313,7 @@ const formatDateIndo = (dateStr) => {
                                     <div v-if="skhpp.status === 'approved'" class="flex items-center justify-center gap-2">
                                         <img :src="qrApiUrl" class="w-[85px] h-[85px] border border-slate-300 p-0.5 rounded-sm" />
                                         <div class="text-[8px] leading-tight font-sans text-slate-600 text-left">
-                                            <div class="font-bold text-emerald-700">✓ TERVERIFIKASI TTD</div>
+                                            <div class="font-bold text-emerald-700"> TERVERIFIKASI TTD</div>
                                             <div>Detasemen Intelijen V</div>
                                             <div class="text-[7px] text-slate-400 mt-0.5 truncate max-w-[120px]">{{ skhpp.verification_code }}</div>
                                         </div>
@@ -360,16 +353,14 @@ const formatDateIndo = (dateStr) => {
                                     <div>Lampiran SKHPP Den Intel Kodaeral V</div>
                                     <div class="border-b border-black inline-block pb-0.5">
                                         <span v-if="skhpp.nomor_skhpp">Nomor {{ skhpp.nomor_skhpp }}</span>
-                                        <span v-else>Nomor SKHPP/ <span class="px-2">{{ skhpp.nomor_urut || '   ' }}</span> /{{ skhpp.bulan_romawi || 'VIII' }}/{{ skhpp.tahun || '2026' }}</span><br>
-                                        Tanggal <span class="px-3">{{ formatDateIndo(skhpp.tanggal_skhpp || skhpp.approved_at || skhpp.created_at) }}</span>
+                                        <span v-else>Nomor SKHPP/ <span class="px-2">{{ skhpp.nomor_urut || '   ' }}</span> /{{ skhpp.bulan_romawi || 'VIII' }}/{{ skhpp.tahun || '2026' }}</span><br> Tanggal <span class="px-3">{{ formatDateIndo(skhpp.tanggal_skhpp || skhpp.approved_at || skhpp.created_at) }}</span>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Judul Lampiran -->
                             <div class="text-center my-6">
-                                <div class="text-[12pt] font-normal uppercase tracking-wider">
-                                    DAFTAR NAMA-NAMA ANGGOTA PENGIKUT
+                                <div class="text-[12pt] font-normal uppercase tracking-wider"> DAFTAR NAMA-NAMA ANGGOTA PENGIKUT
                                 </div>
                             </div>
 
@@ -396,8 +387,7 @@ const formatDateIndo = (dateStr) => {
                             <!-- TTD Komandan Lampiran -->
                             <div class="mt-8 flex justify-end text-[12pt]">
                                 <div class="w-[330px] text-center">
-                                    <div class="font-normal text-center whitespace-nowrap leading-snug">
-                                        Komandan Detasemen Intelijen Kodaeral V,
+                                    <div class="font-normal text-center whitespace-nowrap leading-snug"> Komandan Detasemen Intelijen Kodaeral V,
                                     </div>
 
                                     <div class="my-2 py-1 text-center">

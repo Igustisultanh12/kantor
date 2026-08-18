@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ref, onMounted } from 'vue';
@@ -102,7 +102,7 @@ const submit = () => {
             <!-- Alert Catatan Revisi dari Komandan -->
             <div v-if="skhpp.catatan_revisi" class="p-5 bg-rose-50 border border-rose-200 rounded-3xl space-y-1">
                 <div class="text-xs font-black uppercase text-rose-700 tracking-wider flex items-center gap-2">
-                    <span>⚠️ Catatan Revisi dari Komandan:</span>
+                    <span> Catatan Revisi dari Komandan:</span>
                 </div>
                 <p class="text-xs font-semibold text-rose-900 leading-relaxed pl-6">
                     "{{ skhpp.catatan_revisi }}"
@@ -120,21 +120,18 @@ const submit = () => {
                             <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Kategori Personel & Peruntukan</label>
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <button type="button" @click="form.kategori_personel = 'militer'"
-                                    :class="form.kategori_personel === 'militer' ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"
-                                    class="py-3.5 px-4 rounded-2xl text-xs font-black uppercase transition-all flex flex-col items-center gap-1">
-                                    <span>⚓ Militer TNI AL</span>
+                                    :class="form.kategori_personel === 'militer' ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"class="py-3.5 px-4 rounded-2xl text-xs font-black uppercase transition-all flex flex-col items-center gap-1">
+                                    <span> Militer TNI AL</span>
                                     <span class="text-[9px] opacity-80">(Format Dinas SKHPP-D)</span>
                                 </button>
                                 <button type="button" @click="form.kategori_personel = 'sipil_dinas'"
-                                    :class="form.kategori_personel === 'sipil_dinas' ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"
-                                    class="py-3.5 px-4 rounded-2xl text-xs font-black uppercase transition-all flex flex-col items-center gap-1">
-                                    <span>🏢 PNS / Sipil Dinas</span>
+                                    :class="form.kategori_personel === 'sipil_dinas' ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"class="py-3.5 px-4 rounded-2xl text-xs font-black uppercase transition-all flex flex-col items-center gap-1">
+                                    <span> PNS / Sipil Dinas</span>
                                     <span class="text-[9px] opacity-80">(Format Dinas SKHPP-D)</span>
                                 </button>
                                 <button type="button" @click="form.kategori_personel = 'perusahaan'"
-                                    :class="form.kategori_personel === 'perusahaan' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"
-                                    class="py-3.5 px-4 rounded-2xl text-xs font-black uppercase transition-all flex flex-col items-center gap-1">
-                                    <span>🏭 Perusahaan / Mitra Kerja</span>
+                                    :class="form.kategori_personel === 'perusahaan' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"class="py-3.5 px-4 rounded-2xl text-xs font-black uppercase transition-all flex flex-col items-center gap-1">
+                                    <span> Perusahaan / Mitra Kerja</span>
                                     <span class="text-[9px] opacity-80">(Format Perusahaan SKHPP-P)</span>
                                 </button>
                             </div>
@@ -144,14 +141,10 @@ const submit = () => {
                             <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">Peruntukan Khusus Pernikahan?</label>
                             <div class="grid grid-cols-2 gap-3">
                                 <button type="button" @click="form.is_pernikahan = false"
-                                    :class="!form.is_pernikahan ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"
-                                    class="py-3 px-4 rounded-2xl text-xs font-black uppercase transition-all">
-                                    Kedinasan / General
+                                    :class="!form.is_pernikahan ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"class="py-3 px-4 rounded-2xl text-xs font-black uppercase transition-all"> Kedinasan / General
                                 </button>
                                 <button type="button" @click="form.is_pernikahan = true"
-                                    :class="form.is_pernikahan ? 'bg-purple-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"
-                                    class="py-3 px-4 rounded-2xl text-xs font-black uppercase transition-all">
-                                    💍 Pengajuan Nikah
+                                    :class="form.is_pernikahan ? 'bg-purple-600 text-white shadow-md' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"class="py-3 px-4 rounded-2xl text-xs font-black uppercase transition-all"> Pengajuan Nikah
                                 </button>
                             </div>
                         </div>
@@ -163,12 +156,10 @@ const submit = () => {
                     <h2 class="text-xs font-black uppercase tracking-wider text-emerald-600 border-b pb-2">2. Dasar Surat Pengantar (Point 1c)</h2>
 
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                            Isi Surat Pengantar / Permohonan Security Clearance *
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1"> Isi Surat Pengantar / Permohonan Security Clearance *
                         </label>
                         <textarea v-model="form.surat_pengantar" rows="3" required
-                            placeholder="Contoh: Surat Karumkital Dr. Oepomo Kodaeral V No. R/19/III/2026 tanggal 30 Maret 2026, tentang permohonan Security Clearance."
-                            class="w-full text-xs font-medium px-4 py-3 rounded-2xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500"></textarea>
+                            placeholder="Contoh: Surat Karumkital Dr. Oepomo Kodaeral V No. R/19/III/2026 tanggal 30 Maret 2026, tentang permohonan Security Clearance."class="w-full text-xs font-medium px-4 py-3 rounded-2xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500"></textarea>
                     </div>
                 </div>
 
@@ -179,34 +170,29 @@ const submit = () => {
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="sm:col-span-2">
                             <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Nama Lengkap & Gelar *</label>
-                            <input type="text" v-model="form.nama" required placeholder="Contoh: dr. Lilis Haryani atau Sardijono, S.H."
-                                class="w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500" />
+                            <input type="text" v-model="form.nama" required placeholder="Contoh: dr. Lilis Haryani atau Sardijono, S.H."class="w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500" />
                         </div>
 
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
                                 {{ form.kategori_personel === 'militer' ? 'Pangkat / Korps / NRP' : 'Pangkat / Golongan / NIP / Korps (Opsional PNS)' }}
                             </label>
-                            <input type="text" v-model="form.pangkat_korps_nrp" placeholder="Contoh: Kapten Laut (K/W) NRP 22608/P atau PNS PENATA III/C NIP. 1973..."
-                                class="w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500" />
+                            <input type="text" v-model="form.pangkat_korps_nrp" placeholder="Contoh: Kapten Laut (K/W) NRP 22608/P atau PNS PENATA III/C NIP. 1973..."class="w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500" />
                         </div>
 
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">NIK (Nomor Induk Kependudukan / Pelajar / Mahasiswa)</label>
-                            <input type="text" v-model="form.nik" placeholder="Contoh: 3515081205640009"
-                                class="w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500" />
+                            <input type="text" v-model="form.nik" placeholder="Contoh: 3515081205640009"class="w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500" />
                         </div>
 
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Jabatan / Pekerjaan *</label>
-                            <input type="text" v-model="form.jabatan_pekerjaan" required placeholder="Contoh: Ka/PS BP Tg. Sadari Diskes Kodaeral V atau Pimpinan CV Afnalia Jaya"
-                                class="w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500" />
+                            <input type="text" v-model="form.jabatan_pekerjaan" required placeholder="Contoh: Ka/PS BP Tg. Sadari Diskes Kodaeral V atau Pimpinan CV Afnalia Jaya"class="w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500" />
                         </div>
 
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Tempat Lahir *</label>
-                            <input type="text" v-model="form.tempat_lahir" required placeholder="Contoh: Medan / Surabaya"
-                                class="w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500" />
+                            <input type="text" v-model="form.tempat_lahir" required placeholder="Contoh: Medan / Surabaya"class="w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500" />
                         </div>
 
                         <div>
@@ -225,14 +211,12 @@ const submit = () => {
 
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Agama *</label>
-                            <input type="text" v-model="form.agama" required placeholder="Islam / Kristen / Katolik / Hindu / Buddha"
-                                class="w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500" />
+                            <input type="text" v-model="form.agama" required placeholder="Islam / Kristen / Katolik / Hindu / Buddha"class="w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500" />
                         </div>
 
                         <div class="sm:col-span-2">
                             <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Alamat Rumah Lengkap *</label>
-                            <textarea v-model="form.alamat" rows="2" required placeholder="Contoh: Jl. Petukangan 62 Ampel Surabaya."
-                                class="w-full text-xs font-medium px-4 py-2.5 rounded-xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500"></textarea>
+                            <textarea v-model="form.alamat" rows="2" required placeholder="Contoh: Jl. Petukangan 62 Ampel Surabaya."class="w-full text-xs font-medium px-4 py-2.5 rounded-xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500"></textarea>
                         </div>
                     </div>
                 </div>
@@ -257,16 +241,13 @@ const submit = () => {
 
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <div>
-                                    <input type="text" v-model="member.nama" required placeholder="Nama Lengkap"
-                                        class="w-full text-xs px-3 py-2 rounded-xl border-slate-300 focus:ring-emerald-500" />
+                                    <input type="text" v-model="member.nama" required placeholder="Nama Lengkap"class="w-full text-xs px-3 py-2 rounded-xl border-slate-300 focus:ring-emerald-500" />
                                 </div>
                                 <div>
-                                    <input type="text" v-model="member.pangkat_nrp_nik" required placeholder="NRP / NIK"
-                                        class="w-full text-xs px-3 py-2 rounded-xl border-slate-300 focus:ring-emerald-500" />
+                                    <input type="text" v-model="member.pangkat_nrp_nik" required placeholder="NRP / NIK"class="w-full text-xs px-3 py-2 rounded-xl border-slate-300 focus:ring-emerald-500" />
                                 </div>
                                 <div>
-                                    <input type="text" v-model="member.jabatan" required placeholder="Jabatan / Pekerjaan"
-                                        class="w-full text-xs px-3 py-2 rounded-xl border-slate-300 focus:ring-emerald-500" />
+                                    <input type="text" v-model="member.jabatan" required placeholder="Jabatan / Pekerjaan"class="w-full text-xs px-3 py-2 rounded-xl border-slate-300 focus:ring-emerald-500" />
                                 </div>
                             </div>
                         </div>
@@ -284,8 +265,7 @@ const submit = () => {
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Maksud & Peruntukan *</label>
                         <textarea v-model="form.peruntukan" rows="3" required
-                            placeholder="Contoh: Dalam rangka sebagai persyaratan mengikuti program pendidikan..."
-                            class="w-full text-xs font-medium px-4 py-3 rounded-2xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500"></textarea>
+                            placeholder="Contoh: Dalam rangka sebagai persyaratan mengikuti program pendidikan..."class="w-full text-xs font-medium px-4 py-3 rounded-2xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500"></textarea>
                     </div>
                 </div>
 
@@ -306,8 +286,7 @@ const submit = () => {
                         </div>
 
                         <div v-if="form.is_pernikahan">
-                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-                                Foto 2: Calon Istri
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2"> Foto 2: Calon Istri
                             </label>
                             <input type="file" @change="handleFoto2Change" accept="image/*" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100" />
 
@@ -320,12 +299,9 @@ const submit = () => {
 
                 <!-- Submit Button -->
                 <div class="flex justify-end gap-4 pt-4">
-                    <Link :href="route('skhpp.index')" class="px-6 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold uppercase rounded-2xl transition-all">
-                        Batal
+                    <Link :href="route('skhpp.index')" class="px-6 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold uppercase rounded-2xl transition-all"> Batal
                     </Link>
-                    <button type="submit" :disabled="form.processing"
-                        class="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-2xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95 disabled:opacity-50">
-                        Simpan Perubahan & Ajukan Ulang Ke Komandan
+                    <button type="submit" :disabled="form.processing"class="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-2xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95 disabled:opacity-50"> Simpan Perubahan & Ajukan Ulang Ke Komandan
                     </button>
                 </div>
             </form>

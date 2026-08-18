@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { useForm, Head, router } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
@@ -190,8 +190,7 @@ const getFileName = (path) => {
                     <button @click="showCreateModal = true" class="flex-1 md:flex-none justify-center bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl text-xs font-extrabold uppercase shadow-sm transition tracking-wider flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Input Kasus Baru
+                        </svg> Input Kasus Baru
                     </button>
                     <div class="flex gap-4 text-right border-l border-slate-100 pl-3">
                         <div>
@@ -249,14 +248,13 @@ const getFileName = (path) => {
                                             
                                             <div class="flex flex-wrap gap-1" v-if="paket.file_paths && paket.file_paths.length">
                                                 <button type="button" v-for="(path, pIdx) in paket.file_paths" :key="pIdx" @click="viewFileDirect(path)" class="px-2 py-0.5 bg-red-600 text-white rounded text-[7px] font-black hover:bg-red-700 transition-all truncate max-w-[120px]" :title="getFileName(path)">
-                                                    📄 {{ getFileName(path) }}
+                                                     {{ getFileName(path) }}
                                                 </button>
                                             </div>
                                         </div>
                                         
                                         <div class="flex flex-col gap-1 mt-1" v-if="item.dokumen_putusan">
-                                            <button type="button" v-for="(pPath, pIdx) in parseFiles(item.dokumen_putusan)" :key="pIdx" @click="viewFileDirect(pPath)" class="w-full px-2 py-1 bg-gray-900 text-white rounded text-[8px] font-black hover:bg-indigo-600 transition-all uppercase text-center truncate">
-                                                ⚖️ PUTUSAN AKHIR {{ pIdx + 1 }}
+                                            <button type="button" v-for="(pPath, pIdx) in parseFiles(item.dokumen_putusan)" :key="pIdx" @click="viewFileDirect(pPath)" class="w-full px-2 py-1 bg-gray-900 text-white rounded text-[8px] font-black hover:bg-indigo-600 transition-all uppercase text-center truncate"> PUTUSAN AKHIR {{ pIdx + 1 }}
                                             </button>
                                         </div>
                                         
@@ -269,8 +267,7 @@ const getFileName = (path) => {
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                                         </svg>
                                     </button>
-                                    <button @click="openUpdateModal(item)" class="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">
-                                        Update
+                                    <button @click="openUpdateModal(item)" class="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all"> Update
                                     </button>
                                     <button @click="deleteCase(item.id)" title="Bersihkan Data Kasus" class="p-2.5 bg-red-50 text-red-500 rounded-xl hover:bg-red-600 hover:text-white transition-all border border-red-100">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -367,7 +364,7 @@ const getFileName = (path) => {
                             
                             <div class="flex flex-wrap gap-1" v-if="paket.file_paths && paket.file_paths.length">
                                 <button type="button" v-for="(fPath, fIdx) in paket.file_paths" :key="fIdx" @click="viewFileDirect(fPath)" class="bg-red-50 text-red-600 px-2 py-0.5 rounded text-[8px] border border-red-200 font-bold truncate max-w-[150px]">
-                                    📄 {{ getFileName(fPath) }}
+                                     {{ getFileName(fPath) }}
                                 </button>
                             </div>
                         </div>
@@ -461,8 +458,7 @@ const getFileName = (path) => {
                                         </td>
                                         <td class="border border-black p-4 align-top italic leading-relaxed text-justify">
                                             "{{ printData?.case_description }}"
-                                            <div class="mt-6 not-italic font-bold border-t border-black pt-2 uppercase text-[9px] text-left">
-                                                TMT Kejadian: {{ printData?.incident_date?.split('T')[0] }}
+                                            <div class="mt-6 not-italic font-bold border-t border-black pt-2 uppercase text-[9px] text-left"> TMT Kejadian: {{ printData?.incident_date?.split('T')[0] }}
                                             </div>
                                         </td>
                                         <td class="border border-black p-0 align-top text-left">

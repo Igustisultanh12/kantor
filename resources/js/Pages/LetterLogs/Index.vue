@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { useForm, Head, router, Link, usePage } from '@inertiajs/vue3';
 import { ref, watch, computed } from 'vue';
@@ -229,11 +229,9 @@ const handleFileUpload = (event) => {
                     </div>
 
                     <div class="flex flex-wrap items-center h-full gap-2 mt-4 md:mt-0">
-                        <button @click="openPreview" class="px-4 py-2.5 bg-blue-50 text-blue-600 rounded-xl text-xs font-extrabold uppercase tracking-wider hover:bg-blue-600 hover:text-white transition">
-                            Pratinjau
+                        <button @click="openPreview" class="px-4 py-2.5 bg-blue-50 text-blue-600 rounded-xl text-xs font-extrabold uppercase tracking-wider hover:bg-blue-600 hover:text-white transition"> Pratinjau
                         </button>
-                        <button @click="downloadPDF" class="px-4 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-extrabold uppercase tracking-wider shadow-sm hover:bg-blue-600 transition">
-                            Unduh PDF
+                        <button @click="downloadPDF" class="px-4 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-extrabold uppercase tracking-wider shadow-sm hover:bg-blue-600 transition"> Unduh PDF
                         </button>
                     </div>
                 </div>
@@ -246,8 +244,7 @@ const handleFileUpload = (event) => {
                 <div class="space-y-6">
                     <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0]">
                         <h3 class="font-extrabold text-slate-900 uppercase text-xs tracking-wider mb-6 flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-blue-600"></span>
-                            ➕ Booking Nomor Baru
+                            <span class="w-2 h-2 rounded-full bg-blue-600"></span> Booking Nomor Baru
                         </h3>
                         <form @submit.prevent="submit" class="space-y-4">
                             <div>
@@ -293,8 +290,7 @@ const handleFileUpload = (event) => {
                                 </div>
                             </div>
 
-                            <button :disabled="form.processing || !form.category_id" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-2xl font-extrabold uppercase text-xs tracking-wider shadow-md shadow-blue-500/20 active:scale-95 disabled:opacity-50 transition">
-                                Booking Nomor Sekarang
+                            <button :disabled="form.processing || !form.category_id" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-2xl font-extrabold uppercase text-xs tracking-wider shadow-md shadow-blue-500/20 active:scale-95 disabled:opacity-50 transition"> Booking Nomor Sekarang
                             </button>
                         </form>
                     </div>
@@ -325,7 +321,7 @@ const handleFileUpload = (event) => {
                                         </td>
                                         <td class="px-8 py-5 text-right">
                                             <button v-if="!log.is_archived" @click="triggerUpload(log.id)" class="bg-white border border-indigo-200 text-indigo-600 px-4 py-2 rounded-xl text-[9px] font-black uppercase hover:bg-indigo-600 hover:text-white transition-all">Upload PDF</button>
-                                            <span v-else class="text-emerald-500 font-black text-[10px] uppercase italic">✓ Terarsip</span>
+                                            <span v-else class="text-emerald-500 font-black text-[10px] uppercase italic"> Terarsip</span>
                                         </td>
                                     </tr>
                                     <tr v-if="filteredForReport.length === 0">

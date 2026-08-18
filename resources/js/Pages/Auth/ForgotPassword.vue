@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import InputError from '@/Components/InputError.vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
@@ -61,8 +61,7 @@ const submit = () => {
                         <h2 class="text-3xl font-extrabold tracking-tight uppercase text-white drop-shadow-md">
                             {{ appName }}
                         </h2>
-                        <p class="text-xs leading-relaxed max-w-md mx-auto text-slate-300 font-medium">
-                            Pemulihan Kata Kunci — Intelligence Digital System SINDEN Detasemen Intelijen.
+                        <p class="text-xs leading-relaxed max-w-md mx-auto text-slate-300 font-medium"> Pemulihan Kata Kunci — Intelligence Digital System SINDEN Detasemen Intelijen.
                         </p>
                     </div>
                 </div>
@@ -77,8 +76,7 @@ const submit = () => {
                 <div class="w-full max-w-md p-8 sm:p-10 rounded-2xl shadow-2xl bg-slate-900/90 backdrop-blur-md border border-white/10 text-white animate-float-card">
                     <div class="mb-6">
                         <h3 class="text-xl font-bold text-white uppercase tracking-tight">Lupa Kata Kunci</h3>
-                        <p class="text-xs mt-1 text-slate-300 font-medium leading-relaxed">
-                            Ketikkan email dinas Anda yang terdaftar untuk menerima tautan pemulihan kata kunci.
+                        <p class="text-xs mt-1 text-slate-300 font-medium leading-relaxed"> Ketikkan email dinas Anda yang terdaftar untuk menerima tautan pemulihan kata kunci.
                         </p>
                     </div>
 
@@ -88,15 +86,10 @@ const submit = () => {
 
                     <form @submit.prevent="submit" class="space-y-5">
                         <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-300">
-                                Email Dinas Terdaftar *
+                            <label class="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-300"> Email Dinas Terdaftar *
                             </label>
                             <input 
-                                type="email" 
-                                v-model="form.email" 
-                                class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white" 
-                                placeholder="Masukkan email dinas Anda"
-                                required 
+                                type="email"v-model="form.email"class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white"placeholder="Masukkan email dinas Anda"required 
                                 autofocus
                             />
                             <InputError class="mt-1 text-xs text-red-400" :message="form.errors.email" />
@@ -104,17 +97,15 @@ const submit = () => {
 
                         <button 
                             type="submit" 
-                            :disabled="form.processing" 
-                            class="w-full py-3.5 px-4 text-white text-xs font-black uppercase tracking-wider rounded-lg shadow-lg bg-orange-500 hover:bg-orange-600 shadow-orange-500/20 transition duration-150 disabled:opacity-50 cursor-pointer flex justify-center items-center gap-2"
+                            :disabled="form.processing"class="w-full py-3.5 px-4 text-white text-xs font-black uppercase tracking-wider rounded-lg shadow-lg bg-orange-500 hover:bg-orange-600 shadow-orange-500/20 transition duration-150 disabled:opacity-50 cursor-pointer flex justify-center items-center gap-2"
                         >
                             <span>Kirim Link Reset Password</span>
-                            <span>➔</span>
+                            <span></span>
                         </button>
                     </form>
 
                     <div class="mt-6 text-center border-t border-white/10 pt-6 flex justify-between items-center text-xs">
-                        <Link :href="route('password.request.custom')" class="text-orange-400 hover:underline">
-                            Reset Pakai Token 6-Digit
+                        <Link :href="route('password.request.custom')" class="text-orange-400 hover:underline"> Reset Pakai Token 6-Digit
                         </Link>
                         <Link :href="route('login')" class="text-xs font-semibold text-orange-400 hover:underline">
                             ← Kembali ke Login
