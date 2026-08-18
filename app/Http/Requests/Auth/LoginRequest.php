@@ -11,73 +11,91 @@ use Illuminate\Validation\ValidationException;
 
 class LoginRequest extends FormRequest
 {
-    /**
-     * Tentukan apakah pengguna diizinkan untuk membuat permintaan ini.
-     */
     public function authorize(): bool
     {
         return true;
     }
 
-    /**
-     * Aturan validasi yang berlaku untuk permintaan login.
-     * Menambahkan latitude dan longitude agar dapat diproses sistem.
-     */
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
+            'email' => ['nullable', 'string'],
+            'username' => ['nullable', 'string'],
             'password' => ['required', 'string'],
-            'latitude' => ['nullable', 'numeric'], // Mengizinkan koordinat GPS
+            'latitude' => ['nullable', 'numeric'],
             'longitude' => ['nullable', 'numeric'],
         ];
     }
 
-    /**
-     * Mencoba mengautentikasi kredensial permintaan.
-     */
     public function authenticate(): void
     {
-        $this->ensureIsNotRateLimited();
+        ->ensureIsNotRateLimited();
 
-        // Menggunakan data email dan password untuk autentikasi
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
-            RateLimiter::hit($this->throttleKey());
+         = ->input('username') ?? ->input('email');
 
+        if (empty()) {
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'email' => 'Silakan masukkan NRP, Username, atau Alamat Email Anda.',
             ]);
         }
 
-        RateLimiter::clear($this->throttleKey());
-    }
+         = ->input('password');
+         = ->boolean('remember');
 
-    /**
-     * Memastikan permintaan login tidak dibatasi (Rate Limited).
-     */
-    public function ensureIsNotRateLimited(): void
-    {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
+        // Check 1: Try email field
+        if (filter_var(, FILTER_VALIDATE_EMAIL)) {
+            if (Auth::attempt(['email' => , 'password' => ], )) {
+                RateLimiter::clear(->throttleKey());
+                return;
+            }
+        }
+
+        // Check 2: Try username field
+        if (Auth::attempt(['username' => , 'password' => ], )) {
+            RateLimiter::clear(->throttleKey());
             return;
         }
 
-        event(new Lockout($this));
+        // Check 3: Try nrp field
+        if (Auth::attempt(['nrp' => , 'password' => ], )) {
+            RateLimiter::clear(->throttleKey());
+            return;
+        }
 
-        $seconds = RateLimiter::availableIn($this->throttleKey());
+        // Check 4: Try email field directly if input wasn't valid email format
+        if (Auth::attempt(['email' => , 'password' => ], )) {
+            RateLimiter::clear(->throttleKey());
+            return;
+        }
+
+        RateLimiter::hit(->throttleKey());
+
+        throw ValidationException::withMessages([
+            'email' => 'Kredensial tidak cocok. Silakan periksa NRP/Username dan Kata Sandi Anda.',
+        ]);
+    }
+
+    public function ensureIsNotRateLimited(): void
+    {
+        if (! RateLimiter::tooManyAttempts(->throttleKey(), 5)) {
+            return;
+        }
+
+        event(new Lockout());
+
+         = RateLimiter::availableIn(->throttleKey());
 
         throw ValidationException::withMessages([
             'email' => trans('auth.throttle', [
-                'seconds' => $seconds,
-                'minutes' => ceil($seconds / 60),
+                'seconds' => ,
+                'minutes' => ceil( / 60),
             ]),
         ]);
     }
 
-    /**
-     * Mendapatkan kunci throttle pembatas kecepatan untuk permintaan.
-     */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+         = ->input('username') ?? ->input('email') ?? '';
+        return Str::transliterate(Str::lower().'|'.->ip());
     }
 }

@@ -21,18 +21,18 @@ class ApiService {
     return {
       'Accept': 'application/json',
       if (!isMultipart) 'Content-Type': 'application/json',
-      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer ',
     };
   }
 
   Future<dynamic> get(String endpoint) async {
     final baseUrl = await getBaseUrl();
-    final url = Uri.parse('$baseUrl$endpoint');
+    final url = Uri.parse('');
     final headers = await _getHeaders();
 
     final response = await http.get(url, headers: headers).timeout(
       const Duration(seconds: 15),
-      onTimeout: () => throw Exception('Koneksi timeout. Periksa jaringan internet data Anda.'),
+      onTimeout: () => throw Exception('Koneksi timeout. Periksa sambungan internet data Anda.'),
     );
 
     return _handleResponse(response);
@@ -40,7 +40,7 @@ class ApiService {
 
   Future<dynamic> post(String endpoint, Map<String, dynamic> data) async {
     final baseUrl = await getBaseUrl();
-    final url = Uri.parse('$baseUrl$endpoint');
+    final url = Uri.parse('');
     final headers = await _getHeaders();
 
     final response = await http.post(
@@ -49,7 +49,7 @@ class ApiService {
       body: jsonEncode(data),
     ).timeout(
       const Duration(seconds: 15),
-      onTimeout: () => throw Exception('Koneksi timeout. Periksa jaringan internet data Anda.'),
+      onTimeout: () => throw Exception('Koneksi timeout. Periksa sambungan internet data Anda.'),
     );
 
     return _handleResponse(response);
@@ -62,7 +62,7 @@ class ApiService {
     String fileFieldKey,
   ) async {
     final baseUrl = await getBaseUrl();
-    final url = Uri.parse('$baseUrl$endpoint');
+    final url = Uri.parse('');
     final headers = await _getHeaders(isMultipart: true);
 
     final request = http.MultipartRequest('POST', url);
@@ -84,13 +84,23 @@ class ApiService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isEmpty) return null;
       return jsonDecode(response.body);
-    } else if (response.statusCode == 401) {
-      throw Exception('Sesi telah berakhir. Silakan login kembali.');
     } else {
       String errMsg = 'Terjadi kesalahan sistem ()';
       try {
         final errJson = jsonDecode(response.body);
-        if (errJson['message'] != null) errMsg = errJson['message'];
+        if (errJson['message'] != null && errJson['message'].toString().isNotEmpty) {
+          errMsg = errJson['message'];
+        } else if (errJson['errors'] != null) {
+          final errors = errJson['errors'] as Map<String, dynamic>;
+          if (errors.isNotEmpty) {
+            final firstErrList = errors.values.first;
+            if (firstErrList is List && firstErrList.isNotEmpty) {
+              errMsg = firstErrList.first.toString();
+            } else {
+              errMsg = firstErrList.toString();
+            }
+          }
+        }
       } catch (_) {}
       throw Exception(errMsg);
     }

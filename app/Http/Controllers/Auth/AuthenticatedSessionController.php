@@ -13,96 +13,100 @@ use Inertia\Response;
 
 class AuthenticatedSessionController extends Controller
 {
-    /**
-     * Menampilkan halaman login SI SINDEN.
-     */
     public function create(): Response
     {
-        $rawSettings = \App\Models\Setting::pluck('value', 'key')->toArray();
-        $settings = [
-            'app_name' => $rawSettings['agency_name'] ?? 'SINDEN',
-            'agency_logo' => isset($rawSettings['agency_logo']) && $rawSettings['agency_logo'] ? asset('storage/' . $rawSettings['agency_logo']) : null,
-            'login_background' => isset($rawSettings['login_background']) && $rawSettings['login_background'] ? asset('storage/' . $rawSettings['login_background']) : null,
+         = \App\Models\Setting::pluck('value', 'key')->toArray();
+         = [
+            'app_name' => ['agency_name'] ?? 'SINDEN',
+            'agency_logo' => isset(['agency_logo']) && ['agency_logo'] ? asset('storage/' . ['agency_logo']) : null,
+            'login_background' => isset(['login_background']) && ['login_background'] ? asset('storage/' . ['login_background']) : null,
         ];
 
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
-            'settings' => $settings,
+            'settings' => ,
         ]);
     }
 
-    /**
-     * Proses autentikasi, pengecekan status aktivasi, GPS, dan kewajiban ganti password.
-     */
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest )
     {
-        // 1. Jalankan proses autentikasi standar (Cek email & password)
-        $request->authenticate();
+        ->authenticate();
 
-        $user = Auth::user();
+         = Auth::user();
 
-        /**
-         * 2. CEK STATUS AKTIVASI AKUN
-         * Memastikan akun sudah diverifikasi oleh Admin.
-         */
-        if (!$user->is_active) {
-            $userName = $user->name;
+        // Check if user is active
+        if (!->is_active) {
+             = ->name;
 
-            // Paksa logout kembali karena akun ditangguhkan/belum aktif
             Auth::guard('web')->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
+            if (->hasSession()) {
+                ->session()->invalidate();
+                ->session()->regenerateToken();
+            }
+
+            if (->wantsJson() || ->expectsJson()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Akses Ditolak: Akun ({}) belum aktif atau sedang ditangguhkan oleh Admin.",
+                ], 403);
+            }
 
             return back()->withErrors([
-                'email' => "Akses Ditolak: Akun ({$userName}) belum aktif atau sedang ditangguhkan.",
+                'email' => "Akses Ditolak: Akun ({}) belum aktif atau sedang ditangguhkan oleh Admin.",
             ]);
         }
 
-        // 3. Jika aktif, perbarui session ID untuk keamanan
-        $request->session()->regenerate();
+        // Return JSON response if requested by Mobile App
+        if (->wantsJson() || ->expectsJson() || ->is('api/*')) {
+             = method_exists(, 'createToken') 
+                ? ->createToken('sinden_mobile_token')->plainTextToken 
+                : session()->getId();
 
-        /**
-         * 4. PENGAMANAN DATA GPS
-         */
-        if ($request->filled('latitude') && $request->filled('longitude')) {
+            return response()->json([
+                'status' => 'success',
+                'token' => ,
+                'user' => [
+                    'id' => ->id,
+                    'name' => ->name,
+                    'email' => ->email ?? '',
+                    'username' => ->username ?? ->nrp ?? '',
+                    'nrp' => ->nrp ?? ->username ?? '',
+                    'role' => ->role ?? 'user',
+                    'pangkat' => ->pangkat ?? 'Prajurit',
+                    'korps' => ->korps ?? '',
+                    'jabatan' => ->jabatan ?? '',
+                ],
+            ]);
+        }
+
+        // Standard Web Inertia session response
+        ->session()->regenerate();
+
+        if (->filled('latitude') && ->filled('longitude')) {
             session([
-                'user_lat' => $request->latitude,
-                'user_lng' => $request->longitude
+                'user_lat' => ->latitude,
+                'user_lng' => ->longitude
             ]);
         }
 
-        /**
-         * 5. VALIDASI NOMOR WHATSAPP
-         */
-        if (empty($user->phone)) {
+        if (empty(->phone)) {
             session(['warning_wa' => 'Nomor WhatsApp belum terdaftar. Notifikasi sistem tidak akan terkirim.']);
         }
 
-        /**
-         * 6. FITUR BARU: FORCE CHANGE PASSWORD (LOGIN PERTAMA)
-         * Jika admin membuatkan akun otomatis, user wajib ganti password sebelum masuk dashboard.
-         */
-        if ($user->must_change_password) {
+        if (->must_change_password) {
             return redirect()->route('profile.edit')->with('info', 'Otoritas Keamanan: Ini adalah login pertama Anda. Mohon perbarui password default Anda segera.');
         }
 
-        /**
-         * 7. Redirect ke Dashboard
-         */
         return redirect()->intended(route('dashboard', absolute: false));
     }
 
-    /**
-     * Menghapus sesi login (Logout).
-     */
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request ): RedirectResponse
     {
         Auth::guard('web')->logout();
 
-        $request->session()->invalidate();
-
-        $request->session()->regenerateToken();
+        ->session()->invalidate();
+        ->session()->regenerateToken();
 
         return redirect('/');
     }

@@ -6,7 +6,7 @@ import '../models/user_model.dart';
 import '../services/api_service.dart';
 import '../services/location_service.dart';
 
-class AuthProvider extends ChangeNotifier {
+class AuthProvider with ChangeNotifier {
   UserModel? _user;
   String? _token;
   bool _isLoading = false;
@@ -18,27 +18,20 @@ class AuthProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _token != null && _token!.isNotEmpty;
 
-  Future<void> checkAuthStatus() async {
-    _isLoading = true;
-    notifyListeners();
+  AuthProvider() {
+    _loadAuthData();
+  }
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      _token = prefs.getString(AppConstants.keyToken);
-      final userJson = prefs.getString(AppConstants.keyUser);
-
-      if (_token != null && userJson != null) {
-        _user = UserModel.fromJson(jsonDecode(userJson));
-        // Start background GPS tracking if authenticated
-        LocationService().startTracking();
-      }
-    } catch (_) {
-      _token = null;
-      _user = null;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+  Future<void> _loadAuthData() async {
+    final prefs = await SharedPreferences.getInstance();
+    _token = prefs.getString(AppConstants.keyToken);
+    final userStr = prefs.getString(AppConstants.keyUser);
+    if (userStr != null) {
+      try {
+        _user = UserModel.fromJson(jsonDecode(userStr));
+      } catch (_) {}
     }
+    notifyListeners();
   }
 
   Future<bool> login(String nrpOrEmail, String password) async {
@@ -49,6 +42,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       final response = await ApiService().post('/login', {
         'username': nrpOrEmail,
+        'email': nrpOrEmail,
         'password': password,
       });
 
@@ -65,7 +59,7 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
         return true;
       } else {
-        throw Exception('Kredensial login tidak valid.');
+        throw Exception('Respons login tidak valid dari server.');
       }
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
@@ -80,13 +74,14 @@ class AuthProvider extends ChangeNotifier {
       await ApiService().post('/logout', {});
     } catch (_) {}
 
+    _token = null;
+    _user = null;
     LocationService().stopTracking();
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(AppConstants.keyToken);
     await prefs.remove(AppConstants.keyUser);
 
-    _token = null;
-    _user = null;
     notifyListeners();
   }
 }
