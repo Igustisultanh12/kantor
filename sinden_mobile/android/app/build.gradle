@@ -4,10 +4,6 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
-flutter {
-    source = "../.."
-}
-
 def localProperties = new Properties()
 def localPropertiesFile = rootProject.file('local.properties')
 if (localPropertiesFile.exists()) {
@@ -53,6 +49,10 @@ android {
             shrinkResources = false
         }
     }
+}
+
+flutter {
+    source = "../.."
 }
 
 dependencies {}
