@@ -24,7 +24,7 @@ if (flutterVersionName == null) {
 
 android {
     namespace "id.my.sisinden.sinden_mobile"
-    compileSdkVersion 34
+    compileSdkVersion 35
     ndkVersion flutter.ndkVersion
 
     compileOptions {
@@ -43,7 +43,7 @@ android {
     defaultConfig {
         applicationId "id.my.sisinden.sinden_mobile"
         minSdkVersion 21
-        targetSdkVersion 34
+        targetSdkVersion 35
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true
