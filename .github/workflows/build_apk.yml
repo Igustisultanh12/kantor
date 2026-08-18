@@ -27,12 +27,13 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Initialize Canonical Android Project
+      - name: Clean & Recreate Android Platform
         working-directory: sinden_mobile
         run: |
+          rm -rf android
           flutter create . --org id.my.sisinden --project-name sinden_mobile --platforms=android
 
-      - name: Inject Android Permissions & App Configurations
+      - name: Inject Android Permissions
         working-directory: sinden_mobile
         run: |
           cat << 'EOF' > android/app/src/main/AndroidManifest.xml
@@ -95,13 +96,6 @@ jobs:
               </application>
           </manifest>
           EOF
-
-      - name: Configure Android SDK Versions
-        working-directory: sinden_mobile
-        run: |
-          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 21/g' android/app/build.gradle
-          sed -i 's/targetSdk = flutter.targetSdkVersion/targetSdk = 35/g' android/app/build.gradle
-          sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 35/g' android/app/build.gradle
 
       - name: Install Dependencies
         working-directory: sinden_mobile
