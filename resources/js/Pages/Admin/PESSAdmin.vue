@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="min-h-screen bg-[#F8F9FD] text-slate-800 p-4 sm:p-6 lg:p-8" style="font-family: 'Arial', sans-serif;">
     
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-200 pb-6 mb-6 gap-4">

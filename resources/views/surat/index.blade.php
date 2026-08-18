@@ -1,4 +1,4 @@
-﻿<x-app-layout>
+<x-app-layout>
     <div class="flex h-[calc(100vh-65px)] bg-[#09090b] text-zinc-300"x-data="{ selectedSub: null, nextNumber: 'Pilih kategori...', isLoading: false }">
          
         

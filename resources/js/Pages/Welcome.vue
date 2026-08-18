@@ -1,4 +1,4 @@
-﻿<script setup> import { computed } from 'vue';
+<script setup> import { computed } from 'vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 
 const props = defineProps({

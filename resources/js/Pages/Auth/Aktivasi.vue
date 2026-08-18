@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { useForm, Head, Link, usePage } from '@inertiajs/vue3';
 import InputError from '@/Components/InputError.vue';
 import { computed } from 'vue';

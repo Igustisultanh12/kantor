@@ -1,4 +1,4 @@
-﻿<x-app-layout>
+<x-app-layout>
     <div class="flex h-[calc(100vh-65px)] bg-[#09090b] text-zinc-300">
         
         <div class="w-64 bg-[#121214] border-r border-zinc-800 p-6 flex flex-col">

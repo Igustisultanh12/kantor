@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, usePage, router, Link } from '@inertiajs/vue3';
 // PERBAIKAN: Menambahkan onMounted dan onUnmounted agar tidak error

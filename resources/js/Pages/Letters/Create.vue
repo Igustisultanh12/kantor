@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { ref, watch, computed, onMounted } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, Link, router } from '@inertiajs/vue3';

@@ -1,4 +1,4 @@
-﻿<script setup> defineProps({
+<script setup> defineProps({
     message: {
         type: String,
     },

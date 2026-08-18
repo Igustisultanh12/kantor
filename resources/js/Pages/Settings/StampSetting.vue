@@ -1,4 +1,4 @@
-﻿<script setup> import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+<script setup> import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { ref, computed, nextTick } from 'vue';
 import Swal from 'sweetalert2';

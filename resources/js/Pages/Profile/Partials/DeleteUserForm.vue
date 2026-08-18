@@ -1,4 +1,4 @@
-﻿<script setup> import DangerButton from '@/Components/DangerButton.vue';
+<script setup> import DangerButton from '@/Components/DangerButton.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import Modal from '@/Components/Modal.vue';
