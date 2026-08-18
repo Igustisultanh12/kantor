@@ -51,7 +51,6 @@ class _CashScreenState extends State<CashScreen> {
       ),
       body: Column(
         children: [
-          // Total Balance Card
           Padding(
             padding: const EdgeInsets.all(16),
             child: Card(
@@ -89,8 +88,6 @@ class _CashScreenState extends State<CashScreen> {
               ),
             ),
           ),
-
-          // Transactions List
           Expanded(
             child: cashProv.isLoading
                 ? const Center(child: CircularProgressIndicator())

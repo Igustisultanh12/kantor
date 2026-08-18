@@ -42,12 +42,12 @@ class SettingsScreen extends StatelessWidget {
                           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
                         ),
                         Text(
-                          auth.user?.nrp != null ? 'NRP: ' : 'Detasemen Intelijen',
+                          auth.user?.nrp != null ? 'NRP: ${auth.user!.nrp}' : 'Detasemen Intelijen',
                           style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Peran: ',
+                          'Peran: ${auth.user?.role?.toUpperCase() ?? "STAF"}',
                           style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppTheme.secondaryGold),
                         ),
                       ],

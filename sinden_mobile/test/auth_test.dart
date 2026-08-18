@@ -33,9 +33,7 @@ void main() {
         nrp: '12345/P',
       );
 
-      expect(user.fullIdentity, contains('Kapten Laut (E)'));
-      expect(user.fullIdentity, contains('Budi Santoso'));
-      expect(user.fullIdentity, contains('12345/P'));
+      expect(user.fullIdentity, equals('Kapten Laut (E) Pelaut Budi Santoso NRP 12345/P'));
     });
   });
 }

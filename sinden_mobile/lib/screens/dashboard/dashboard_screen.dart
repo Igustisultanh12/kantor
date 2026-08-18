@@ -25,7 +25,7 @@ class DashboardScreen extends StatelessWidget {
               'SI SINDEN',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppTheme.primaryNavy),
             ),
-            Text(
+            const Text(
               'Detasemen Intelijen Kodaeral V',
               style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppTheme.secondaryGold),
             ),
@@ -62,7 +62,6 @@ class DashboardScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Welcome Header Card (M3 Elevated Style)
             Card(
               color: Colors.white,
               child: Padding(
@@ -96,7 +95,7 @@ class DashboardScreen extends StatelessWidget {
                             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
                           ),
                           Text(
-                            auth.user?.nrp != null ? 'NRP: $auth.user!.nrp' : 'Detasemen Intelijen',
+                            auth.user?.nrp != null ? 'NRP: ${auth.user!.nrp}' : 'Detasemen Intelijen',
                             style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
                           ),
                         ],
@@ -108,7 +107,6 @@ class DashboardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            // Live GPS Status Banner
             Card(
               color: loc.isTrackingEnabled ? const Color(0xFFF0FDF4) : const Color(0xFFFEF2F2),
               shape: RoundedRectangleBorder(
@@ -159,7 +157,6 @@ class DashboardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Quick Stats Grid
             const Text(
               'RINGKASAN METRIK OPERASIONAL',
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF64748B), letterSpacing: 0.8),
@@ -167,7 +164,7 @@ class DashboardScreen extends StatelessWidget {
             const SizedBox(height: 8),
 
             Row(
-              children: [
+              children: const [
                 Expanded(
                   child: _StatCard(
                     title: 'AGENDA SURAT',
@@ -177,7 +174,7 @@ class DashboardScreen extends StatelessWidget {
                     iconColor: AppTheme.primaryNavy,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: _StatCard(
                     title: 'CLEARANCE',
@@ -191,24 +188,24 @@ class DashboardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Row(
-              children: [
+              children: const [
                 Expanded(
                   child: _StatCard(
                     title: 'BUKU KAS',
                     count: 'Tervalidasi',
                     subtitle: 'Kas Unit Teknis',
                     icon: Icons.account_balance_wallet_outlined,
-                    iconColor: const Color(0xFF16A34A),
+                    iconColor: Color(0xFF16A34A),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: _StatCard(
                     title: 'SINKRONISASI',
                     count: 'Online',
                     subtitle: 'Koneksi Server Pusat',
                     icon: Icons.cloud_done_outlined,
-                    iconColor: const Color(0xFF6366F1),
+                    iconColor: Color(0xFF6366F1),
                   ),
                 ),
               ],

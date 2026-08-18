@@ -58,7 +58,6 @@ class _LetterLogsScreenState extends State<LetterLogsScreen> {
       ),
       body: Column(
         children: [
-          // Search Box
           Padding(
             padding: const EdgeInsets.all(16),
             child: TextField(
@@ -79,8 +78,6 @@ class _LetterLogsScreenState extends State<LetterLogsScreen> {
               onSubmitted: (val) => letterProv.fetchLogs(search: val),
             ),
           ),
-
-          // List Items
           Expanded(
             child: letterProv.isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -160,7 +157,7 @@ class _LetterLogCard extends StatelessWidget {
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
-                    'Tujuan: $log.recipient',
+                    'Tujuan: ${log.recipient}',
                     style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
                   ),
                 ),

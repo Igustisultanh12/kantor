@@ -68,6 +68,6 @@ class UserModel {
     if (pangkat != null && pangkat!.isNotEmpty) pangkat,
     if (korps != null && korps!.isNotEmpty) korps,
     name,
-    if (nrp != null && nrp!.isNotEmpty) 'NRP ',
+    if (nrp != null && nrp!.isNotEmpty) 'NRP $nrp',
   ].join(' ');
 }
