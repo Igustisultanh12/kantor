@@ -29,46 +29,42 @@ class LoginRequest extends FormRequest
 
     public function authenticate(): void
     {
-        ->ensureIsNotRateLimited();
+        $this->ensureIsNotRateLimited();
 
-         = ->input('username') ?? ->input('email');
+        $loginInput = $this->input('username') ?? $this->input('email');
 
-        if (empty()) {
+        if (empty($loginInput)) {
             throw ValidationException::withMessages([
                 'email' => 'Silakan masukkan NRP, Username, atau Alamat Email Anda.',
             ]);
         }
 
-         = ->input('password');
-         = ->boolean('remember');
+        $password = $this->input('password');
+        $remember = $this->boolean('remember');
 
-        // Check 1: Try email field
-        if (filter_var(, FILTER_VALIDATE_EMAIL)) {
-            if (Auth::attempt(['email' => , 'password' => ], )) {
-                RateLimiter::clear(->throttleKey());
+        if (filter_var($loginInput, FILTER_VALIDATE_EMAIL)) {
+            if (Auth::attempt(['email' => $loginInput, 'password' => $password], $remember)) {
+                RateLimiter::clear($this->throttleKey());
                 return;
             }
         }
 
-        // Check 2: Try username field
-        if (Auth::attempt(['username' => , 'password' => ], )) {
-            RateLimiter::clear(->throttleKey());
+        if (Auth::attempt(['username' => $loginInput, 'password' => $password], $remember)) {
+            RateLimiter::clear($this->throttleKey());
             return;
         }
 
-        // Check 3: Try nrp field
-        if (Auth::attempt(['nrp' => , 'password' => ], )) {
-            RateLimiter::clear(->throttleKey());
+        if (Auth::attempt(['nrp' => $loginInput, 'password' => $password], $remember)) {
+            RateLimiter::clear($this->throttleKey());
             return;
         }
 
-        // Check 4: Try email field directly if input wasn't valid email format
-        if (Auth::attempt(['email' => , 'password' => ], )) {
-            RateLimiter::clear(->throttleKey());
+        if (Auth::attempt(['email' => $loginInput, 'password' => $password], $remember)) {
+            RateLimiter::clear($this->throttleKey());
             return;
         }
 
-        RateLimiter::hit(->throttleKey());
+        RateLimiter::hit($this->throttleKey());
 
         throw ValidationException::withMessages([
             'email' => 'Kredensial tidak cocok. Silakan periksa NRP/Username dan Kata Sandi Anda.',
@@ -77,25 +73,25 @@ class LoginRequest extends FormRequest
 
     public function ensureIsNotRateLimited(): void
     {
-        if (! RateLimiter::tooManyAttempts(->throttleKey(), 5)) {
+        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
             return;
         }
 
-        event(new Lockout());
+        event(new Lockout($this));
 
-         = RateLimiter::availableIn(->throttleKey());
+        $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
             'email' => trans('auth.throttle', [
-                'seconds' => ,
-                'minutes' => ceil( / 60),
+                'seconds' => $seconds,
+                'minutes' => ceil($seconds / 60),
             ]),
         ]);
     }
 
     public function throttleKey(): string
     {
-         = ->input('username') ?? ->input('email') ?? '';
-        return Str::transliterate(Str::lower().'|'.->ip());
+        $loginInput = $this->input('username') ?? $this->input('email') ?? '';
+        return Str::transliterate(Str::lower($loginInput).'|'.$this->ip());
     }
 }

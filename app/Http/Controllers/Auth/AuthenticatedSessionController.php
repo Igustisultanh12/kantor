@@ -15,98 +15,95 @@ class AuthenticatedSessionController extends Controller
 {
     public function create(): Response
     {
-         = \App\Models\Setting::pluck('value', 'key')->toArray();
-         = [
-            'app_name' => ['agency_name'] ?? 'SINDEN',
-            'agency_logo' => isset(['agency_logo']) && ['agency_logo'] ? asset('storage/' . ['agency_logo']) : null,
-            'login_background' => isset(['login_background']) && ['login_background'] ? asset('storage/' . ['login_background']) : null,
+        $rawSettings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        $settings = [
+            'app_name' => $rawSettings['agency_name'] ?? 'SINDEN',
+            'agency_logo' => isset($rawSettings['agency_logo']) && $rawSettings['agency_logo'] ? asset('storage/' . $rawSettings['agency_logo']) : null,
+            'login_background' => isset($rawSettings['login_background']) && $rawSettings['login_background'] ? asset('storage/' . $rawSettings['login_background']) : null,
         ];
 
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
-            'settings' => ,
+            'settings' => $settings,
         ]);
     }
 
-    public function store(LoginRequest )
+    public function store(LoginRequest $request)
     {
-        ->authenticate();
+        $request->authenticate();
 
-         = Auth::user();
+        $user = Auth::user();
 
-        // Check if user is active
-        if (!->is_active) {
-             = ->name;
+        if (!$user->is_active) {
+            $userName = $user->name;
 
             Auth::guard('web')->logout();
-            if (->hasSession()) {
-                ->session()->invalidate();
-                ->session()->regenerateToken();
+            if ($request->hasSession()) {
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
             }
 
-            if (->wantsJson() || ->expectsJson()) {
+            if ($request->wantsJson() || $request->expectsJson()) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => "Akses Ditolak: Akun ({}) belum aktif atau sedang ditangguhkan oleh Admin.",
+                    'message' => "Akses Ditolak: Akun ({$userName}) belum aktif atau sedang ditangguhkan oleh Admin.",
                 ], 403);
             }
 
             return back()->withErrors([
-                'email' => "Akses Ditolak: Akun ({}) belum aktif atau sedang ditangguhkan oleh Admin.",
+                'email' => "Akses Ditolak: Akun ({$userName}) belum aktif atau sedang ditangguhkan oleh Admin.",
             ]);
         }
 
-        // Return JSON response if requested by Mobile App
-        if (->wantsJson() || ->expectsJson() || ->is('api/*')) {
-             = method_exists(, 'createToken') 
-                ? ->createToken('sinden_mobile_token')->plainTextToken 
+        if ($request->wantsJson() || $request->expectsJson() || $request->is('api/*')) {
+            $token = method_exists($user, 'createToken') 
+                ? $user->createToken('sinden_mobile_token')->plainTextToken 
                 : session()->getId();
 
             return response()->json([
                 'status' => 'success',
-                'token' => ,
+                'token' => $token,
                 'user' => [
-                    'id' => ->id,
-                    'name' => ->name,
-                    'email' => ->email ?? '',
-                    'username' => ->username ?? ->nrp ?? '',
-                    'nrp' => ->nrp ?? ->username ?? '',
-                    'role' => ->role ?? 'user',
-                    'pangkat' => ->pangkat ?? 'Prajurit',
-                    'korps' => ->korps ?? '',
-                    'jabatan' => ->jabatan ?? '',
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email ?? '',
+                    'username' => $user->username ?? $user->nrp ?? '',
+                    'nrp' => $user->nrp ?? $user->username ?? '',
+                    'role' => $user->role ?? 'user',
+                    'pangkat' => $user->pangkat ?? 'Prajurit',
+                    'korps' => $user->korps ?? '',
+                    'jabatan' => $user->jabatan ?? '',
                 ],
             ]);
         }
 
-        // Standard Web Inertia session response
-        ->session()->regenerate();
+        $request->session()->regenerate();
 
-        if (->filled('latitude') && ->filled('longitude')) {
+        if ($request->filled('latitude') && $request->filled('longitude')) {
             session([
-                'user_lat' => ->latitude,
-                'user_lng' => ->longitude
+                'user_lat' => $request->latitude,
+                'user_lng' => $request->longitude
             ]);
         }
 
-        if (empty(->phone)) {
+        if (empty($user->phone)) {
             session(['warning_wa' => 'Nomor WhatsApp belum terdaftar. Notifikasi sistem tidak akan terkirim.']);
         }
 
-        if (->must_change_password) {
+        if ($user->must_change_password) {
             return redirect()->route('profile.edit')->with('info', 'Otoritas Keamanan: Ini adalah login pertama Anda. Mohon perbarui password default Anda segera.');
         }
 
         return redirect()->intended(route('dashboard', absolute: false));
     }
 
-    public function destroy(Request ): RedirectResponse
+    public function destroy(Request $request): RedirectResponse
     {
         Auth::guard('web')->logout();
 
-        ->session()->invalidate();
-        ->session()->regenerateToken();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return redirect('/');
     }
