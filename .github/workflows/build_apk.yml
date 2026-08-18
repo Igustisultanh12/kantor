@@ -1,0 +1,61 @@
+name: Build SI SINDEN Android APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    name: Compile Release APK (Material 3)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: 'stable'
+          cache: true
+
+      - name: Verify Flutter & Android Environment
+        working-directory: sinden_mobile
+        run: flutter doctor -v
+
+      - name: Install Dependencies
+        working-directory: sinden_mobile
+        run: flutter pub get
+
+      - name: Run Unit & Widget Tests
+        working-directory: sinden_mobile
+        run: flutter test
+
+      - name: Build Android Release APK
+        working-directory: sinden_mobile
+        run: flutter build apk --release --no-tree-shake-icons
+
+      - name: Rename APK Artifact
+        run: |
+          cp sinden_mobile/build/app/outputs/flutter-apk/app-release.apk SI-SINDEN-v1.0-release.apk
+
+      - name: Upload APK as Downloadable Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SI-SINDEN-Android-APK
+          path: SI-SINDEN-v1.0-release.apk
+          retention-days: 30
+
+      - name: Release to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: SI-SINDEN-v1.0-release.apk
