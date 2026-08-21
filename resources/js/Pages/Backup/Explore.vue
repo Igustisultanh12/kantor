@@ -290,7 +290,34 @@ const closePreview = () => {
     previewUrl.value = null;
 };
 
+// --- PROTOKOL DETEKSI PERANGKAT SELULER (HP) ---
+const checkMobileDevice = () => {
+    const isMobile = window.innerWidth < 1024 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'AKSES TERBATAS - PERANGKAT SELULER',
+            text: 'Modul Explorer Backup memerlukan layar standar Komputer / PC. Silakan buka halaman ini melalui Komputer atau Perangkat Desktop.',
+            confirmButtonText: 'KEMBALI KE DASHBOARD',
+            confirmButtonColor: '#f97316',
+            background: 'rgba(15, 23, 42, 0.92)',
+            color: '#ffffff',
+            customClass: {
+                popup: 'swal2-dark-glass border border-white/10 shadow-2xl rounded-[2rem]',
+                confirmButton: 'bg-orange-500 hover:bg-orange-600 text-white font-black text-xs uppercase tracking-widest px-8 py-3 rounded-xl shadow-lg shadow-orange-500/20'
+            },
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+        }).then(() => {
+            router.visit(route('dashboard'));
+        });
+        return true;
+    }
+    return false;
+};
+
 onMounted(() => {
+    checkMobileDevice();
     window.addEventListener('click', closeContextMenu);
 });
 
