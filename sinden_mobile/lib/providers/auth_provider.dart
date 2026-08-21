@@ -9,11 +9,13 @@ import '../services/location_service.dart';
 class AuthProvider with ChangeNotifier {
   UserModel? _user;
   String? _token;
+  bool _isInitialLoading = true;
   bool _isLoading = false;
   String? _errorMessage;
 
   UserModel? get user => _user;
   String? get token => _token;
+  bool get isInitialLoading => _isInitialLoading;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _token != null && _token!.isNotEmpty;
@@ -27,6 +29,9 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> _loadAuthData() async {
+    _isInitialLoading = true;
+    notifyListeners();
+
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString(AppConstants.keyToken);
     final userStr = prefs.getString(AppConstants.keyUser);
@@ -35,6 +40,8 @@ class AuthProvider with ChangeNotifier {
         _user = UserModel.fromJson(jsonDecode(userStr));
       } catch (_) {}
     }
+
+    _isInitialLoading = false;
     notifyListeners();
   }
 

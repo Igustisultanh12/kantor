@@ -42,7 +42,7 @@ class SindenApp extends StatelessWidget {
             title: 'SI SINDEN',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
-            home: auth.isLoading
+            home: auth.isInitialLoading
                 ? const Scaffold(
                     body: Center(
                       child: CircularProgressIndicator(color: AppTheme.primaryNavy),
