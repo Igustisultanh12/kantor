@@ -47,7 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 26),
               SizedBox(width: 10),
-              Text('Gagal Autentikasi', style: TextStyle(fontWeight: FontWeight.extrabold, fontSize: 16)),
+              Text('Gagal Autentikasi', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
             ],
           ),
           content: Text(
@@ -57,7 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('OK, NGERTI', style: TextStyle(fontWeight: FontWeight.extrabold, color: Color(0xFF4F46E5))),
+              child: const Text('OK, NGERTI', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF4F46E5))),
             ),
           ],
         ),
