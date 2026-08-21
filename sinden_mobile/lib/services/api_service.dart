@@ -28,6 +28,7 @@ class ApiService {
 
     return {
       'Accept': 'application/json',
+      'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36 SINDEN-Mobile/1.0',
       if (!isMultipart) 'Content-Type': 'application/json',
       if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
     };
@@ -127,6 +128,9 @@ class ApiService {
   }
 
   dynamic _handleResponse(http.Response response) {
+    if (response.body.contains('Just a moment') || response.body.contains('challenge-platform') || response.body.contains('cf-mitigated')) {
+      throw Exception('Akses Terhadang Proteksi Cloudflare. Silakan atur Cloudflare WAF Security Rule pada domain sisinden.my.id.');
+    }
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isEmpty) return null;
       try {

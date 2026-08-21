@@ -24,7 +24,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // SULTAN CONFIG: KECUALIKAN GERBANG MASUK FILE FISIK PESS DARI CSRF
         // =====================================================================
         $middleware->validateCsrfTokens(except: [
-            'api/v1/pess/receive-submission'
+            'api/v1/pess/receive-submission',
+            'login',
+            'api/login'
         ]);
 
         // 2. REGISTRASI SELURUH ALIAS MIDDLEWARE (Disatukan di sini)
