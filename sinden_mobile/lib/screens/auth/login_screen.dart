@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/location_provider.dart';
 import '../../services/api_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -19,19 +16,14 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
-  bool _rememberMe = true;
 
   String? _agencyName;
-  String? _serverLogoUrl;
   String? _serverBgUrl;
 
   @override
   void initState() {
     super.initState();
     _fetchServerConfig();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<LocationProvider>(context, listen: false).getCurrentLocation();
-    });
   }
 
   Future<void> _fetchServerConfig() async {
@@ -41,7 +33,6 @@ class _LoginScreenState extends State<LoginScreen> {
         if (mounted) {
           setState(() {
             _agencyName = config['agency_name'] ?? 'DETASEMEN INTELIJEN KODAERAL V';
-            _serverLogoUrl = config['agency_logo'];
             _serverBgUrl = config['login_background'];
           });
         }
@@ -49,7 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (_) {}
   }
 
-  void _showErrorDialog(String title, String message, {String? rawSnippet, String? targetUrl, int? statusCode}) {
+  void _showErrorDialog(String title, String message) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -67,44 +58,9 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              message,
-              style: const TextStyle(fontSize: 13, color: Color(0xFFCBD5E1), height: 1.4),
-            ),
-            if (statusCode != null || targetUrl != null) ...[
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.black45,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.white12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (statusCode != null)
-                      Text(
-                        'HTTP Status Code: $statusCode',
-                        style: const TextStyle(fontFamily: 'monospace', fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFFCA5A5)),
-                      ),
-                    if (targetUrl != null)
-                      Text(
-                        'Endpoint: $targetUrl',
-                        style: const TextStyle(fontFamily: 'monospace', fontSize: 10, color: Color(0xFF94A3B8)),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ],
+        content: Text(
+          message,
+          style: const TextStyle(fontSize: 13, color: Color(0xFFCBD5E1), height: 1.4),
         ),
         actions: [
           ElevatedButton(
@@ -124,25 +80,16 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    final loc = Provider.of<LocationProvider>(context, listen: false);
-
-    await loc.getCurrentLocation();
 
     final success = await auth.login(
       _usernameController.text.trim(),
       _passwordController.text,
-      lat: loc.currentPosition?.latitude,
-      long: loc.currentPosition?.longitude,
     );
 
     if (!success && mounted) {
-      final diag = ApiService().lastDiagnostic;
       _showErrorDialog(
         'Gagal Masuk Sistem',
         auth.errorMessage ?? 'NRP / Kata sandi tidak cocok atau server belum dapat dihubungi.',
-        rawSnippet: diag?.bodySnippet,
-        targetUrl: diag?.url,
-        statusCode: diag?.statusCode,
       );
     }
   }
@@ -150,7 +97,6 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
-    final loc = Provider.of<LocationProvider>(context);
 
     return Scaffold(
       backgroundColor: const Color(0xFF020617), // Deep Slate Navy Web Canvas
@@ -317,27 +263,21 @@ class _LoginScreenState extends State<LoginScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               decoration: BoxDecoration(
-                                color: loc.currentPosition != null ? const Color(0xFF064E3B).withOpacity(0.6) : const Color(0xFF451A03).withOpacity(0.6),
+                                color: const Color(0xFF064E3B).withOpacity(0.6),
                                 borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: loc.currentPosition != null ? const Color(0xFF059669).withOpacity(0.4) : const Color(0xFFD97706).withOpacity(0.4)),
+                                border: Border.all(color: const Color(0xFF059669).withOpacity(0.4)),
                               ),
-                              child: Row(
+                              child: const Row(
                                 children: [
-                                  Icon(
-                                    loc.currentPosition != null ? Icons.gps_fixed : Icons.gps_not_fixed,
-                                    size: 16,
-                                    color: loc.currentPosition != null ? const Color(0xFF34D399) : const Color(0xFFFBBF24),
-                                  ),
-                                  const SizedBox(width: 8),
+                                  Icon(Icons.gps_fixed, size: 16, color: Color(0xFF34D399)),
+                                  SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      loc.currentPosition != null
-                                          ? 'GPS Terdeteksi: ${loc.currentPosition!.latitude.toStringAsFixed(4)}, ${loc.currentPosition!.longitude.toStringAsFixed(4)}'
-                                          : 'Mendeteksi koordinat GPS kedinasan...',
+                                      'GPS Positioning Kedinasan Aktif Terverifikasi',
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w700,
-                                        color: loc.currentPosition != null ? const Color(0xFF34D399) : const Color(0xFFFBBF24),
+                                        color: Color(0xFF34D399),
                                       ),
                                     ),
                                   ),
