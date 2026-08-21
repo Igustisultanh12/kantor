@@ -41,6 +41,122 @@ class _CommanderAccountScreenState extends State<CommanderAccountScreen> {
     setState(() => _isLoading = false);
   }
 
+  void _showAddTransactionDialog() {
+    final formKey = GlobalKey<FormState>();
+    String jenis = 'MASUK';
+    final amountController = TextEditingController();
+    final descController = TextEditingController();
+    final dateController = TextEditingController(text: DateFormat('yyyy-MM-dd').format(DateTime.now()));
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Text('Tambah Transaksi Rekening Dan', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: jenis,
+                    decoration: InputDecoration(
+                      labelText: 'Jenis Transaksi',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'MASUK', child: Text('DANA MASUK (KREDIT)', style: TextStyle(color: Color(0xFF059669), fontWeight: FontWeight.bold))),
+                      DropdownMenuItem(value: 'KELUAR', child: Text('DANA KELUAR (DEBIT)', style: TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.bold))),
+                    ],
+                    onChanged: (v) => setModalState(() => jenis = v!),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: amountController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Nominal (Rp)',
+                      hintText: 'Contoh: 5000000',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    validator: (v) => v == null || v.isEmpty ? 'Nominal wajib diisi' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: descController,
+                    decoration: InputDecoration(
+                      labelText: 'Uraian / Keterangan',
+                      hintText: 'Contoh: Dukungan Operasional',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    validator: (v) => v == null || v.isEmpty ? 'Keterangan wajib diisi' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: dateController,
+                    decoration: InputDecoration(
+                      labelText: 'Tanggal (YYYY-MM-DD)',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('BATAL')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF047857),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () async {
+                if (formKey.currentState!.validate()) {
+                  final body = {
+                    'jenis': jenis,
+                    'jumlah': double.tryParse(amountController.text.trim()) ?? 0,
+                    'keterangan': descController.text.trim(),
+                    'tanggal': dateController.text.trim(),
+                  };
+                  await ApiService().post('/api/mobile/commander-account', body);
+                  Navigator.of(ctx).pop();
+                  _fetchData();
+                }
+              },
+              child: const Text('SIMPAN', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _deleteTransaction(int id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Hapus Transaksi?', style: TextStyle(fontWeight: FontWeight.w800)),
+        content: const Text('Data transaksi rekening komandan ini akan dihapus permanen.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('BATAL')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('HAPUS', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await ApiService().delete('/api/mobile/commander-account/$id');
+      _fetchData();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -49,6 +165,12 @@ class _CommanderAccountScreenState extends State<CommanderAccountScreen> {
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchData),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: const Color(0xFF047857),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text('TRANSAKSI BARU', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 0.5)),
+        onPressed: _showAddTransactionDialog,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(strokeCap: StrokeCap.round))
@@ -119,6 +241,7 @@ class _CommanderAccountScreenState extends State<CommanderAccountScreen> {
                     ..._logs.map((log) {
                       final isMasuk = log['jenis'] == 'MASUK';
                       final amount = double.tryParse(log['jumlah']?.toString() ?? '0') ?? 0;
+                      final id = log['id'];
                       return Card(
                         margin: const EdgeInsets.only(bottom: 10),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -130,13 +253,24 @@ class _CommanderAccountScreenState extends State<CommanderAccountScreen> {
                           ),
                           title: Text(log['keterangan'] ?? '-', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
                           subtitle: Text(log['tanggal'] ?? '', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-                          trailing: Text(
-                            (isMasuk ? '+ ' : '- ') + currencyFormatter.format(amount),
-                            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: isMasuk ? const Color(0xFF059669) : const Color(0xFFDC2626)),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                (isMasuk ? '+ ' : '- ') + currencyFormatter.format(amount),
+                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: isMasuk ? const Color(0xFF059669) : const Color(0xFFDC2626)),
+                              ),
+                              if (id != null)
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline, color: Color(0xFFDC2626), size: 20),
+                                  onPressed: () => _deleteTransaction(id),
+                                ),
+                            ],
                           ),
                         ),
                       );
                     }).toList(),
+                  const SizedBox(height: 80),
                 ],
               ),
             ),

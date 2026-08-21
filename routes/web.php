@@ -461,6 +461,7 @@ Route::get('/api/mobile/config', function () {
 // =====================================================================
 
 
+
 // GERBANG REST API LENGKAP SINDEN MOBILE (SINKRONISASI REAL-TIME DATA)
 // =====================================================================
 
@@ -479,15 +480,11 @@ Route::get('/api/mobile/cash', function () {
                 $decoded = json_decode($rawPath, true);
                 if (is_array($decoded)) {
                     foreach ($decoded as $path) {
-                        if (!empty($path)) {
-                            $urls[] = asset('storage/' . $path);
-                        }
+                        if (!empty($path)) $urls[] = asset('storage/' . $path);
                     }
                 } elseif (is_array($rawPath)) {
                     foreach ($rawPath as $path) {
-                        if (!empty($path)) {
-                            $urls[] = asset('storage/' . $path);
-                        }
+                        if (!empty($path)) $urls[] = asset('storage/' . $path);
                     }
                 } else {
                     $urls[] = asset('storage/' . $rawPath);
@@ -519,7 +516,6 @@ Route::get('/api/mobile/cash', function () {
             'data' => $reversed,
         ]);
     } catch (\Throwable $e) {
-        \Illuminate\Support\Facades\Log::error("[MOBILE_API_CASH_ERROR] " . $e->getMessage());
         return response()->json(['status' => 'error', 'message' => $e->getMessage(), 'cashes' => [], 'data' => []], 500);
     }
 });
@@ -545,6 +541,32 @@ Route::post('/api/mobile/cash', function (\Illuminate\Http\Request $request) {
         ]);
 
         return response()->json(['status' => 'success', 'data' => $cash]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+Route::put('/api/mobile/cash/{id}', function (\Illuminate\Http\Request $request, $id) {
+    try {
+        $cash = \App\Models\Cash::findOrFail($id);
+        $data = $request->json()->all() ?: $request->all();
+        $cash->update([
+            'date' => $data['date'] ?? $cash->date,
+            'description' => $data['description'] ?? $cash->description,
+            'debit' => isset($data['debit']) ? (float)$data['debit'] : $cash->debit,
+            'credit' => isset($data['credit']) ? (float)$data['credit'] : $cash->credit,
+        ]);
+        return response()->json(['status' => 'success', 'data' => $cash]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+Route::delete('/api/mobile/cash/{id}', function ($id) {
+    try {
+        $cash = \App\Models\Cash::findOrFail($id);
+        $cash->delete();
+        return response()->json(['status' => 'success', 'message' => 'Data kas berhasil dihapus']);
     } catch (\Throwable $e) {
         return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
     }
@@ -585,13 +607,8 @@ Route::get('/api/mobile/letter-logs', function (\Illuminate\Http\Request $reques
             ];
         });
 
-        return response()->json([
-            'status' => 'success',
-            'data' => $logs,
-            'logs' => $logs,
-        ]);
+        return response()->json(['status' => 'success', 'data' => $logs, 'logs' => $logs]);
     } catch (\Throwable $e) {
-        \Illuminate\Support\Facades\Log::error("[MOBILE_API_LETTER_LOGS_ERROR] " . $e->getMessage());
         return response()->json(['status' => 'error', 'message' => $e->getMessage(), 'data' => []], 500);
     }
 });
@@ -615,6 +632,31 @@ Route::post('/api/mobile/letter-logs', function (\Illuminate\Http\Request $reque
         ]);
 
         return response()->json(['status' => 'success', 'data' => $log]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+Route::put('/api/mobile/letter-logs/{id}', function (\Illuminate\Http\Request $request, $id) {
+    try {
+        $log = \App\Models\LetterLog::findOrFail($id);
+        $data = $request->json()->all() ?: $request->all();
+        $log->update([
+            'subject' => $data['subject'] ?? $log->subject,
+            'recipient' => $data['recipient'] ?? $log->recipient,
+            'date' => $data['date'] ?? $log->date,
+        ]);
+        return response()->json(['status' => 'success', 'data' => $log]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+Route::delete('/api/mobile/letter-logs/{id}', function ($id) {
+    try {
+        $log = \App\Models\LetterLog::findOrFail($id);
+        $log->delete();
+        return response()->json(['status' => 'success', 'message' => 'Agenda surat berhasil dihapus']);
     } catch (\Throwable $e) {
         return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
     }
@@ -649,14 +691,54 @@ Route::get('/api/mobile/skhpp', function (\Illuminate\Http\Request $request) {
             ];
         });
 
-        return response()->json([
-            'status' => 'success',
-            'data' => $skhpps,
-            'skhpps' => $skhpps,
-        ]);
+        return response()->json(['status' => 'success', 'data' => $skhpps, 'skhpps' => $skhpps]);
     } catch (\Throwable $e) {
-        \Illuminate\Support\Facades\Log::error("[MOBILE_API_SKHPP_ERROR] " . $e->getMessage());
         return response()->json(['status' => 'error', 'message' => $e->getMessage(), 'data' => []], 500);
+    }
+});
+
+Route::post('/api/mobile/skhpp', function (\Illuminate\Http\Request $request) {
+    try {
+        $data = $request->json()->all() ?: $request->all();
+        $skhpp = \App\Models\Skhpp::create([
+            'kategori_personel' => $data['kategori'] ?? $data['kategori_personel'] ?? 'militer',
+            'nama' => $data['nama'] ?? '-',
+            'pangkat_korps_nrp' => $data['pangkat_korps_nrp'] ?? '-',
+            'nik' => $data['nik'] ?? '0000000000000000',
+            'jabatan_pekerjaan' => $data['jabatan'] ?? $data['jabatan_pekerjaan'] ?? '-',
+            'peruntukan' => $data['peruntukan'] ?? 'Persyaratan Kedinasan',
+            'status' => 'PENDING',
+            'tanggal_skhpp' => $data['tanggal_surat'] ?? date('Y-m-d'),
+            'submitted_by' => auth()->id() ?? 1,
+            'operator_name' => auth()->user()?->name ?? 'Operator Mobile',
+        ]);
+        return response()->json(['status' => 'success', 'data' => $skhpp]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+Route::post('/api/mobile/skhpp/{id}/verify', function ($id) {
+    try {
+        $skhpp = \App\Models\Skhpp::findOrFail($id);
+        $skhpp->update([
+            'status' => 'APPROVED',
+            'approved_by' => auth()->id() ?? 1,
+            'approved_at' => now(),
+        ]);
+        return response()->json(['status' => 'success', 'message' => 'SKHPP berhasil diverifikasi']);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+Route::delete('/api/mobile/skhpp/{id}', function ($id) {
+    try {
+        $skhpp = \App\Models\Skhpp::findOrFail($id);
+        $skhpp->delete();
+        return response()->json(['status' => 'success', 'message' => 'SKHPP berhasil dihapus']);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
     }
 });
 
@@ -678,6 +760,31 @@ Route::get('/api/mobile/commander-account', function () {
         ]);
     } catch (\Throwable $e) {
         return response()->json(['status' => 'error', 'saldo_akhir' => 0, 'data' => []]);
+    }
+});
+
+Route::post('/api/mobile/commander-account', function (\Illuminate\Http\Request $request) {
+    try {
+        $data = $request->json()->all() ?: $request->all();
+        $tx = \App\Models\CommanderAccount::create([
+            'tanggal' => $data['tanggal'] ?? date('Y-m-d'),
+            'jenis' => strtoupper($data['jenis'] ?? 'MASUK'),
+            'jumlah' => (float)($data['jumlah'] ?? 0),
+            'keterangan' => $data['keterangan'] ?? '-',
+        ]);
+        return response()->json(['status' => 'success', 'data' => $tx]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+Route::delete('/api/mobile/commander-account/{id}', function ($id) {
+    try {
+        $tx = \App\Models\CommanderAccount::findOrFail($id);
+        $tx->delete();
+        return response()->json(['status' => 'success', 'message' => 'Transaksi Rekening Komandan berhasil dihapus']);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
     }
 });
 
@@ -707,32 +814,60 @@ Route::get('/api/mobile/mitra', function (\Illuminate\Http\Request $request) {
     }
 });
 
-// 6. API KAS DAN UNIT TEKNIS (Model: App\Models\TechnicalUnitCash)
-Route::get('/api/mobile/technical-cash', function () {
+Route::post('/api/mobile/mitra', function (\Illuminate\Http\Request $request) {
     try {
-        $all = \App\Models\TechnicalUnitCash::orderBy('date', 'asc')->orderBy('id', 'asc')->get();
-        $balance = (float)($all->last()?->balance ?? 0);
-        $totalDebit = (float)$all->sum('debit');
-        $totalCredit = (float)$all->sum('credit');
-
-        $reversed = $all->reverse()->values();
-
-        return response()->json([
-            'status' => 'success',
-            'balance' => $balance,
-            'totalSaldo' => $balance,
-            'total_debit' => $totalDebit,
-            'total_credit' => $totalCredit,
-            'cashes' => $reversed,
-            'transactions' => $reversed,
-            'data' => $reversed,
+        $data = $request->json()->all() ?: $request->all();
+        $mitra = \App\Models\Mitra::create([
+            'nama_mitra' => $data['nama_mitra'] ?? 'Mitra Baru',
+            'kategori' => $data['kategori'] ?? 'Reguler',
+            'nominal_rutin' => (float)($data['nominal_rutin'] ?? 0),
+            'sort_order' => 1,
         ]);
+        return response()->json(['status' => 'success', 'data' => $mitra]);
     } catch (\Throwable $e) {
-        return response()->json(['status' => 'error', 'balance' => 0, 'data' => []]);
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
     }
 });
 
-// 7. API CATATAN PELANGGARAN PRAJURIT (Model: App\Models\SoldierViolation)
+Route::post('/api/mobile/mitra/{id}/toggle-payment', function (\Illuminate\Http\Request $request, $id) {
+    try {
+        $data = $request->json()->all() ?: $request->all();
+        $tahun = (int)($data['tahun'] ?? date('Y'));
+        $bulan = (int)($data['bulan'] ?? date('n'));
+
+        $payment = \App\Models\MitraPayment::where('mitra_id', $id)
+            ->where('tahun', $tahun)
+            ->where('bulan', $bulan)
+            ->first();
+
+        if ($payment) {
+            $payment->update(['is_paid' => !$payment->is_paid]);
+        } else {
+            \App\Models\MitraPayment::create([
+                'mitra_id' => $id,
+                'tahun' => $tahun,
+                'bulan' => $bulan,
+                'is_paid' => true,
+            ]);
+        }
+
+        return response()->json(['status' => 'success', 'message' => 'Status pembayaran mitra berhasil diperbarui']);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+Route::delete('/api/mobile/mitra/{id}', function ($id) {
+    try {
+        $mitra = \App\Models\Mitra::findOrFail($id);
+        $mitra->delete();
+        return response()->json(['status' => 'success', 'message' => 'Mitra berhasil dihapus']);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+// 6. API CATATAN PELANGGARAN PRAJURIT (Model: App\Models\SoldierViolation)
 Route::get('/api/mobile/violations', function (\Illuminate\Http\Request $request) {
     try {
         $query = \App\Models\SoldierViolation::query();
@@ -760,54 +895,51 @@ Route::get('/api/mobile/violations', function (\Illuminate\Http\Request $request
     }
 });
 
-// 8. API RADAR KEGIATAN LAPANGAN (Model: App\Models\CommunityActivity)
-Route::get('/api/mobile/activities', function () {
+Route::post('/api/mobile/violations', function (\Illuminate\Http\Request $request) {
     try {
-        $activities = \App\Models\CommunityActivity::latest()->get();
-        return response()->json(['status' => 'success', 'data' => $activities, 'activities' => $activities]);
-    } catch (\Throwable $e) {
-        return response()->json(['status' => 'error', 'data' => []]);
-    }
-});
-
-// 9. API TTE TANDA TANGAN DIGITAL (Model: App\Models\SignatureRequest)
-Route::get('/api/mobile/signature-requests', function () {
-    try {
-        $requests = \App\Models\SignatureRequest::with('user')->latest()->take(100)->get();
-        $skhpps = \App\Models\Skhpp::where('status', 'PENDING')->latest()->take(100)->get();
-
-        return response()->json([
-            'status' => 'success',
-            'requests' => $requests,
-            'skhpp_requests' => $skhpps,
-            'data' => $requests,
+        $data = $request->json()->all() ?: $request->all();
+        $violation = \App\Models\SoldierViolation::create([
+            'name' => $data['name'] ?? $data['nama'] ?? '-',
+            'nrp' => $data['nrp'] ?? '-',
+            'pangkat' => $data['pangkat'] ?? 'Prajurit',
+            'jabatan' => $data['jabatan'] ?? '-',
+            'unit' => $data['unit'] ?? $data['satuan'] ?? 'Denintel',
+            'case_description' => $data['case_description'] ?? $data['kasus'] ?? '-',
+            'tmt' => $data['tmt'] ?? date('Y-m-d'),
+            'case_progress' => $data['case_progress'] ?? 'Dalam pemeriksaan',
+            'status' => strtoupper($data['status'] ?? 'PROSES'),
         ]);
+        return response()->json(['status' => 'success', 'data' => $violation]);
     } catch (\Throwable $e) {
-        return response()->json(['status' => 'error', 'data' => []]);
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
     }
 });
 
-// 10. API DRAF NASKAH DINAS (Model: App\Models\Letter)
-Route::get('/api/mobile/letters', function () {
+Route::put('/api/mobile/violations/{id}', function (\Illuminate\Http\Request $request, $id) {
     try {
-        $letters = \App\Models\Letter::with(['category', 'subCategory'])->latest()->take(100)->get();
-        return response()->json(['status' => 'success', 'data' => $letters, 'letters' => $letters]);
+        $v = \App\Models\SoldierViolation::findOrFail($id);
+        $data = $request->json()->all() ?: $request->all();
+        $v->update([
+            'status' => strtoupper($data['status'] ?? $v->status),
+            'case_progress' => $data['case_progress'] ?? $v->case_progress,
+        ]);
+        return response()->json(['status' => 'success', 'data' => $v]);
     } catch (\Throwable $e) {
-        return response()->json(['status' => 'error', 'data' => []]);
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
     }
 });
 
-// 11. API MASTER KATEGORI SURAT (Model: App\Models\Category)
-Route::get('/api/mobile/categories', function () {
+Route::delete('/api/mobile/violations/{id}', function ($id) {
     try {
-        $categories = \App\Models\Category::with('subCategories')->get();
-        return response()->json(['status' => 'success', 'data' => $categories]);
+        $v = \App\Models\SoldierViolation::findOrFail($id);
+        $v->delete();
+        return response()->json(['status' => 'success', 'message' => 'Catatan pelanggaran berhasil dihapus']);
     } catch (\Throwable $e) {
-        return response()->json(['status' => 'error', 'data' => []]);
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
     }
 });
 
-// 12. API KELOLA PENGGUNA (Model: App\Models\User)
+// 7. API KELOLA PENGGUNA (Model: App\Models\User)
 Route::get('/api/mobile/users', function () {
     try {
         $users = \App\Models\User::latest()->get()->map(function($u) {
@@ -833,7 +965,113 @@ Route::get('/api/mobile/users', function () {
     }
 });
 
-// 13. API LOG PENGUNJUNG & AUDIT (Model: App\Models\VisitorLog & App\Models\AuditLog)
+Route::post('/api/mobile/users', function (\Illuminate\Http\Request $request) {
+    try {
+        $data = $request->json()->all() ?: $request->all();
+        $user = \App\Models\User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'nrp' => $data['nrp'] ?? $data['username'],
+            'pangkat' => $data['pangkat'] ?? 'Prajurit',
+            'korps' => $data['korps'] ?? 'Pelaut',
+            'role' => $data['role'] ?? 'user',
+            'jabatan' => $data['jabatan'] ?? 'Personel',
+            'password' => \Illuminate\Support\Facades\Hash::make($data['password'] ?? '12345678'),
+            'is_active' => true,
+        ]);
+        return response()->json(['status' => 'success', 'data' => $user]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+Route::put('/api/mobile/users/{id}', function (\Illuminate\Http\Request $request, $id) {
+    try {
+        $user = \App\Models\User::findOrFail($id);
+        $data = $request->json()->all() ?: $request->all();
+        if (isset($data['is_active'])) {
+            $user->update(['is_active' => (bool)$data['is_active']]);
+        }
+        return response()->json(['status' => 'success', 'data' => $user]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+Route::delete('/api/mobile/users/{id}', function ($id) {
+    try {
+        $user = \App\Models\User::findOrFail($id);
+        $user->delete();
+        return response()->json(['status' => 'success', 'message' => 'Pengguna berhasil dihapus']);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+// 8. API TTE TANDA TANGAN DIGITAL (Model: App\Models\SignatureRequest)
+Route::get('/api/mobile/signature-requests', function () {
+    try {
+        $requests = \App\Models\SignatureRequest::with('user')->latest()->take(100)->get();
+        $skhpps = \App\Models\Skhpp::where('status', 'PENDING')->latest()->take(100)->get();
+
+        return response()->json([
+            'status' => 'success',
+            'requests' => $requests,
+            'skhpp_requests' => $skhpps,
+            'data' => $requests,
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'data' => []]);
+    }
+});
+
+Route::post('/api/mobile/signature-requests/{id}/sign', function ($id) {
+    try {
+        $req = \App\Models\SignatureRequest::findOrFail($id);
+        $req->update(['status' => 'SIGNED']);
+        return response()->json(['status' => 'success', 'message' => 'Dokumen berhasil ditandatangani digital']);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+// 9. API DRAF NASKAH DINAS (Model: App\Models\Letter)
+Route::get('/api/mobile/letters', function () {
+    try {
+        $letters = \App\Models\Letter::with(['category', 'subCategory'])->latest()->take(100)->get();
+        return response()->json(['status' => 'success', 'data' => $letters, 'letters' => $letters]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'data' => []]);
+    }
+});
+
+Route::post('/api/mobile/letters', function (\Illuminate\Http\Request $request) {
+    try {
+        $data = $request->json()->all() ?: $request->all();
+        $letter = \App\Models\Letter::create([
+            'letter_number' => $data['letter_number'] ?? 'DRAF/' . date('YmdHis'),
+            'subject' => $data['subject'] ?? 'Naskah Dinas Baru',
+            'category_id' => $data['category_id'] ?? 1,
+            'recipient' => $data['recipient'] ?? 'Komando',
+            'date' => $data['date'] ?? date('Y-m-d'),
+        ]);
+        return response()->json(['status' => 'success', 'data' => $letter]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+// 10. API MASTER KATEGORI SURAT (Model: App\Models\Category)
+Route::get('/api/mobile/categories', function () {
+    try {
+        $categories = \App\Models\Category::with('subCategories')->get();
+        return response()->json(['status' => 'success', 'data' => $categories]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'data' => []]);
+    }
+});
+
+// 11. API LOG PENGUNJUNG & AUDIT (Model: App\Models\VisitorLog & App\Models\AuditLog)
 Route::get('/api/mobile/audit-logs', function () {
     try {
         $visitors = \App\Models\VisitorLog::with('user')->latest()->take(50)->get();
@@ -850,7 +1088,7 @@ Route::get('/api/mobile/audit-logs', function () {
     }
 });
 
-// 14. API NOTIFIKASI SYSTEM (Model: App\Models\AppNotification)
+// 12. API NOTIFIKASI SYSTEM (Model: App\Models\AppNotification)
 Route::get('/api/mobile/notifications', function () {
     try {
         $notifs = \App\Models\AppNotification::latest()->take(50)->get()->map(function($n) {

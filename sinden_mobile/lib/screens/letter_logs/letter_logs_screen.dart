@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme.dart';
 import '../../models/letter_log_model.dart';
 import '../../providers/letter_provider.dart';
+import '../../services/api_service.dart';
 import '../../widgets/status_pill.dart';
 import 'book_letter_dialog.dart';
 
@@ -30,13 +31,88 @@ class _LetterLogsScreenState extends State<LetterLogsScreen> {
     super.dispose();
   }
 
+  void _previewLetter(LetterLogModel log) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            const Icon(Icons.picture_as_pdf, color: Color(0xFFDC2626), size: 24),
+            const SizedBox(width: 8),
+            const Expanded(child: Text('Pratinjau Agenda Surat', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15))),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(log.fullNumber, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.primaryNavy)),
+            const SizedBox(height: 8),
+            Text('Perihal: ${log.subject}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+            const SizedBox(height: 4),
+            Text('Tujuan / Penerima: ${log.recipient}', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+            const SizedBox(height: 4),
+            Text('Tanggal: ${log.date}', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10)),
+              child: const Row(
+                children: [
+                  Icon(Icons.verified, color: Color(0xFF059669), size: 18),
+                  SizedBox(width: 8),
+                  Text('Terekam di Buku Agenda Resmi Server', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF059669))),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryNavy),
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('TUTUP', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteLetter(int id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Hapus Agenda Surat?', style: TextStyle(fontWeight: FontWeight.w800)),
+        content: const Text('Data nomor agenda surat ini akan dihapus permanen.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('BATAL')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('HAPUS', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await ApiService().delete('/api/mobile/letter-logs/$id');
+      if (mounted) {
+        Provider.of<LetterProvider>(context, listen: false).fetchLogs();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final letterProv = Provider.of<LetterProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Agenda Penomoran Surat'),
+        title: const Text('Agenda Penomoran Surat', style: TextStyle(fontWeight: FontWeight.w900)),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -80,7 +156,7 @@ class _LetterLogsScreenState extends State<LetterLogsScreen> {
           ),
           Expanded(
             child: letterProv.isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(child: CircularProgressIndicator(strokeCap: StrokeCap.round))
                 : letterProv.logs.isEmpty
                     ? Center(
                         child: Column(
@@ -102,73 +178,78 @@ class _LetterLogsScreenState extends State<LetterLogsScreen> {
                           itemCount: letterProv.logs.length,
                           itemBuilder: (context, index) {
                             final log = letterProv.logs[index];
-                            return _LetterLogCard(log: log);
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.all(16),
+                                leading: CircleAvatar(
+                                  radius: 20,
+                                  backgroundColor: AppTheme.primaryNavy.withOpacity(0.1),
+                                  child: Text(
+                                    '${log.number}',
+                                    style: const TextStyle(fontWeight: FontWeight.w900, color: AppTheme.primaryNavy, fontSize: 13),
+                                  ),
+                                ),
+                                title: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        log.fullNumber,
+                                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    StatusPill(
+                                      label: log.categoryName,
+                                      type: StatusType.info,
+                                    ),
+                                  ],
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      log.subject,
+                                      style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF334155), fontSize: 12),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.send_outlined, size: 12, color: Color(0xFF64748B)),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            'Kepada: ${log.recipient}',
+                                            style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.picture_as_pdf, color: Color(0xFFDC2626), size: 20),
+                                      onPressed: () => _previewLetter(log),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline, color: Color(0xFF64748B), size: 20),
+                                      onPressed: () => _deleteLetter(log.id),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
                           },
                         ),
                       ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _LetterLogCard extends StatelessWidget {
-  final LetterLogModel log;
-
-  const _LetterLogCard({required this.log});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    log.fullNumber,
-                    style: const TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      color: AppTheme.primaryNavy,
-                    ),
-                  ),
-                ),
-                log.isArchived
-                    ? StatusPill.success('Terarsip')
-                    : StatusPill.warning('Pending PDF'),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              log.subject,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                const Icon(Icons.send_outlined, size: 14, color: Color(0xFF64748B)),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    'Tujuan: ${log.recipient}',
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
-                  ),
-                ),
-                Text(
-                  log.date,
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }
