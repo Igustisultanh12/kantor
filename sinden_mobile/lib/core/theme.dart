@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Brand Colors (TNI AL Official Scheme)
-  static const Color primaryNavy = Color(0xFF1E3A8A);     // Navy Blue Primary
-  static const Color secondaryGold = Color(0xFFD97706);   // Gold Accent
-  static const Color neutralSlate = Color(0xFF475569);    // Slate Neutral
-  static const Color surfaceLight = Color(0xFFF8FAFC);    // Cool Gray Canvas
-  static const Color cardLight = Color(0xFFFFFFFF);       // Crisp White Card
-  static const Color outlineLight = Color(0xFFE2E8F0);     // Subtle Border
+  // Material 3 Brand & Key Color Tokens
+  static const Color primaryNavy = Color(0xFF1E3A8A);     // M3 Primary Navy
+  static const Color secondaryGold = Color(0xFFD97706);   // M3 Secondary Gold
+  static const Color neutralSlate = Color(0xFF475569);    // M3 Neutral Slate
+  static const Color surfaceLight = Color(0xFFF8FAFC);    // M3 Surface Container Low
+  static const Color surfaceContainer = Color(0xFFF1F5F9); // M3 Surface Container
+  static const Color cardLight = Color(0xFFFFFFFF);       // M3 Surface High
+  static const Color outlineLight = Color(0xFFE2E8F0);     // M3 Outline Variant
 
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
@@ -17,23 +18,23 @@ class AppTheme {
       brightness: Brightness.light,
       primary: primaryNavy,
       onPrimary: Colors.white,
-      primaryContainer: Color(0xFFDBEAFE),
-      onPrimaryContainer: Color(0xFF1E3A8A),
+      primaryContainer: const Color(0xFFE0E7FF),
+      onPrimaryContainer: const Color(0xFF1E1B4B),
       secondary: secondaryGold,
       onSecondary: Colors.white,
-      secondaryContainer: Color(0xFFFEF3C7),
-      onSecondaryContainer: Color(0xFF78350F),
+      secondaryContainer: const Color(0xFFFEF3C7),
+      onSecondaryContainer: const Color(0xFF78350F),
       tertiary: neutralSlate,
       surface: surfaceLight,
-      onSurface: Color(0xFF0F172A),
-      surfaceContainerHighest: Color(0xFFF1F5F9),
+      onSurface: const Color(0xFF0F172A),
+      surfaceContainerHighest: surfaceContainer,
       outline: outlineLight,
-      outlineVariant: Color(0xFFCBD5E1),
+      outlineVariant: const Color(0xFFCBD5E1),
     ),
     scaffoldBackgroundColor: surfaceLight,
     appBarTheme: const AppBarTheme(
       elevation: 0,
-      scrolledUnderElevation: 1.5,
+      scrolledUnderElevation: 1.0,
       backgroundColor: Colors.white,
       foregroundColor: Color(0xFF0F172A),
       centerTitle: false,
@@ -48,15 +49,16 @@ class AppTheme {
       elevation: 0,
       color: cardLight,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20), // M3 Medium Corner Radius
         side: const BorderSide(color: outlineLight, width: 1),
       ),
       margin: const EdgeInsets.symmetric(vertical: 6),
     ),
     navigationBarTheme: NavigationBarThemeData(
-      elevation: 2,
+      elevation: 1,
       backgroundColor: Colors.white,
-      indicatorColor: const Color(0xFFDBEAFE),
+      indicatorColor: const Color(0xFFE0E7FF),
+      indicatorShape: const StadiumBorder(), // M3 Stadium Indicator
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
           return const TextStyle(
@@ -83,19 +85,19 @@ class AppTheme {
       fillColor: const Color(0xFFF8FAFC),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16), // M3 Filled Outlined Field
         borderSide: const BorderSide(color: outlineLight),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(color: outlineLight),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(color: primaryNavy, width: 2),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(color: Color(0xFFDC2626)),
       ),
       labelStyle: const TextStyle(fontSize: 13, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
@@ -105,8 +107,8 @@ class AppTheme {
       style: FilledButton.styleFrom(
         backgroundColor: primaryNavy,
         foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), // M3 Button Radius
         textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, letterSpacing: 0.3),
       ),
     ),
@@ -114,10 +116,15 @@ class AppTheme {
       style: OutlinedButton.styleFrom(
         foregroundColor: primaryNavy,
         side: const BorderSide(color: outlineLight),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
       ),
+    ),
+    dialogTheme: DialogTheme(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)), // M3 Dialog Radius
+      backgroundColor: Colors.white,
     ),
     dividerTheme: const DividerThemeData(
       color: outlineLight,
