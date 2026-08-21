@@ -7,8 +7,16 @@ import '../../providers/notification_provider.dart';
 import '../notifications/notifications_screen.dart';
 import '../tracking/personnel_map_screen.dart';
 import '../letter_logs/letter_logs_screen.dart';
+import '../letters/letters_draft_screen.dart';
+import '../categories/categories_screen.dart';
 import '../skhpp/skhpp_list_screen.dart';
 import '../cash/cash_screen.dart';
+import '../commander/commander_account_screen.dart';
+import '../mitra/mitra_screen.dart';
+import '../violations/violations_screen.dart';
+import '../signature/signature_screen.dart';
+import '../users/users_screen.dart';
+import '../audit/audit_logs_screen.dart';
 import '../settings/settings_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -38,67 +46,6 @@ class DashboardScreen extends StatelessWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             child: const Text('MENGERTI', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showModuleDialog(BuildContext context, String title, String description, IconData icon, Color color) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Row(
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF0F172A)),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              description,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF475569), height: 1.4),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.check_circle_outline, color: Color(0xFF16A34A), size: 18),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Sinkronisasi Otomatis 100% dengan Server SINDEN Web Pusat.',
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0F172A),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('TUTUP', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white)),
           ),
         ],
       ),
@@ -161,8 +108,8 @@ class DashboardScreen extends StatelessWidget {
             // User Header Profile Card
             Card(
               color: Colors.white,
-              elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFFE2E8F0))),
               child: Padding(
                 padding: const EdgeInsets.all(18),
                 child: Row(
@@ -292,7 +239,7 @@ class DashboardScreen extends StatelessWidget {
                   icon: Icons.edit_note_outlined,
                   color: const Color(0xFFB45309),
                   hasAccess: user?.canAccessLetters ?? true,
-                  onTap: () => _showModuleDialog(context, 'Buat & Draf Surat', 'Fitur pembuatan naskah dinas, konseptor surat, dan pengajuan persetujuan otomatis terintegrasi.', Icons.edit_note_outlined, const Color(0xFFB45309)),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LettersDraftScreen())),
                 ),
                 _buildMenuItem(
                   context: context,
@@ -308,7 +255,7 @@ class DashboardScreen extends StatelessWidget {
                   icon: Icons.category_outlined,
                   color: const Color(0xFF0284C7),
                   hasAccess: user?.canAccessCategories ?? true,
-                  onTap: () => _showModuleDialog(context, 'Kategori Surat', 'Manajemen klasifikasi naskah dinas, nomor urut otomatis, dan kode arsip instansi.', Icons.category_outlined, const Color(0xFF0284C7)),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CategoriesScreen())),
                 ),
               ],
             ),
@@ -329,7 +276,7 @@ class DashboardScreen extends StatelessWidget {
                   icon: Icons.draw_outlined,
                   color: const Color(0xFF7C3AED),
                   hasAccess: user?.canAccessSignature ?? true,
-                  onTap: () => _showModuleDialog(context, 'Tanda Tangan Digital (TTE)', 'Pengesahan berkas dinas, verifikasi barcode QR spesimen Komandan, dan pengarsipan otomatis.', Icons.draw_outlined, const Color(0xFF7C3AED)),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SignatureScreen())),
                 ),
               ],
             ),
@@ -358,7 +305,7 @@ class DashboardScreen extends StatelessWidget {
                   icon: Icons.credit_card_outlined,
                   color: const Color(0xFF047857),
                   hasAccess: user?.canAccessCommander ?? false,
-                  onTap: () => _showModuleDialog(context, 'Rekening Komandan', 'Pencatatan saldo, penerimaan dana dinas, serta laporan transaksi Rekening Komandan.', Icons.credit_card_outlined, const Color(0xFF047857)),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CommanderAccountScreen())),
                 ),
                 _buildMenuItem(
                   context: context,
@@ -366,7 +313,7 @@ class DashboardScreen extends StatelessWidget {
                   icon: Icons.handshake_outlined,
                   color: const Color(0xFF2563EB),
                   hasAccess: user?.canAccessMitra ?? false,
-                  onTap: () => _showModuleDialog(context, 'Pencatatan Mitra', 'Data daftar mitra kerja, transaksi dukungan operasional, dan riwayat kerjasama dinas.', Icons.handshake_outlined, const Color(0xFF2563EB)),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MitraScreen())),
                 ),
                 _buildMenuItem(
                   context: context,
@@ -374,7 +321,7 @@ class DashboardScreen extends StatelessWidget {
                   icon: Icons.settings_suggest_outlined,
                   color: const Color(0xFF0891B2),
                   hasAccess: user?.canAccessTechnicalCash ?? false,
-                  onTap: () => _showModuleDialog(context, 'Buku Kas Dan Unit Teknis', 'Pembukuan keuangan khusus Dan Unit Teknis dan pertanggungjawaban dana lapangan.', Icons.settings_suggest_outlined, const Color(0xFF0891B2)),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CashScreen())),
                 ),
                 _buildMenuItem(
                   context: context,
@@ -382,7 +329,7 @@ class DashboardScreen extends StatelessWidget {
                   icon: Icons.backup_outlined,
                   color: const Color(0xFF10B981),
                   hasAccess: user?.isAdmin ?? false,
-                  onTap: () => _showModuleDialog(context, 'Explorer Backup', 'Manajemen cadangan database, ekspor arsip berkas dinas, dan pemulihan sistem.', Icons.backup_outlined, const Color(0xFF10B981)),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
                 ),
               ],
             ),
@@ -403,7 +350,7 @@ class DashboardScreen extends StatelessWidget {
                   icon: Icons.gavel_outlined,
                   color: const Color(0xFFE11D48),
                   hasAccess: user?.canAccessViolations ?? true,
-                  onTap: () => _showModuleDialog(context, 'Catatan Pelanggaran Prajurit', 'Rekam jejak disiplin prajurit, catatan sanksi, dan riwayat tindakan penegakan hukum.', Icons.gavel_outlined, const Color(0xFFE11D48)),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ViolationsScreen())),
                 ),
                 _buildMenuItem(
                   context: context,
@@ -432,7 +379,7 @@ class DashboardScreen extends StatelessWidget {
                   icon: Icons.people_alt_outlined,
                   color: const Color(0xFF475569),
                   hasAccess: user?.isAdmin ?? false,
-                  onTap: () => _showModuleDialog(context, 'Kelola Pengguna & Otoritas', 'Manajemen akun personel, pendaftaran massal, matriks otorisasi fitur, dan cetak PDF verifikasi.', Icons.people_alt_outlined, const Color(0xFF475569)),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const UsersScreen())),
                 ),
                 _buildMenuItem(
                   context: context,
@@ -440,7 +387,7 @@ class DashboardScreen extends StatelessWidget {
                   icon: Icons.manage_history_outlined,
                   color: const Color(0xFF64748B),
                   hasAccess: user?.isAdmin == true || user?.isKomandan == true,
-                  onTap: () => _showModuleDialog(context, 'Log Pengunjung & Audit', 'Pencatatan jejak audit sistem, aktivitas pengguna, dan log aktivitas real-time.', Icons.manage_history_outlined, const Color(0xFF64748B)),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AuditLogsScreen())),
                 ),
                 _buildMenuItem(
                   context: context,
@@ -474,7 +421,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-    Widget _buildMenuItem({
+  Widget _buildMenuItem({
     required BuildContext context,
     required String title,
     required IconData icon,
