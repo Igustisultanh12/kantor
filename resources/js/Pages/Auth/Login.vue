@@ -169,10 +169,10 @@ const submit = async () => {
 
                     <form @submit.prevent="submit" class="space-y-5">
                         <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-300"> Email / Username Dinas
+                            <label class="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-300"> NRP / USERNAME / EMAIL *
                             </label>
                             <input 
-                                type="email"v-model="form.email"class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white"placeholder="Masukkan email / NRP"required 
+                                type="text"v-model="form.email"class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white"placeholder="Masukkan NRP, Username, atau Email"required 
                                 autofocus
                             />
                             <InputError class="mt-1 text-xs text-red-400" :message="form.errors.email" />

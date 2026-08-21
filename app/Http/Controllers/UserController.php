@@ -144,13 +144,20 @@ class UserController extends Controller
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        $user = User::where('nrp', $request->nrp)
-                    ->where('activation_token', $request->token)
+        $identifier = trim($request->nrp);
+        $token = trim($request->token);
+
+        $user = User::where('activation_token', $token)
+                    ->where(function($q) use ($identifier) {
+                        $q->where('nrp', $identifier)
+                          ->orWhere('email', $identifier)
+                          ->orWhere('username', $identifier);
+                    })
                     ->first();
 
         if (!$user) {
             throw ValidationException::withMessages([
-                'token' => 'NRP atau Token Aktivasi tidak valid.',
+                'token' => 'NRP / Email atau Token Aktivasi tidak valid.',
             ]);
         }
 
