@@ -300,10 +300,16 @@ class UserController extends Controller
 
         $formattedNomor = "SINDEN / " . $seq . " / VERIF / " . $romanMonth . " / " . $currentYear;
 
+        $bulanIndo = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 => 'Mei', 6 => 'Juni',
+            7 => 'Juli', 8 => 'Agustus', 9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+        ];
+        $generatedAtIndo = date('d') . ' ' . $bulanIndo[(int)date('n')] . ' ' . date('Y');
+
         $data = [
             'personels' => $personels,
             'nomorSurat' => $formattedNomor,
-            'generatedAt' => now()->translatedFormat('d F Y'),
+            'generatedAt' => $generatedAtIndo,
             'signerJabatan' => $signerJabatan,
             'signerName' => $signerName,
             'signerPangkat' => $signerPangkat,
@@ -327,7 +333,7 @@ class UserController extends Controller
             'users' => $users,
             'title' => 'REKAPITULASI OTORITAS AKSES PERSONEL',
             'unit' => $agencyName,
-            'date' => now()->translatedFormat('d F Y')
+            'date' => $generatedAtIndo
         ]);
     }
 
