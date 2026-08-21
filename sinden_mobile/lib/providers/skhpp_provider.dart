@@ -18,16 +18,19 @@ class SkhppProvider extends ChangeNotifier {
 
     try {
       String endpoint = '/api/mobile/skhpp?format=json';
-      if (status != null) endpoint += '&status=$status';
-      if (category != null) endpoint += '&category=$category';
+      if (status != null && status.isNotEmpty) endpoint += '&status=$status';
+      if (category != null && category.isNotEmpty) endpoint += '&category=$category';
 
       final response = await ApiService().get(endpoint);
-      if (response != null && response['data'] is List) {
-        _skhppList = (response['data'] as List)
-            .map((e) => SkhppModel.fromJson(e))
-            .toList();
+      if (response != null && response is Map<String, dynamic>) {
+        final rawList = response['data'] ?? response['skhpps'];
+        if (rawList is List) {
+          _skhppList = rawList
+              .map((e) => SkhppModel.fromJson(e as Map<String, dynamic>))
+              .toList();
+        }
       } else if (response is List) {
-        _skhppList = response.map((e) => SkhppModel.fromJson(e)).toList();
+        _skhppList = response.map((e) => SkhppModel.fromJson(e as Map<String, dynamic>)).toList();
       }
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
@@ -48,30 +51,6 @@ class SkhppProvider extends ChangeNotifier {
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Future<bool> approveSkhpp(int id) async {
-    try {
-      await ApiService().post('/skhpp/$id/approve', {});
-      await fetchSkhppList();
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Future<bool> rejectSkhpp(int id, String reason) async {
-    try {
-      await ApiService().post('/skhpp/$id/reject', {'reason': reason});
-      await fetchSkhppList();
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
       notifyListeners();
       return false;
     }

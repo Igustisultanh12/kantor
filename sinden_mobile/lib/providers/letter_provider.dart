@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/letter_log_model.dart';
 import '../services/api_service.dart';
@@ -27,12 +26,15 @@ class LetterProvider extends ChangeNotifier {
       }
 
       final response = await ApiService().get(endpoint);
-      if (response != null && response['data'] is List) {
-        _logs = (response['data'] as List)
-            .map((e) => LetterLogModel.fromJson(e))
-            .toList();
+      if (response != null && response is Map<String, dynamic>) {
+        final rawList = response['data'] ?? response['logs'];
+        if (rawList is List) {
+          _logs = rawList
+              .map((e) => LetterLogModel.fromJson(e as Map<String, dynamic>))
+              .toList();
+        }
       } else if (response is List) {
-        _logs = response.map((e) => LetterLogModel.fromJson(e)).toList();
+        _logs = response.map((e) => LetterLogModel.fromJson(e as Map<String, dynamic>)).toList();
       }
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
@@ -60,27 +62,6 @@ class LetterProvider extends ChangeNotifier {
         'date': date,
       });
 
-      await fetchLogs();
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Future<bool> uploadDirectLetter(int logId, File pdfFile) async {
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      await ApiService().uploadMultipart(
-        '/letters/store-direct',
-        {'letter_log_id': logId.toString()},
-        [pdfFile],
-        'file',
-      );
       await fetchLogs();
       return true;
     } catch (e) {

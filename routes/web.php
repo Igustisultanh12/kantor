@@ -451,43 +451,140 @@ Route::get('/api/mobile/config', function () {
 });
 
 // =====================================================================
+
 // GERBANG REST API LENGKAP SINDEN MOBILE (SINKRONISASI REAL-TIME DATA)
 // =====================================================================
 
-// 1. API Agenda Surat (Letter Logs)
+// 1. API BUKU KAS UNIT (Real-Time Database Model: App\Models\Cash / Table: cashes)
+Route::get('/api/mobile/cash', function () {
+    try {
+        $allCashes = \App\Models\Cash::orderBy('date', 'asc')->orderBy('id', 'asc')->get();
+        $totalSaldo = (float)($allCashes->last()?->balance ?? 0);
+        $totalDebit = (float)$allCashes->sum('debit');
+        $totalCredit = (float)$allCashes->sum('credit');
+
+        $cashes = $allCashes->map(function($cash) {
+            $urls = [];
+            $rawPath = $cash->receipt_path;
+            if (!empty($rawPath)) {
+                $decoded = json_decode($rawPath, true);
+                if (is_array($decoded)) {
+                    foreach ($decoded as $path) {
+                        if (!empty($path)) {
+                            $urls[] = asset('storage/' . $path);
+                        }
+                    }
+                } elseif (is_array($rawPath)) {
+                    foreach ($rawPath as $path) {
+                        if (!empty($path)) {
+                            $urls[] = asset('storage/' . $path);
+                        }
+                    }
+                } else {
+                    $urls[] = asset('storage/' . $rawPath);
+                }
+            }
+
+            return [
+                'id' => $cash->id,
+                'date' => (string)($cash->getRawOriginal('date') ?? $cash->date),
+                'description' => $cash->description ?? '-',
+                'debit' => (float)($cash->debit ?? 0),
+                'credit' => (float)($cash->credit ?? 0),
+                'balance' => (float)($cash->balance ?? 0),
+                'receipt_path' => $rawPath,
+                'receipt_urls' => $urls,
+            ];
+        });
+
+        // Reverse to show latest first in Mobile App
+        $reversedCashes = $cashes->reverse()->values();
+
+        return response()->json([
+            'status' => 'success',
+            'balance' => $totalSaldo,
+            'totalSaldo' => $totalSaldo,
+            'total_debit' => $totalDebit,
+            'total_credit' => $totalCredit,
+            'cashes' => $reversedCashes,
+            'transactions' => $reversedCashes,
+            'data' => $reversedCashes,
+        ]);
+    } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::error("[MOBILE_API_CASH_ERROR] " . $e->getMessage());
+        return response()->json(['status' => 'error', 'message' => $e->getMessage(), 'cashes' => [], 'data' => []], 500);
+    }
+});
+
+Route::post('/api/mobile/cash', function (\Illuminate\Http\Request $request) {
+    try {
+        $data = $request->json()->all() ?: $request->all();
+        $date = $data['date'] ?? date('Y-m-d');
+        $desc = $data['description'] ?? '-';
+        $debit = (float)($data['debit'] ?? 0);
+        $credit = (float)($data['credit'] ?? 0);
+
+        $lastCash = \App\Models\Cash::orderBy('date', 'desc')->orderBy('id', 'desc')->first();
+        $prevBalance = $lastCash ? (float)$lastCash->balance : 0.0;
+        $newBalance = $prevBalance + $debit - $credit;
+
+        $cash = \App\Models\Cash::create([
+            'date' => $date,
+            'description' => $desc,
+            'debit' => $debit,
+            'credit' => $credit,
+            'balance' => $newBalance,
+        ]);
+
+        return response()->json(['status' => 'success', 'data' => $cash]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+// 2. API AGENDA SURAT (Real-Time Database Model: App\Models\LetterLog / Table: letter_logs)
 Route::get('/api/mobile/letter-logs', function (\Illuminate\Http\Request $request) {
     try {
-        $query = \App\Models\LetterLog::with(['category', 'subCategory', 'user'])->latest();
+        $query = \App\Models\LetterLog::with(['category', 'subCategory'])->latest('id');
+        
         if ($request->has('search') && !empty($request->search)) {
             $s = $request->search;
             $query->where(function($q) use ($s) {
-                $q->where('regarding', 'like', "%{$s}%")
+                $q->where('subject', 'like', "%{$s}%")
                   ->orWhere('sequence', 'like', "%{$s}%")
-                  ->orWhere('to', 'like', "%{$s}%");
+                  ->orWhere('full_number', 'like', "%{$s}%")
+                  ->orWhere('recipient', 'like', "%{$s}%");
             });
         }
         if ($request->has('category_id') && !empty($request->category_id)) {
             $query->where('category_id', $request->category_id);
         }
-        $logs = $query->take(200)->get()->map(function($l) {
+
+        $logs = $query->take(300)->get()->map(function($l) {
             return [
                 'id' => $l->id,
-                'number' => is_numeric($l->sequence) ? (int)$l->sequence : 0,
-                'sequence' => (string)$l->sequence,
-                'full_number' => $l->sequence ? "Surat No. {$l->sequence}" : '-',
-                'subject' => $l->regarding ?? 'Naskah Dinas',
-                'recipient' => $l->to ?? '-',
+                'number' => is_numeric($l->sequence) ? (int)$l->sequence : ($l->number ?? 0),
+                'sequence' => (string)($l->sequence ?? $l->number ?? '-'),
+                'full_number' => $l->full_number ?? ($l->sequence ? "Surat No. {$l->sequence}" : '-'),
+                'subject' => $l->subject ?? 'Naskah Dinas',
+                'recipient' => $l->recipient ?? '-',
                 'date' => $l->date ? \Carbon\Carbon::parse($l->date)->format('Y-m-d') : date('Y-m-d'),
                 'category_id' => $l->category_id ?? 0,
                 'category_name' => $l->category->name ?? 'Umum',
-                'is_archived' => false,
-                'file_url' => $l->file_path ? asset('storage/' . $l->file_path) : null,
-                'created_by' => $l->user->name ?? 'Admin',
+                'is_archived' => (bool)($l->is_archived ?? false),
+                'file_url' => null,
+                'created_by' => 'Admin SINDEN',
             ];
         });
-        return response()->json(['status' => 'success', 'data' => $logs]);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $logs,
+            'logs' => $logs,
+        ]);
     } catch (\Throwable $e) {
-        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        \Illuminate\Support\Facades\Log::error("[MOBILE_API_LETTER_LOGS_ERROR] " . $e->getMessage());
+        return response()->json(['status' => 'error', 'message' => $e->getMessage(), 'data' => []], 500);
     }
 });
 
@@ -502,56 +599,96 @@ Route::post('/api/mobile/letter-logs', function (\Illuminate\Http\Request $reque
         $log = \App\Models\LetterLog::create([
             'category_id' => $catId,
             'sequence' => (string)$nextSeq,
-            'regarding' => $data['subject'] ?? $data['regarding'] ?? 'Agenda Surat Mobile',
-            'to' => $data['recipient'] ?? $data['to'] ?? 'Detasemen Intelijen',
+            'full_number' => "Surat No. {$nextSeq}",
+            'subject' => $data['subject'] ?? $data['regarding'] ?? 'Agenda Surat Mobile',
+            'recipient' => $data['recipient'] ?? $data['to'] ?? 'Detasemen Intelijen',
             'date' => $data['date'] ?? date('Y-m-d'),
-            'user_id' => auth()->id() ?? 1,
+            'is_archived' => false,
         ]);
+
         return response()->json(['status' => 'success', 'data' => $log]);
     } catch (\Throwable $e) {
         return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
     }
 });
 
-// 2. API Penerbitan SKHPP
-Route::get('/api/mobile/skhpp', function () {
+// 3. API PENERBITAN SKHPP (Real-Time Database Model: App\Models\Skhpp / Table: skhpps)
+Route::get('/api/mobile/skhpp', function (\Illuminate\Http\Request $request) {
     try {
-        $skhpps = \App\Models\Skhpp::with('user')->latest()->take(200)->get()->map(function($s) {
+        $query = \App\Models\Skhpp::with('members')->latest('id');
+        if ($request->has('status') && !empty($request->status)) {
+            $query->where('status', $request->status);
+        }
+        if ($request->has('category') && !empty($request->category)) {
+            $query->where('kategori_personel', $request->category);
+        }
+
+        $skhpps = $query->take(300)->get()->map(function($s) {
             return [
                 'id' => $s->id,
-                'registration_number' => $s->registration_number ?? "SKHPP-{$s->id}",
-                'full_name' => $s->name ?? $s->full_name ?? 'Personel',
-                'rank_corp_nrp' => "{$s->rank} {$s->corp} NRP {$s->nrp}",
-                'status' => $s->status ?? 'VERIFIED',
-                'issue_date' => $s->created_at ? $s->created_at->format('Y-m-d') : date('Y-m-d'),
-                'pdf_url' => asset("storage/skhpp/SKHPP_{$s->id}.pdf"),
+                'no_skhpp' => $s->nomor_skhpp ?? "SKHPP-{$s->id}",
+                'nomor_skhpp' => $s->nomor_skhpp ?? "SKHPP-{$s->id}",
+                'nama' => $s->nama ?? '-',
+                'pangkat_korps_nrp' => $s->pangkat_korps_nrp ?? '-',
+                'jabatan' => $s->jabatan_pekerjaan ?? '-',
+                'kesatuan' => 'Denintel Kodaeral V',
+                'peruntukan' => $s->peruntukan ?? '-',
+                'kategori' => $s->kategori_personel ?? 'militer',
+                'status' => $s->status ?? 'pending',
+                'barcode_string' => $s->verification_code ?? null,
+                'tanggal_surat' => $s->tanggal_skhpp ? \Carbon\Carbon::parse($s->tanggal_skhpp)->format('Y-m-d') : ($s->created_at ? $s->created_at->format('Y-m-d') : date('Y-m-d')),
+                'created_by' => $s->operator_name ?? 'Operator',
             ];
         });
-        return response()->json(['status' => 'success', 'data' => $skhpps]);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $skhpps,
+            'skhpps' => $skhpps,
+        ]);
     } catch (\Throwable $e) {
-        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        \Illuminate\Support\Facades\Log::error("[MOBILE_API_SKHPP_ERROR] " . $e->getMessage());
+        return response()->json(['status' => 'error', 'message' => $e->getMessage(), 'data' => []], 500);
     }
 });
 
-// 3. API Buku Kas Unit
-Route::get('/api/mobile/cash', function () {
+// 4. API MASTER KATEGORI SURAT (Real-Time Database Model: App\Models\Category)
+Route::get('/api/mobile/categories', function () {
     try {
-        $cashes = \App\Models\CashBook::latest()->take(200)->get()->map(function($c) {
-            return [
-                'id' => $c->id,
-                'type' => $c->type ?? 'IN',
-                'amount' => (double)($c->amount ?? 0),
-                'description' => $c->description ?? '-',
-                'date' => $c->date ? \Carbon\Carbon::parse($c->date)->format('Y-m-d') : date('Y-m-d'),
-            ];
-        });
-        return response()->json(['status' => 'success', 'data' => $cashes]);
+        $categories = \App\Models\Category::all();
+        return response()->json(['status' => 'success', 'data' => $categories]);
     } catch (\Throwable $e) {
-        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        return response()->json(['status' => 'error', 'data' => []]);
     }
 });
 
-// 4. API Notifikasi Real-Time System
+// 5. API KELOLA PENGGUNA (Real-Time Database Model: App\Models\User / Table: users)
+Route::get('/api/mobile/users', function () {
+    try {
+        $users = \App\Models\User::latest()->get()->map(function($u) {
+            return [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+                'nrp' => $u->nrp ?? $u->username ?? '-',
+                'pangkat' => $u->pangkat ?? 'Prajurit',
+                'korps' => $u->korps ?? 'Pelaut',
+                'role' => $u->role ?? 'user',
+                'jabatan' => $u->jabatan ?? 'Anggota',
+                'is_active' => (bool)($u->is_active ?? true),
+                'can_access_agenda' => (bool)($u->can_access_agenda ?? true),
+                'can_access_cash' => (bool)($u->can_access_cash ?? false),
+                'can_access_mitra' => (bool)($u->can_access_mitra ?? false),
+                'can_access_technical_cash' => (bool)($u->can_access_technical_cash ?? false),
+            ];
+        });
+        return response()->json(['status' => 'success', 'data' => $users]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'data' => []]);
+    }
+});
+
+// 6. API NOTIFIKASI SYSTEM (Real-Time Database Model: App\Models\AppNotification)
 Route::get('/api/mobile/notifications', function () {
     try {
         $notifs = \App\Models\AppNotification::latest()->take(50)->get()->map(function($n) {
@@ -563,192 +700,12 @@ Route::get('/api/mobile/notifications', function () {
                 'created_at' => $n->created_at ? $n->created_at->toIso8601String() : now()->toIso8601String(),
             ];
         });
-        return response()->json(['status' => 'success', 'notifications' => $notifs, 'unreadCount' => $notifs->where('is_read', false)->count()]);
+        return response()->json([
+            'status' => 'success',
+            'notifications' => $notifs,
+            'unreadCount' => $notifs->where('is_read', false)->count()
+        ]);
     } catch (\Throwable $e) {
         return response()->json(['status' => 'error', 'notifications' => [], 'unreadCount' => 0]);
-    }
-});
-
-// =====================================================================
-// FULL REST API SUITE (100% PARITAS DENINTEL SINDEN WEB CONTROLLERS)
-// =====================================================================
-
-// 1. UserController (Kelola Pengguna & Matriks Fitur)
-Route::get('/api/mobile/users', function (\Illuminate\Http\Request $request) {
-    try {
-        $users = \App\Models\User::latest()->get()->map(function($u) {
-            return [
-                'id' => $u->id,
-                'name' => $u->name,
-                'email' => $u->email,
-                'nrp' => $u->nrp ?? $u->username,
-                'pangkat' => $u->pangkat ?? 'Prajurit',
-                'korps' => $u->korps ?? 'Pelaut',
-                'role' => $u->role ?? 'user',
-                'jabatan' => $u->jabatan ?? '-',
-                'is_active' => (bool)($u->is_active ?? true),
-                'can_access_agenda' => (bool)($u->can_access_agenda ?? true),
-                'can_access_cash' => (bool)($u->can_access_cash ?? false),
-                'can_access_mitra' => (bool)($u->can_access_mitra ?? false),
-                'can_access_technical_cash' => (bool)($u->can_access_technical_cash ?? false),
-            ];
-        });
-        return response()->json(['status' => 'success', 'data' => $users]);
-    } catch (\Throwable $e) {
-        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
-    }
-});
-
-Route::get('/api/mobile/users/{id}', function ($id) {
-    try {
-        $user = \App\Models\User::findOrFail($id);
-        return response()->json(['status' => 'success', 'user' => $user]);
-    } catch (\Throwable $e) {
-        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 404);
-    }
-});
-
-// 2. LetterController (Buat & Draf Naskah Dinas)
-Route::get('/api/mobile/letters', function () {
-    try {
-        $letters = \App\Models\Letter::with(['category', 'user'])->latest()->get();
-        return response()->json(['status' => 'success', 'data' => $letters]);
-    } catch (\Throwable $e) {
-        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
-    }
-});
-
-Route::post('/api/mobile/letters', function (\Illuminate\Http\Request $request) {
-    try {
-        $data = $request->json()->all() ?: $request->all();
-        $letter = \App\Models\Letter::create([
-            'title' => $data['title'] ?? 'Draf Surat Dinas',
-            'regarding' => $data['regarding'] ?? $data['title'] ?? '-',
-            'category_id' => $data['category_id'] ?? 1,
-            'user_id' => auth()->id() ?? 1,
-            'content' => $data['content'] ?? '',
-            'status' => 'DRAFT',
-        ]);
-        return response()->json(['status' => 'success', 'data' => $letter]);
-    } catch (\Throwable $e) {
-        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
-    }
-});
-
-// 3. CategoryController (Master Kategori Naskah Dinas)
-Route::get('/api/mobile/categories', function () {
-    try {
-        $categories = \App\Models\Category::with('subCategories')->get();
-        return response()->json(['status' => 'success', 'data' => $categories]);
-    } catch (\Throwable $e) {
-        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
-    }
-});
-
-// 4. SignatureRequestController (TTE Tanda Tangan Digital)
-Route::get('/api/mobile/signature-requests', function () {
-    try {
-        $requests = \App\Models\SignatureRequest::with('user')->latest()->get();
-        return response()->json(['status' => 'success', 'data' => $requests]);
-    } catch (\Throwable $e) {
-        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
-    }
-});
-
-// 5. CommanderAccountController (Rekening Komandan)
-Route::get('/api/mobile/commander-account', function () {
-    try {
-        $txs = \App\Models\CommanderTransaction::latest()->get();
-        $balance = \App\Models\CommanderTransaction::sum('amount');
-        return response()->json(['status' => 'success', 'balance' => $balance, 'data' => $txs]);
-    } catch (\Throwable $e) {
-        return response()->json(['status' => 'error', 'balance' => 0, 'data' => []]);
-    }
-});
-
-// 6. MitraPaymentController (Pencatatan Mitra)
-Route::get('/api/mobile/mitra', function () {
-    try {
-        $mitras = \App\Models\Mitra::with('payments')->get();
-        return response()->json(['status' => 'success', 'data' => $mitras]);
-    } catch (\Throwable $e) {
-        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
-    }
-});
-
-// 7. TechnicalUnitCashController (Buku Kas Dan Unit Teknis)
-Route::get('/api/mobile/technical-cash', function () {
-    try {
-        $cashes = \App\Models\TechnicalCash::latest()->get();
-        return response()->json(['status' => 'success', 'data' => $cashes]);
-    } catch (\Throwable $e) {
-        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
-    }
-});
-
-// 8. BackupController (Explorer Backup System)
-Route::get('/api/mobile/backup', function () {
-    try {
-        $backups = \Illuminate\Support\Facades\Storage::disk('local')->files('backup');
-        return response()->json(['status' => 'success', 'data' => $backups]);
-    } catch (\Throwable $e) {
-        return response()->json(['status' => 'error', 'data' => []]);
-    }
-});
-
-// 9. SoldierViolationController (Catatan Pelanggaran Prajurit)
-Route::get('/api/mobile/violations', function () {
-    try {
-        $violations = \App\Models\SoldierViolation::with('user')->latest()->get();
-        return response()->json(['status' => 'success', 'data' => $violations]);
-    } catch (\Throwable $e) {
-        return response()->json(['status' => 'error', 'data' => []]);
-    }
-});
-
-// 10. CommunityActivityController & LocationController (Radar Kegiatan Lapangan & GPS)
-Route::get('/api/mobile/activities', function () {
-    try {
-        $activities = \App\Models\CommunityActivity::latest()->get();
-        return response()->json(['status' => 'success', 'data' => $activities]);
-    } catch (\Throwable $e) {
-        return response()->json(['status' => 'error', 'data' => []]);
-    }
-});
-
-Route::post('/api/mobile/locations/update', function (\Illuminate\Http\Request $request) {
-    try {
-        $data = $request->json()->all() ?: $request->all();
-        $user = auth()->user();
-        if ($user && isset($data['latitude']) && isset($data['longitude'])) {
-            $user->update([
-                'latitude' => $data['latitude'],
-                'longitude' => $data['longitude'],
-                'last_seen_at' => now(),
-            ]);
-        }
-        return response()->json(['status' => 'success']);
-    } catch (\Throwable $e) {
-        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
-    }
-});
-
-// 11. VisitorLogController & AuditLogController (Log Pengunjung & Audit)
-Route::get('/api/mobile/audit-logs', function () {
-    try {
-        $logs = \App\Models\AuditLog::with('user')->latest()->take(100)->get();
-        return response()->json(['status' => 'success', 'data' => $logs]);
-    } catch (\Throwable $e) {
-        return response()->json(['status' => 'error', 'data' => []]);
-    }
-});
-
-// 12. SettingController & StampController (Pengaturan & Stempel)
-Route::get('/api/mobile/settings', function () {
-    try {
-        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
-        return response()->json(['status' => 'success', 'settings' => $settings]);
-    } catch (\Throwable $e) {
-        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
     }
 });

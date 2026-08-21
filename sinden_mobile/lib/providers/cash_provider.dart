@@ -24,21 +24,24 @@ class CashProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      String endpoint = '/technical-cash?format=json';
+      String endpoint = '/api/mobile/cash';
       if (startDate != null && endDate != null) {
-        endpoint += '&start_date=$startDate&end_date=$endDate';
+        endpoint += '?start_date=$startDate&end_date=$endDate';
       }
 
       final response = await ApiService().get(endpoint);
-      if (response != null) {
-        if (response['transactions'] is List) {
-          _transactions = (response['transactions'] as List)
-              .map((e) => CashTransactionModel.fromJson(e))
+      if (response != null && response is Map<String, dynamic>) {
+        final rawList = response['cashes'] ?? response['transactions'] ?? response['data'];
+        if (rawList is List) {
+          _transactions = rawList
+              .map((e) => CashTransactionModel.fromJson(e as Map<String, dynamic>))
               .toList();
         }
-        _totalDebit = double.tryParse(response['total_debit']?.toString() ?? '0') ?? 0;
-        _totalCredit = double.tryParse(response['total_credit']?.toString() ?? '0') ?? 0;
-        _balance = double.tryParse(response['balance']?.toString() ?? '0') ?? 0;
+        _balance = double.tryParse(response['balance']?.toString() ?? response['totalSaldo']?.toString() ?? '0') ?? 0.0;
+        _totalDebit = double.tryParse(response['total_debit']?.toString() ?? '0') ?? 0.0;
+        _totalCredit = double.tryParse(response['total_credit']?.toString() ?? '0') ?? 0.0;
+      } else if (response is List) {
+        _transactions = response.map((e) => CashTransactionModel.fromJson(e as Map<String, dynamic>)).toList();
       }
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
@@ -59,26 +62,12 @@ class CashProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      if (receiptFiles != null && receiptFiles.isNotEmpty) {
-        await ApiService().uploadMultipart(
-          '/technical-cash',
-          {
-            'date': date,
-            'description': description,
-            'debit': debit.toString(),
-            'credit': credit.toString(),
-          },
-          receiptFiles,
-          'receipt_files[]',
-        );
-      } else {
-        await ApiService().post('/technical-cash', {
-          'date': date,
-          'description': description,
-          'debit': debit,
-          'credit': credit,
-        });
-      }
+      await ApiService().post('/api/mobile/cash', {
+        'date': date,
+        'description': description,
+        'debit': debit,
+        'credit': credit,
+      });
 
       await fetchCashData();
       return true;
