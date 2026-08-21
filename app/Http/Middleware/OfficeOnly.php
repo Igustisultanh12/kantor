@@ -14,34 +14,18 @@ class OfficeOnly
         // 1. Deteksi IP dengan Radar Cloudflare
         $clientIp = $request->header('CF-Connecting-IP') ?? $request->ip();
 
-        // ==========================================================
-        //  OPERASI TEMBAK LANGSUNG (DEBUG MODE)
-        // Lepas tanda komentar (//) pada baris di bawah ini untuk 
-        // memaksa IP muncul di layar putih browser.
-        // ==========================================================
-        
-        // dd("RADAR SINDEN: IP yang terdeteksi sistem adalah: " . $clientIp);
-
-        // ==========================================================
-
-        // 2. Catat ke Log (Cadangan)
         Log::info("RADAR ACCESS - User: " . (auth()->user()->name ?? 'Guest') . " | IP: " . $clientIp);
 
-        // 3. Protokol Bypass Sultan (Bapak)
-        // Pastikan nama ini sama persis dengan yang ada di database Bapak
-        if (auth()->check() && (
-            auth()->user()->name === 'I Gusti Sultan H.A, A.Md.Kom' || 
-            auth()->user()->role === 'admin'
-        )) {
+        // 2. Izinkan Seluruh Personel Terautentikasi Mengakses Modul Backup
+        if (auth()->check()) {
             return $next($request);
         }
 
-        // 4. Verifikasi Jaringan Kantor
+        // 3. Verifikasi Jaringan Kantor untuk Akses Tamu
         $isOffice = OfficeNetwork::where('ip_address', $clientIp)
                                 ->where('is_active', true)
                                 ->exists();
 
-        // 5. Eksekusi Blokade dengan Pesan Error Berisi IP
         if (!$isOffice) {
             return redirect()->route('dashboard')->with('error', 'Radar: Anda di luar area kantor! IP Terdeteksi: ' . $clientIp);
         }
