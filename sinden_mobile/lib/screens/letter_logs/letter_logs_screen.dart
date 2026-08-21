@@ -200,7 +200,7 @@ class _LetterLogsScreenState extends State<LetterLogsScreen> {
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
-                                    StatusPill.info(log.categoryName),
+                                    StatusPill.info(log.categoryName ?? 'Umum'),
                                   ],
                                 ),
                                 subtitle: Column(
