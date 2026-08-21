@@ -299,12 +299,14 @@ const checkMobileDevice = () => {
             title: 'AKSES TERBATAS - PERANGKAT SELULER',
             text: 'Modul Explorer Backup memerlukan layar standar Komputer / PC. Silakan buka halaman ini melalui Komputer atau Perangkat Desktop.',
             confirmButtonText: 'KEMBALI KE DASHBOARD',
-            confirmButtonColor: '#f97316',
-            background: 'rgba(15, 23, 42, 0.92)',
-            color: '#ffffff',
+            confirmButtonColor: '#2563eb',
+            background: '#ffffff',
+            color: '#0f172a',
             customClass: {
-                popup: 'swal2-dark-glass border border-white/10 shadow-2xl rounded-[2rem]',
-                confirmButton: 'bg-orange-500 hover:bg-orange-600 text-white font-black text-xs uppercase tracking-widest px-8 py-3 rounded-xl shadow-lg shadow-orange-500/20'
+                popup: 'rounded-[2rem] shadow-2xl border border-slate-200 p-6',
+                title: 'text-slate-900 font-extrabold text-base uppercase tracking-wider',
+                htmlContainer: 'text-slate-600 text-xs font-medium',
+                confirmButton: 'bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest px-8 py-3 rounded-xl shadow-md'
             },
             allowOutsideClick: false,
             allowEscapeKey: false,

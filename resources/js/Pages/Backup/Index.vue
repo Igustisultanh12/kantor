@@ -30,14 +30,16 @@ const openPcStorage = (pcId) => {
             confirmButtonText: 'AJUKAN OTORITAS AKSES',
             showCancelButton: true,
             cancelButtonText: 'BATAL',
-            confirmButtonColor: '#f97316',
-            cancelButtonColor: '#64748B',
-            background: 'rgba(15, 23, 42, 0.92)',
-            color: '#ffffff',
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#64748b',
+            background: '#ffffff',
+            color: '#0f172a',
             customClass: {
-                popup: 'swal2-dark-glass border border-white/10 shadow-2xl rounded-[2rem]',
-                confirmButton: 'bg-orange-500 hover:bg-orange-600 text-white font-black text-xs uppercase tracking-widest px-8 py-3 rounded-xl shadow-lg shadow-orange-500/20',
-                cancelButton: 'bg-slate-700 hover:bg-slate-800 text-white font-black text-xs uppercase tracking-widest px-6 py-3 rounded-xl'
+                popup: 'rounded-[2rem] shadow-2xl border border-slate-200 p-6',
+                title: 'text-slate-900 font-extrabold text-base uppercase tracking-wider',
+                htmlContainer: 'text-slate-600 text-xs font-medium',
+                confirmButton: 'bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest px-8 py-3 rounded-xl shadow-md',
+                cancelButton: 'bg-slate-500 hover:bg-slate-600 text-white font-black text-xs uppercase tracking-widest px-6 py-3 rounded-xl'
             },
         }).then((result) => {
             if (result.isConfirmed) {
