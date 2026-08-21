@@ -30,6 +30,18 @@ const roleLabels = {
 };
 
 // State Management
+// --- FITUR DETAIL PERSONEL & MATRIKS HAK AKSES ---
+const showDetailModal = ref(false);
+const detailUser = ref(null);
+
+const showPersonnelDetail = (u) => {
+    detailUser.value = u;
+    showDetailModal.value = true;
+};
+
+const printSingleTokenPdf = (userId) => {
+    window.open(route('users.print-token-pdf', { ids: userId }), '_blank');
+};
 const showPasswordModal = ref(false);
 const showEditModal = ref(false);
 const showAddModal = ref(false); 
@@ -345,7 +357,7 @@ onUnmounted(() => {
                         <tr v-for="user in users.data" :key="user.id" class="group hover:bg-indigo-50/30 transition-all">
                             <td class="py-6 px-4">
                                 <div class="flex flex-col leading-tight">
-                                    <span class="font-black text-indigo-950 uppercase">{{ user.name }}</span>
+                                    <button @click="showPersonnelDetail(user)" class="text-left font-black text-indigo-600 hover:text-indigo-900 hover:underline cursor-pointer transition text-xs">{{ user.name }}</button>
                                     <span class="text-[9px] text-gray-400 font-bold tracking-tighter">{{ user.email }}</span>
                                     <span v-if="user.phone" class="text-[8px] text-indigo-500 font-bold mt-1">WA: {{ user.phone }}</span>
                                 </div>
@@ -373,6 +385,10 @@ onUnmounted(() => {
                                     </button>
                                     <button @click="toggleTechnicalCashAccess(user)" 
                                         :class="user.can_access_technical_cash ? 'bg-cyan-100 text-cyan-800 hover:bg-cyan-600 hover:text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-700 hover:text-white'"class="px-2.5 py-1.5 text-[8px] font-black uppercase rounded-lg transition-all shadow-xs"title="Toggle Hak Akses Buku Kas Dan Unit Teknis"> Kas Teknis: {{ user.can_access_technical_cash ? 'AKTIF' : 'OFF' }}
+                                    </button>
+                                                                        <button v-if="!user.is_active" @click="printSingleTokenPdf(user.id)" class="px-2.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[8px] font-black uppercase rounded-lg hover:bg-emerald-600 hover:text-white transition-all shadow-xs flex items-center gap-1 cursor-pointer" title="Cetak Token PDF Perorangan">
+                                        <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                                        <span>PDF</span>
                                     </button>
                                     <button @click="requestToken(user)" class="px-3 py-2 bg-amber-100 text-amber-700 text-[8px] font-black uppercase rounded-lg hover:bg-amber-500 hover:text-white transition-all shadow-sm"> Req Token
                                     </button>
