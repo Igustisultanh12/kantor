@@ -598,7 +598,8 @@ onUnmounted(() => {
                                 <th class="p-3 w-10 text-center">NO</th>
                                 <th class="p-3">NAMA LENGKAP *</th>
                                 <th class="p-3 w-36">PANGKAT *</th>
-                                <th class="p-3 w-36">NRP / NIP. *</th>
+                                <th class="p-3 w-32">NRP / NIP. *</th>
+                                <th class="p-3 w-44">JABATAN *</th>
                                 <th class="p-3">EMAIL (OPSIONAL)</th>
                                 <th class="p-3 w-36">NO. WA (OPSIONAL)</th>
                                 <th class="p-3 w-12 text-center">AKSI</th>
@@ -615,6 +616,21 @@ onUnmounted(() => {
                                 </td>
                                 <td class="p-2">
                                     <input v-model="row.nrp" type="text" placeholder="84025" class="w-full text-xs rounded-xl border-slate-200 font-mono font-bold focus:ring-indigo-500" required />
+                                </td>
+                                <td class="p-2">
+                                    <select v-model="row.role" class="w-full text-xs rounded-xl border-slate-200 font-bold focus:ring-indigo-500 bg-white">
+                                        <option value="personel">PERSONEL SATUAN</option>
+                                        <option value="staf">STAF ADMINISTRASI</option>
+                                        <option value="danunit1">DAN UNIT I / LID</option>
+                                        <option value="danunit2">DAN UNIT II / PAMGAL</option>
+                                        <option value="danunitteknis">DAN UNIT TEKNIS</option>
+                                        <option value="kaurmintel">KAUR MINTEL</option>
+                                        <option value="paurset">PAUR SET</option>
+                                        <option value="pasops">PASOPS</option>
+                                        <option value="wadan">WAKIL KOMANDAN</option>
+                                        <option value="komandan">KOMANDAN (APPROVER)</option>
+                                        <option value="admin">ADMINISTRATOR SISTEM</option>
+                                    </select>
                                 </td>
                                 <td class="p-2">
                                     <input v-model="row.email" type="email" placeholder="Otomatis jika kosong" class="w-full text-xs rounded-xl border-slate-200 font-mono focus:ring-indigo-500" />

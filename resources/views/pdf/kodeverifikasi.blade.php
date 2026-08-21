@@ -55,7 +55,7 @@
                 <th style="width: 4%;">NO</th>
                 <th style="width: 16%;">NRP / NIP.</th>
                 <th>NAMA LENGKAP</th>
-                <th style="width: 12%;">PANGKAT</th>
+                <th style="width: 20%;">PANGKAT / JABATAN</th>
                 <th style="width: 22%;">EMAIL REGISTRASI</th>
                 <th style="width: 14%;">NOMOR HP</th>
                 <th style="width: 18%;">KODE VERIFIKASI</th>
@@ -67,7 +67,25 @@
                 <td class="text-center">{{ $loop->iteration }}</td>
                 <td class="text-center" style="font-weight: bold; font-family: monospace;">{{ $p->nrp ?? '-' }}</td>
                 <td style="font-weight: bold;">{{ $p->name }}</td>
-                <td class="text-center">{{ $p->pangkat ?? '-' }}</td>
+                <td class="text-center">
+                    @php
+                        $roleMapping = [
+                            'admin' => 'ADMINISTRATOR SISTEM',
+                            'komandan' => 'KOMANDAN',
+                            'wadan' => 'WAKIL KOMANDAN',
+                            'pasops' => 'PASOPS',
+                            'danunit1' => 'DAN UNIT I / LID',
+                            'danunit2' => 'DAN UNIT II / PAMGAL',
+                            'danunitteknis' => 'DAN UNIT TEKNIS',
+                            'kaurmintel' => 'KAUR MINTEL',
+                            'paurset' => 'PAUR SET',
+                            'staf' => 'STAF ADMINISTRASI',
+                            'personel' => 'PERSONEL SATUAN'
+                        ];
+                        $jName = $roleMapping[$p->role ?? 'personel'] ?? 'PERSONEL';
+                    @endphp
+                    {{ $p->pangkat ?? '-' }} / {{ $jName }}
+                </td>
                 <td>{{ $p->email }}</td>
                 <td class="text-center">{{ $p->phone ?? '-' }}</td>
                 <td class="otp-code">{{ $p->activation_token ?? 'SINDEN-XQOWES' }}</td>
