@@ -137,7 +137,6 @@ class AppTheme {
       color: primaryNavy,
       circularTrackColor: Color(0xFFE2E8F0), // M3 Surface Track
       linearTrackColor: Color(0xFFE2E8F0),
-      strokeWidth: 3.5,
     ),
     dividerTheme: const DividerThemeData(
       color: outlineLight,
