@@ -41,9 +41,27 @@ class _LoginScreenState extends State<LoginScreen> {
     } else if (mounted && auth.errorMessage != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(auth.errorMessage!),
+          content: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 22),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  auth.errorMessage!,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
           backgroundColor: const Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          margin: const EdgeInsets.all(16),
+          duration: const Duration(seconds: 5),
         ),
       );
     }
@@ -119,7 +137,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       labelText: 'NRP / Username / Email',
                       prefixIcon: Icon(Icons.badge_outlined, size: 20),
                     ),
-                    validator: (val) => val == null || val.isEmpty ? 'Masukkan NRP atau Username' : null,
+                    validator: (val) => val == null || val.isEmpty ? 'Masukkan NRP, Username, atau Email' : null,
                   ),
                   const SizedBox(height: 16),
 

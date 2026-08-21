@@ -34,35 +34,61 @@ class ApiService {
   }
 
   Future<dynamic> get(String endpoint) async {
-    final baseUrl = await getBaseUrl();
-    final cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/$endpoint';
-    final url = Uri.parse('$baseUrl$cleanEndpoint');
-    final headers = await _getHeaders();
+    try {
+      final baseUrl = await getBaseUrl();
+      final cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/$endpoint';
+      final url = Uri.parse('$baseUrl$cleanEndpoint');
+      final headers = await _getHeaders();
 
-    final response = await http.get(url, headers: headers).timeout(
-      const Duration(seconds: 15),
-      onTimeout: () => throw Exception('Koneksi timeout. Periksa sambungan internet data Anda.'),
-    );
+      final response = await http.get(url, headers: headers).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => throw Exception('Koneksi Waktu Habis (Timeout). Periksa sambungan data/internet Anda.'),
+      );
 
-    return _handleResponse(response);
+      return _handleResponse(response);
+    } on SocketException catch (_) {
+      throw Exception('Gagal Koneksi Jaringan. Periksa sambungan kuota/WiFi HP Anda.');
+    } on HttpException catch (_) {
+      throw Exception('Protokol Layanan Server Mengalami Gangguan.');
+    } on FormatException catch (_) {
+      throw Exception('Format Data Server Tidak Sesuai.');
+    } catch (e) {
+      if (e.toString().contains('SocketException') || e.toString().contains('ClientException')) {
+        throw Exception('Gagal Menghubungkan ke Server (Offline). Coba beberapa saat lagi.');
+      }
+      rethrow;
+    }
   }
 
   Future<dynamic> post(String endpoint, Map<String, dynamic> data) async {
-    final baseUrl = await getBaseUrl();
-    final cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/$endpoint';
-    final url = Uri.parse('$baseUrl$cleanEndpoint');
-    final headers = await _getHeaders();
+    try {
+      final baseUrl = await getBaseUrl();
+      final cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/$endpoint';
+      final url = Uri.parse('$baseUrl$cleanEndpoint');
+      final headers = await _getHeaders();
 
-    final response = await http.post(
-      url,
-      headers: headers,
-      body: jsonEncode(data),
-    ).timeout(
-      const Duration(seconds: 15),
-      onTimeout: () => throw Exception('Koneksi timeout. Periksa sambungan internet data Anda.'),
-    );
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode(data),
+      ).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => throw Exception('Koneksi Waktu Habis (Timeout). Periksa sambungan data/internet Anda.'),
+      );
 
-    return _handleResponse(response);
+      return _handleResponse(response);
+    } on SocketException catch (_) {
+      throw Exception('Gagal Koneksi Jaringan. Periksa sambungan kuota/WiFi HP Anda.');
+    } on HttpException catch (_) {
+      throw Exception('Protokol Layanan Server Mengalami Gangguan.');
+    } on FormatException catch (_) {
+      throw Exception('Format Data Server Tidak Sesuai.');
+    } catch (e) {
+      if (e.toString().contains('SocketException') || e.toString().contains('ClientException')) {
+        throw Exception('Gagal Menghubungkan ke Server (Offline). Coba beberapa saat lagi.');
+      }
+      rethrow;
+    }
   }
 
   Future<dynamic> uploadMultipart(
@@ -71,32 +97,58 @@ class ApiService {
     List<File> files,
     String fileFieldKey,
   ) async {
-    final baseUrl = await getBaseUrl();
-    final cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/$endpoint';
-    final url = Uri.parse('$baseUrl$cleanEndpoint');
-    final headers = await _getHeaders(isMultipart: true);
+    try {
+      final baseUrl = await getBaseUrl();
+      final cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/$endpoint';
+      final url = Uri.parse('$baseUrl$cleanEndpoint');
+      final headers = await _getHeaders(isMultipart: true);
 
-    final request = http.MultipartRequest('POST', url);
-    request.headers.addAll(headers);
-    request.fields.addAll(fields);
+      final request = http.MultipartRequest('POST', url);
+      request.headers.addAll(headers);
+      request.fields.addAll(fields);
 
-    for (var file in files) {
-      if (await file.exists()) {
-        request.files.add(await http.MultipartFile.fromPath(fileFieldKey, file.path));
+      for (var file in files) {
+        if (await file.exists()) {
+          request.files.add(await http.MultipartFile.fromPath(fileFieldKey, file.path));
+        }
       }
-    }
 
-    final streamedResponse = await request.send();
-    final response = await http.Response.fromStream(streamedResponse);
-    return _handleResponse(response);
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 30),
+        onTimeout: () => throw Exception('Unggah Berkas Waktu Habis. Periksa jaringan Anda.'),
+      );
+      final response = await http.Response.fromStream(streamedResponse);
+      return _handleResponse(response);
+    } on SocketException catch (_) {
+      throw Exception('Gagal Unggah: Jaringan terputus.');
+    } catch (e) {
+      rethrow;
+    }
   }
 
   dynamic _handleResponse(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isEmpty) return null;
-      return jsonDecode(response.body);
+      try {
+        return jsonDecode(response.body);
+      } catch (_) {
+        return response.body;
+      }
+    } else if (response.statusCode == 401) {
+      throw Exception('Sesi Akses Telah Berakhir. Silakan Login Kembali.');
+    } else if (response.statusCode == 403) {
+      String msg = 'Akses Ditolak. Akun belum aktif atau dibekukan oleh Admin.';
+      try {
+        final err = jsonDecode(response.body);
+        if (err['message'] != null) msg = err['message'];
+      } catch (_) {}
+      throw Exception(msg);
+    } else if (response.statusCode == 404) {
+      throw Exception('Layanan Server Tidak Ditemukan (404).');
+    } else if (response.statusCode >= 500) {
+      throw Exception('Server Mengalami Kendala Internal (${response.statusCode}). Silakan Coba Beberapa Saat Lagi.');
     } else {
-      String errMsg = 'Terjadi kesalahan sistem (${response.statusCode})';
+      String errMsg = 'Terjadi Kesalahan (${response.statusCode})';
       try {
         final errJson = jsonDecode(response.body);
         if (errJson['message'] != null && errJson['message'].toString().isNotEmpty) {
