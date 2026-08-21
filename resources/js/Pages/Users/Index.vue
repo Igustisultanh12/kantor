@@ -596,6 +596,116 @@ onUnmounted(() => {
                 </div>
             </div>
         </div>
+        <!-- MODAL DETAIL PERSONEL & HAK AKSES FITUR -->
+        <div v-if="showDetailModal && detailUser" class="fixed inset-0 bg-indigo-950/40 backdrop-blur-md flex items-center justify-center z-[100] p-4 sm:p-6 overflow-y-auto">
+            <div class="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl p-6 sm:p-8 space-y-6 animate-in zoom-in duration-200 my-auto border border-slate-100">
+                
+                <!-- HEADER PROFIL -->
+                <div class="flex justify-between items-start border-b border-slate-100 pb-5">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 bg-indigo-600 text-white font-black text-xl rounded-2xl flex items-center justify-center shadow-md uppercase">
+                            {{ detailUser.name ? detailUser.name.charAt(0) : 'P' }}
+                        </div>
+                        <div>
+                            <h3 class="text-base font-black text-slate-900 font-sans tracking-wide uppercase">{{ detailUser.name }}</h3>
+                            <p class="text-xs text-indigo-600 font-extrabold uppercase mt-0.5">{{ detailUser.pangkat || 'BELUM DIISI' }} / NRP. {{ detailUser.nrp || '-' }}</p>
+                            <p class="text-[11px] text-slate-500 font-mono mt-0.5">{{ detailUser.email }} <span v-if="detailUser.phone" class="ml-2 font-sans font-bold text-emerald-600">WA: {{ detailUser.phone }}</span></p>
+                        </div>
+                    </div>
+                    <button @click="showDetailModal = false" class="text-slate-400 hover:text-slate-600 font-bold text-2xl cursor-pointer">&times;</button>
+                </div>
+
+                <!-- STATUS AKUN & TOMBOL CETAK PDF SINGLE (JIKA BELUM AKTIF) -->
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div>
+                        <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Status Otoritas Akun:</span>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span :class="getStatusClass(detailUser.is_active)" class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border">
+                                {{ detailUser.is_active ? 'TERVERIFIKASI & AKTIF' : 'BELUM AKTIF / SUSPEND' }}
+                            </span>
+                            <span class="text-xs font-bold text-slate-700 uppercase">({{ roleLabels[detailUser.role] || detailUser.role }})</span>
+                        </div>
+                    </div>
+
+                    <!-- BUTTON CETAK TOKEN PDF PERORANGAN -->
+                    <button v-if="!detailUser.is_active" @click="printSingleTokenPdf(detailUser.id)" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase rounded-xl shadow-md shadow-emerald-500/20 transition flex items-center gap-2 cursor-pointer w-full sm:w-auto justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                        <span>Cetak Token PDF Perorangan</span>
+                    </button>
+                </div>
+
+                <!-- MATRIKS HAK AKSES FITUR SINDEN -->
+                <div>
+                    <h4 class="text-xs font-black text-slate-800 uppercase mb-3 tracking-wider flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                        <span>Matriks Hak Akses Fitur Sistem:</span>
+                    </h4>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        
+                        <!-- 1. SURAT & NASKAH -->
+                        <div class="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-slate-800 uppercase">Agenda Surat & SKHPP</span>
+                                <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-black rounded uppercase">DIBERIKAN</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500 leading-tight">Akses pembuatan & penerbitan dokumen SKHPP dan pengarsipan surat.</p>
+                        </div>
+
+                        <!-- 2. TTD DIGITAL TTE -->
+                        <div class="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-slate-800 uppercase">Tanda Tangan Digital (TTE)</span>
+                                <span :class="(detailUser.role === 'admin' || detailUser.role === 'komandan') ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'" class="px-2 py-0.5 text-[9px] font-black rounded uppercase">
+                                    {{ (detailUser.role === 'admin' || detailUser.role === 'komandan') ? 'APPROVER TTD' : 'PEMOHON' }}
+                                </span>
+                            </div>
+                            <p class="text-[10px] text-slate-500 leading-tight">Otoritas penempelan QR Code TTD kedinasan pada dokumen resmi.</p>
+                        </div>
+
+                        <!-- 3. KAS TEKNIS UNIT -->
+                        <div class="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-slate-800 uppercase">Buku Kas Unit Teknis</span>
+                                <button @click="toggleTechnicalCashAccess(detailUser)" :class="detailUser.can_access_technical_cash ? 'bg-cyan-100 text-cyan-800' : 'bg-rose-50 text-rose-600'" class="px-2.5 py-1 text-[9px] font-black rounded uppercase cursor-pointer transition">
+                                    {{ detailUser.can_access_technical_cash ? 'DIBERIKAN (AKTIF)' : 'TIDAK DIBERIKAN' }}
+                                </button>
+                            </div>
+                            <p class="text-[10px] text-slate-500 leading-tight">Izin pencatatan & pembukuan arus kas keuangan unit teknis.</p>
+                        </div>
+
+                        <!-- 4. MODUL MITRA -->
+                        <div class="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-slate-800 uppercase">Modul Keuangan Mitra</span>
+                                <button @click="toggleMitraAccess(detailUser)" :class="detailUser.can_access_mitra ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-50 text-rose-600'" class="px-2.5 py-1 text-[9px] font-black rounded uppercase cursor-pointer transition">
+                                    {{ detailUser.can_access_mitra ? 'DIBERIKAN (AKTIF)' : 'TIDAK DIBERIKAN' }}
+                                </button>
+                            </div>
+                            <p class="text-[10px] text-slate-500 leading-tight">Izin verifikasi & pengelolaan arus kas pembayaran mitra kerja.</p>
+                        </div>
+
+                        <!-- 5. STORAGE & BACKUP PC -->
+                        <div class="p-3 bg-white border border-slate-200 rounded-xl space-y-1 col-span-1 sm:col-span-2">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-slate-800 uppercase">Penyimpanan Cloud & Backup PC</span>
+                                <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-black rounded uppercase">DIBERIKAN (50 GB)</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500 leading-tight">Akses pangkalan penyimpanan arsip publik dan cadangan berkas PC.</p>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- FOOTER MODAL -->
+                <div class="flex justify-end pt-2 border-t border-slate-100">
+                    <button @click="showDetailModal = false" class="px-6 py-2.5 bg-slate-100 text-slate-700 font-bold text-xs uppercase rounded-xl hover:bg-slate-200 transition cursor-pointer">
+                        Tutup
+                    </button>
+                </div>
+
+            </div>
+        </div>
         <!-- MODAL TAMBAH PERSONEL BANYAK (BULK) -->
         <div v-if="showBulkModal" class="fixed inset-0 bg-indigo-950/40 backdrop-blur-md flex items-center justify-center z-[100] p-4 sm:p-6 overflow-y-auto">
             <div class="bg-white w-full max-w-5xl rounded-[2.5rem] shadow-2xl p-6 sm:p-8 space-y-6 animate-in zoom-in duration-200 my-auto border border-slate-100">
