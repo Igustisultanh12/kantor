@@ -313,8 +313,10 @@ require __DIR__.'/auth.php';
 // GERBANG RESMI MOBILE API LOGIN (SINDEN ANDROID & IOS)
 // =====================================================================
 Route::post('/api/mobile/login', function (\Illuminate\Http\Request $request) {
-    $input = trim($request->input('username') ?? $request->input('email') ?? '');
-    $password = $request->input('password');
+    $data = $request->json()->all() ?: $request->all();
+
+    $input = trim($data['username'] ?? $data['email'] ?? $data['nrp'] ?? '');
+    $password = $data['password'] ?? '';
 
     if (empty($input) || empty($password)) {
         return response()->json([
