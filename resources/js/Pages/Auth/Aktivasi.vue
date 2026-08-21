@@ -2,6 +2,7 @@
 import { useForm, Head, Link, usePage } from '@inertiajs/vue3';
 import InputError from '@/Components/InputError.vue';
 import { computed } from 'vue';
+import Swal from 'sweetalert2';
 
 const page = usePage();
 const pageSettings = computed(() => page.props.settings || {});
@@ -26,6 +27,26 @@ const form = useForm({
 
 const submit = () => {
     form.post(route('aktivasi.proses'), {
+        onSuccess: () => {
+            Swal.fire({
+                icon: 'success',
+                title: 'AKTIVASI OTORITAS AKUN BERHASIL',
+                text: 'Akun Anda telah berhasil diaktifkan secara resmi dalam sistem SINDEN. Silakan login menggunakan password baru Anda.',
+                confirmButtonText: 'MASUK KE SISTEM',
+                confirmButtonColor: '#1e3a8a',
+                allowOutsideClick: false,
+            });
+        },
+        onError: (errors) => {
+            const errText = errors.token || errors.nrp || 'NRP / Email atau Token Aktivasi tidak valid.';
+            Swal.fire({
+                icon: 'error',
+                title: 'AKTIVASI OTORITAS GAGAL',
+                text: errText,
+                confirmButtonText: 'PERIKSA KEMBALI',
+                confirmButtonColor: '#dc2626',
+            });
+        },
         onFinish: () => form.reset('password', 'password_confirmation'),
     });
 };

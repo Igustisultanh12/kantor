@@ -5,7 +5,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import Swal from 'sweetalert2';
 
 const props = defineProps({
@@ -27,6 +27,18 @@ const loginBg = computed(() => {
     const bg = pageSettings.value.login_background;
     if (!bg) return null;
     return (bg.startsWith('http') || bg.startsWith('/storage')) ? bg : '/storage/' + bg;
+});
+
+onMounted(() => {
+    if (page.props.flash?.message) {
+        Swal.fire({
+            icon: 'success',
+            title: 'AKTIVASI OTORITAS AKUN BERHASIL',
+            text: page.props.flash.message,
+            confirmButtonText: 'SIAP LOGIN',
+            confirmButtonColor: '#1e3a8a',
+        });
+    }
 });
 
 const isLockingGPS = ref(false);
