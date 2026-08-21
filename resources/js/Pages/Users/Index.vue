@@ -537,7 +537,7 @@ onUnmounted(() => {
                     <div class="grid grid-cols-2 gap-4">
                         <div class="col-span-2">
                             <label class="text-[9px] font-black text-gray-400 uppercase ml-2">Nama Lengkap</label>
-                            <input v-model="editForm.name" type="text" class="w-full bg-gray-50 border-none rounded-2xl p-4 text-[11px] font-black uppercase focus:ring-2 focus:ring-indigo-500" />
+                            <input v-model="editForm.name" type="text" class="w-full bg-gray-50 border-none rounded-2xl p-4 text-[11px] font-black focus:ring-2 focus:ring-indigo-500" />
                         </div>
                         <div>
                             <label class="text-[9px] font-black text-gray-400 uppercase ml-2">Pangkat</label>
@@ -608,7 +608,7 @@ onUnmounted(() => {
                             <tr v-for="(row, idx) in bulkRows" :key="idx" class="border-b border-slate-100 hover:bg-slate-50/50">
                                 <td class="p-2 text-center font-bold text-slate-400">{{ idx + 1 }}</td>
                                 <td class="p-2">
-                                    <input v-model="row.name" type="text" placeholder="Contoh: ERWAN JUNAEDI" class="w-full text-xs rounded-xl border-slate-200 uppercase font-bold focus:ring-indigo-500" required />
+                                    <input v-model="row.name" type="text" placeholder="Contoh: Erwan Junaedi" class="w-full text-xs rounded-xl border-slate-200 font-bold focus:ring-indigo-500" required />
                                 </td>
                                 <td class="p-2">
                                     <input v-model="row.pangkat" type="text" placeholder="PELTU TTG" class="w-full text-xs rounded-xl border-slate-200 font-bold focus:ring-indigo-500" required />

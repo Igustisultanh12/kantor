@@ -77,7 +77,7 @@ class UserController extends Controller
 
             // PROSES SIMPAN
             $user = User::create([
-                'name' => strtoupper($request->name),
+                'name' => trim($request->name),
                 'pangkat' => $request->pangkat,
                 'nrp' => $request->nrp,
                 'phone' => $request->phone,
@@ -223,7 +223,7 @@ class UserController extends Controller
                 $phone = !empty($item['phone']) ? $item['phone'] : null;
 
                 $user = User::create([
-                    'name' => strtoupper($item['name']),
+                    'name' => trim($item['name']),
                     'pangkat' => $item['pangkat'],
                     'nrp' => $item['nrp'],
                     'phone' => $phone,
@@ -345,7 +345,7 @@ class UserController extends Controller
         ]);
 
         $user->update([
-            'name' => strtoupper($request->name),
+            'name' => trim($request->name),
             'pangkat' => $request->pangkat,
             'nrp' => $request->nrp,
             'email' => $request->email,

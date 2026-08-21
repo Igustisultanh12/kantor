@@ -66,7 +66,7 @@
             <tr>
                 <td class="text-center">{{ $loop->iteration }}</td>
                 <td class="text-center" style="font-weight: bold; font-family: monospace;">{{ $p->nrp ?? '-' }}</td>
-                <td style="font-weight: bold; text-transform: uppercase;">{{ $p->name }}</td>
+                <td style="font-weight: bold;">{{ $p->name }}</td>
                 <td class="text-center">{{ $p->pangkat ?? '-' }}</td>
                 <td>{{ $p->email }}</td>
                 <td class="text-center">{{ $p->phone ?? '-' }}</td>
