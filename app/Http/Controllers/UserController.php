@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\SignatureRequest;
+use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\AuditLog;
 use App\Models\Setting;
@@ -318,7 +320,43 @@ class UserController extends Controller
         ];
 
         $pdf = Pdf::loadView('pdf.kodeverifikasi', $data)->setPaper('a4', 'portrait');
-        return $pdf->stream('Laporan_Kode_Verifikasi_' . date('Ymd_His') . '.pdf');
+        $pdfOutput = $pdf->output();
+
+        // SIMPAN OTOMATIS KE MODUL TANDA TANGAN DIGITAL (SIGNATURE_REQUESTS)
+        try {
+            if (!Storage::disk('public')->exists('signature_reqs')) {
+                Storage::disk('public')->makeDirectory('signature_reqs');
+            }
+
+            $fileName = 'signed_token_pdf_' . time() . '_' . Str::random(6) . '.pdf';
+            $filePath = 'signature_reqs/' . $fileName;
+            Storage::disk('public')->put($filePath, $pdfOutput);
+
+            $isSingle = (count($personels) === 1);
+            $targetName = $isSingle ? $personels->first()->name : ('Daftar ' . count($personels) . ' Personel (Bulk)');
+            $targetPangkatNrp = $isSingle ? (($personels->first()->pangkat ?: 'TNI AL') . ($personels->first()->nrp ? ' / NRP. ' . $personels->first()->nrp : '')) : 'Daftar Masal Token';
+
+            SignatureRequest::create([
+                'user_id' => auth()->id(),
+                'subject' => 'Dokumen Kode Verifikasi & Token Aktivasi Personel (' . $formattedNomor . ')',
+                'document_title' => 'DAFTAR KODE VERIFIKASI & TOKEN AKTIVASI AKUN PERSONEL',
+                'person_name' => $targetName,
+                'pangkat_nrp' => $targetPangkatNrp,
+                'jabatan' => 'Pendaftaran Otoritas Akun',
+                'peruntukan' => 'Dokumen Kedinasan Kode Verifikasi Otoritas Akun Personel SINDEN',
+                'letter_number' => $formattedNomor,
+                'file_path' => $filePath,
+                'status' => 'approved',
+                'verification_code' => $formattedNomor,
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Gagal auto-save Token PDF ke SignatureRequest: ' . $e->getMessage());
+        }
+
+        return response($pdfOutput, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="Laporan_Kode_Verifikasi_' . date('Ymd_His') . '.pdf"'
+        ]);
     }
 
     /**
