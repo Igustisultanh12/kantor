@@ -42,22 +42,64 @@ class _LoginScreenState extends State<LoginScreen> {
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: const Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 26),
+              Icon(Icons.error_outline_rounded, color: Color(0xFFDC2626), size: 28),
               SizedBox(width: 10),
-              Text('Gagal Autentikasi', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+              Text(
+                'Laporan Kendala Akses',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF0F172A)),
+              ),
             ],
           ),
-          content: Text(
-            auth.errorMessage!,
-            style: const TextStyle(fontSize: 13, color: Color(0xFF334155), height: 1.4),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Rincian Alasan Gagal Login:',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF2F2),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFFCA5A5)),
+                ),
+                child: Text(
+                  auth.errorMessage!,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF991B1B),
+                    height: 1.4,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Saran Penanganan:',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '1. Periksa ketelitian NRP/Email & Password.\n2. Pastikan akun terverifikasi di Admin SINDEN.\n3. Periksa sambungan data/WiFi HP Anda.',
+                style: TextStyle(fontSize: 10, color: Color(0xFF64748B), height: 1.4),
+              ),
+            ],
           ),
           actions: [
-            TextButton(
+            ElevatedButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('OK, NGERTI', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF4F46E5))),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0F172A),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('MENGERTI', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white)),
             ),
           ],
         ),
