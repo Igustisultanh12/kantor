@@ -28,7 +28,7 @@ class ApiService {
 
     return {
       'Accept': 'application/json',
-      'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36 SINDEN-Mobile/1.0',
+      'User-Agent': 'SINDEN-App/1.0 (Kedinasan REST API; SINDEN Client)',
       if (!isMultipart) 'Content-Type': 'application/json',
       if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
     };
