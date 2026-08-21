@@ -61,32 +61,34 @@ class ApiService {
     }
   }
 
-  Future<dynamic> post(String endpoint, Map<String, dynamic> data) async {
+    Future<dynamic> post(String endpoint, Map<String, dynamic> data) async {
     try {
       final baseUrl = await getBaseUrl();
       final cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/$endpoint';
       final url = Uri.parse('$baseUrl$cleanEndpoint');
       final headers = await _getHeaders();
 
-      final response = await http.post(
-        url,
-        headers: headers,
-        body: jsonEncode(data),
-      ).timeout(
+      final req = http.Request('POST', url);
+      req.headers.addAll(headers);
+      req.body = jsonEncode(data);
+      req.followRedirects = false; // AGAR TIDAK SILENT REDIRECT 302 KE HALAMAN LOGIN WEB!
+
+      final client = http.Client();
+      final streamed = await client.send(req).timeout(
         const Duration(seconds: 15),
         onTimeout: () => throw Exception('Koneksi Waktu Habis (Timeout). Periksa sambungan data/internet Anda.'),
       );
+      final response = await http.Response.fromStream(streamed);
+      client.close();
 
       return _handleResponse(response);
-    } on SocketException catch (_) {
-      throw Exception('Gagal Koneksi Jaringan. Periksa sambungan kuota/WiFi HP Anda.');
-    } on HttpException catch (_) {
-      throw Exception('Protokol Layanan Server Mengalami Gangguan.');
-    } on FormatException catch (_) {
-      throw Exception('Format Data Server Tidak Sesuai.');
+    } on SocketException catch (se) {
+      throw Exception('Gagal Koneksi Jaringan (SocketException): ' + se.message);
+    } on FormatException catch (fe) {
+      throw Exception('Format Data Server Tidak Sesuai (FormatException): ' + fe.message);
     } catch (e) {
       if (e.toString().contains('SocketException') || e.toString().contains('ClientException')) {
-        throw Exception('Gagal Menghubungkan ke Server (Offline). Coba beberapa saat lagi.');
+        throw Exception('Gagal Menghubungkan ke Server (Offline / Unreachable): ' + e.toString());
       }
       rethrow;
     }
@@ -127,49 +129,54 @@ class ApiService {
     }
   }
 
-  dynamic _handleResponse(http.Response response) {
+    dynamic _handleResponse(http.Response response) {
+    final reqUrl = response.request?.url.toString() ?? 'URL Tidak Diketahui';
+    final code = response.statusCode;
+    final bodySnippet = response.body.length > 250 ? response.body.substring(0, 250) + '...' : response.body;
+
     if (response.body.contains('Just a moment') || response.body.contains('challenge-platform') || response.body.contains('cf-mitigated')) {
-      throw Exception('Akses Terhadang Proteksi Cloudflare. Silakan atur Cloudflare WAF Security Rule pada domain sisinden.my.id.');
+      throw Exception('TERHADANG CLOUDFLARE WAF\n[HTTP $code] $reqUrl\nDetail: Cloudflare mencegat koneksi HP dengan tantangan keamanan.');
     }
-    if (response.statusCode >= 200 && response.statusCode < 300) {
+
+    if (code >= 200 && code < 300) {
       if (response.body.isEmpty) return null;
       try {
         return jsonDecode(response.body);
-      } catch (_) {
-        return response.body;
+      } catch (e) {
+        throw Exception('GAGAL PARSE JSON [HTTP $code]\nEndpoint: $reqUrl\nError: $e\nBody Mentah: $bodySnippet');
       }
-    } else if (response.statusCode == 401) {
-      throw Exception('Sesi Akses Telah Berakhir. Silakan Login Kembali.');
-    } else if (response.statusCode == 403) {
+    } else if (code == 301 || code == 302 || code == 303 || code == 307 || code == 308) {
+      final loc = response.headers['location'] ?? 'Location Header Kosong';
+      throw Exception('TERJADI PENGALIHAN HALAMAN SERVER [HTTP $code REDIRECT]\nEndpoint Awal: $reqUrl\nTarget Redirect: $loc\nDetail: Server meminta HP dialihkan ke URL lain (Bukan REST API JSON).');
+    } else if (code == 401) {
+      String msg = 'Kredensial tidak cocok. Silakan periksa NRP / Email dan Kata Sandi Anda.';
+      try {
+        final err = jsonDecode(response.body);
+        if (err['message'] != null) msg = err['message'];
+      } catch (_) {}
+      throw Exception('GAGAL AUTENTIKASI [HTTP 401]\nEndpoint: $reqUrl\nPesan Server: $msg');
+    } else if (code == 403) {
       String msg = 'Akses Ditolak. Akun belum aktif atau dibekukan oleh Admin.';
       try {
         final err = jsonDecode(response.body);
         if (err['message'] != null) msg = err['message'];
       } catch (_) {}
-      throw Exception(msg);
-    } else if (response.statusCode == 404) {
-      throw Exception('Layanan Server Tidak Ditemukan (404).');
-    } else if (response.statusCode >= 500) {
-      throw Exception('Server Mengalami Kendala Internal (${response.statusCode}). Silakan Coba Beberapa Saat Lagi.');
+      throw Exception('AKSES DITOLAK [HTTP 403]\nEndpoint: $reqUrl\nPesan Server: $msg');
+    } else if (code == 404) {
+      throw Exception('LAYANAN SERVER TIDAK DITEMUKAN [HTTP 404]\nEndpoint: $reqUrl\nDetail: Rute API tidak tersedia pada server.');
+    } else if (code >= 500) {
+      throw Exception('KENDALA INTERNAL SERVER [HTTP $code]\nEndpoint: $reqUrl\nBody Respon: $bodySnippet');
     } else {
-      String errMsg = 'Terjadi Kesalahan (${response.statusCode})';
+      String errMsg = 'KENDALA HTTP RESPONS [HTTP $code]';
       try {
         final errJson = jsonDecode(response.body);
         if (errJson['message'] != null && errJson['message'].toString().isNotEmpty) {
-          errMsg = errJson['message'];
-        } else if (errJson['errors'] != null) {
-          final errors = errJson['errors'] as Map<String, dynamic>;
-          if (errors.isNotEmpty) {
-            final firstErrList = errors.values.first;
-            if (firstErrList is List && firstErrList.isNotEmpty) {
-              errMsg = firstErrList.first.toString();
-            } else {
-              errMsg = firstErrList.toString();
-            }
-          }
+          errMsg += '\nPesan Server: ' + errJson['message'].toString();
         }
-      } catch (_) {}
-      throw Exception(errMsg);
+      } catch (_) {
+        errMsg += '\nBody Mentah: $bodySnippet';
+      }
+      throw Exception('$errMsg\nEndpoint: $reqUrl');
     }
   }
 }

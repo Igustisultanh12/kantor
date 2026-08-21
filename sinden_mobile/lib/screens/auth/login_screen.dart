@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants.dart';
@@ -70,10 +71,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: const Color(0xFFFCA5A5)),
                 ),
-                child: Text(
+                child: SelectableText(
                   auth.errorMessage!,
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
+                    fontFamily: 'monospace',
                     fontWeight: FontWeight.w700,
                     color: Color(0xFF991B1B),
                     height: 1.4,
@@ -93,13 +95,22 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
           actions: [
+            TextButton(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: auth.errorMessage ?? ''));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Log diagnostik disalin ke clipboard!')),
+                );
+              },
+              child: const Text('SALIN LOG', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF4F46E5))),
+            ),
             ElevatedButton(
               onPressed: () => Navigator.of(ctx).pop(),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0F172A),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('MENGERTI', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white)),
+              child: const Text('TUTUP', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white)),
             ),
           ],
         ),
