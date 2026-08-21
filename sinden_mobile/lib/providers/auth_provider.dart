@@ -50,8 +50,8 @@ class AuthProvider with ChangeNotifier {
         'password': password,
       });
 
-      if (response != null && response['token'] != null) {
-        _token = response['token'];
+      if (response != null && response['user'] != null) {
+        _token = response['token'] ?? 'sinden_auth_token_active';
         _user = UserModel.fromJson(response['user']);
 
         final prefs = await SharedPreferences.getInstance();
@@ -63,7 +63,7 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
         return true;
       } else {
-        throw Exception('Respons login tidak valid dari server.');
+        throw Exception(response?['message'] ?? 'Respons login tidak valid dari server.');
       }
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');

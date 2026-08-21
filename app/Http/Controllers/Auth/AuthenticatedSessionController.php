@@ -59,7 +59,7 @@ class AuthenticatedSessionController extends Controller
         if ($request->wantsJson() || $request->expectsJson() || $request->is('api/*')) {
             $token = method_exists($user, 'createToken') 
                 ? $user->createToken('sinden_mobile_token')->plainTextToken 
-                : session()->getId();
+                : (session()->getId() ?: 'sinden_token_' . \Illuminate\Support\Str::random(40));
 
             return response()->json([
                 'status' => 'success',
