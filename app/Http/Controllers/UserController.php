@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\AuditLog;
 use App\Models\Setting;
 use App\Services\WhatsappService;
@@ -269,19 +270,36 @@ class UserController extends Controller
         $idsParam = $request->query('ids');
         if ($idsParam) {
             $ids = explode(',', $idsParam);
-            $users = User::whereIn('id', $ids)->get();
+            $personels = User::whereIn('id', $ids)->get();
         } else {
-            $users = User::where('is_active', false)->whereNotNull('activation_token')->get();
+            $personels = User::where('is_active', false)->whereNotNull('activation_token')->get();
         }
 
-        $agencyName = Setting::where('key', 'agency_name')->first()->value ?? 'DENINTEL KODAERAL V';
+        $user = auth()->user();
+        $signerJabatan = ($user->role === 'admin' || $user->name === 'I Gusti Sultan H.A, A.Md.Kom') ? 'Administrator SINDEN' : 'Administrator Sistem';
+        $signerName = $user->name;
+        $signerPangkat = $user->pangkat ?: 'MAYOR LAUT (P)';
+        $signerNrp = $user->nrp ?: '12000018012200216';
 
-        return Inertia::render('Users/Token-pdf', [
-            'users' => $users,
-            'title' => 'DAFTAR KODE VERIFIKASI & TOKEN AKTIVASI AKUN PERSONEL',
-            'unit' => $agencyName,
-            'date' => now()->translatedFormat('d F Y')
-        ]);
+        $qrCodeBase64 = null;
+        try {
+            $qrData = "SINDEN-VERIFY-TOKEN|" . date('YmdHis') . "|" . $user->nrp;
+            $qrCodeBase64 = 'data:image/png;base64,' . base64_encode(file_get_contents('https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' . urlencode($qrData)));
+        } catch (\Exception $e) {}
+
+        $data = [
+            'personels' => $personels,
+            'nomorSurat' => 'SINDEN/VERIF/' . date('Ymd/His'),
+            'generatedAt' => now()->translatedFormat('d F Y'),
+            'signerJabatan' => $signerJabatan,
+            'signerName' => $signerName,
+            'signerPangkat' => $signerPangkat,
+            'signerNrp' => $signerNrp,
+            'qrCodeBase64' => $qrCodeBase64
+        ];
+
+        $pdf = Pdf::loadView('pdf.kodeverifikasi', $data)->setPaper('a4', 'landscape');
+        return $pdf->stream('Laporan_Kode_Verifikasi_' . date('Ymd_His') . '.pdf');
     }
 
     /**
