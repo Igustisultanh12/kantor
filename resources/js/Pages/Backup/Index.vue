@@ -20,6 +20,36 @@ const networkForm = useForm({
 });
 
 // --- LOGIKA OTORITAS AKSES (SWEETALERT) ---
+// --- FUNGSI PEMERIKSAAN OTORITAS SEBELUM BUKA PC ---
+const openPcStorage = (pcId) => {
+    if (props.myPcs.length === 0 && !props.isAdmin) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'AKSES DITOLAK',
+            text: 'Anda belum memiliki izin, silahkan ajukan terlebih dahulu.',
+            confirmButtonText: 'AJUKAN OTORITAS AKSES',
+            showCancelButton: true,
+            cancelButtonText: 'BATAL',
+            confirmButtonColor: '#f97316',
+            cancelButtonColor: '#64748B',
+            background: 'rgba(15, 23, 42, 0.92)',
+            color: '#ffffff',
+            customClass: {
+                popup: 'swal2-dark-glass border border-white/10 shadow-2xl rounded-[2rem]',
+                confirmButton: 'bg-orange-500 hover:bg-orange-600 text-white font-black text-xs uppercase tracking-widest px-8 py-3 rounded-xl shadow-lg shadow-orange-500/20',
+                cancelButton: 'bg-slate-700 hover:bg-slate-800 text-white font-black text-xs uppercase tracking-widest px-6 py-3 rounded-xl'
+            },
+        }).then((result) => {
+            if (result.isConfirmed) {
+                checkAksesStatus();
+            }
+        });
+        return;
+    }
+
+    router.visit(route('backup.explore', pcId));
+};
+
 const checkAksesStatus = () => {
     // Jika personel belum punya PC sama sekali dan bukan Admin bypass
     if (props.myPcs.length === 0 && !props.isAdmin) {
@@ -222,8 +252,8 @@ onMounted(() => {
                             <p class="font-bold text-gray-800 leading-tight">{{ pc.user.name }}</p>
                             <p class="text-[10px] text-gray-500 mb-3">{{ pc.user.pangkat }} / {{ pc.user.nrp }}</p>
                             
-                            <Link :href="route('backup.explore', pc.id)" class="block w-full text-center bg-gray-50 hover:bg-green-600 hover:text-white text-gray-600 py-2 rounded font-bold text-[10px] transition uppercase border"> Buka Penyimpanan
-                            </Link>
+                            <button @click="openPcStorage(pc.id)" class="block w-full text-center bg-gray-50 hover:bg-green-600 hover:text-white text-gray-600 py-2 rounded font-bold text-[10px] transition uppercase border"> Buka Penyimpanan
+                            </button>
                         </div>
                     </div>
                     <p v-else class="text-center text-gray-400 py-4 text-sm italic"> Belum ada personel lain dalam sistem.</p>
