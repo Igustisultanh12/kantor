@@ -31,6 +31,14 @@ class AuthenticatedSessionController extends Controller
 
     public function store(LoginRequest $request)
     {
+        \Illuminate\Support\Facades\Log::info('[WEB_LOGIN_ATTEMPT] Request masuk ke /login', [
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'wants_json' => $request->wantsJson(),
+            'expects_json' => $request->expectsJson(),
+            'input_email' => $request->input('email'),
+            'input_username' => $request->input('username'),
+        ]);
         $request->authenticate();
 
         $user = Auth::user();

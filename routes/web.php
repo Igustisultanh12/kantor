@@ -313,31 +313,51 @@ require __DIR__.'/auth.php';
 // GERBANG RESMI MOBILE API LOGIN (SINDEN ANDROID & IOS)
 // =====================================================================
 Route::post('/api/mobile/login', function (\Illuminate\Http\Request $request) {
+    $ip = $request->ip();
+    $ua = $request->userAgent();
     $data = $request->json()->all() ?: $request->all();
+
+    \Illuminate\Support\Facades\Log::info("[MOBILE_API_LOGIN] Request Diproses", [
+        'ip' => $ip,
+        'user_agent' => $ua,
+        'content_type' => $request->header('Content-Type'),
+        'input_keys' => array_keys($data),
+        'login_input' => $data['username'] ?? $data['email'] ?? $data['nrp'] ?? 'KOSONG',
+    ]);
 
     $input = trim($data['username'] ?? $data['email'] ?? $data['nrp'] ?? '');
     $password = $data['password'] ?? '';
 
     if (empty($input) || empty($password)) {
+        \Illuminate\Support\Facades\Log::warning("[MOBILE_API_LOGIN] Input atau Password Kosong dari IP: {$ip}");
         return response()->json([
             'status' => 'error',
             'message' => 'NRP / Email dan Kata Sandi wajib diisi.'
         ], 422);
     }
 
-    // Cari personel berdasarkan email atau NRP
     $user = \App\Models\User::where('email', $input)
         ->orWhere('nrp', $input)
         ->first();
 
-    if (!$user || !\Illuminate\Support\Facades\Hash::check($password, $user->password)) {
+    if (!$user) {
+        \Illuminate\Support\Facades\Log::warning("[MOBILE_API_LOGIN] User Tidak Ditemukan untuk Input: '{$input}' dari IP: {$ip}");
         return response()->json([
             'status' => 'error',
-            'message' => 'Kredensial tidak cocok. Silakan periksa NRP / Email dan Kata Sandi Anda.'
+            'message' => "Kredensial tidak cocok. Personel ('{$input}') tidak ditemukan."
+        ], 401);
+    }
+
+    if (!\Illuminate\Support\Facades\Hash::check($password, $user->password)) {
+        \Illuminate\Support\Facades\Log::warning("[MOBILE_API_LOGIN] Kata Sandi Salah untuk Personel: {$user->name} ({$user->email}) dari IP: {$ip}");
+        return response()->json([
+            'status' => 'error',
+            'message' => "Kredensial tidak cocok. Kata sandi untuk '{$user->name}' salah."
         ], 401);
     }
 
     if (!$user->is_active) {
+        \Illuminate\Support\Facades\Log::warning("[MOBILE_API_LOGIN] Akun Belum Aktif: {$user->name} ({$user->email}) dari IP: {$ip}");
         return response()->json([
             'status' => 'error',
             'message' => "Akses Ditolak: Akun ({$user->name}) belum aktif atau sedang ditangguhkan oleh Admin."
@@ -347,6 +367,8 @@ Route::post('/api/mobile/login', function (\Illuminate\Http\Request $request) {
     $token = method_exists($user, 'createToken') 
         ? $user->createToken('sinden_mobile_token')->plainTextToken 
         : ('sinden_token_' . \Illuminate\Support\Str::random(40));
+
+    \Illuminate\Support\Facades\Log::info("[MOBILE_API_LOGIN] SUKSES LOGIN untuk Personel: {$user->name} (Role: {$user->role}) dari IP: {$ip}");
 
     return response()->json([
         'status' => 'success',
@@ -366,6 +388,19 @@ Route::post('/api/mobile/login', function (\Illuminate\Http\Request $request) {
         ],
     ]);
 });
+
+// =====================================================================
+// JALUR MEMBACA SYSTEM LOG LARAVEL UNTUK ADMIN (/admin/laravel-logs)
+// =====================================================================
+Route::get('/admin/laravel-logs', function () {
+    $logFile = storage_path('logs/laravel.log');
+    if (!file_exists($logFile)) {
+        return response("File log laravel.log belum tersedia di " . $logFile, 200, ['Content-Type' => 'text/plain; charset=utf-8']);
+    }
+    $content = file_get_contents($logFile);
+    $lines = array_slice(explode("\n", $content), -300);
+    return response(implode("\n", $lines), 200, ['Content-Type' => 'text/plain; charset=utf-8']);
+})->name('admin.laravel-logs');
 
 // =====================================================================
 // GERBANG CONFIGURASI DAN STATUS SERVISE MOBILE API
