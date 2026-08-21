@@ -39,29 +39,27 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
       );
     } else if (mounted && auth.errorMessage != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
             children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 22),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  auth.errorMessage!,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
+              Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 26),
+              SizedBox(width: 10),
+              Text('Gagal Autentikasi', style: TextStyle(fontWeight: FontWeight.extrabold, fontSize: 16)),
             ],
           ),
-          backgroundColor: const Color(0xFFDC2626),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          margin: const EdgeInsets.all(16),
-          duration: const Duration(seconds: 5),
+          content: Text(
+            auth.errorMessage!,
+            style: const TextStyle(fontSize: 13, color: Color(0xFF334155), height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK, NGERTI', style: TextStyle(fontWeight: FontWeight.extrabold, color: Color(0xFF4F46E5))),
+            ),
+          ],
         ),
       );
     }

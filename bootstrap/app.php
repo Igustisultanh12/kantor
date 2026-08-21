@@ -26,7 +26,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'api/v1/pess/receive-submission',
             'login',
-            'api/login'
+            'api/login',
+            'api/mobile/login'
         ]);
 
         // 2. REGISTRASI SELURUH ALIAS MIDDLEWARE (Disatukan di sini)

@@ -308,3 +308,59 @@ Route::get('/verify-skhpp/{code}', [SkhppController::class, 'verify'])->name('sk
 Route::post('/api/v1/pess/receive-submission', [PESSReceiverController::class, 'receive']);
 
 require __DIR__.'/auth.php';
+
+// =====================================================================
+// GERBANG RESMI MOBILE API LOGIN (SINDEN ANDROID & IOS)
+// =====================================================================
+Route::post('/api/mobile/login', function (\Illuminate\Http\Request $request) {
+    $input = trim($request->input('username') ?? $request->input('email') ?? '');
+    $password = $request->input('password');
+
+    if (empty($input) || empty($password)) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'NRP / Email dan Kata Sandi wajib diisi.'
+        ], 422);
+    }
+
+    // Cari personel berdasarkan email atau NRP
+    $user = \App\Models\User::where('email', $input)
+        ->orWhere('nrp', $input)
+        ->first();
+
+    if (!$user || !\Illuminate\Support\Facades\Hash::check($password, $user->password)) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Kredensial tidak cocok. Silakan periksa NRP / Email dan Kata Sandi Anda.'
+        ], 401);
+    }
+
+    if (!$user->is_active) {
+        return response()->json([
+            'status' => 'error',
+            'message' => "Akses Ditolak: Akun ({$user->name}) belum aktif atau sedang ditangguhkan oleh Admin."
+        ], 403);
+    }
+
+    $token = method_exists($user, 'createToken') 
+        ? $user->createToken('sinden_mobile_token')->plainTextToken 
+        : ('sinden_token_' . \Illuminate\Support\Str::random(40));
+
+    return response()->json([
+        'status' => 'success',
+        'token' => $token,
+        'user' => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email ?? '',
+            'username' => $user->username ?? $user->nrp ?? '',
+            'nrp' => $user->nrp ?? $user->username ?? '',
+            'role' => $user->role ?? 'user',
+            'pangkat' => $user->pangkat ?? 'Prajurit',
+            'korps' => $user->korps ?? '',
+            'jabatan' => $user->jabatan ?? '',
+            'can_access_mitra' => (bool)($user->can_access_mitra ?? false),
+            'can_access_technical_cash' => (bool)($user->can_access_technical_cash ?? false),
+        ],
+    ]);
+});

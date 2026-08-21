@@ -44,7 +44,7 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await ApiService().post('/login', {
+      final response = await ApiService().post('/api/mobile/login', {
         'username': nrpOrEmail,
         'email': nrpOrEmail,
         'password': password,
