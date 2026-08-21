@@ -99,6 +99,7 @@ Route::middleware(['auth', 'office.only'])->group(function () {
 
     // --- JALUR RADAR IP ADMIN ---
     // Berfungsi mengunci whitelist IP pangkalan agar server VPS aman dari luar
+    Route::delete('/admin/pc-backup/revoke/{id}', [BackupController::class, 'revokePc'])->name('admin.backup.revoke');
     Route::post('/admin/backup/network', [BackupController::class, 'storeNetwork'])->name('admin.backup.network.store');
     Route::delete('/admin/backup/network/{id}', [BackupController::class, 'destroyNetwork'])->name('admin.backup.network.destroy');
     

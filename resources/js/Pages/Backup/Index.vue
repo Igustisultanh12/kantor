@@ -117,6 +117,34 @@ const approvePersonel = (id) => {
     });
 };
 
+// --- FUNGSI ADMIN: HAPUS AKSES & SELURUH BERKAS PC PERMANEN ---
+const revokePcAccess = (pc) => {
+    const ownerName = pc.user?.name || pc.pc_name;
+    Swal.fire({
+        title: 'HAPUS OTORITAS & AKSES PC?',
+        html: `Peringatan: Seluruh berkas, folder, dan jatah penyimpanan <b>${pc.pc_name}</b> (Milik: <b>${ownerName}</b>) akan <b>DIHAPUS PERMANEN</b> dari server!`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Hapus Permanen!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            useForm({}).delete(route('admin.backup.revoke', pc.id), {
+                onSuccess: () => {
+                    Swal.fire({
+                        title: 'Telah Dihapus!',
+                        text: 'Otoritas akses dan seluruh berkas PC berhasil dihapus permanen.',
+                        icon: 'success',
+                        confirmButtonColor: '#3085d6'
+                    });
+                }
+            });
+        }
+    });
+};
+
 // --- FUNGSI ADMIN: RADAR IP ---
 const submitNetwork = () => {
     networkForm.post(route('admin.backup.network.store'), {
@@ -213,8 +241,14 @@ onMounted(() => {
                                 </div>
                             </div>
 
-                            <Link :href="route('backup.explore', pc.id)" class="mt-6 block w-full text-center bg-blue-700 hover:bg-blue-800 text-white py-3 rounded-lg font-bold transition shadow-md uppercase text-sm"> MASUK DAFTAR PC
-                            </Link>
+                            <div class="mt-6 space-y-2">
+                                <Link :href="route('backup.explore', pc.id)" class="block w-full text-center bg-blue-700 hover:bg-blue-800 text-white py-3 rounded-lg font-bold transition shadow-md uppercase text-sm"> MASUK DAFTAR PC
+                                </Link>
+                                <button v-if="isAdmin" @click="revokePcAccess(pc)" class="w-full text-center bg-red-50 hover:bg-red-600 text-red-600 hover:text-white py-2 rounded-lg font-bold text-xs transition uppercase border border-red-200 flex items-center justify-center gap-1.5 cursor-pointer">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    <span>HAPUS AKSES & BERKAS PC</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div v-else class="text-center py-10 bg-gray-50 rounded-xl border-2 border-dashed">
@@ -232,8 +266,14 @@ onMounted(() => {
                             <p class="font-bold text-gray-800 leading-tight">{{ pc.user.name }}</p>
                             <p class="text-[10px] text-gray-500 mb-3">{{ pc.user.pangkat }} / {{ pc.user.nrp }}</p>
                             
-                            <button @click="openPcStorage(pc.id)" class="block w-full text-center bg-gray-50 hover:bg-green-600 hover:text-white text-gray-600 py-2 rounded font-bold text-[10px] transition uppercase border"> Buka Penyimpanan
-                            </button>
+                            <div class="space-y-1.5">
+                                <button @click="openPcStorage(pc.id)" class="block w-full text-center bg-gray-50 hover:bg-green-600 hover:text-white text-gray-600 py-2 rounded font-bold text-[10px] transition uppercase border"> Buka Penyimpanan
+                                </button>
+                                <button v-if="isAdmin" @click="revokePcAccess(pc)" class="block w-full text-center bg-red-50 hover:bg-red-600 text-red-600 hover:text-white py-1.5 rounded font-bold text-[10px] transition uppercase border border-red-200 flex items-center justify-center gap-1 cursor-pointer">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    <span>Hapus Akses & Berkas</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <p v-else class="text-center text-gray-400 py-4 text-sm italic"> Belum ada personel lain dalam sistem.</p>

@@ -498,6 +498,43 @@ class BackupController extends Controller
         return back()->with('success', 'IP telah dinonaktifkan.');
     }
 
+        /**
+     * OPERASI KHUSUS ADMIN: HAPUS AKSES & SELURUH BERKAS PC PERMANEN
+     */
+    public function revokePc($id)
+    {
+        $user = Auth::user();
+        if ($user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
+            return abort(403, 'Anda tidak memiliki otoritas menghapus akses PC.');
+        }
+
+        $pc = Pc::findOrFail($id);
+
+        // 1. Hapus seluruh berkas fisik dari storage
+        $backups = Backup::where('pc_id', $pc->id)->get();
+        foreach ($backups as $backup) {
+            if (!$backup->is_folder && !empty($backup->file_path) && Storage::disk('public')->exists($backup->file_path)) {
+                Storage::disk('public')->delete($backup->file_path);
+            }
+        }
+
+        // 2. Hapus seluruh direktori penyimpanan PC di storage/backups/{pc_id}
+        if (Storage::disk('public')->exists('backups/' . $pc->id)) {
+            Storage::disk('public')->deleteDirectory('backups/' . $pc->id);
+        }
+
+        // 3. Hapus seluruh record data Backup dari database
+        Backup::where('pc_id', $pc->id)->delete();
+
+        // 4. Hapus pengajuan akses personel (AccessRequest) agar personel bisa mengajukan ulang jika perlu
+        AccessRequest::where('user_id', $pc->user_id)->delete();
+
+        // 5. Hapus record PC
+        $pc->delete();
+
+        return back()->with('success', 'Otoritas akses dan seluruh berkas PC berhasil dihapus secara permanen.');
+    }
+
     private function formatPcData($pc) {
         $pc->usage_human = $this->formatBytes($pc->current_usage);
         $pc->quota_human = $this->formatBytes($pc->max_quota);
