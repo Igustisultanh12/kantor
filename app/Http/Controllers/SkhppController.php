@@ -532,6 +532,28 @@ class SkhppController extends Controller
             }
         }
 
+        // 3. Cek di tabel User untuk Kode Verifikasi Token
+        if (!$skhpp) {
+            $usr = \App\Models\User::where('activation_token', $code)
+                ->orWhere('nrp', $code)
+                ->orWhere('id', str_replace('DOC-USER-', '', $code))
+                ->first();
+            if ($usr) {
+                $skhpp = (object) [
+                    'verification_code' => $code,
+                    'document_title' => 'DAFTAR KODE VERIFIKASI & TOKEN AKTIVASI AKUN PERSONEL',
+                    'nama' => $usr->name,
+                    'pangkat_korps_nrp' => ($usr->pangkat ?: 'TNI AL') . ($usr->nrp ? (' / NRP ' . $usr->nrp) : ''),
+                    'kategori_personel' => 'Dinas Militer & PNS',
+                    'nomor_skhpp' => 'SINDEN/VERIF/' . $usr->id,
+                    'jabatan_pekerjaan' => 'Personel SINDEN Kodaeral V',
+                    'peruntukan' => 'Dokumen Resmi Kode Verifikasi Otoritas Akun Personel',
+                    'tanggal_skhpp' => $usr->updated_at ?: now(),
+                    'status' => 'approved',
+                ];
+            }
+        }
+
         if (!$skhpp || (is_object($skhpp) && isset($skhpp->status) && $skhpp->status !== 'approved')) {
             return Inertia::render('Skhpp/Verify', [
                 'skhpp' => null,

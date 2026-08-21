@@ -283,8 +283,10 @@ class UserController extends Controller
 
         $qrCodeBase64 = null;
         try {
-            $qrData = "SINDEN-VERIFY-TOKEN|" . date('YmdHis') . "|" . $user->nrp;
-            $qrCodeBase64 = 'data:image/png;base64,' . base64_encode(file_get_contents('https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' . urlencode($qrData)));
+            $verifCode = !empty($user->nrp) ? $user->nrp : ('DOC-USER-' . $user->id);
+            $verifyUrl = route('skhpp.verify', $verifCode);
+            $qrApiUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' . urlencode($verifyUrl);
+            $qrCodeBase64 = 'data:image/png;base64,' . base64_encode(file_get_contents($qrApiUrl));
         } catch (\Exception $e) {}
 
         $data = [
