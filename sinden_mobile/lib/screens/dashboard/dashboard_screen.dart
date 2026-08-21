@@ -11,6 +11,7 @@ import '../letters/letters_draft_screen.dart';
 import '../categories/categories_screen.dart';
 import '../skhpp/skhpp_list_screen.dart';
 import '../cash/cash_screen.dart';
+import '../technical_cash/technical_cash_screen.dart';
 import '../commander/commander_account_screen.dart';
 import '../mitra/mitra_screen.dart';
 import '../violations/violations_screen.dart';
@@ -321,7 +322,7 @@ class DashboardScreen extends StatelessWidget {
                   icon: Icons.settings_suggest_outlined,
                   color: const Color(0xFF0891B2),
                   hasAccess: user?.canAccessTechnicalCash ?? false,
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CashScreen())),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TechnicalCashScreen())),
                 ),
                 _buildMenuItem(
                   context: context,

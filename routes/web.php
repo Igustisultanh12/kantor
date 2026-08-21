@@ -1109,3 +1109,73 @@ Route::get('/api/mobile/notifications', function () {
         return response()->json(['status' => 'error', 'notifications' => [], 'unreadCount' => 0]);
     }
 });
+
+// API KAS DAN UNIT TEKNIS KHUSUS (Model: App\Models\TechnicalUnitCash / Table: technical_unit_cashes)
+Route::get('/api/mobile/technical-cash', function () {
+    try {
+        $all = \App\Models\TechnicalUnitCash::orderBy('date', 'asc')->orderBy('id', 'asc')->get();
+        $balance = (float)($all->last()?->balance ?? 0);
+        $totalDebit = (float)$all->sum('debit');
+        $totalCredit = (float)$all->sum('credit');
+
+        $reversed = $all->map(function($cash) {
+            return [
+                'id' => $cash->id,
+                'date' => (string)($cash->getRawOriginal('date') ?? $cash->date),
+                'description' => $cash->description ?? '-',
+                'debit' => (float)($cash->debit ?? 0),
+                'credit' => (float)($cash->credit ?? 0),
+                'balance' => (float)($cash->balance ?? 0),
+            ];
+        })->reverse()->values();
+
+        return response()->json([
+            'status' => 'success',
+            'balance' => $balance,
+            'totalSaldo' => $balance,
+            'total_debit' => $totalDebit,
+            'total_credit' => $totalCredit,
+            'cashes' => $reversed,
+            'transactions' => $reversed,
+            'data' => $reversed,
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'balance' => 0, 'data' => []]);
+    }
+});
+
+Route::post('/api/mobile/technical-cash', function (\Illuminate\Http\Request $request) {
+    try {
+        $data = $request->json()->all() ?: $request->all();
+        $date = $data['date'] ?? date('Y-m-d');
+        $desc = $data['description'] ?? '-';
+        $debit = (float)($data['debit'] ?? 0);
+        $credit = (float)($data['credit'] ?? 0);
+
+        $lastCash = \App\Models\TechnicalUnitCash::orderBy('date', 'desc')->orderBy('id', 'desc')->first();
+        $prevBalance = $lastCash ? (float)$lastCash->balance : 0.0;
+        $newBalance = $prevBalance + $debit - $credit;
+
+        $cash = \App\Models\TechnicalUnitCash::create([
+            'date' => $date,
+            'description' => $desc,
+            'debit' => $debit,
+            'credit' => $credit,
+            'balance' => $newBalance,
+        ]);
+
+        return response()->json(['status' => 'success', 'data' => $cash]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+Route::delete('/api/mobile/technical-cash/{id}', function ($id) {
+    try {
+        $cash = \App\Models\TechnicalUnitCash::findOrFail($id);
+        $cash->delete();
+        return response()->json(['status' => 'success', 'message' => 'Kas Dan Unit Teknis berhasil dihapus']);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
