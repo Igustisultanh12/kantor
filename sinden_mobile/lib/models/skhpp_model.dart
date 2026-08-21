@@ -29,21 +29,25 @@ class SkhppModel {
     this.createdBy,
   });
 
+  bool get isApproved => status.toLowerCase() == 'approved';
+  bool get isRejected => status.toLowerCase() == 'rejected';
+  bool get isPending => status.toLowerCase() == 'pending';
+
   factory SkhppModel.fromJson(Map<String, dynamic> json) {
     return SkhppModel(
       id: json['id'] ?? 0,
-      noSkhpp: json['no_skhpp'],
+      noSkhpp: json['no_skhpp'] ?? json['nomor_skhpp'],
       nama: json['nama'] ?? '',
       pangkatKorpsNrp: json['pangkat_korps_nrp'],
-      jabatan: json['jabatan'],
-      kesatuan: json['kesatuan'],
+      jabatan: json['jabatan'] ?? json['jabatan_pekerjaan'],
+      kesatuan: json['kesatuan'] ?? 'Denintel Kodaeral V',
       peruntukan: json['peruntukan'],
-      kategori: json['kategori'] ?? 'militer',
+      kategori: json['kategori'] ?? json['kategori_personel'] ?? 'militer',
       status: json['status'] ?? 'pending',
-      barcodeString: json['barcode_string'],
-      signedAt: json['signed_at'],
-      tanggalSurat: json['tanggal_surat'] ?? json['created_at'],
-      createdBy: json['creator'] != null ? json['creator']['name'] : null,
+      barcodeString: json['barcode_string'] ?? json['verification_code'],
+      signedAt: json['signed_at'] ?? json['approved_at'],
+      tanggalSurat: json['tanggal_surat'] ?? json['tanggal_skhpp'] ?? json['created_at'],
+      createdBy: json['creator'] != null ? json['creator']['name'] : (json['operator_name'] ?? 'Operator'),
     );
   }
 }

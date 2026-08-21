@@ -36,11 +36,11 @@ class _LetterLogsScreenState extends State<LetterLogsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Row(
+        title: const Row(
           children: [
-            const Icon(Icons.picture_as_pdf, color: Color(0xFFDC2626), size: 24),
-            const SizedBox(width: 8),
-            const Expanded(child: Text('Pratinjau Agenda Surat', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15))),
+            Icon(Icons.picture_as_pdf, color: Color(0xFFDC2626), size: 24),
+            SizedBox(width: 8),
+            Expanded(child: Text('Pratinjau Agenda Surat', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15))),
           ],
         ),
         content: Column(
@@ -200,10 +200,7 @@ class _LetterLogsScreenState extends State<LetterLogsScreen> {
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
-                                    StatusPill(
-                                      label: log.categoryName,
-                                      type: StatusType.info,
-                                    ),
+                                    StatusPill.info(log.categoryName),
                                   ],
                                 ),
                                 subtitle: Column(

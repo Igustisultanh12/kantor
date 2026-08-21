@@ -39,12 +39,12 @@ class _SkhppListScreenState extends State<SkhppListScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(skhpp.noSkhpp, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.primaryNavy)),
+            Text(skhpp.noSkhpp ?? 'SKHPP', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.primaryNavy)),
             const SizedBox(height: 8),
             Text('Nama Personel: ${skhpp.nama}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-            Text('Pangkat/Korps/NRP: ${skhpp.pangkatKorpsNrp}', style: const TextStyle(fontSize: 11, color: Color(0xFF334155))),
-            Text('Jabatan: ${skhpp.jabatan}', style: const TextStyle(fontSize: 11, color: Color(0xFF334155))),
-            Text('Peruntukan: ${skhpp.peruntukan}', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+            Text('Pangkat/Korps/NRP: ${skhpp.pangkatKorpsNrp ?? '-'}', style: const TextStyle(fontSize: 11, color: Color(0xFF334155))),
+            Text('Jabatan: ${skhpp.jabatan ?? '-'}', style: const TextStyle(fontSize: 11, color: Color(0xFF334155))),
+            Text('Peruntukan: ${skhpp.peruntukan ?? '-'}', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
@@ -165,16 +165,16 @@ class _SkhppListScreenState extends State<SkhppListScreen> {
                                 children: [
                                   Expanded(
                                     child: Text(
-                                      skhpp.noSkhpp,
+                                      skhpp.noSkhpp ?? 'SKHPP',
                                       style: const TextStyle(fontWeight: FontWeight.w900, color: AppTheme.primaryNavy, fontSize: 13),
                                     ),
                                   ),
-                                  StatusPill(
-                                    label: skhpp.status.toUpperCase(),
-                                    type: skhpp.isApproved
-                                        ? StatusType.success
-                                        : (skhpp.isRejected ? StatusType.danger : StatusType.warning),
-                                  ),
+                                  if (skhpp.isApproved)
+                                    StatusPill.success(skhpp.status)
+                                  else if (skhpp.isRejected)
+                                    StatusPill.danger(skhpp.status)
+                                  else
+                                    StatusPill.warning(skhpp.status),
                                 ],
                               ),
                               const SizedBox(height: 8),
@@ -183,12 +183,12 @@ class _SkhppListScreenState extends State<SkhppListScreen> {
                                 style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF0F172A)),
                               ),
                               Text(
-                                '${skhpp.pangkatKorpsNrp} - ${skhpp.jabatan}',
+                                '${skhpp.pangkatKorpsNrp ?? '-'} - ${skhpp.jabatan ?? '-'}',
                                 style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                'Peruntukan: ${skhpp.peruntukan}',
+                                'Peruntukan: ${skhpp.peruntukan ?? '-'}',
                                 style: const TextStyle(fontSize: 11, color: Color(0xFF334155), fontStyle: FontStyle.italic),
                               ),
                               const Divider(height: 18),
@@ -196,7 +196,7 @@ class _SkhppListScreenState extends State<SkhppListScreen> {
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    skhpp.tanggalSurat,
+                                    skhpp.tanggalSurat ?? '',
                                     style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600),
                                   ),
                                   Row(

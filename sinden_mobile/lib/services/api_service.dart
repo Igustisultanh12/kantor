@@ -61,7 +61,7 @@ class ApiService {
     }
   }
 
-    Future<dynamic> post(String endpoint, Map<String, dynamic> data) async {
+  Future<dynamic> post(String endpoint, Map<String, dynamic> data) async {
     try {
       final baseUrl = await getBaseUrl();
       final cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/$endpoint';
@@ -71,7 +71,7 @@ class ApiService {
       final req = http.Request('POST', url);
       req.headers.addAll(headers);
       req.body = jsonEncode(data);
-      req.followRedirects = false; // AGAR TIDAK SILENT REDIRECT 302 KE HALAMAN LOGIN WEB!
+      req.followRedirects = false;
 
       final client = http.Client();
       final streamed = await client.send(req).timeout(
@@ -80,7 +80,6 @@ class ApiService {
       );
       var response = await http.Response.fromStream(streamed);
 
-      // OTOMATIS IKUTI PENGALIHAN 301/302 METODE POST KE TARGET REDIRECT (MISAL m.sisinden.my.id)
       if (response.statusCode == 301 || response.statusCode == 302 || response.statusCode == 307 || response.statusCode == 308) {
         final redirectUrl = response.headers['location'];
         if (redirectUrl != null && redirectUrl.trim().isNotEmpty) {
@@ -97,101 +96,80 @@ class ApiService {
 
       client.close();
       return _handleResponse(response);
-    } on SocketException catch (se) {
-      throw Exception('Gagal Koneksi Jaringan (SocketException): ' + se.message);
-    } on FormatException catch (fe) {
-      throw Exception('Format Data Server Tidak Sesuai (FormatException): ' + fe.message);
+    } on SocketException catch (_) {
+      throw Exception('Gagal Koneksi Jaringan. Periksa sambungan kuota/WiFi HP Anda.');
+    } on HttpException catch (_) {
+      throw Exception('Protokol Layanan Server Mengalami Gangguan.');
     } catch (e) {
       if (e.toString().contains('SocketException') || e.toString().contains('ClientException')) {
-        throw Exception('Gagal Menghubungkan ke Server (Offline / Unreachable): ' + e.toString());
+        throw Exception('Gagal Menghubungkan ke Server (Offline). Coba beberapa saat lagi.');
       }
       rethrow;
     }
   }
 
-  Future<dynamic> uploadMultipart(
-    String endpoint,
-    Map<String, String> fields,
-    List<File> files,
-    String fileFieldKey,
-  ) async {
+  Future<dynamic> put(String endpoint, Map<String, dynamic> data) async {
     try {
       final baseUrl = await getBaseUrl();
       final cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/$endpoint';
       final url = Uri.parse('$baseUrl$cleanEndpoint');
-      final headers = await _getHeaders(isMultipart: true);
+      final headers = await _getHeaders();
 
-      final request = http.MultipartRequest('POST', url);
-      request.headers.addAll(headers);
-      request.fields.addAll(fields);
+      final req = http.Request('PUT', url);
+      req.headers.addAll(headers);
+      req.body = jsonEncode(data);
+      req.followRedirects = false;
 
-      for (var file in files) {
-        if (await file.exists()) {
-          request.files.add(await http.MultipartFile.fromPath(fileFieldKey, file.path));
-        }
-      }
+      final client = http.Client();
+      final streamed = await client.send(req).timeout(const Duration(seconds: 15));
+      final response = await http.Response.fromStream(streamed);
+      client.close();
 
-      final streamedResponse = await request.send().timeout(
-        const Duration(seconds: 30),
-        onTimeout: () => throw Exception('Unggah Berkas Waktu Habis. Periksa jaringan Anda.'),
-      );
-      final response = await http.Response.fromStream(streamedResponse);
       return _handleResponse(response);
-    } on SocketException catch (_) {
-      throw Exception('Gagal Unggah: Jaringan terputus.');
     } catch (e) {
       rethrow;
     }
   }
 
-    dynamic _handleResponse(http.Response response) {
-    final reqUrl = response.request?.url.toString() ?? 'URL Tidak Diketahui';
-    final code = response.statusCode;
-    final bodySnippet = response.body.length > 250 ? response.body.substring(0, 250) + '...' : response.body;
+  Future<dynamic> delete(String endpoint) async {
+    try {
+      final baseUrl = await getBaseUrl();
+      final cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/$endpoint';
+      final url = Uri.parse('$baseUrl$cleanEndpoint');
+      final headers = await _getHeaders();
 
-    if (response.body.contains('Just a moment') || response.body.contains('challenge-platform') || response.body.contains('cf-mitigated')) {
-      throw Exception('TERHADANG CLOUDFLARE WAF\n[HTTP $code] $reqUrl\nDetail: Cloudflare mencegat koneksi HP dengan tantangan keamanan.');
+      final req = http.Request('DELETE', url);
+      req.headers.addAll(headers);
+      req.followRedirects = false;
+
+      final client = http.Client();
+      final streamed = await client.send(req).timeout(const Duration(seconds: 15));
+      final response = await http.Response.fromStream(streamed);
+      client.close();
+
+      return _handleResponse(response);
+    } catch (e) {
+      rethrow;
     }
+  }
 
-    if (code >= 200 && code < 300) {
-      if (response.body.isEmpty) return null;
+  dynamic _handleResponse(http.Response response) {
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.body.isEmpty) return {'status': 'success'};
       try {
         return jsonDecode(response.body);
-      } catch (e) {
-        throw Exception('GAGAL PARSE JSON [HTTP $code]\nEndpoint: $reqUrl\nError: $e\nBody Mentah: $bodySnippet');
-      }
-    } else if (code == 301 || code == 302 || code == 303 || code == 307 || code == 308) {
-      final loc = response.headers['location'] ?? 'Location Header Kosong';
-      throw Exception('TERJADI PENGALIHAN HALAMAN SERVER [HTTP $code REDIRECT]\nEndpoint Awal: $reqUrl\nTarget Redirect: $loc\nDetail: Server meminta HP dialihkan ke URL lain (Bukan REST API JSON).');
-    } else if (code == 401) {
-      String msg = 'Kredensial tidak cocok. Silakan periksa NRP / Email dan Kata Sandi Anda.';
-      try {
-        final err = jsonDecode(response.body);
-        if (err['message'] != null) msg = err['message'];
-      } catch (_) {}
-      throw Exception('GAGAL AUTENTIKASI [HTTP 401]\nEndpoint: $reqUrl\nPesan Server: $msg');
-    } else if (code == 403) {
-      String msg = 'Akses Ditolak. Akun belum aktif atau dibekukan oleh Admin.';
-      try {
-        final err = jsonDecode(response.body);
-        if (err['message'] != null) msg = err['message'];
-      } catch (_) {}
-      throw Exception('AKSES DITOLAK [HTTP 403]\nEndpoint: $reqUrl\nPesan Server: $msg');
-    } else if (code == 404) {
-      throw Exception('LAYANAN SERVER TIDAK DITEMUKAN [HTTP 404]\nEndpoint: $reqUrl\nDetail: Rute API tidak tersedia pada server.');
-    } else if (code >= 500) {
-      throw Exception('KENDALA INTERNAL SERVER [HTTP $code]\nEndpoint: $reqUrl\nBody Respon: $bodySnippet');
-    } else {
-      String errMsg = 'KENDALA HTTP RESPONS [HTTP $code]';
-      try {
-        final errJson = jsonDecode(response.body);
-        if (errJson['message'] != null && errJson['message'].toString().isNotEmpty) {
-          errMsg += '\nPesan Server: ' + errJson['message'].toString();
-        }
       } catch (_) {
-        errMsg += '\nBody Mentah: $bodySnippet';
+        return {'status': 'success', 'data': response.body};
       }
-      throw Exception('$errMsg\nEndpoint: $reqUrl');
+    } else {
+      String msg = 'Gagal memproses data (${response.statusCode})';
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic> && decoded.containsKey('message')) {
+          msg = decoded['message'];
+        }
+      } catch (_) {}
+      throw Exception(msg);
     }
   }
 }
