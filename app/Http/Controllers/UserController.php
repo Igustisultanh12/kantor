@@ -298,7 +298,7 @@ class UserController extends Controller
             'qrCodeBase64' => $qrCodeBase64
         ];
 
-        $pdf = Pdf::loadView('pdf.kodeverifikasi', $data)->setPaper('a4', 'landscape');
+        $pdf = Pdf::loadView('pdf.kodeverifikasi', $data)->setPaper('a4', 'portrait');
         return $pdf->stream('Laporan_Kode_Verifikasi_' . date('Ymd_His') . '.pdf');
     }
 

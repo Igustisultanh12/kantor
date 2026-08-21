@@ -5,7 +5,7 @@
     <title>Laporan Kode Verifikasi Personel - SINDEN</title>
     <style>
         @page {
-            size: A4 landscape;
+            size: A4 portrait;
             margin: 1.2cm 1.5cm;
         }
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 11px; color: #000; line-height: 1.4; margin: 0; padding: 0; }
@@ -53,7 +53,7 @@
         <thead>
             <tr>
                 <th style="width: 4%;">NO</th>
-                <th style="width: 15%;">NRP / PNS</th>
+                <th style="width: 16%;">NRP / NIP.</th>
                 <th>NAMA LENGKAP</th>
                 <th style="width: 12%;">PANGKAT</th>
                 <th style="width: 22%;">EMAIL REGISTRASI</th>
@@ -80,7 +80,7 @@
     <div class="instruction-box">
         <strong>PETUNJUK PENGGUNAAN KODE VERIFIKASI:</strong>
         <ol>
-            <li>Buka halaman <strong>https://sisinden.my.id/aktivasi</strong> dan masukkan NRP / PNS atau Email Anda.</li>
+            <li>Buka halaman <strong>https://sisinden.my.id/aktivasi</strong> dan masukkan NRP / NIP. atau Email Anda.</li>
             <li>Setelah mengisi formulir, masukkan <strong>Kode Verifikasi</strong> (Token) sesuai nama Anda pada tabel di atas.</li>
             <li>Buat Kata Sandi (Password) baru minimal 8 karakter lalu konfirmasi.</li>
             <li>Klik tombol <strong>Aktifkan Otoritas Akun</strong>. Akun Anda akan langsung aktif.</li>
