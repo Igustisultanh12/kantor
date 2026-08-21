@@ -167,7 +167,31 @@ class UserController extends Controller
             'must_change_password' => false,
         ]);
 
-        return redirect()->route('login')->with('message', 'Akun berhasil diaktifkan. Silakan login dengan password baru Anda.');
+        // Kirim Notifikasi WA bahwa Aktivasi Telah Berhasil
+        try {
+            if (!empty($user->phone)) {
+                $targetPhone = $user->phone;
+                if (str_starts_with($targetPhone, '0')) {
+                    $targetPhone = '62' . substr($targetPhone, 1);
+                }
+
+                $pesanWA = "*AKTIVASI AKUN SINDEN BERHASIL*\n\n" .
+                           "Selamat, *{$user->pangkat} {$user->name}*!\n" .
+                           "Akun SINDEN Anda telah resmi diaktifkan.\n\n" .
+                           "*Detail Otoritas:*\n" .
+                           "- NRP: *{$user->nrp}*\n" .
+                           "- Email: *{$user->email}*\n\n" .
+                           "Silakan login ke sistem menggunakan Email (*{$user->email}*) dan Password yang telah Anda buat di:\n" .
+                           "https://sisinden.my.id/login\n\n" .
+                           "_Tetap jaga kerahasiaan kredensial akun Anda._";
+
+                WhatsappService::sendMessage($targetPhone, $pesanWA);
+            }
+        } catch (\Exception $waError) {
+            Log::error('Gagal kirim notif WA aktivasi ke: ' . $user->phone . ' | Error: ' . $waError->getMessage());
+        }
+
+        return redirect()->route('login')->with('message', 'Aktivasi Akun Berhasil! Akun Anda telah aktif secara resmi. Silakan login menggunakan Email (' . $user->email . ') dan Password Anda.');
     }
 
     /**
