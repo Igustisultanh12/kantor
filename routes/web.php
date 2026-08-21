@@ -364,3 +364,21 @@ Route::post('/api/mobile/login', function (\Illuminate\Http\Request $request) {
         ],
     ]);
 });
+
+// =====================================================================
+// GERBANG CONFIGURASI DAN STATUS SERVISE MOBILE API
+// =====================================================================
+Route::get('/api/mobile/config', function () {
+    $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+    return response()->json([
+        'status' => 'success',
+        'app_name' => $settings['agency_name'] ?? 'SI SINDEN',
+        'agency_name' => $settings['agency_name'] ?? 'DETASEMEN INTELIJEN KODAERAL V',
+        'api_base_url' => $settings['mobile_api_base_url'] ?? config('app.url', 'https://sisinden.my.id'),
+        'api_login_endpoint' => '/api/mobile/login',
+        'apk_download_url' => $settings['mobile_apk_download_url'] ?? 'https://sisinden.my.id/download/sinden-mobile.apk',
+        'api_status' => $settings['mobile_api_status'] ?? 'AKTIF',
+        'min_version' => $settings['mobile_min_version'] ?? '1.0.0',
+        'server_time' => now()->toIso8601String(),
+    ]);
+});

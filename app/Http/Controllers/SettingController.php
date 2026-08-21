@@ -34,7 +34,7 @@ class SettingController extends Controller
         ]);
 
         // 1. Update pengaturan teks (agency_name, copyright, start_number, wa_notifications_enabled)
-        foreach ($request->only(['agency_name', 'copyright', 'start_number', 'wa_notifications_enabled']) as $key => $value) {
+        foreach ($request->only(['agency_name', 'copyright', 'start_number', 'wa_notifications_enabled', 'mobile_api_base_url', 'mobile_apk_download_url', 'mobile_api_status', 'mobile_min_version']) as $key => $value) {
             if ($value !== null) {
                 Setting::updateOrCreate(['key' => $key], ['value' => (string)$value]);
             }

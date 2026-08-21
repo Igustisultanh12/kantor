@@ -14,6 +14,10 @@ const form = useForm({
     copyright: props.settings.copyright || '',
     start_number: props.settings.start_number || 1,
     wa_notifications_enabled: props.settings.wa_notifications_enabled !== undefined ? String(props.settings.wa_notifications_enabled) : '1',
+    mobile_api_base_url: props.settings.mobile_api_base_url || 'https://sisinden.my.id',
+    mobile_apk_download_url: props.settings.mobile_apk_download_url || 'https://sisinden.my.id/download/sinden-mobile.apk',
+    mobile_api_status: props.settings.mobile_api_status || 'AKTIF',
+    mobile_min_version: props.settings.mobile_min_version || '1.0.0',
     logo: null,
     login_background: null,
     signature_file: null,
@@ -252,6 +256,48 @@ onUnmounted(() => { if (waInterval) clearInterval(waInterval); });
                                     </label>
                                     <p class="text-[8px] text-slate-400 leading-tight mt-0.5">Wajib PNG Tanpa Background agar tidak menutupi teks surat.</p>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PENGATURAN KONTROL & INTEGRASI APK MOBILE ANDROID -->
+                    <div class="pt-8 border-t border-slate-100 space-y-4">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-sm">
+                                ðŸ“±
+                            </div>
+                            <div>
+                                <h3 class="text-xs font-black text-slate-900 uppercase tracking-wider">PENGATURAN KONTROL & INTEGRASI APLIKASI MOBILE (APK ANDROID)</h3>
+                                <p class="text-[10px] text-slate-500 font-semibold">Atur Server Base URL, Link Unduh APK, dan Status Layanan API Mobile SINDEN</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-indigo-50/40 p-6 rounded-3xl border border-indigo-100">
+                            <div class="space-y-1.5">
+                                <label class="text-[10px] font-extrabold text-indigo-900 uppercase tracking-wider ms-1">Base URL Endpoint API Mobile</label>
+                                <input v-model="form.mobile_api_base_url" type="text" class="w-full rounded-2xl border-indigo-200 bg-white focus:ring-indigo-500 focus:border-indigo-600 font-mono text-xs font-bold px-4 py-3 text-slate-800" placeholder="https://sisinden.my.id">
+                                <p class="text-[9px] text-indigo-500 font-bold ms-1">Domain utama tempat API HP terhubung.</p>
+                            </div>
+
+                            <div class="space-y-1.5">
+                                <label class="text-[10px] font-extrabold text-indigo-900 uppercase tracking-wider ms-1">Status Layanan API Mobile</label>
+                                <select v-model="form.mobile_api_status" class="w-full rounded-2xl border-indigo-200 bg-white focus:ring-indigo-500 focus:border-indigo-600 text-xs font-extrabold px-4 py-3 text-slate-800">
+                                    <option value="AKTIF">AKTIF (NORMAL OPERATIONAL)</option>
+                                    <option value="PEMELIHARAAN">PEMELIHARAAN (MAINTENANCE MODE)</option>
+                                </select>
+                                <p class="text-[9px] text-indigo-500 font-bold ms-1">Bila Pemeliharaan, HP tidak dapat login.</p>
+                            </div>
+
+                            <div class="space-y-1.5">
+                                <label class="text-[10px] font-extrabold text-indigo-900 uppercase tracking-wider ms-1">Link Unduh Installer APK Resmi</label>
+                                <input v-model="form.mobile_apk_download_url" type="text" class="w-full rounded-2xl border-indigo-200 bg-white focus:ring-indigo-500 focus:border-indigo-600 font-mono text-xs font-bold px-4 py-3 text-slate-800" placeholder="https://sisinden.my.id/download/sinden-mobile.apk">
+                                <p class="text-[9px] text-indigo-500 font-bold ms-1">URL langsung untuk mendownload APK terbaru.</p>
+                            </div>
+
+                            <div class="space-y-1.5">
+                                <label class="text-[10px] font-extrabold text-indigo-900 uppercase tracking-wider ms-1">Versi Minimum APK Mobile</label>
+                                <input v-model="form.mobile_min_version" type="text" class="w-full rounded-2xl border-indigo-200 bg-white focus:ring-indigo-500 focus:border-indigo-600 text-xs font-extrabold px-4 py-3 text-slate-800" placeholder="1.0.0">
+                                <p class="text-[9px] text-indigo-500 font-bold ms-1">Versi minimum aplikasi Android yang diizinkan.</p>
                             </div>
                         </div>
                     </div>

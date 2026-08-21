@@ -27,7 +27,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/v1/pess/receive-submission',
             'login',
             'api/login',
-            'api/mobile/login'
+            'api/mobile/login',
+            'api/mobile/config'
         ]);
 
         // 2. REGISTRASI SELURUH ALIAS MIDDLEWARE (Disatukan di sini)
