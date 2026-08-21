@@ -150,8 +150,7 @@ class UserController extends Controller
         $user = User::where('activation_token', $token)
                     ->where(function($q) use ($identifier) {
                         $q->where('nrp', $identifier)
-                          ->orWhere('email', $identifier)
-                          ->orWhere('username', $identifier);
+                          ->orWhere('email', $identifier);
                     })
                     ->first();
 
