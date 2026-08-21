@@ -78,9 +78,24 @@ class ApiService {
         const Duration(seconds: 15),
         onTimeout: () => throw Exception('Koneksi Waktu Habis (Timeout). Periksa sambungan data/internet Anda.'),
       );
-      final response = await http.Response.fromStream(streamed);
-      client.close();
+      var response = await http.Response.fromStream(streamed);
 
+      // OTOMATIS IKUTI PENGALIHAN 301/302 METODE POST KE TARGET REDIRECT (MISAL m.sisinden.my.id)
+      if (response.statusCode == 301 || response.statusCode == 302 || response.statusCode == 307 || response.statusCode == 308) {
+        final redirectUrl = response.headers['location'];
+        if (redirectUrl != null && redirectUrl.trim().isNotEmpty) {
+          final targetUri = Uri.parse(redirectUrl.trim());
+          final req2 = http.Request('POST', targetUri);
+          req2.headers.addAll(headers);
+          req2.body = jsonEncode(data);
+          req2.followRedirects = false;
+
+          final streamed2 = await client.send(req2).timeout(const Duration(seconds: 15));
+          response = await http.Response.fromStream(streamed2);
+        }
+      }
+
+      client.close();
       return _handleResponse(response);
     } on SocketException catch (se) {
       throw Exception('Gagal Koneksi Jaringan (SocketException): ' + se.message);
