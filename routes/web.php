@@ -437,10 +437,18 @@ Route::get('/admin/laravel-logs', function () {
 // =====================================================================
 Route::get('/api/mobile/config', function () {
     $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+    $logo = $settings['agency_logo'] ?? $settings['logo'] ?? null;
+    $logoUrl = !empty($logo) ? (str_starts_with($logo, 'http') ? $logo : asset('storage/' . $logo)) : asset('images/logo.png');
+    
+    $bg = $settings['login_background'] ?? null;
+    $bgUrl = !empty($bg) ? (str_starts_with($bg, 'http') ? $bg : asset('storage/' . $bg)) : null;
+
     return response()->json([
         'status' => 'success',
         'app_name' => $settings['agency_name'] ?? 'SI SINDEN',
         'agency_name' => $settings['agency_name'] ?? 'DETASEMEN INTELIJEN KODAERAL V',
+        'agency_logo' => $logoUrl,
+        'login_background' => $bgUrl,
         'api_base_url' => $settings['mobile_api_base_url'] ?? config('app.url', 'https://sisinden.my.id'),
         'api_login_endpoint' => '/api/mobile/login',
         'apk_download_url' => $settings['mobile_apk_download_url'] ?? 'https://sisinden.my.id/download/sinden-mobile.apk',
