@@ -177,7 +177,7 @@ class UserController extends Controller
 
                 $pesanWA = "*AKTIVASI AKUN SINDEN BERHASIL*\n\n" .
                            "Selamat, *{$user->pangkat} {$user->name}*!\n" .
-                           "Akun SINDEN Anda telah resmi diaktifkan.\n\n" .
+                           "Akun SINDEN Anda telah diaktifkan.\n\n" .
                            "*Detail Otoritas:*\n" .
                            "- NRP: *{$user->nrp}*\n" .
                            "- Email: *{$user->email}*\n\n" .
@@ -191,7 +191,7 @@ class UserController extends Controller
             Log::error('Gagal kirim notif WA aktivasi ke: ' . $user->phone . ' | Error: ' . $waError->getMessage());
         }
 
-        return redirect()->route('login')->with('message', 'Aktivasi Akun Berhasil! Akun Anda telah aktif secara resmi. Silakan login menggunakan Email (' . $user->email . ') dan Password Anda.');
+        return redirect()->route('login')->with('message', 'Aktivasi Akun Berhasil! Akun Anda telah aktif. Silakan login menggunakan Email (' . $user->email . ') dan Password Anda.');
     }
 
     /**

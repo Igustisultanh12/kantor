@@ -31,7 +31,7 @@ const submit = () => {
             Swal.fire({
                 icon: 'success',
                 title: 'AKTIVASI OTORITAS AKUN BERHASIL',
-                text: 'Aktivasi Akun Berhasil! Akun Anda telah aktif secara resmi. Silakan login menggunakan Email dan Password Anda.',
+                text: 'Aktivasi Akun Berhasil! Akun Anda telah aktif. Silakan login menggunakan Email dan Password Anda.',
                 confirmButtonText: 'MASUK KE SISTEM',
                 confirmButtonColor: '#f97316',
                 background: 'rgba(15, 23, 42, 0.92)',
