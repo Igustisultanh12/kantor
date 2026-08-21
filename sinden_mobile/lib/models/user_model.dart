@@ -60,6 +60,15 @@ class UserModel {
   bool get isAdmin => role == 'admin';
   bool get isKomandan => role == 'komandan' || role == 'dan_unit_teknis' || (jabatan != null && jabatan!.toLowerCase().contains('komandan'));
 
+  String get fullIdentity {
+    final parts = <String>[];
+    if (pangkat != null && pangkat!.trim().isNotEmpty) parts.add(pangkat!.trim());
+    if (korps != null && korps!.trim().isNotEmpty) parts.add(korps!.trim());
+    if (name.trim().isNotEmpty) parts.add(name.trim());
+    if (nrp != null && nrp!.trim().isNotEmpty) parts.add("NRP " + nrp!.trim());
+    return parts.join(' ');
+  }
+
   factory UserModel.fromJson(Map<String, dynamic> json) {
     final r = json['role'] ?? 'user';
     final isAdm = r == 'admin';
