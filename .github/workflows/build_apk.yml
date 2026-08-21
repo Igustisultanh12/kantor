@@ -53,20 +53,13 @@ jobs:
         run: |
           cp sinden_mobile/build/app/outputs/flutter-apk/app-release.apk SI-SINDEN-v1.0-release.apk
 
-      - name: Upload APK to Actions Summary
-        uses: actions/upload-artifact@v4
-        continue-on-error: true
-        with:
-          name: SI-SINDEN-Android-APK
-          path: SI-SINDEN-v1.0-release.apk
-          retention-days: 7
-
-      - name: Publish to GitHub Releases Page
+      - name: Publish Release APK to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "v1.0.${{ github.run_number }}"
           name: "SI SINDEN Mobile Android App v1.0.${{ github.run_number }}"
           body: "Aplikasi Mobile Resmi SI SINDEN - Detasemen Intelijen Kodaeral V Berbasis Google Material 3 Design."
           files: SI-SINDEN-v1.0-release.apk
+          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
