@@ -580,6 +580,71 @@ onUnmounted(() => {
                 </div>
             </div>
         </div>
+        <!-- MODAL TAMBAH PERSONEL BANYAK (BULK) -->
+        <div v-if="showBulkModal" class="fixed inset-0 bg-indigo-950/40 backdrop-blur-md flex items-center justify-center z-[100] p-4 sm:p-6 overflow-y-auto">
+            <div class="bg-white w-full max-w-5xl rounded-[2.5rem] shadow-2xl p-6 sm:p-8 space-y-6 animate-in zoom-in duration-200 my-auto border border-slate-100">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+                    <div>
+                        <h3 class="text-base font-black text-slate-900 uppercase">PENDAFTARAN BANYAK AKUN PERSONEL (BULK)</h3>
+                        <p class="text-xs text-slate-500 font-semibold mt-0.5">Input masal data personel. Kode Verifikasi (Token Aktivasi) akan dicetak otomatis dalam format PDF Kedinasan (Tanpa Notif WA).</p>
+                    </div>
+                    <button @click="showBulkModal = false" class="text-slate-400 hover:text-slate-600 font-bold text-2xl cursor-pointer">&times;</button>
+                </div>
+
+                <div class="overflow-x-auto max-h-[50vh] custom-scrollbar border border-slate-100 rounded-2xl p-2">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-700 uppercase font-black">
+                                <th class="p-3 w-10 text-center">NO</th>
+                                <th class="p-3">NAMA LENGKAP *</th>
+                                <th class="p-3 w-36">PANGKAT *</th>
+                                <th class="p-3 w-36">NRP / NIP. *</th>
+                                <th class="p-3">EMAIL (OPSIONAL)</th>
+                                <th class="p-3 w-36">NO. WA (OPSIONAL)</th>
+                                <th class="p-3 w-12 text-center">AKSI</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(row, idx) in bulkRows" :key="idx" class="border-b border-slate-100 hover:bg-slate-50/50">
+                                <td class="p-2 text-center font-bold text-slate-400">{{ idx + 1 }}</td>
+                                <td class="p-2">
+                                    <input v-model="row.name" type="text" placeholder="Contoh: ERWAN JUNAEDI" class="w-full text-xs rounded-xl border-slate-200 uppercase font-bold focus:ring-indigo-500" required />
+                                </td>
+                                <td class="p-2">
+                                    <input v-model="row.pangkat" type="text" placeholder="PELTU TTG" class="w-full text-xs rounded-xl border-slate-200 font-bold focus:ring-indigo-500" required />
+                                </td>
+                                <td class="p-2">
+                                    <input v-model="row.nrp" type="text" placeholder="84025" class="w-full text-xs rounded-xl border-slate-200 font-mono font-bold focus:ring-indigo-500" required />
+                                </td>
+                                <td class="p-2">
+                                    <input v-model="row.email" type="email" placeholder="Otomatis jika kosong" class="w-full text-xs rounded-xl border-slate-200 font-mono focus:ring-indigo-500" />
+                                </td>
+                                <td class="p-2">
+                                    <input v-model="row.phone" type="text" placeholder="08123456789" class="w-full text-xs rounded-xl border-slate-200 font-mono focus:ring-indigo-500" />
+                                </td>
+                                <td class="p-2 text-center">
+                                    <button v-if="bulkRows.length > 1" @click="removeBulkRow(idx)" class="text-rose-500 hover:text-rose-700 font-bold text-lg p-1 cursor-pointer">&times;</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-4 pt-2">
+                    <button @click="addBulkRow" class="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer">
+                        + Tambah Baris Personel
+                    </button>
+
+                    <div class="flex gap-3 w-full sm:w-auto">
+                        <button @click="showBulkModal = false" class="flex-1 sm:flex-none px-5 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold text-xs uppercase hover:bg-slate-200 transition cursor-pointer">Batal</button>
+                        <button @click="submitBulk" :disabled="isSubmittingBulk" class="flex-1 sm:flex-none px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-extrabold text-xs uppercase shadow-md shadow-indigo-500/20 transition flex items-center justify-center gap-2 cursor-pointer">
+                            <span v-if="isSubmittingBulk">Memproses...</span>
+                            <span v-else>PROSES & CETAK TOKEN PDF</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </AuthenticatedLayout>
 </template>
 
