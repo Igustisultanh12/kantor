@@ -235,20 +235,12 @@ const getFileName = (path) => {
                         <tbody class="divide-y divide-gray-50">
                             <tr v-for="item in violations.data" :key="item.id" class="hover:bg-indigo-50/10 transition group">
                                 <td class="px-6 py-5">
-                                    <button type="button" @click="openDetailModal(item)" class="text-left group/btn focus:outline-none w-full">
-                                        <div class="font-black text-indigo-900 text-sm uppercase group-hover/btn:text-blue-600 transition flex items-center gap-1.5">
-                                            <span>{{ item.name }}</span>
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-600 opacity-80 group-hover/btn:opacity-100 transition shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                            </svg>
+                                    <button type="button" @click="openDetailModal(item)" class="text-left group/btn focus:outline-none block w-full">
+                                        <div class="font-black text-indigo-900 text-sm uppercase group-hover/btn:text-blue-600 transition">
+                                            {{ item.name }}
                                         </div>
-                                        <div class="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">{{ item.rank }} / {{ item.nrp }}</div>
-                                        <div class="text-[9px] text-indigo-500 font-black uppercase flex items-center gap-1.5 mt-0.5">
-                                            <span>{{ item.unit }}</span>
-                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md font-bold text-[8px] border border-blue-100 group-hover/btn:bg-blue-600 group-hover/btn:text-white transition">
-                                                <span>Lihat Rincian & Berkas</span> &rarr;
-                                            </span>
-                                        </div>
+                                        <div class="text-[10px] text-slate-500 font-bold uppercase tracking-tighter mt-0.5">{{ item.rank }} / {{ item.nrp }}</div>
+                                        <div class="text-[9px] text-indigo-600 font-black uppercase mt-0.5">{{ item.unit }}</div>
                                     </button>
                                 </td>
                                 <td class="px-6 py-5">
