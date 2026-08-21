@@ -18,7 +18,7 @@
         th { padding: 8px 6px; font-weight: bold; background-color: #f2f2f2; text-align: center; font-size: 10px; }
         td { padding: 6px 8px; font-size: 10px; }
         .text-center { text-align: center; }
-        .otp-code { font-size: 13px; font-weight: bold; letter-spacing: 2px; text-align: center; font-family: monospace; background-color: #f9f9f9; }
+        .otp-code { font-size: 11px; font-weight: bold; text-align: center; background-color: #f9f9f9; }
         .instruction-box { border: 1px solid #999; padding: 10px 14px; margin-top: 20px; font-size: 10px; background-color: #f9f9f9; }
         .instruction-box ol { margin: 5px 0 0 16px; padding: 0; }
         .instruction-box li { margin-bottom: 3px; }
@@ -65,7 +65,7 @@
             @foreach($personels as $p)
             <tr>
                 <td class="text-center">{{ $loop->iteration }}</td>
-                <td class="text-center" style="font-weight: bold; font-family: monospace;">{{ $p->nrp ?? '-' }}</td>
+                <td class="text-center" style="font-weight: bold;">{{ $p->nrp ?? '-' }}</td>
                 <td style="font-weight: bold;">{{ $p->name }}</td>
                 <td class="text-center">
                     @php
