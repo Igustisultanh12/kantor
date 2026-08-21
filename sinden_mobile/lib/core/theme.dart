@@ -126,6 +126,13 @@ class AppTheme {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)), // M3 Dialog Radius
       backgroundColor: Colors.white,
     ),
+    splashFactory: InkSparkle.splashFactory, // Google M3 Dynamic InkSparkle Touch Motion
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: ZoomPageTransitionsBuilder(), // Google M3 Predictive Zoom Page Motion
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+      },
+    ),
     dividerTheme: const DividerThemeData(
       color: outlineLight,
       thickness: 1,

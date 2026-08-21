@@ -38,9 +38,23 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final notif = Provider.of<NotificationProvider>(context);
 
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 350),
+        switchInCurve: Curves.easeOutCubic, // M3 Emphasized Decelerate Curve
+        switchOutCurve: Curves.easeInCubic, // M3 Emphasized Accelerate Curve
+        transitionBuilder: (Widget child, Animation<double> animation) {
+          return FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.96, end: 1.0).animate(animation),
+              child: child,
+            ),
+          );
+        },
+        child: KeyedSubtree(
+          key: ValueKey<int>(_currentIndex),
+          child: _screens[_currentIndex],
+        ),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,

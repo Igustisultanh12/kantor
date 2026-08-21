@@ -474,7 +474,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuItem({
+    Widget _buildMenuItem({
     required BuildContext context,
     required String title,
     required IconData icon,
@@ -482,74 +482,75 @@ class DashboardScreen extends StatelessWidget {
     required bool hasAccess,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: hasAccess ? onTap : () => _showAccessDeniedDialog(context, title),
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        decoration: BoxDecoration(
-          color: hasAccess ? Colors.white : const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: hasAccess ? const Color(0xFFE2E8F0) : const Color(0xFFF1F5F9),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: hasAccess ? onTap : () => _showAccessDeniedDialog(context, title),
+        borderRadius: BorderRadius.circular(20),
+        splashColor: color.withOpacity(0.15),
+        highlightColor: color.withOpacity(0.08),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+          decoration: BoxDecoration(
+            color: hasAccess ? Colors.white : const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: hasAccess ? const Color(0xFFE2E8F0) : const Color(0xFFF1F5F9),
+              width: 1,
+            ),
           ),
-          boxShadow: hasAccess
-              ? [
-                  BoxShadow(
-                    color: color.withOpacity(0.06),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  )
-                ]
-              : null,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: hasAccess ? color.withOpacity(0.12) : const Color(0xFFE2E8F0),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    icon,
-                    size: 20,
-                    color: hasAccess ? color : const Color(0xFF94A3B8),
-                  ),
-                ),
-                if (!hasAccess)
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFEF4444),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.lock, size: 10, color: Colors.white),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOutCubic,
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: hasAccess ? color.withOpacity(0.12) : const Color(0xFFE2E8F0),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      icon,
+                      size: 22,
+                      color: hasAccess ? color : const Color(0xFF94A3B8),
                     ),
                   ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 9.5,
-                fontWeight: hasAccess ? FontWeight.w800 : FontWeight.w600,
-                color: hasAccess ? const Color(0xFF1E293B) : const Color(0xFF94A3B8),
-                height: 1.1,
+                  if (!hasAccess)
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFEF4444),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.lock, size: 10, color: Colors.white),
+                      ),
+                    ),
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: hasAccess ? FontWeight.w800 : FontWeight.w600,
+                  color: hasAccess ? const Color(0xFF1E293B) : const Color(0xFF94A3B8),
+                  height: 1.15,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
