@@ -27,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/v1/pess/receive-submission',
             'login',
             'api/login',
+            'api/mobile/*',
             'api/mobile/login',
             'api/mobile/config'
         ]);

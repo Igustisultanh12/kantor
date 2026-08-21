@@ -18,7 +18,7 @@ class LetterProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      String endpoint = '/letter-logs?format=json';
+      String endpoint = '/api/mobile/letter-logs?format=json';
       if (categoryId != null && categoryId.isNotEmpty) {
         endpoint += '&category_id=$categoryId';
       }
@@ -53,7 +53,7 @@ class LetterProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await ApiService().post('/letter-logs', {
+      await ApiService().post('/api/mobile/letter-logs', {
         'category_id': categoryId,
         'subject': subject,
         'recipient': recipient,

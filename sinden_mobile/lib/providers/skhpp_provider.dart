@@ -17,7 +17,7 @@ class SkhppProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      String endpoint = '/skhpp?format=json';
+      String endpoint = '/api/mobile/skhpp?format=json';
       if (status != null) endpoint += '&status=$status';
       if (category != null) endpoint += '&category=$category';
 
@@ -42,7 +42,7 @@ class SkhppProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await ApiService().post('/skhpp', data);
+      await ApiService().post('/api/mobile/skhpp', data);
       await fetchSkhppList();
       return true;
     } catch (e) {

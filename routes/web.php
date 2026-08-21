@@ -449,3 +449,122 @@ Route::get('/api/mobile/config', function () {
         'server_time' => now()->toIso8601String(),
     ]);
 });
+
+// =====================================================================
+// GERBANG REST API LENGKAP SINDEN MOBILE (SINKRONISASI REAL-TIME DATA)
+// =====================================================================
+
+// 1. API Agenda Surat (Letter Logs)
+Route::get('/api/mobile/letter-logs', function (\Illuminate\Http\Request $request) {
+    try {
+        $query = \App\Models\LetterLog::with(['category', 'subCategory', 'user'])->latest();
+        if ($request->has('search') && !empty($request->search)) {
+            $s = $request->search;
+            $query->where(function($q) use ($s) {
+                $q->where('regarding', 'like', "%{$s}%")
+                  ->orWhere('sequence', 'like', "%{$s}%")
+                  ->orWhere('to', 'like', "%{$s}%");
+            });
+        }
+        if ($request->has('category_id') && !empty($request->category_id)) {
+            $query->where('category_id', $request->category_id);
+        }
+        $logs = $query->take(200)->get()->map(function($l) {
+            return [
+                'id' => $l->id,
+                'number' => is_numeric($l->sequence) ? (int)$l->sequence : 0,
+                'sequence' => (string)$l->sequence,
+                'full_number' => $l->sequence ? "Surat No. {$l->sequence}" : '-',
+                'subject' => $l->regarding ?? 'Naskah Dinas',
+                'recipient' => $l->to ?? '-',
+                'date' => $l->date ? \Carbon\Carbon::parse($l->date)->format('Y-m-d') : date('Y-m-d'),
+                'category_id' => $l->category_id ?? 0,
+                'category_name' => $l->category->name ?? 'Umum',
+                'is_archived' => false,
+                'file_url' => $l->file_path ? asset('storage/' . $l->file_path) : null,
+                'created_by' => $l->user->name ?? 'Admin',
+            ];
+        });
+        return response()->json(['status' => 'success', 'data' => $logs]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+Route::post('/api/mobile/letter-logs', function (\Illuminate\Http\Request $request) {
+    try {
+        $data = $request->json()->all() ?: $request->all();
+        $catId = $data['category_id'] ?? 1;
+        $category = \App\Models\Category::find($catId);
+        $lastLog = \App\Models\LetterLog::where('category_id', $catId)->orderBy('id', 'desc')->first();
+        $nextSeq = $lastLog ? ((int)$lastLog->sequence + 1) : ($category->start_number ?? 1);
+
+        $log = \App\Models\LetterLog::create([
+            'category_id' => $catId,
+            'sequence' => (string)$nextSeq,
+            'regarding' => $data['subject'] ?? $data['regarding'] ?? 'Agenda Surat Mobile',
+            'to' => $data['recipient'] ?? $data['to'] ?? 'Detasemen Intelijen',
+            'date' => $data['date'] ?? date('Y-m-d'),
+            'user_id' => auth()->id() ?? 1,
+        ]);
+        return response()->json(['status' => 'success', 'data' => $log]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+// 2. API Penerbitan SKHPP
+Route::get('/api/mobile/skhpp', function () {
+    try {
+        $skhpps = \App\Models\Skhpp::with('user')->latest()->take(200)->get()->map(function($s) {
+            return [
+                'id' => $s->id,
+                'registration_number' => $s->registration_number ?? "SKHPP-{$s->id}",
+                'full_name' => $s->name ?? $s->full_name ?? 'Personel',
+                'rank_corp_nrp' => "{$s->rank} {$s->corp} NRP {$s->nrp}",
+                'status' => $s->status ?? 'VERIFIED',
+                'issue_date' => $s->created_at ? $s->created_at->format('Y-m-d') : date('Y-m-d'),
+                'pdf_url' => asset("storage/skhpp/SKHPP_{$s->id}.pdf"),
+            ];
+        });
+        return response()->json(['status' => 'success', 'data' => $skhpps]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+// 3. API Buku Kas Unit
+Route::get('/api/mobile/cash', function () {
+    try {
+        $cashes = \App\Models\CashBook::latest()->take(200)->get()->map(function($c) {
+            return [
+                'id' => $c->id,
+                'type' => $c->type ?? 'IN',
+                'amount' => (double)($c->amount ?? 0),
+                'description' => $c->description ?? '-',
+                'date' => $c->date ? \Carbon\Carbon::parse($c->date)->format('Y-m-d') : date('Y-m-d'),
+            ];
+        });
+        return response()->json(['status' => 'success', 'data' => $cashes]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+// 4. API Notifikasi Real-Time System
+Route::get('/api/mobile/notifications', function () {
+    try {
+        $notifs = \App\Models\AppNotification::latest()->take(50)->get()->map(function($n) {
+            return [
+                'id' => $n->id,
+                'title' => $n->title ?? 'Notifikasi SINDEN',
+                'message' => $n->message ?? '',
+                'is_read' => (bool)($n->is_read ?? false),
+                'created_at' => $n->created_at ? $n->created_at->toIso8601String() : now()->toIso8601String(),
+            ];
+        });
+        return response()->json(['status' => 'success', 'notifications' => $notifs, 'unreadCount' => $notifs->where('is_read', false)->count()]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'notifications' => [], 'unreadCount' => 0]);
+    }
+});
