@@ -11,7 +11,15 @@ class ApiService {
 
   Future<String> getBaseUrl() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(AppConstants.keyBaseUrl) ?? AppConstants.defaultBaseUrl;
+    final saved = prefs.getString(AppConstants.keyBaseUrl);
+    if (saved == null || saved.trim().isEmpty || !saved.trim().startsWith('http')) {
+      return AppConstants.defaultBaseUrl;
+    }
+    String cleaned = saved.trim();
+    if (cleaned.endsWith('/')) {
+      cleaned = cleaned.substring(0, cleaned.length - 1);
+    }
+    return cleaned;
   }
 
   Future<Map<String, String>> _getHeaders({bool isMultipart = false}) async {
@@ -21,13 +29,14 @@ class ApiService {
     return {
       'Accept': 'application/json',
       if (!isMultipart) 'Content-Type': 'application/json',
-      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer ',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
     };
   }
 
   Future<dynamic> get(String endpoint) async {
     final baseUrl = await getBaseUrl();
-    final url = Uri.parse('');
+    final cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/$endpoint';
+    final url = Uri.parse('$baseUrl$cleanEndpoint');
     final headers = await _getHeaders();
 
     final response = await http.get(url, headers: headers).timeout(
@@ -40,7 +49,8 @@ class ApiService {
 
   Future<dynamic> post(String endpoint, Map<String, dynamic> data) async {
     final baseUrl = await getBaseUrl();
-    final url = Uri.parse('');
+    final cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/$endpoint';
+    final url = Uri.parse('$baseUrl$cleanEndpoint');
     final headers = await _getHeaders();
 
     final response = await http.post(
@@ -62,7 +72,8 @@ class ApiService {
     String fileFieldKey,
   ) async {
     final baseUrl = await getBaseUrl();
-    final url = Uri.parse('');
+    final cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/$endpoint';
+    final url = Uri.parse('$baseUrl$cleanEndpoint');
     final headers = await _getHeaders(isMultipart: true);
 
     final request = http.MultipartRequest('POST', url);
@@ -85,7 +96,7 @@ class ApiService {
       if (response.body.isEmpty) return null;
       return jsonDecode(response.body);
     } else {
-      String errMsg = 'Terjadi kesalahan sistem ()';
+      String errMsg = 'Terjadi kesalahan sistem (${response.statusCode})';
       try {
         final errJson = jsonDecode(response.body);
         if (errJson['message'] != null && errJson['message'].toString().isNotEmpty) {
