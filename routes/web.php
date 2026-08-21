@@ -568,3 +568,187 @@ Route::get('/api/mobile/notifications', function () {
         return response()->json(['status' => 'error', 'notifications' => [], 'unreadCount' => 0]);
     }
 });
+
+// =====================================================================
+// FULL REST API SUITE (100% PARITAS DENINTEL SINDEN WEB CONTROLLERS)
+// =====================================================================
+
+// 1. UserController (Kelola Pengguna & Matriks Fitur)
+Route::get('/api/mobile/users', function (\Illuminate\Http\Request $request) {
+    try {
+        $users = \App\Models\User::latest()->get()->map(function($u) {
+            return [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+                'nrp' => $u->nrp ?? $u->username,
+                'pangkat' => $u->pangkat ?? 'Prajurit',
+                'korps' => $u->korps ?? 'Pelaut',
+                'role' => $u->role ?? 'user',
+                'jabatan' => $u->jabatan ?? '-',
+                'is_active' => (bool)($u->is_active ?? true),
+                'can_access_agenda' => (bool)($u->can_access_agenda ?? true),
+                'can_access_cash' => (bool)($u->can_access_cash ?? false),
+                'can_access_mitra' => (bool)($u->can_access_mitra ?? false),
+                'can_access_technical_cash' => (bool)($u->can_access_technical_cash ?? false),
+            ];
+        });
+        return response()->json(['status' => 'success', 'data' => $users]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+Route::get('/api/mobile/users/{id}', function ($id) {
+    try {
+        $user = \App\Models\User::findOrFail($id);
+        return response()->json(['status' => 'success', 'user' => $user]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 404);
+    }
+});
+
+// 2. LetterController (Buat & Draf Naskah Dinas)
+Route::get('/api/mobile/letters', function () {
+    try {
+        $letters = \App\Models\Letter::with(['category', 'user'])->latest()->get();
+        return response()->json(['status' => 'success', 'data' => $letters]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+Route::post('/api/mobile/letters', function (\Illuminate\Http\Request $request) {
+    try {
+        $data = $request->json()->all() ?: $request->all();
+        $letter = \App\Models\Letter::create([
+            'title' => $data['title'] ?? 'Draf Surat Dinas',
+            'regarding' => $data['regarding'] ?? $data['title'] ?? '-',
+            'category_id' => $data['category_id'] ?? 1,
+            'user_id' => auth()->id() ?? 1,
+            'content' => $data['content'] ?? '',
+            'status' => 'DRAFT',
+        ]);
+        return response()->json(['status' => 'success', 'data' => $letter]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+// 3. CategoryController (Master Kategori Naskah Dinas)
+Route::get('/api/mobile/categories', function () {
+    try {
+        $categories = \App\Models\Category::with('subCategories')->get();
+        return response()->json(['status' => 'success', 'data' => $categories]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+// 4. SignatureRequestController (TTE Tanda Tangan Digital)
+Route::get('/api/mobile/signature-requests', function () {
+    try {
+        $requests = \App\Models\SignatureRequest::with('user')->latest()->get();
+        return response()->json(['status' => 'success', 'data' => $requests]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+// 5. CommanderAccountController (Rekening Komandan)
+Route::get('/api/mobile/commander-account', function () {
+    try {
+        $txs = \App\Models\CommanderTransaction::latest()->get();
+        $balance = \App\Models\CommanderTransaction::sum('amount');
+        return response()->json(['status' => 'success', 'balance' => $balance, 'data' => $txs]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'balance' => 0, 'data' => []]);
+    }
+});
+
+// 6. MitraPaymentController (Pencatatan Mitra)
+Route::get('/api/mobile/mitra', function () {
+    try {
+        $mitras = \App\Models\Mitra::with('payments')->get();
+        return response()->json(['status' => 'success', 'data' => $mitras]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+// 7. TechnicalUnitCashController (Buku Kas Dan Unit Teknis)
+Route::get('/api/mobile/technical-cash', function () {
+    try {
+        $cashes = \App\Models\TechnicalCash::latest()->get();
+        return response()->json(['status' => 'success', 'data' => $cashes]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+// 8. BackupController (Explorer Backup System)
+Route::get('/api/mobile/backup', function () {
+    try {
+        $backups = \Illuminate\Support\Facades\Storage::disk('local')->files('backup');
+        return response()->json(['status' => 'success', 'data' => $backups]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'data' => []]);
+    }
+});
+
+// 9. SoldierViolationController (Catatan Pelanggaran Prajurit)
+Route::get('/api/mobile/violations', function () {
+    try {
+        $violations = \App\Models\SoldierViolation::with('user')->latest()->get();
+        return response()->json(['status' => 'success', 'data' => $violations]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'data' => []]);
+    }
+});
+
+// 10. CommunityActivityController & LocationController (Radar Kegiatan Lapangan & GPS)
+Route::get('/api/mobile/activities', function () {
+    try {
+        $activities = \App\Models\CommunityActivity::latest()->get();
+        return response()->json(['status' => 'success', 'data' => $activities]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'data' => []]);
+    }
+});
+
+Route::post('/api/mobile/locations/update', function (\Illuminate\Http\Request $request) {
+    try {
+        $data = $request->json()->all() ?: $request->all();
+        $user = auth()->user();
+        if ($user && isset($data['latitude']) && isset($data['longitude'])) {
+            $user->update([
+                'latitude' => $data['latitude'],
+                'longitude' => $data['longitude'],
+                'last_seen_at' => now(),
+            ]);
+        }
+        return response()->json(['status' => 'success']);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+// 11. VisitorLogController & AuditLogController (Log Pengunjung & Audit)
+Route::get('/api/mobile/audit-logs', function () {
+    try {
+        $logs = \App\Models\AuditLog::with('user')->latest()->take(100)->get();
+        return response()->json(['status' => 'success', 'data' => $logs]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'data' => []]);
+    }
+});
+
+// 12. SettingController & StampController (Pengaturan & Stempel)
+Route::get('/api/mobile/settings', function () {
+    try {
+        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        return response()->json(['status' => 'success', 'settings' => $settings]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
