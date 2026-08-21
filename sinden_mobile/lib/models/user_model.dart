@@ -13,6 +13,21 @@ class UserModel {
   final double? longitude;
   final String? lastActive;
 
+  // Authorization Flags
+  final bool canAccessAgenda;
+  final bool canAccessLetters;
+  final bool canAccessSkhpp;
+  final bool canAccessCategories;
+  final bool canAccessSignature;
+  final bool canAccessCash;
+  final bool canAccessCommander;
+  final bool canAccessMitra;
+  final bool canAccessTechnicalCash;
+  final bool canAccessViolations;
+  final bool canAccessActivities;
+  final bool canAccessUsers;
+  final bool canAccessSettings;
+
   UserModel({
     required this.id,
     required this.name,
@@ -27,9 +42,28 @@ class UserModel {
     this.latitude,
     this.longitude,
     this.lastActive,
+    this.canAccessAgenda = true,
+    this.canAccessLetters = true,
+    this.canAccessSkhpp = true,
+    this.canAccessCategories = true,
+    this.canAccessSignature = true,
+    this.canAccessCash = false,
+    this.canAccessCommander = false,
+    this.canAccessMitra = false,
+    this.canAccessTechnicalCash = false,
+    this.canAccessViolations = true,
+    this.canAccessActivities = true,
+    this.canAccessUsers = false,
+    this.canAccessSettings = false,
   });
 
+  bool get isAdmin => role == 'admin';
+  bool get isKomandan => role == 'komandan' || role == 'dan_unit_teknis' || (jabatan != null && jabatan!.toLowerCase().contains('komandan'));
+
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    final r = json['role'] ?? 'user';
+    final isAdm = r == 'admin';
+
     return UserModel(
       id: json['id'] ?? 0,
       name: json['name'] ?? '',
@@ -37,13 +71,26 @@ class UserModel {
       pangkat: json['pangkat'],
       korps: json['korps'],
       nrp: json['nrp'] ?? json['username'],
-      role: json['role'] ?? 'user',
+      role: r,
       jabatan: json['jabatan'],
       phone: json['phone'] ?? json['no_wa'],
       avatar: json['avatar'],
       latitude: json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null,
       longitude: json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null,
       lastActive: json['last_seen_at'] ?? json['updated_at'],
+      canAccessAgenda: isAdm || (json['can_access_agenda'] ?? true),
+      canAccessLetters: isAdm || (json['can_access_letters'] ?? true),
+      canAccessSkhpp: isAdm || (json['can_access_skhpp'] ?? true),
+      canAccessCategories: isAdm || (json['can_access_categories'] ?? true),
+      canAccessSignature: isAdm || (json['can_access_signature'] ?? true),
+      canAccessCash: isAdm || (json['can_access_cash'] ?? false),
+      canAccessCommander: isAdm || (json['can_access_commander'] ?? false),
+      canAccessMitra: isAdm || (json['can_access_mitra'] ?? false),
+      canAccessTechnicalCash: isAdm || (json['can_access_technical_cash'] ?? false),
+      canAccessViolations: isAdm || (json['can_access_violations'] ?? true),
+      canAccessActivities: isAdm || (json['can_access_activities'] ?? true),
+      canAccessUsers: isAdm || (json['can_access_users'] ?? false),
+      canAccessSettings: isAdm || (json['can_access_settings'] ?? false),
     );
   }
 
@@ -61,13 +108,20 @@ class UserModel {
       'avatar': avatar,
       'latitude': latitude,
       'longitude': longitude,
+      'last_seen_at': lastActive,
+      'can_access_agenda': canAccessAgenda,
+      'can_access_letters': canAccessLetters,
+      'can_access_skhpp': canAccessSkhpp,
+      'can_access_categories': canAccessCategories,
+      'can_access_signature': canAccessSignature,
+      'can_access_cash': canAccessCash,
+      'can_access_commander': canAccessCommander,
+      'can_access_mitra': canAccessMitra,
+      'can_access_technical_cash': canAccessTechnicalCash,
+      'can_access_violations': canAccessViolations,
+      'can_access_activities': canAccessActivities,
+      'can_access_users': canAccessUsers,
+      'can_access_settings': canAccessSettings,
     };
   }
-
-  String get fullIdentity => [
-    if (pangkat != null && pangkat!.isNotEmpty) pangkat,
-    if (korps != null && korps!.isNotEmpty) korps,
-    name,
-    if (nrp != null && nrp!.isNotEmpty) 'NRP $nrp',
-  ].join(' ');
 }
