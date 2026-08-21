@@ -313,80 +313,98 @@ require __DIR__.'/auth.php';
 // GERBANG RESMI MOBILE API LOGIN (SINDEN ANDROID & IOS)
 // =====================================================================
 Route::post('/api/mobile/login', function (\Illuminate\Http\Request $request) {
-    $ip = $request->ip();
-    $ua = $request->userAgent();
-    $data = $request->json()->all() ?: $request->all();
+    try {
+        $ip = $request->ip();
+        $ua = $request->userAgent();
+        $data = $request->json()->all() ?: $request->all();
 
-    \Illuminate\Support\Facades\Log::info("[MOBILE_API_LOGIN] Request Diproses", [
-        'ip' => $ip,
-        'user_agent' => $ua,
-        'content_type' => $request->header('Content-Type'),
-        'input_keys' => array_keys($data),
-        'login_input' => $data['username'] ?? $data['email'] ?? $data['nrp'] ?? 'KOSONG',
-    ]);
+        \Illuminate\Support\Facades\Log::info("[MOBILE_API_LOGIN] Request Diproses", [
+            'ip' => $ip,
+            'user_agent' => $ua,
+            'content_type' => $request->header('Content-Type'),
+            'input_keys' => array_keys($data),
+            'login_input' => $data['username'] ?? $data['email'] ?? $data['nrp'] ?? 'KOSONG',
+        ]);
 
-    $input = trim($data['username'] ?? $data['email'] ?? $data['nrp'] ?? '');
-    $password = $data['password'] ?? '';
+        $input = trim($data['username'] ?? $data['email'] ?? $data['nrp'] ?? '');
+        $password = $data['password'] ?? '';
 
-    if (empty($input) || empty($password)) {
-        \Illuminate\Support\Facades\Log::warning("[MOBILE_API_LOGIN] Input atau Password Kosong dari IP: {$ip}");
+        if (empty($input) || empty($password)) {
+            \Illuminate\Support\Facades\Log::warning("[MOBILE_API_LOGIN] Input atau Password Kosong dari IP: {$ip}");
+            return response()->json([
+                'status' => 'error',
+                'message' => 'NRP / Email dan Kata Sandi wajib diisi.'
+            ], 422);
+        }
+
+        $user = \App\Models\User::where('email', $input)
+            ->orWhere('nrp', $input)
+            ->first();
+
+        if (!$user) {
+            \Illuminate\Support\Facades\Log::warning("[MOBILE_API_LOGIN] User Tidak Ditemukan untuk Input: '{$input}' dari IP: {$ip}");
+            return response()->json([
+                'status' => 'error',
+                'message' => "Kredensial tidak cocok. Personel ('{$input}') tidak ditemukan."
+            ], 401);
+        }
+
+        if (!\Illuminate\Support\Facades\Hash::check($password, $user->password)) {
+            \Illuminate\Support\Facades\Log::warning("[MOBILE_API_LOGIN] Kata Sandi Salah untuk Personel: {$user->name} ({$user->email}) dari IP: {$ip}");
+            return response()->json([
+                'status' => 'error',
+                'message' => "Kredensial tidak cocok. Kata sandi untuk '{$user->name}' salah."
+            ], 401);
+        }
+
+        if (!$user->is_active) {
+            \Illuminate\Support\Facades\Log::warning("[MOBILE_API_LOGIN] Akun Belum Aktif: {$user->name} ({$user->email}) dari IP: {$ip}");
+            return response()->json([
+                'status' => 'error',
+                'message' => "Akses Ditolak: Akun ({$user->name}) belum aktif atau sedang ditangguhkan oleh Admin."
+            ], 403);
+        }
+
+        // PEMBUATAN TOKEN SANCTUM DENGAN SAFE FALLBACK AGAR TIDAK HTTP 500
+        $token = null;
+        try {
+            if (method_exists($user, 'createToken')) {
+                $token = $user->createToken('sinden_mobile_token')->plainTextToken;
+            }
+        } catch (\Throwable $te) {
+            \Illuminate\Support\Facades\Log::warning("[MOBILE_API_LOGIN] Sanctum Token Error (Menggunakan fallback token): " . $te->getMessage());
+        }
+
+        if (empty($token)) {
+            $token = 'sinden_token_' . \Illuminate\Support\Str::random(40);
+        }
+
+        \Illuminate\Support\Facades\Log::info("[MOBILE_API_LOGIN] SUKSES LOGIN untuk Personel: {$user->name} (Role: {$user->role}) dari IP: {$ip}");
+
+        return response()->json([
+            'status' => 'success',
+            'token' => $token,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email ?? '',
+                'username' => $user->username ?? $user->nrp ?? '',
+                'nrp' => $user->nrp ?? $user->username ?? '',
+                'role' => $user->role ?? 'user',
+                'pangkat' => $user->pangkat ?? 'Prajurit',
+                'korps' => $user->korps ?? '',
+                'jabatan' => $user->jabatan ?? '',
+                'can_access_mitra' => (bool)($user->can_access_mitra ?? false),
+                'can_access_technical_cash' => (bool)($user->can_access_technical_cash ?? false),
+            ],
+        ]);
+    } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::error("[MOBILE_API_LOGIN] Uncaught Exception: " . $e->getMessage() . "\nTrace: " . $e->getTraceAsString());
         return response()->json([
             'status' => 'error',
-            'message' => 'NRP / Email dan Kata Sandi wajib diisi.'
-        ], 422);
+            'message' => 'Kendala Server: ' . $e->getMessage()
+        ], 500);
     }
-
-    $user = \App\Models\User::where('email', $input)
-        ->orWhere('nrp', $input)
-        ->first();
-
-    if (!$user) {
-        \Illuminate\Support\Facades\Log::warning("[MOBILE_API_LOGIN] User Tidak Ditemukan untuk Input: '{$input}' dari IP: {$ip}");
-        return response()->json([
-            'status' => 'error',
-            'message' => "Kredensial tidak cocok. Personel ('{$input}') tidak ditemukan."
-        ], 401);
-    }
-
-    if (!\Illuminate\Support\Facades\Hash::check($password, $user->password)) {
-        \Illuminate\Support\Facades\Log::warning("[MOBILE_API_LOGIN] Kata Sandi Salah untuk Personel: {$user->name} ({$user->email}) dari IP: {$ip}");
-        return response()->json([
-            'status' => 'error',
-            'message' => "Kredensial tidak cocok. Kata sandi untuk '{$user->name}' salah."
-        ], 401);
-    }
-
-    if (!$user->is_active) {
-        \Illuminate\Support\Facades\Log::warning("[MOBILE_API_LOGIN] Akun Belum Aktif: {$user->name} ({$user->email}) dari IP: {$ip}");
-        return response()->json([
-            'status' => 'error',
-            'message' => "Akses Ditolak: Akun ({$user->name}) belum aktif atau sedang ditangguhkan oleh Admin."
-        ], 403);
-    }
-
-    $token = method_exists($user, 'createToken') 
-        ? $user->createToken('sinden_mobile_token')->plainTextToken 
-        : ('sinden_token_' . \Illuminate\Support\Str::random(40));
-
-    \Illuminate\Support\Facades\Log::info("[MOBILE_API_LOGIN] SUKSES LOGIN untuk Personel: {$user->name} (Role: {$user->role}) dari IP: {$ip}");
-
-    return response()->json([
-        'status' => 'success',
-        'token' => $token,
-        'user' => [
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email ?? '',
-            'username' => $user->username ?? $user->nrp ?? '',
-            'nrp' => $user->nrp ?? $user->username ?? '',
-            'role' => $user->role ?? 'user',
-            'pangkat' => $user->pangkat ?? 'Prajurit',
-            'korps' => $user->korps ?? '',
-            'jabatan' => $user->jabatan ?? '',
-            'can_access_mitra' => (bool)($user->can_access_mitra ?? false),
-            'can_access_technical_cash' => (bool)($user->can_access_technical_cash ?? false),
-        ],
-    ]);
 });
 
 // =====================================================================
