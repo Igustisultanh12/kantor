@@ -15,13 +15,15 @@ const props = defineProps({
 const showCreateModal = ref(false); 
 const showUpdateModal = ref(false); 
 const showPreviewModal = ref(false); 
-const showDocumentPreviewModal = ref(false); // Modal tambahan untuk Iframe Pratinjau Berkas Dokumen
+const showDocumentPreviewModal = ref(false); // Modal untuk Iframe Pratinjau Berkas Dokumen
+const showDetailModal = ref(false); // MODAL BARU: Rincian Lengkap Kasus & Berkas Personel
 const selectedCase = ref(null);
+const selectedDetailCase = ref(null);
 const isPrinting = ref(false);
 const printData = ref(null);
 const currentPreviewUrl = ref(''); // Menyimpan URL berkas aktif yang sedang ditinjau
 
-// Form Input Baru (Disesuaikan array variabel paralel dengan backend multi-upload 150MB)
+// Form Input Baru
 const form = useForm({
     nama: '',
     nrp: '',
@@ -32,13 +34,13 @@ const form = useForm({
     tmt: '',
     perkembangan_kasus: '',
     status: 'PROSES',
-    lampiran: [], // Diubah menjadi array untuk multi-upload berkas masal
+    lampiran: [], 
     putusan: [],  
 });
 
-// Form Update Perkembangan (DENGAN VERSIONING BERKAS & PAKET DATA ARRAY)
+// Form Update Perkembangan
 const updateForm = useForm({
-    _method: 'PUT', // Method Spoofing agar Laravel bisa baca File via POST
+    _method: 'PUT',
     catatan_baru: '',
     status: '',
     lampiran: [],
@@ -56,6 +58,12 @@ const openUpdateModal = (item) => {
     showUpdateModal.value = true;
 };
 
+// Fungsi Membuka Modal Rincian Kasus Lengkap saat Nama Personel Diklik
+const openDetailModal = (item) => {
+    selectedDetailCase.value = item;
+    showDetailModal.value = true;
+};
+
 // Fungsi Membuka Peninjau Laporan PDF (Cetak Form)
 const openPreview = (item) => {
     printData.value = item;
@@ -66,7 +74,6 @@ const openPreview = (item) => {
 const viewFileDirect = (filePath) => {
     const ext = filePath.split('.').pop().toLowerCase();
     if (['docx', 'doc', 'pdf', 'jpg', 'jpeg', 'png'].includes(ext)) {
-        // Tembakkan parameter ke rute converter LibreOffice di backend
         currentPreviewUrl.value = `/soldier-violations/preview-file?file_path=${encodeURIComponent(filePath)}`;
         showDocumentPreviewModal.value = true;
     } else {
@@ -135,6 +142,9 @@ const deleteHistoryItem = (updateId) => {
             onSuccess: () => {
                 const updated = props.violations.data.find(v => v.id === selectedCase.value.id);
                 if (updated) selectedCase.value = updated;
+                if (selectedDetailCase.value && selectedDetailCase.value.id === selectedCase.value.id) {
+                    selectedDetailCase.value = updated;
+                }
             }
         });
     }
@@ -225,9 +235,21 @@ const getFileName = (path) => {
                         <tbody class="divide-y divide-gray-50">
                             <tr v-for="item in violations.data" :key="item.id" class="hover:bg-indigo-50/10 transition group">
                                 <td class="px-6 py-5">
-                                    <div class="font-black text-indigo-900 text-sm uppercase">{{ item.name }}</div>
-                                    <div class="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">{{ item.rank }} / {{ item.nrp }}</div>
-                                    <div class="text-[9px] text-indigo-500 font-black uppercase">{{ item.unit }}</div>
+                                    <button type="button" @click="openDetailModal(item)" class="text-left group/btn focus:outline-none w-full">
+                                        <div class="font-black text-indigo-900 text-sm uppercase group-hover/btn:text-blue-600 transition flex items-center gap-1.5">
+                                            <span>{{ item.name }}</span>
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-600 opacity-80 group-hover/btn:opacity-100 transition shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                            </svg>
+                                        </div>
+                                        <div class="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">{{ item.rank }} / {{ item.nrp }}</div>
+                                        <div class="text-[9px] text-indigo-500 font-black uppercase flex items-center gap-1.5 mt-0.5">
+                                            <span>{{ item.unit }}</span>
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md font-bold text-[8px] border border-blue-100 group-hover/btn:bg-blue-600 group-hover/btn:text-white transition">
+                                                <span>Lihat Rincian & Berkas</span> &rarr;
+                                            </span>
+                                        </div>
+                                    </button>
                                 </td>
                                 <td class="px-6 py-5">
                                     <div class="text-[11px] font-medium text-gray-700 line-clamp-2 w-48 italic">"{{ item.case_description }}"</div>
@@ -262,7 +284,13 @@ const getFileName = (path) => {
                                     </div>
                                 </td>
                                 <td class="px-6 py-5 text-right flex justify-end gap-2">
-                                    <button @click="openPreview(item)" title="Pratinjau PDF" class="p-2.5 bg-gray-50 text-gray-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all border border-gray-100 shadow-sm">
+                                    <button @click="openDetailModal(item)" title="Lihat Rincian Lengkap" class="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all border border-blue-100 shadow-sm">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    </button>
+                                    <button @click="openPreview(item)" title="Pratinjau Cetak PDF" class="p-2.5 bg-gray-50 text-gray-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all border border-gray-100 shadow-sm">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                                         </svg>
@@ -282,6 +310,152 @@ const getFileName = (path) => {
             </div>
         </div>
 
+        <!-- MODAL DETAIL LENGKAP KASUS PERSONEL -->
+        <div v-if="showDetailModal" class="fixed inset-0 z-[140] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md text-left">
+            <div class="bg-white rounded-[2.5rem] shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+                <!-- Header Modal -->
+                <div class="p-6 sm:p-8 bg-slate-900 text-white flex justify-between items-start">
+                    <div class="flex items-start gap-4">
+                        <div class="w-14 h-14 rounded-2xl bg-blue-600/30 border border-blue-400/40 flex items-center justify-center text-blue-300 font-black text-xl shadow-inner uppercase shrink-0">
+                            {{ selectedDetailCase?.name?.charAt(0) }}
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <h3 class="font-extrabold text-base sm:text-lg text-white uppercase tracking-tight">{{ selectedDetailCase?.name }}</h3>
+                                <span :class="statusColor(selectedDetailCase?.status)" class="px-3 py-0.5 rounded-full text-[9px] font-black border uppercase">
+                                    {{ selectedDetailCase?.status }}
+                                </span>
+                            </div>
+                            <p class="text-xs text-slate-300 font-bold mt-1 uppercase">{{ selectedDetailCase?.rank }} / NRP. {{ selectedDetailCase?.nrp }}</p>
+                            <p class="text-[10px] text-blue-300 font-extrabold mt-0.5 uppercase">JABATAN: {{ selectedDetailCase?.position }} | SATKER: {{ selectedDetailCase?.unit }}</p>
+                        </div>
+                    </div>
+                    <button @click="showDetailModal = false" class="text-slate-400 hover:text-white font-black text-2xl p-1 leading-none">&times;</button>
+                </div>
+
+                <!-- Body Detail Content -->
+                <div class="p-6 sm:p-8 overflow-y-auto flex-1 space-y-6">
+                    
+                    <!-- Uraian Kasus & TMT -->
+                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200">
+                        <div class="flex justify-between items-center mb-2 flex-wrap gap-2">
+                            <h4 class="text-[11px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg> Deskripsi &amp; Pasal Pelanggaran Kasus
+                            </h4>
+                            <span class="text-[10px] font-bold text-slate-600 uppercase bg-white px-3 py-1 rounded-lg border border-slate-200">
+                                TMT Kejadian: {{ selectedDetailCase?.incident_date?.split('T')[0] }}
+                            </span>
+                        </div>
+                        <p class="text-xs font-medium text-slate-800 whitespace-pre-line leading-relaxed italic bg-white p-4 rounded-xl border border-slate-100">
+                            "{{ selectedDetailCase?.case_description }}"
+                        </p>
+                    </div>
+
+                    <!-- Timeline Perkembangan & Lampiran Berkas Per Update -->
+                    <div>
+                        <h4 class="text-[11px] font-black text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg> Riwayat Kronologi Perkembangan &amp; Berkas Lampiran
+                        </h4>
+
+                        <div v-if="parseFiles(selectedDetailCase?.lampiran_berkas).length" class="space-y-4">
+                            <div v-for="(paket, idx) in parseFiles(selectedDetailCase?.lampiran_berkas)" :key="idx" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs relative">
+                                <div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-3">
+                                    <span class="text-[10px] font-black text-indigo-700 uppercase flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-indigo-600"></span> UPDATE: {{ paket.tanggal }}
+                                    </span>
+                                    <span class="text-[9px] font-bold text-slate-400 uppercase">Tahap {{ parseFiles(selectedDetailCase?.lampiran_berkas).length - idx }}</span>
+                                </div>
+
+                                <p class="text-xs text-slate-800 font-semibold mb-4 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                                    "{{ paket.catatan }}"
+                                </p>
+
+                                <!-- List File Lampiran -->
+                                <div v-if="paket.file_paths && paket.file_paths.length" class="space-y-2">
+                                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Berkas Lampiran Tahap Ini:</p>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        <div v-for="(fPath, fIdx) in paket.file_paths" :key="fIdx" class="flex items-center justify-between p-3 bg-red-50/70 border border-red-200/80 rounded-xl hover:bg-red-50 transition">
+                                            <div class="flex items-center gap-2 min-w-0 pr-2">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-red-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                </svg>
+                                                <span class="text-xs font-extrabold text-slate-800 truncate" :title="getFileName(fPath)">{{ getFileName(fPath) }}</span>
+                                            </div>
+                                            <div class="flex items-center gap-1.5 shrink-0">
+                                                <button @click="viewFileDirect(fPath)" class="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white text-[9px] font-black rounded-lg uppercase tracking-wider transition shadow-xs">
+                                                    Lihat
+                                                </button>
+                                                <a :href="'/storage/' + fPath" download class="p-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition" title="Unduh Berkas">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                    </svg>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-else class="text-center p-8 bg-slate-50 rounded-2xl text-slate-400 text-xs italic">
+                            Belum ada riwayat perkembangan berkas tercatat.
+                        </div>
+                    </div>
+
+                    <!-- Dokumen Putusan Akhir -->
+                    <div v-if="selectedDetailCase?.dokumen_putusan && parseFiles(selectedDetailCase?.dokumen_putusan).length">
+                        <h4 class="text-[11px] font-black text-slate-800 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg> Dokumen Putusan Akhir
+                        </h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div v-for="(pPath, pIdx) in parseFiles(selectedDetailCase?.dokumen_putusan)" :key="pIdx" class="flex items-center justify-between p-4 bg-slate-900 text-white rounded-2xl shadow-sm">
+                                <div class="flex items-center gap-3 min-w-0 pr-2">
+                                    <span class="px-2 py-0.5 bg-emerald-500 text-slate-950 font-black text-[9px] rounded uppercase">PUTUSAN {{ pIdx + 1 }}</span>
+                                    <span class="text-xs font-extrabold truncate" :title="getFileName(pPath)">{{ getFileName(pPath) }}</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 shrink-0">
+                                    <button @click="viewFileDirect(pPath)" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[9px] font-black rounded-xl uppercase transition shadow-xs">
+                                        Lihat
+                                    </button>
+                                    <a :href="'/storage/' + pPath" download class="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition" title="Unduh Putusan">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Footer Action Modal -->
+                <div class="p-5 border-t bg-slate-50 flex flex-wrap justify-between items-center gap-3">
+                    <div class="flex gap-2">
+                        <button @click="openPreview(selectedDetailCase)" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-[10px] font-black uppercase rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg> Cetak PDF Ringkasan
+                        </button>
+                        <button @click="showDetailModal = false; openUpdateModal(selectedDetailCase)" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                            + Update Perkembangan
+                        </button>
+                    </div>
+
+                    <button @click="showDetailModal = false" class="px-6 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-[10px] font-black uppercase rounded-xl transition">
+                        Tutup Rincian
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL FORM INPUT KASUS BARU -->
         <div v-if="showCreateModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <div class="bg-white rounded-[2.5rem] shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200 text-left">
                 <div class="p-8 border-b bg-gray-50 flex justify-between items-center text-left">
@@ -336,6 +510,7 @@ const getFileName = (path) => {
             </div>
         </div>
 
+        <!-- MODAL FORM UPDATE PERKEMBANGAN -->
         <div v-if="showUpdateModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm text-left">
             <div class="bg-white rounded-[2.5rem] shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
                 <div class="p-6 border-b flex justify-between items-center bg-gray-50 text-left">
@@ -405,6 +580,7 @@ const getFileName = (path) => {
             </div>
         </div>
 
+        <!-- MODAL PRATINJAU CETAK PDF -->
         <div v-if="showPreviewModal" class="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
             <div class="bg-white rounded-[2.5rem] shadow-2xl max-w-[90vw] w-[1150px] max-h-[90vh] flex flex-col overflow-hidden text-left">
                 <div class="p-6 border-b flex justify-between items-center bg-gray-50">
@@ -495,6 +671,7 @@ const getFileName = (path) => {
             </div>
         </div>
 
+        <!-- MODAL PRATINJAU IFRAME BERKAS DOKUMEN -->
         <div v-if="showDocumentPreviewModal" class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
             <div class="bg-white rounded-[2.5rem] shadow-2xl max-w-5xl w-full h-[85vh] flex flex-col overflow-hidden animate-in fade-in duration-150">
                 <div class="p-5 border-b bg-gray-900 text-white flex justify-between items-center">
