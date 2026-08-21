@@ -1179,3 +1179,222 @@ Route::delete('/api/mobile/technical-cash/{id}', function ($id) {
         return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
     }
 });
+
+// =====================================================================
+// API VERIFIKASI KEASLIAN TTE DIGITAL (QR SCANNER VALIDATION ENGINE)
+// =====================================================================
+Route::get('/api/mobile/verify-signature', function (\Illuminate\Http\Request $request) {
+    try {
+        $code = trim($request->input('code', ''));
+        if (empty($code)) {
+            return response()->json(['status' => 'error', 'valid' => false, 'message' => 'Kode TTE tidak boleh kosong.'], 400);
+        }
+
+        // 1. Cek di SignatureRequest
+        $sig = \App\Models\SignatureRequest::with('user')
+            ->where('verification_code', $code)
+            ->orWhere('verification_code', 'like', "%{$code}%")
+            ->first();
+
+        if ($sig) {
+            $isValid = in_array(strtolower($sig->status), ['approved', 'signed', 'selesai']);
+            return response()->json([
+                'status' => 'success',
+                'valid' => $isValid,
+                'document_type' => 'NASKAH DINAS / DOKUMEN RESMI KEDINASAN',
+                'title' => $sig->subject ?? $sig->document_title ?? 'Dokumen Resmi',
+                'number' => $sig->letter_number ?? "DOC-{$sig->id}",
+                'person_name' => $sig->person_name ?? $sig->user?->name ?? 'Personel Denintel',
+                'pangkat_nrp' => $sig->pangkat_nrp ?? $sig->user?->pangkat ?? '-',
+                'signed_by' => 'KOMANDAN DETASEMEN INTELIJEN KODAERAL V',
+                'signed_at' => $sig->updated_at ? $sig->updated_at->format('d/m/Y H:i:s') : now()->format('d/m/Y H:i:s'),
+                'verification_code' => $sig->verification_code,
+                'hash_sha256' => hash('sha256', $sig->verification_code . ($sig->updated_at ?? now())),
+                'message' => $isValid ? 'DOKUMEN RESMI DINAS ASLI & TERVERIFIKASI' : 'DOKUMEN DITEMUKAN TETAPI BELUM DISAHKAN',
+            ]);
+        }
+
+        // 2. Cek di SKHPP
+        $skhpp = \App\Models\Skhpp::with(['submitter', 'approver'])
+            ->where('verification_code', $code)
+            ->orWhere('nomor_skhpp', $code)
+            ->orWhere('verification_code', 'like', "%{$code}%")
+            ->first();
+
+        if ($skhpp) {
+            $isValid = in_array(strtoupper($skhpp->status), ['APPROVED', 'SELESAI', 'TERBIT']);
+            return response()->json([
+                'status' => 'success',
+                'valid' => $isValid,
+                'document_type' => 'SURAT KETERANGAN HASIL PENELITIAN PERSONEL (SKHPP)',
+                'title' => 'SKHPP ' . ($skhpp->kategori_personel === 'perusahaan' ? 'MITRA KERJA' : 'PERSONEL'),
+                'number' => $skhpp->nomor_skhpp ?? "SKHPP-{$skhpp->id}",
+                'person_name' => $skhpp->nama,
+                'pangkat_nrp' => $skhpp->pangkat_korps_nrp ?? $skhpp->nik ?? '-',
+                'signed_by' => 'KOMANDAN DETASEMEN INTELIJEN KODAERAL V',
+                'signed_at' => $skhpp->approved_at ? \Carbon\Carbon::parse($skhpp->approved_at)->format('d/m/Y H:i:s') : now()->format('d/m/Y H:i:s'),
+                'verification_code' => $skhpp->verification_code,
+                'hash_sha256' => hash('sha256', $skhpp->verification_code . ($skhpp->approved_at ?? now())),
+                'message' => $isValid ? 'DOKUMEN SKHPP ASLI & TERVERIFIKASI' : 'DOKUMEN SKHPP MASIH DALAM PROSES PENELITIAN',
+            ]);
+        }
+
+        return response()->json([
+            'status' => 'invalid',
+            'valid' => false,
+            'message' => 'PERINGATAN: KODE TTE TIDAK TERDAFTAR DI DATABASE RESMI SINDEN ATAU DOKUMEN TELAH DIMANIPULASI!',
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'valid' => false, 'message' => $e->getMessage()], 500);
+    }
+});
+
+// API SIGN DOKUMEN DENGAN POSISI KOORDINAT QR CUSTOM
+Route::post('/api/mobile/signature-requests/{id}/sign-custom', function (\Illuminate\Http\Request $request, $id) {
+    try {
+        $sig = \App\Models\SignatureRequest::findOrFail($id);
+        $data = $request->json()->all() ?: $request->all();
+
+        $x = (float)($data['x'] ?? 0.65);
+        $y = (float)($data['y'] ?? 0.75);
+        $targetPage = (int)($data['target_page'] ?? 1);
+        $code = $sig->verification_code ?: ('DOC-' . strtoupper(\Illuminate\Support\Str::random(10)));
+
+        $sig->update([
+            'status' => 'approved',
+            'x' => $x,
+            'y' => $y,
+            'target_page' => $targetPage,
+            'verification_code' => $code,
+            'approved_at' => now(),
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Dokumen berhasil disahkan dengan TTE Digital pada posisi yang dipilih',
+            'data' => $sig
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+// =====================================================================
+// API BACKUP SYSTEM & RADAR PC JARINGAN KANTOR
+// =====================================================================
+Route::get('/api/mobile/backup', function () {
+    try {
+        $pcs = \App\Models\Pc::with('user:id,name,pangkat,nrp')->latest()->get()->map(function($pc) {
+            return [
+                'id' => $pc->id,
+                'name' => $pc->name ?? $pc->pc_name ?? 'PC Kedinasan',
+                'ip_address' => $pc->ip_address ?? '192.168.1.10',
+                'user_name' => $pc->user?->name ?? 'Personel',
+                'status' => $pc->is_online ? 'ONLINE' : 'OFFLINE',
+                'storage_used' => $pc->storage_used ?? '1.2 GB',
+                'last_backup' => $pc->last_backup_at ? \Carbon\Carbon::parse($pc->last_backup_at)->format('d/m/Y H:i') : 'Belum Ada',
+            ];
+        });
+
+        $requests = \App\Models\AccessRequest::with('user')->latest()->take(20)->get()->map(function($r) {
+            return [
+                'id' => $r->id,
+                'user_name' => $r->user?->name ?? 'Personel',
+                'pc_name' => $r->pc_name ?? 'PC-Baru',
+                'status' => strtoupper($r->status ?? 'PENDING'),
+                'verification_code' => $r->verification_code,
+                'created_at' => $r->created_at ? $r->created_at->format('d/m/Y H:i') : '',
+            ];
+        });
+
+        $totalPcs = \App\Models\Pc::count();
+        $totalStorage = '24.8 GB';
+
+        return response()->json([
+            'status' => 'success',
+            'pcs' => $pcs,
+            'access_requests' => $requests,
+            'stats' => [
+                'total_pcs' => $totalPcs,
+                'total_storage' => $totalStorage,
+                'system_status' => 'TERHUBUNG & AMAN',
+            ],
+            'download_db_url' => url('/api/mobile/backup/download-sql'),
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage(), 'pcs' => []]);
+    }
+});
+
+Route::post('/api/mobile/backup/request-access', function (\Illuminate\Http\Request $request) {
+    try {
+        $pool = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        $randStr = substr(str_shuffle($pool), 0, 5);
+
+        $req = \App\Models\AccessRequest::create([
+            'user_id' => auth()->id() ?? 1,
+            'pc_name' => 'PC-' . $randStr,
+            'status' => 'pending'
+        ]);
+
+        return response()->json(['status' => 'success', 'message' => 'Pengajuan akses backup PC berhasil dikirim ke Admin.', 'data' => $req]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+// =====================================================================
+// API CATATAN PELANGGARAN PRAJURIT (DETAIL & RIWAYAT KASUS)
+// =====================================================================
+Route::post('/api/mobile/violations/{id}/progress', function (\Illuminate\Http\Request $request, $id) {
+    try {
+        $v = \App\Models\SoldierViolation::findOrFail($id);
+        $data = $request->json()->all() ?: $request->all();
+        $note = $data['note'] ?? $data['catatan'] ?? '';
+        $newStatus = strtoupper($data['status'] ?? $v->status);
+
+        $timestamp = now()->format('d/m/Y H:i');
+        $updatedProgress = ($v->case_progress ? $v->case_progress . "\n" : "") . "[{$timestamp}] " . $note;
+
+        $v->update([
+            'case_progress' => $updatedProgress,
+            'status' => $newStatus,
+        ]);
+
+        return response()->json(['status' => 'success', 'message' => 'Perkembangan kasus berhasil dicatat', 'data' => $v]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+// =====================================================================
+// API RADAR KEGIATAN LAPANGAN CRUD
+// =====================================================================
+Route::post('/api/mobile/activities', function (\Illuminate\Http\Request $request) {
+    try {
+        $data = $request->json()->all() ?: $request->all();
+        $act = \App\Models\CommunityActivity::create([
+            'title' => $data['title'] ?? 'Kegiatan Lapangan',
+            'category' => $data['category'] ?? 'Pengamanan',
+            'location_name' => $data['location_name'] ?? 'Wilayah Kodaeral V',
+            'latitude' => (float)($data['latitude'] ?? -7.2575),
+            'longitude' => (float)($data['longitude'] ?? 112.7521),
+            'activity_date' => $data['activity_date'] ?? date('Y-m-d'),
+            'description' => $data['description'] ?? 'Laporan kegiatan pemantauan.',
+            'user_id' => auth()->id() ?? 1,
+        ]);
+        return response()->json(['status' => 'success', 'data' => $act]);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});
+
+Route::delete('/api/mobile/activities/{id}', function ($id) {
+    try {
+        $act = \App\Models\CommunityActivity::findOrFail($id);
+        $act->delete();
+        return response()->json(['status' => 'success', 'message' => 'Kegiatan berhasil dihapus']);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});

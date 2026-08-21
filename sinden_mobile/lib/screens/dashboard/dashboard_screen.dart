@@ -19,6 +19,7 @@ import '../signature/signature_screen.dart';
 import '../users/users_screen.dart';
 import '../audit/audit_logs_screen.dart';
 import '../settings/settings_screen.dart';
+import '../backup/backup_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -330,7 +331,7 @@ class DashboardScreen extends StatelessWidget {
                   icon: Icons.backup_outlined,
                   color: const Color(0xFF10B981),
                   hasAccess: user?.isAdmin ?? false,
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BackupScreen())),
                 ),
               ],
             ),

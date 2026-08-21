@@ -35,6 +35,78 @@ class _ViolationsScreenState extends State<ViolationsScreen> {
     setState(() => _isLoading = false);
   }
 
+  void _showDetailAndProgressDialog(dynamic v) {
+    final noteController = TextEditingController();
+    String currentStatus = v['status'] ?? 'PROSES';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Text('Detail & Riwayat Kasus Prajurit', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(v['name'] ?? v['nama'] ?? '-', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppTheme.primaryNavy)),
+                Text('${v['pangkat'] ?? ''} NRP ${v['nrp'] ?? '-'} (${v['unit'] ?? 'Denintel'})', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                const Divider(height: 20),
+                const Text('Uraian Kasus:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
+                Text(v['case_description'] ?? v['kasus'] ?? '-', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 12),
+                const Text('Riwayat Perkembangan Kasus:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE2E8F0))),
+                  child: Text(v['case_progress'] ?? 'Dalam pemeriksaan awal.', style: const TextStyle(fontSize: 11, height: 1.4)),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: currentStatus,
+                  decoration: InputDecoration(labelText: 'Ubah Status Kasus', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                  items: const [
+                    DropdownMenuItem(value: 'PROSES', child: Text('DALAM PROSES PEMERIKSAAN')),
+                    DropdownMenuItem(value: 'SIDANG', child: Text('SIDANG PERKARA')),
+                    DropdownMenuItem(value: 'SELESAI', child: Text('SELESAI / EKSEKUSI')),
+                    DropdownMenuItem(value: 'DINAS_KEMBALI', child: Text('DINAS KEMBALI')),
+                  ],
+                  onChanged: (val) => setModalState(() => currentStatus = val!),
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: noteController,
+                  maxLines: 2,
+                  decoration: InputDecoration(labelText: 'Catatan Perkembangan Baru', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('TUTUP')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
+              onPressed: () async {
+                final id = v['id'];
+                if (id != null) {
+                  await ApiService().post('/api/mobile/violations/$id/progress', {
+                    'note': noteController.text.trim(),
+                    'status': currentStatus,
+                  });
+                  Navigator.of(ctx).pop();
+                  _fetchViolations();
+                }
+              },
+              child: const Text('SIMPAN PERUBAHAN', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showAddViolationDialog() {
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController();
@@ -89,8 +161,9 @@ class _ViolationsScreenState extends State<ViolationsScreen> {
                     value: status,
                     decoration: InputDecoration(labelText: 'Status Kasus', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
                     items: const [
-                      DropdownMenuItem(value: 'PROSES', child: Text('DALAM PROSES PEMERIKSAAN', style: TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.bold))),
-                      DropdownMenuItem(value: 'SELESAI', child: Text('SELESAI / SIDANG DISIPLIN', style: TextStyle(color: Color(0xFF16A34A), fontWeight: FontWeight.bold))),
+                      DropdownMenuItem(value: 'PROSES', child: Text('DALAM PROSES PEMERIKSAAN')),
+                      DropdownMenuItem(value: 'SIDANG', child: Text('SIDANG PERKARA')),
+                      DropdownMenuItem(value: 'SELESAI', child: Text('SELESAI / SIDANG DISIPLIN')),
                     ],
                     onChanged: (v) => setModalState(() => status = v!),
                   ),
@@ -122,12 +195,6 @@ class _ViolationsScreenState extends State<ViolationsScreen> {
         ),
       ),
     );
-  }
-
-  void _updateStatus(int id, String currentStatus) async {
-    final newStatus = currentStatus == 'PROSES' ? 'SELESAI' : 'PROSES';
-    await ApiService().put('/api/mobile/violations/$id', {'status': newStatus});
-    _fetchViolations();
   }
 
   void _deleteViolation(int id) async {
@@ -176,7 +243,6 @@ class _ViolationsScreenState extends State<ViolationsScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  // Stat Cards
                   Row(
                     children: [
                       Expanded(
@@ -239,50 +305,46 @@ class _ViolationsScreenState extends State<ViolationsScreen> {
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(v['name'] ?? v['nama'] ?? '-', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
-                                  ),
-                                  InkWell(
-                                    onTap: id != null ? () => _updateStatus(id, v['status'] ?? 'PROSES') : null,
-                                    child: Container(
+                        child: InkWell(
+                          onTap: () => _showDetailAndProgressDialog(v),
+                          borderRadius: BorderRadius.circular(18),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(v['name'] ?? v['nama'] ?? '-', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+                                    ),
+                                    Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                       decoration: BoxDecoration(
                                         color: isProses ? const Color(0xFFFEE2E2) : const Color(0xFFDCFCE7),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(isProses ? Icons.pending_actions : Icons.check_circle, size: 12, color: isProses ? const Color(0xFFDC2626) : const Color(0xFF16A34A)),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            v['status'] ?? 'PROSES',
-                                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: isProses ? const Color(0xFFDC2626) : const Color(0xFF16A34A)),
-                                          ),
-                                        ],
+                                      child: Text(
+                                        v['status'] ?? 'PROSES',
+                                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: isProses ? const Color(0xFFDC2626) : const Color(0xFF16A34A)),
                                       ),
                                     ),
-                                  ),
-                                  if (id != null)
-                                    IconButton(
-                                      icon: const Icon(Icons.delete_outline, color: Color(0xFFDC2626), size: 20),
-                                      onPressed: () => _deleteViolation(id),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text('${v['pangkat'] ?? ''} NRP ${v['nrp'] ?? '-'} (${v['unit'] ?? v['satuan'] ?? 'Denintel'})', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
-                              const Divider(height: 16),
-                              Text('Kasus: ${v['case_description'] ?? v['kasus'] ?? '-'}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
-                            ],
+                                    if (id != null)
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline, color: Color(0xFFDC2626), size: 20),
+                                        onPressed: () => _deleteViolation(id),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text('${v['pangkat'] ?? ''} NRP ${v['nrp'] ?? '-'} (${v['unit'] ?? 'Denintel'})', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+                                const Divider(height: 16),
+                                Text('Kasus: ${v['case_description'] ?? v['kasus'] ?? '-'}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF334155))),
+                                const SizedBox(height: 6),
+                                const Text('Tekan kartu untuk melihat detail & update kasus ->', style: TextStyle(fontSize: 10, color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
+                              ],
+                            ),
                           ),
                         ),
                       );
