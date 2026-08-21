@@ -99,21 +99,21 @@ class UserController extends Controller
 
             DB::commit();
 
-            // PROSES KIRIM WA (Menyertakan Email Personel)
+            // PROSES KIRIM WA (Pesan Bersih tanpa Karakter Aneh)
             try {
                 $targetPhone = $user->phone;
                 if (str_starts_with($targetPhone, '0')) {
                     $targetPhone = '62' . substr($targetPhone, 1);
                 }
 
-                $pesanWA = "ðŸ“Œ *AKTIVASI AKSES SI SINDEN*\n\n" .
+                $pesanWA = "*AKTIVASI AKSES SI SINDEN*\n\n" .
                            "{$sapaan}, *{$user->pangkat} {$user->name}*.\n" .
                            "Mohon izin, akun SINDEN Anda telah dibuat.\n\n" .
-                           "ðŸ“‹ *Detail Aktivasi:*\n" .
-                           "â€¢ Jabatan: *{$roleLabel}*\n" .
-                           "â€¢ NRP: *{$user->nrp}*\n" .
-                           "â€¢ Email: *{$user->email}*\n" .
-                           "â€¢ Token: *{$activationToken}*\n\n" .
+                           "*Detail Aktivasi:*\n" .
+                           "- Jabatan: *{$roleLabel}*\n" .
+                           "- NRP: *{$user->nrp}*\n" .
+                           "- Email: *{$user->email}*\n" .
+                           "- Token: *{$activationToken}*\n\n" .
                            "Silakan aktivasi akun dan buat password Anda di:\n" .
                            "https://sisinden.my.id/aktivasi\n\n" .
                            "_Harap segera lakukan aktivasi demi keamanan data._";
