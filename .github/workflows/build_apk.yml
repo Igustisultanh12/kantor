@@ -30,7 +30,7 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Generate Local Properties
+      - name: Generate Local Properties & Versioning
         working-directory: sinden_mobile
         run: |
           echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
@@ -47,19 +47,19 @@ jobs:
 
       - name: Build Android Release APK
         working-directory: sinden_mobile
-        run: flutter build apk --release --no-tree-shake-icons
+        run: flutter build apk --release --no-tree-shake-icons --build-name=1.0.${{ github.run_number }} --build-number=${{ github.run_number }}
 
-      - name: Prepare APK File
+      - name: Prepare Dynamic Versioned APK File
         run: |
-          cp sinden_mobile/build/app/outputs/flutter-apk/app-release.apk SI-SINDEN-v1.0-release.apk
+          cp sinden_mobile/build/app/outputs/flutter-apk/app-release.apk SI-SINDEN-v1.0.${{ github.run_number }}.apk
 
       - name: Publish Release APK to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "v1.0.${{ github.run_number }}"
           name: "SI SINDEN Mobile Android App v1.0.${{ github.run_number }}"
-          body: "Aplikasi Mobile Resmi SI SINDEN - Detasemen Intelijen Kodaeral V Berbasis Google Material 3 Design."
-          files: SI-SINDEN-v1.0-release.apk
+          body: "Aplikasi Mobile Resmi SI SINDEN - Detasemen Intelijen Kodaeral V Berbasis Google Material 3 Design (Build Version 1.0.${{ github.run_number }})."
+          files: SI-SINDEN-v1.0.${{ github.run_number }}.apk
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
