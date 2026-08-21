@@ -12,19 +12,18 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log; // Tambahan untuk logging error WA
+use Illuminate\Support\Facades\Log;
 
 class UserController extends Controller
 {
     /**
      * Menampilkan daftar personel utama
-     * PERBAIKAN: Mengurutkan berdasarkan 'created_at desc' agar data baru langsung terlihat di halaman 1
      */
     public function index()
     {
         return Inertia::render('Users/Index', [
             'users' => User::where('id', '!=', auth()->id()) 
-                ->orderBy('created_at', 'desc') // Data terbaru di atas agar langsung terlihat
+                ->orderBy('created_at', 'desc')
                 ->orderBy('is_active', 'asc') 
                 ->paginate(10),
 
@@ -36,7 +35,6 @@ class UserController extends Controller
 
     /**
      * FITUR: TAMBAH PERSONEL + GENERATE TOKEN AKTIVASI + NOTIFIKASI WA
-     * PERBAIKAN: Memisahkan Commit Database dari pengiriman WA agar data tidak hilang (Rollback)
      */
     public function store(Request $request)
     {
@@ -52,7 +50,7 @@ class UserController extends Controller
         try {
             DB::beginTransaction();
             
-            // Generate Token Aktivasi Sesuai Instruksi (Contoh: SINDEN-A1B2C3)
+            // Generate Token Aktivasi (Contoh: SINDEN-A1B2C3)
             $activationToken = 'SINDEN-' . strtoupper(Str::random(6));
             
             // Sapaan Waktu
@@ -76,7 +74,7 @@ class UserController extends Controller
             ];
             $roleLabel = $roleMapping[$request->role] ?? 'PERSONEL';
 
-            // PROSES SIMPAN: Pastikan seluruh field yang diminta model User.php terisi
+            // PROSES SIMPAN
             $user = User::create([
                 'name' => strtoupper($request->name),
                 'pangkat' => $request->pangkat,
@@ -84,9 +82,9 @@ class UserController extends Controller
                 'phone' => $request->phone,
                 'email' => $request->email,
                 'role' => $request->role,
-                'password' => Hash::make(Str::random(32)), // Password acak aman
+                'password' => Hash::make(Str::random(32)),
                 'activation_token' => $activationToken,
-                'is_active' => false, // Default non-aktif sampai aktivasi
+                'is_active' => false,
                 'must_change_password' => true,
             ]);
 
@@ -99,37 +97,32 @@ class UserController extends Controller
                 'ip_address'       => $request->ip(),
             ]);
 
-            // KUNCI DATA KE DATABASE TERLEBIH DAHULU (PENTING!)
             DB::commit();
 
-            // PROSES KIRIM WA (Diluar Transaction agar jika gagal, data di database TIDAK hilang/rollback)
+            // PROSES KIRIM WA (Menyertakan Email Personel)
             try {
-                // PENYESUAIAN FORMAT NOMOR WA (Ubah 08 menjadi 62)
                 $targetPhone = $user->phone;
                 if (str_starts_with($targetPhone, '0')) {
                     $targetPhone = '62' . substr($targetPhone, 1);
                 }
 
-                $pesanWA = " *AKTIVASI AKSES SI SINDEN*\n\n" .
+                $pesanWA = "ðŸ“Œ *AKTIVASI AKSES SI SINDEN*\n\n" .
                            "{$sapaan}, *{$user->pangkat} {$user->name}*.\n" .
                            "Mohon izin, akun SINDEN Anda telah dibuat.\n\n" .
-                           " *Detail Aktivasi:*\n" .
-                           "• Jabatan: *{$roleLabel}*\n" .
-                           "• NRP: *{$user->nrp}*\n" .
-                           "• Token: *{$activationToken}*\n\n" .
+                           "ðŸ“‹ *Detail Aktivasi:*\n" .
+                           "â€¢ Jabatan: *{$roleLabel}*\n" .
+                           "â€¢ NRP: *{$user->nrp}*\n" .
+                           "â€¢ Email: *{$user->email}*\n" .
+                           "â€¢ Token: *{$activationToken}*\n\n" .
                            "Silakan aktivasi akun dan buat password Anda di:\n" .
                            "https://sisinden.my.id/aktivasi\n\n" .
                            "_Harap segera lakukan aktivasi demi keamanan data._";
 
-                // Kirim menggunakan service yang sudah terhubung ke Port 3000
                 WhatsappService::sendMessage($targetPhone, $pesanWA);
                 
                 return redirect()->back()->with('message', 'Personel berhasil ditambahkan dan Token WA terkirim.');
             } catch (\Exception $waError) {
-                // Log error secara internal agar tidak muncul di layar user
                 Log::error('Gagal kirim WA ke: ' . $user->phone . ' | Error: ' . $waError->getMessage());
-                
-                // Jika WA Gagal, data di database tetap aman karena sudah di-commit di atas
                 return redirect()->back()->with('message', 'Personel tersimpan, namun WA gagal terkirim (Gateway Offline). Token: ' . $activationToken);
             }
 
@@ -141,7 +134,7 @@ class UserController extends Controller
     }
 
     /**
-     * FITUR BARU: PROSES AKTIVASI OLEH PERSONEL
+     * FITUR: PROSES AKTIVASI OLEH PERSONEL
      */
     public function activate(Request $request)
     {
@@ -164,7 +157,7 @@ class UserController extends Controller
         $user->update([
             'password' => Hash::make($request->password),
             'is_active' => true,
-            'activation_token' => null, // Hapus token setelah dipakai
+            'activation_token' => null,
             'must_change_password' => false,
         ]);
 
