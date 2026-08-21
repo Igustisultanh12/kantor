@@ -36,7 +36,13 @@ onMounted(() => {
             title: 'AKTIVASI OTORITAS AKUN BERHASIL',
             text: page.props.flash.message,
             confirmButtonText: 'SIAP LOGIN',
-            confirmButtonColor: '#1e3a8a',
+            confirmButtonColor: '#f97316',
+            background: 'rgba(15, 23, 42, 0.92)',
+            color: '#ffffff',
+            customClass: {
+                popup: 'swal2-dark-glass border border-white/10 shadow-2xl rounded-[2rem]',
+                confirmButton: 'bg-orange-500 hover:bg-orange-600 text-white font-black text-xs uppercase tracking-widest px-8 py-3 rounded-xl shadow-lg shadow-orange-500/20'
+            },
         });
     }
 });

@@ -33,7 +33,13 @@ const submit = () => {
                 title: 'AKTIVASI OTORITAS AKUN BERHASIL',
                 text: 'Akun Anda telah berhasil diaktifkan secara resmi dalam sistem SINDEN. Silakan login menggunakan password baru Anda.',
                 confirmButtonText: 'MASUK KE SISTEM',
-                confirmButtonColor: '#1e3a8a',
+                confirmButtonColor: '#f97316',
+                background: 'rgba(15, 23, 42, 0.92)',
+                color: '#ffffff',
+                customClass: {
+                    popup: 'swal2-dark-glass border border-white/10 shadow-2xl rounded-[2rem]',
+                    confirmButton: 'bg-orange-500 hover:bg-orange-600 text-white font-black text-xs uppercase tracking-widest px-8 py-3 rounded-xl shadow-lg shadow-orange-500/20'
+                },
                 allowOutsideClick: false,
             });
         },
@@ -45,6 +51,12 @@ const submit = () => {
                 text: errText,
                 confirmButtonText: 'PERIKSA KEMBALI',
                 confirmButtonColor: '#dc2626',
+                background: 'rgba(15, 23, 42, 0.92)',
+                color: '#ffffff',
+                customClass: {
+                    popup: 'swal2-dark-glass border border-white/10 shadow-2xl rounded-[2rem]',
+                    confirmButton: 'bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest px-8 py-3 rounded-xl shadow-lg shadow-red-600/20'
+                },
             });
         },
         onFinish: () => form.reset('password', 'password_confirmation'),
