@@ -195,6 +195,96 @@ class UserController extends Controller
     }
 
     /**
+     * FITUR: TAMBAH BANYAK PERSONEL (BULK) + CETAK TOKEN AKTIVASI PDF (TANPA WA)
+     */
+    public function storeBulk(Request $request)
+    {
+        $request->validate([
+            'users' => 'required|array|min:1',
+            'users.*.name' => 'required|string|max:255',
+            'users.*.pangkat' => 'required|string',
+            'users.*.nrp' => 'required|string|distinct|unique:users,nrp',
+            'users.*.email' => 'nullable|email|distinct|unique:users,email',
+            'users.*.phone' => 'nullable|string',
+            'users.*.role' => 'nullable|string',
+        ]);
+
+        $createdIds = [];
+
+        try {
+            DB::beginTransaction();
+
+            foreach ($request->users as $item) {
+                $activationToken = 'SINDEN-' . strtoupper(Str::random(6));
+                $rawNrp = preg_replace('/[^A-Za-z0-9]/', '', $item['nrp']);
+                $email = !empty($item['email']) ? $item['email'] : (strtolower($rawNrp) . '@sinden.my.id');
+                $role = !empty($item['role']) ? $item['role'] : 'personel';
+                $phone = !empty($item['phone']) ? $item['phone'] : null;
+
+                $user = User::create([
+                    'name' => strtoupper($item['name']),
+                    'pangkat' => $item['pangkat'],
+                    'nrp' => $item['nrp'],
+                    'phone' => $phone,
+                    'email' => $email,
+                    'role' => $role,
+                    'password' => Hash::make(Str::random(32)),
+                    'activation_token' => $activationToken,
+                    'is_active' => false,
+                    'must_change_password' => true,
+                ]);
+
+                $createdIds[] = $user->id;
+
+                AuditLog::create([
+                    'user_id'          => auth()->id(),
+                    'admin_name'       => auth()->user()->name,
+                    'action'           => 'TAMBAH PERSONEL BULK',
+                    'target_personnel' => $user->name,
+                    'description'      => "Mendaftarkan masal {$user->name} ({$user->pangkat}/{$user->nrp}). Kode verifikasi via PDF.",
+                    'ip_address'       => $request->ip(),
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => count($createdIds) . ' Akun personel berhasil didaftarkan.',
+                'ids' => $createdIds,
+                'pdf_url' => route('users.print-token-pdf', ['ids' => implode(',', $createdIds)])
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Gagal tambah personel bulk: ' . $e->getMessage());
+            return response()->json(['message' => 'Gagal memproses pendaftaran masal: ' . $e->getMessage()], 422);
+        }
+    }
+
+    /**
+     * FITUR: CETAK KODE VERIFIKASI & TOKEN AKTIVASI PDF (FORMAT RESMI DETASEMEN INTELIJEN)
+     */
+    public function printTokenPdf(Request $request)
+    {
+        $idsParam = $request->query('ids');
+        if ($idsParam) {
+            $ids = explode(',', $idsParam);
+            $users = User::whereIn('id', $ids)->get();
+        } else {
+            $users = User::where('is_active', false)->whereNotNull('activation_token')->get();
+        }
+
+        $agencyName = Setting::where('key', 'agency_name')->first()->value ?? 'DENINTEL KODAERAL V';
+
+        return Inertia::render('Users/Token-pdf', [
+            'users' => $users,
+            'title' => 'DAFTAR KODE VERIFIKASI & TOKEN AKTIVASI AKUN PERSONEL',
+            'unit' => $agencyName,
+            'date' => now()->translatedFormat('d F Y')
+        ]);
+    }
+
+    /**
      * FITUR: CETAK REKAP PERSONEL
      */
     public function printPdf()

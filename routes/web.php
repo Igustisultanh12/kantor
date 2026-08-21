@@ -215,9 +215,11 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['role:admin'])->group(function () {
         Route::post('/signature-requests/clear-all', [SignatureRequestController::class, 'clearAll'])->name('signature.clear-all');
         Route::get('/users/print-report-pdf', [UserController::class, 'printPdf'])->name('users.print-pdf');
+        Route::get('/users/print-token-pdf', [UserController::class, 'printTokenPdf'])->name('users.print-token-pdf');
 
         // Manajemen Personel Internal & Token Akses
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        Route::post('/users/bulk', [UserController::class, 'storeBulk'])->name('users.store-bulk');
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
         Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
         Route::patch('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle');

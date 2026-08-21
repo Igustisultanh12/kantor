@@ -2,7 +2,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, usePage, router, Link } from '@inertiajs/vue3';
 // PERBAIKAN: Menambahkan onMounted dan onUnmounted agar tidak error
-import { ref, computed, onMounted, onUnmounted } from 'vue'; 
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import axios from 'axios'; 
 import Swal from 'sweetalert2';
 import html2pdf from 'html2pdf.js'; // Library Sakti untuk Cetak Tanpa RAM Server
 
@@ -92,6 +93,63 @@ const downloadPDF = () => {
         jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
     };
     html2pdf().set(opt).from(element).save();
+};
+
+// --- FITUR BULK REGISTRASI PERSONEL ---
+const showBulkModal = ref(false);
+const isSubmittingBulk = ref(false);
+const bulkRows = ref([
+    { name: '', pangkat: '', nrp: '', email: '', phone: '', role: 'personel' }
+]);
+
+const openBulkModal = () => {
+    bulkRows.value = [
+        { name: '', pangkat: '', nrp: '', email: '', phone: '', role: 'personel' },
+        { name: '', pangkat: '', nrp: '', email: '', phone: '', role: 'personel' }
+    ];
+    showBulkModal.value = true;
+};
+
+const addBulkRow = () => {
+    bulkRows.value.push({ name: '', pangkat: '', nrp: '', email: '', phone: '', role: 'personel' });
+};
+
+const removeBulkRow = (index) => {
+    if (bulkRows.value.length > 1) {
+        bulkRows.value.splice(index, 1);
+    }
+};
+
+const submitBulk = async () => {
+    const invalidRow = bulkRows.value.find(r => !r.name || !r.name.trim() || !r.pangkat || !r.pangkat.trim() || !r.nrp || !r.nrp.trim());
+    if (invalidRow) {
+        Swal.fire('FORM BELUM LENGKAP', 'Mohon lengkapi Nama, Pangkat, dan NRP/PNS untuk setiap baris personel.', 'warning');
+        return;
+    }
+
+    try {
+        isSubmittingBulk.value = true;
+        const res = await axios.post(route('users.store-bulk'), { users: bulkRows.value });
+        if (res.data && res.data.success) {
+            showBulkModal.value = false;
+            
+            Swal.fire({
+                title: 'PENDAFTARAN MASAL BERHASIL',
+                text: `${res.data.message} Dokumen Kode Verifikasi (Token) PDF akan dibuka untuk dicetak.`,
+                icon: 'success',
+                confirmButtonText: 'CETAK TOKEN PDF SEKARANG',
+                confirmButtonColor: '#4f46e5'
+            }).then(() => {
+                window.open(res.data.pdf_url, '_blank');
+                router.reload();
+            });
+        }
+    } catch (err) {
+        const errMsg = err.response?.data?.message || 'Gagal memproses pendaftaran masal. Cek kembali NRP/Email agar tidak ganda.';
+        Swal.fire('PROSES GAGAL', errMsg, 'error');
+    } finally {
+        isSubmittingBulk.value = false;
+    }
 };
 
 /**
@@ -253,10 +311,19 @@ onUnmounted(() => {
                     <p class="text-xs text-slate-500 font-semibold mt-0.5">Manajemen Pengguna, Peran Otoritas, & Verifikasi Akses Sistem</p>
                 </div>
                 
-                <div class="flex gap-2 sm:gap-3 w-full md:w-auto">
-                    <button @click="openPreview" class="flex-1 md:flex-none px-4 sm:px-5 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 text-slate-700 rounded-2xl font-extrabold text-xs uppercase shadow-xs hover:bg-slate-100 transition tracking-wider"> Pratinjau Rekap
+                <div class="flex flex-wrap gap-2 sm:gap-3 w-full md:w-auto">
+                    <button @click="openPreview" class="px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-2xl font-extrabold text-xs uppercase shadow-xs hover:bg-slate-100 transition">
+                        Pratinjau Rekap
                     </button>
-                    <button @click="showAddModal = true" class="flex-1 md:flex-none px-4 sm:px-5 py-2.5 sm:py-3 bg-blue-600 text-white rounded-2xl font-extrabold text-xs uppercase shadow-md shadow-blue-500/20 hover:bg-blue-700 transition tracking-wider">
+                    <a :href="route('users.print-token-pdf')" target="_blank" class="px-4 py-2.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl font-extrabold text-xs uppercase shadow-xs hover:bg-emerald-100 transition flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                        <span>Cetak Token PDF</span>
+                    </a>
+                    <button @click="openBulkModal" class="px-4 py-2.5 bg-indigo-600 text-white rounded-2xl font-extrabold text-xs uppercase shadow-md shadow-indigo-500/20 hover:bg-indigo-700 transition flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
+                        <span>+ Tambah Banyak (Bulk)</span>
+                    </button>
+                    <button @click="showAddModal = true" class="px-4 py-2.5 bg-blue-600 text-white rounded-2xl font-extrabold text-xs uppercase shadow-md shadow-blue-500/20 hover:bg-blue-700 transition">
                         + Tambah Personel
                     </button>
                 </div>
