@@ -25,7 +25,7 @@ class SignatureRequestController extends Controller
 
         if ($user->role !== 'admin' && $user->role !== 'komandan') {
             $sigQuery->where('user_id', $user->id);
-            $skhppQuery->where('user_id', $user->id);
+            $skhppQuery->where('submitted_by', $user->id);
         }
 
         $requests = $sigQuery->latest()->paginate(15)->withQueryString();
