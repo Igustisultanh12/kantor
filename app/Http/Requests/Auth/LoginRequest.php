@@ -6,6 +6,7 @@ use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -31,7 +32,7 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        $loginInput = $this->input('username') ?? $this->input('email');
+        $loginInput = trim($this->input('email') ?? $this->input('username') ?? '');
 
         if (empty($loginInput)) {
             throw ValidationException::withMessages([
@@ -42,6 +43,7 @@ class LoginRequest extends FormRequest
         $password = $this->input('password');
         $remember = $this->boolean('remember');
 
+        // 1. Cek Login via Email (jika format email valid)
         if (filter_var($loginInput, FILTER_VALIDATE_EMAIL)) {
             if (Auth::attempt(['email' => $loginInput, 'password' => $password], $remember)) {
                 RateLimiter::clear($this->throttleKey());
@@ -49,25 +51,32 @@ class LoginRequest extends FormRequest
             }
         }
 
-        if (Auth::attempt(['username' => $loginInput, 'password' => $password], $remember)) {
-            RateLimiter::clear($this->throttleKey());
-            return;
+        // 2. Cek Login via NRP (Kolom nrp di tabel users)
+        if (Schema::hasColumn('users', 'nrp')) {
+            if (Auth::attempt(['nrp' => $loginInput, 'password' => $password], $remember)) {
+                RateLimiter::clear($this->throttleKey());
+                return;
+            }
         }
 
-        if (Auth::attempt(['nrp' => $loginInput, 'password' => $password], $remember)) {
-            RateLimiter::clear($this->throttleKey());
-            return;
-        }
-
+        // 3. Cek Login via Email murni (jika input string email tanpa format standar)
         if (Auth::attempt(['email' => $loginInput, 'password' => $password], $remember)) {
             RateLimiter::clear($this->throttleKey());
             return;
         }
 
+        // 4. Cek Login via Username (Hanya jika kolom username ada di tabel users)
+        if (Schema::hasColumn('users', 'username')) {
+            if (Auth::attempt(['username' => $loginInput, 'password' => $password], $remember)) {
+                RateLimiter::clear($this->throttleKey());
+                return;
+            }
+        }
+
         RateLimiter::hit($this->throttleKey());
 
         throw ValidationException::withMessages([
-            'email' => 'Kredensial tidak cocok. Silakan periksa NRP/Username dan Kata Sandi Anda.',
+            'email' => 'Kredensial tidak cocok. Silakan periksa NRP / Email dan Kata Sandi Anda.',
         ]);
     }
 
@@ -91,7 +100,7 @@ class LoginRequest extends FormRequest
 
     public function throttleKey(): string
     {
-        $loginInput = $this->input('username') ?? $this->input('email') ?? '';
+        $loginInput = trim($this->input('email') ?? $this->input('username') ?? '');
         return Str::transliterate(Str::lower($loginInput).'|'.$this->ip());
     }
 }
