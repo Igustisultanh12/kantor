@@ -545,7 +545,7 @@ class SkhppController extends Controller
                     'nama' => $usr->name,
                     'pangkat_korps_nrp' => ($usr->pangkat ?: 'TNI AL') . ($usr->nrp ? (' / NRP ' . $usr->nrp) : ''),
                     'kategori_personel' => 'Dinas Militer & PNS',
-                    'nomor_skhpp' => 'SINDEN/VERIF/' . $usr->id,
+                    'nomor_skhpp' => 'SINDEN / ' . $usr->id . ' / VERIF / ' . $this->getRomanMonth(date('n')) . ' / ' . date('Y'),
                     'jabatan_pekerjaan' => 'Personel SINDEN Kodaeral V',
                     'peruntukan' => 'Dokumen Resmi Kode Verifikasi Otoritas Akun Personel',
                     'tanggal_skhpp' => $usr->updated_at ?: now(),

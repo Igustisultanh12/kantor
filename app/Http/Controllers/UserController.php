@@ -289,9 +289,20 @@ class UserController extends Controller
             $qrCodeBase64 = 'data:image/png;base64,' . base64_encode(file_get_contents($qrApiUrl));
         } catch (\Exception $e) {}
 
+        // Auto-increment Nomor Urut Cetak Dokumen Token
+        $seqSetting = Setting::firstOrCreate(['key' => 'token_pdf_counter'], ['value' => '0']);
+        $seq = (int)$seqSetting->value + 1;
+        $seqSetting->update(['value' => (string)$seq]);
+
+        $romanMonths = [1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V', 6 => 'VI', 7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII'];
+        $romanMonth = $romanMonths[(int)date('n')];
+        $currentYear = date('Y');
+
+        $formattedNomor = "SINDEN / " . $seq . " / VERIF / " . $romanMonth . " / " . $currentYear;
+
         $data = [
             'personels' => $personels,
-            'nomorSurat' => 'SINDEN/VERIF/' . date('Ymd/His'),
+            'nomorSurat' => $formattedNomor,
             'generatedAt' => now()->translatedFormat('d F Y'),
             'signerJabatan' => $signerJabatan,
             'signerName' => $signerName,
