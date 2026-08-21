@@ -38,7 +38,7 @@ const checkAksesStatus = () => {
         if (!props.authRequest) {
             Swal.fire({
                 title: 'Akses Ditolak',
-                text: "Anda belum memiliki pangkalan penyimpanan. Ajukan akses ke Komandan sekarang?",
+                text: "Anda belum memiliki pangkalan penyimpanan. Ajukan akses sekarang?",
                 showCancelButton: true,
                 confirmButtonColor: '#3085d6',
                 cancelButtonColor: '#d33',
