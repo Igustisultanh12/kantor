@@ -43,9 +43,44 @@ class SindenApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
             home: auth.isInitialLoading
-                ? const Scaffold(
+                ? Scaffold(
+                    backgroundColor: Colors.white,
                     body: Center(
-                      child: CircularProgressIndicator(color: AppTheme.primaryNavy),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const SizedBox(
+                            width: 44,
+                            height: 44,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 4.0,
+                              strokeCap: StrokeCap.round, // M3 Rounded Cap
+                              color: AppTheme.primaryNavy,
+                              backgroundColor: Color(0xFFE2E8F0),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          const Text(
+                            'SI SINDEN',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              color: AppTheme.primaryNavy,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'MEMPROSES AUTENTIKASI KEDINASAN...',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF94A3B8),
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   )
                 : auth.isAuthenticated

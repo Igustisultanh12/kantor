@@ -214,7 +214,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ? const SizedBox(
                             height: 20,
                             width: 20,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5, strokeCap: StrokeCap.round),
                           )
                         : const Text('MASUK KE SISTEM'),
                   ),
