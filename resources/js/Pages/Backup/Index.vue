@@ -23,29 +23,7 @@ const networkForm = useForm({
 // --- FUNGSI PEMERIKSAAN OTORITAS SEBELUM BUKA PC ---
 const openPcStorage = (pcId) => {
     if (props.myPcs.length === 0 && !props.isAdmin) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'AKSES DITOLAK',
-            text: 'Anda belum memiliki izin, silahkan ajukan terlebih dahulu.',
-            confirmButtonText: 'AJUKAN OTORITAS AKSES',
-            showCancelButton: true,
-            cancelButtonText: 'BATAL',
-            confirmButtonColor: '#2563eb',
-            cancelButtonColor: '#64748b',
-            background: '#ffffff',
-            color: '#0f172a',
-            customClass: {
-                popup: 'rounded-[2rem] shadow-2xl border border-slate-200 p-6',
-                title: 'text-slate-900 font-extrabold text-base uppercase tracking-wider',
-                htmlContainer: 'text-slate-600 text-xs font-medium',
-                confirmButton: 'bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest px-8 py-3 rounded-xl shadow-md',
-                cancelButton: 'bg-slate-500 hover:bg-slate-600 text-white font-black text-xs uppercase tracking-widest px-6 py-3 rounded-xl'
-            },
-        }).then((result) => {
-            if (result.isConfirmed) {
-                checkAksesStatus();
-            }
-        });
+        checkAksesStatus();
         return;
     }
 
@@ -61,11 +39,11 @@ const checkAksesStatus = () => {
             Swal.fire({
                 title: 'Akses Ditolak',
                 text: "Anda belum memiliki pangkalan penyimpanan. Ajukan akses ke Komandan sekarang?",
-                icon: 'lock',
                 showCancelButton: true,
                 confirmButtonColor: '#3085d6',
                 cancelButtonColor: '#d33',
-                confirmButtonText: 'Ya, Ajukan Akses!'
+                confirmButtonText: 'Ya, Ajukan Akses!',
+                cancelButtonText: 'Cancel'
             }).then((result) => {
                 if (result.isConfirmed) {
                     useForm({}).post(route('backup.request-access'), {

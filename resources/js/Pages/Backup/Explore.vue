@@ -295,19 +295,10 @@ const checkMobileDevice = () => {
     const isMobile = window.innerWidth < 1024 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     if (isMobile) {
         Swal.fire({
-            icon: 'warning',
-            title: 'AKSES TERBATAS - PERANGKAT SELULER',
+            title: 'Akses Terbatas',
             text: 'Modul Explorer Backup memerlukan layar standar Komputer / PC. Silakan buka halaman ini melalui Komputer atau Perangkat Desktop.',
-            confirmButtonText: 'KEMBALI KE DASHBOARD',
-            confirmButtonColor: '#2563eb',
-            background: '#ffffff',
-            color: '#0f172a',
-            customClass: {
-                popup: 'rounded-[2rem] shadow-2xl border border-slate-200 p-6',
-                title: 'text-slate-900 font-extrabold text-base uppercase tracking-wider',
-                htmlContainer: 'text-slate-600 text-xs font-medium',
-                confirmButton: 'bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest px-8 py-3 rounded-xl shadow-md'
-            },
+            confirmButtonColor: '#3085d6',
+            confirmButtonText: 'Kembali ke Dashboard',
             allowOutsideClick: false,
             allowEscapeKey: false,
         }).then(() => {
