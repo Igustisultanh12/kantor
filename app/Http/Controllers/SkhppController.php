@@ -495,66 +495,26 @@ class SkhppController extends Controller
      */
     public function verify($code)
     {
+        $code = trim($code);
         $settings = \App\Models\Setting::pluck('value', 'key')->all();
 
-        // 1. Cek di tabel Skhpp
+        // 1. Jika kode ternyata milik SignatureRequest (Berkas Dinas), alihkan ke Halaman Verifikasi Berkas Dinas
+        $sigReqExists = \App\Models\SignatureRequest::where('verification_code', $code)
+            ->orWhere('letter_number', $code)
+            ->exists();
+
+        if ($sigReqExists) {
+            return redirect()->route('doc.verify', $code);
+        }
+
+        // 2. Cari Berkas SKHPP di tabel Skhpp
         $skhpp = Skhpp::with(['members', 'submitter', 'approver'])
             ->where('verification_code', $code)
+            ->orWhere('nomor_skhpp', $code)
             ->first();
 
-        // 2. Jika tidak ditemukan di Skhpp, Cek di tabel SignatureRequest (Dokumen PDF Umum / Naskah Dinas)
-        if (!$skhpp) {
-            $sigReq = \App\Models\SignatureRequest::with('user')
-                ->where('verification_code', $code)
-                ->where('status', 'approved')
-                ->first();
-
-            if (!$sigReq) {
-                $sigReq = \App\Models\SignatureRequest::with('user')
-                    ->where('letter_number', $code)
-                    ->where('status', 'approved')
-                    ->first();
-            }
-
-            if ($sigReq) {
-                $skhpp = (object) [
-                    'verification_code' => $sigReq->verification_code,
-                    'document_title' => $sigReq->document_title ?: 'DOKUMEN RESMI DINAS',
-                    'nama' => $sigReq->person_name ?: ($sigReq->user?->name ?? 'Personel Denintel Kodaeral V'),
-                    'pangkat_korps_nrp' => $sigReq->pangkat_nrp ?: (($sigReq->user?->pangkat ?: 'TNI AL') . ($sigReq->user?->nrp ? (' / NRP ' . $sigReq->user->nrp) : '')),
-                    'kategori_personel' => 'Dinas Militer & PNS',
-                    'nomor_skhpp' => $sigReq->letter_number ?: ('DOC/' . $sigReq->id . '/' . date('Y')),
-                    'jabatan_pekerjaan' => $sigReq->jabatan ?: 'Personel SINDEN Kodaeral V',
-                    'peruntukan' => $sigReq->peruntukan ?: ($sigReq->subject ?: 'Dokumen Naskah Resmi TTD Digital Komandan'),
-                    'tanggal_skhpp' => $sigReq->updated_at,
-                    'status' => 'approved',
-                ];
-            }
-        }
-
-        // 3. Cek di tabel User untuk Kode Verifikasi Token
-        if (!$skhpp) {
-            $usr = \App\Models\User::where('activation_token', $code)
-                ->orWhere('nrp', $code)
-                ->orWhere('id', str_replace('DOC-USER-', '', $code))
-                ->first();
-            if ($usr) {
-                $skhpp = (object) [
-                    'verification_code' => $code,
-                    'document_title' => 'DAFTAR KODE VERIFIKASI & TOKEN AKTIVASI AKUN PERSONEL',
-                    'nama' => $usr->name,
-                    'pangkat_korps_nrp' => ($usr->pangkat ?: 'TNI AL') . ($usr->nrp ? (' / NRP ' . $usr->nrp) : ''),
-                    'kategori_personel' => 'Dinas Militer & PNS',
-                    'nomor_skhpp' => 'SINDEN / ' . $usr->id . ' / VERIF / ' . $this->getRomanMonth(date('n')) . ' / ' . date('Y'),
-                    'jabatan_pekerjaan' => 'Personel SINDEN Kodaeral V',
-                    'peruntukan' => 'Dokumen Resmi Kode Verifikasi Otoritas Akun Personel',
-                    'tanggal_skhpp' => $usr->updated_at ?: now(),
-                    'status' => 'approved',
-                ];
-            }
-        }
-
-        if (!$skhpp || (is_object($skhpp) && isset($skhpp->status) && $skhpp->status !== 'approved')) {
+        // 3. Tampilkan Halaman Verifikasi SKHPP Resmi
+        if (!$skhpp || strtolower($skhpp->status) !== 'approved') {
             return Inertia::render('Skhpp/Verify', [
                 'skhpp' => null,
                 'verify_code' => $code,

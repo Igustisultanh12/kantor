@@ -32,14 +32,19 @@ class DocVerificationController extends Controller
         $code = trim($code);
         $settings = Setting::pluck('value', 'key')->all();
 
-        // 1. Cari Berkas di Tabel SignatureRequest (Naskah Dinas / Dokumen Lainnya)
+        // 1. Jika kode ternyata milik SKHPP, alihkan langsung ke Verifikasi SKHPP
+        if (str_starts_with(strtoupper($code), 'SKHPP-') || Skhpp::where('verification_code', $code)->orWhere('nomor_skhpp', $code)->exists()) {
+            return redirect()->route('skhpp.verify', $code);
+        }
+
+        // 2. Cari Berkas di Tabel SignatureRequest (Naskah Dinas / Dokumen Lainnya)
         $sigReq = SignatureRequest::with('user')
             ->where('verification_code', $code)
             ->orWhere('verification_code', 'like', "%{$code}%")
             ->orWhere('letter_number', $code)
             ->first();
 
-        // 2. Data Pejabat Penandatangan (Komandan Detasemen Intelijen) dari Database
+        // 3. Data Pejabat Penandatangan (Komandan Detasemen Intelijen) dari Database
         $commander = User::where('role', 'komandan')->first() 
                   ?? User::where('role', 'admin')->where('name', 'like', '%Hari Bagio%')->first()
                   ?? User::where('role', 'admin')->first();
@@ -63,9 +68,15 @@ class DocVerificationController extends Controller
             $signedDate = $sigReq->approved_at ?: $sigReq->updated_at;
             $isValid = in_array(strtolower($sigReq->status), ['approved', 'signed', 'selesai']);
 
+            // Jamin Kode Verifikasi adalah Kode Unik Berkas, Bukan NRP
+            $uniqueDocCode = $sigReq->verification_code;
+            if (empty($uniqueDocCode) || is_numeric($uniqueDocCode) || strlen($uniqueDocCode) > 25) {
+                $uniqueDocCode = 'TTE-DOC-' . date('Ymd', strtotime($sigReq->created_at ?? now())) . '-' . strtoupper(substr(md5($sigReq->id . ($sigReq->created_at ?? now())), 0, 6));
+            }
+
             $docData = (object) [
                 'id' => $sigReq->id,
-                'verification_code' => $sigReq->verification_code ?: $code,
+                'verification_code' => $uniqueDocCode,
                 'document_title' => $sigReq->document_title ?: 'NASKAH DINAS / DOKUMEN RESMI KEDINASAN',
                 'letter_number' => $sigReq->letter_number ?: ("B/" . $sigReq->id . "/VIII/" . date('Y') . "/Denintel"),
                 'subject' => $sigReq->subject ?: 'Surat Dinas Resmi Kedinasan',
@@ -78,21 +89,15 @@ class DocVerificationController extends Controller
                 'is_valid' => $isValid,
                 'signer_name' => $commanderName,
                 'signer_title' => $commanderTitle,
-                'sha256_hash' => hash('sha256', ($sigReq->verification_code ?: $code) . ($signedDate ?? now())),
+                'sha256_hash' => hash('sha256', $uniqueDocCode . ($signedDate ?? now())),
                 'file_url' => $sigReq->file_path ? asset('storage/' . $sigReq->file_path) : null,
             ];
 
             return Inertia::render('Verify/DocVerify', [
                 'doc' => $docData,
-                'verify_code' => $code,
+                'verify_code' => $uniqueDocCode,
                 'settings' => $settings
             ]);
-        }
-
-        // Jika tidak ditemukan di SignatureRequest, periksa apakah merupakan token SKHPP
-        $skhpp = Skhpp::where('verification_code', $code)->first();
-        if ($skhpp) {
-            return redirect()->route('skhpp.verify', $code);
         }
 
         // Dokumen tidak ditemukan / Palsu
@@ -110,7 +115,7 @@ class DocVerificationController extends Controller
     {
         $code = trim($code);
 
-        if (str_starts_with(strtoupper($code), 'SKHPP-') || Skhpp::where('verification_code', $code)->exists()) {
+        if (str_starts_with(strtoupper($code), 'SKHPP-') || Skhpp::where('verification_code', $code)->orWhere('nomor_skhpp', $code)->exists()) {
             return redirect()->route('skhpp.verify', $code);
         }
 
