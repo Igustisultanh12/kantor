@@ -493,6 +493,34 @@ class SkhppController extends Controller
     /**
      * Halaman Publik Hasil Scan QR Code TTD Komandan (Validasi Legilitas Resmi SKHPP & Dokumen Dinas)
      */
+        private function formatUserJabatan($user)
+    {
+        if (!$user) return 'Personel Denintel Kodaeral V';
+        if (!empty($user->jabatan) && strtolower(trim($user->jabatan)) !== 'personel') {
+            return $user->jabatan;
+        }
+
+        $role = strtolower(trim($user->role ?? ''));
+        $roleMap = [
+            'komandan' => 'Komandan Detasemen Intelijen Kodaeral V',
+            'wadan'    => 'Wakil Komandan Denintel Kodaeral V',
+            'pasops'   => 'Pasops Denintel Kodaeral V',
+            'pasiops'  => 'Pasiops Denintel Kodaeral V',
+            'pasimin'  => 'Pasimin Denintel Kodaeral V',
+            'pasintel' => 'Pasintel Denintel Kodaeral V',
+            'pasilog'  => 'Pasilog Denintel Kodaeral V',
+            'dantim'   => 'Dantim Denintel Kodaeral V',
+            'danunit'  => 'Danunit Denintel Kodaeral V',
+            'admin'    => 'Administrator SINDEN',
+            'bintara'  => 'Bintara Intel Denintel Kodaeral V',
+            'tamtama'  => 'Tamtama Intel Denintel Kodaeral V',
+            'pns'      => 'PNS Denintel Kodaeral V',
+            'personel' => 'Personel Denintel Kodaeral V',
+        ];
+
+        return $roleMap[$role] ?? (!empty($role) ? (strtoupper($role) . ' Denintel Kodaeral V') : 'Personel Denintel Kodaeral V');
+    }
+
     public function verify($code)
     {
         $code = trim($code);
