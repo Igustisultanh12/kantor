@@ -1278,7 +1278,7 @@ Route::post('/api/mobile/signature-requests/{id}/sign-custom', function (\Illumi
         $x = (float)($data['x'] ?? 0.65);
         $y = (float)($data['y'] ?? 0.75);
         $targetPage = (int)($data['target_page'] ?? 1);
-        $code = $sig->verification_code ?: ('TTE-DOC-' . date('Ymd') . '-' . strtoupper(\\Illuminate\\Support\\Str::random(6)));
+        $code = $sig->verification_code ?: ('TTE-DOC-' . date('Ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(6)));
 
         $sig->update([
             'status' => 'approved',
