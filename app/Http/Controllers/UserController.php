@@ -342,7 +342,7 @@ class UserController extends Controller
                 'document_title' => 'DAFTAR KODE VERIFIKASI & TOKEN AKTIVASI AKUN PERSONEL',
                 'person_name' => $targetName,
                 'pangkat_nrp' => $targetPangkatNrp,
-                'jabatan' => 'Pendaftaran Otoritas Akun',
+                'jabatan' => ($personels->first()?->jabatan ?: 'Personel') . ' / Denintel Kodaeral V',
                 'peruntukan' => 'Dokumen Kedinasan Kode Verifikasi Otoritas Akun Personel SINDEN',
                 'letter_number' => $formattedNomor,
                 'file_path' => $filePath,

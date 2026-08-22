@@ -89,7 +89,25 @@ class DocVerificationController extends Controller
             $applicantNrp = ($applicantUser?->nrp && $applicantUser->nrp !== '00000000000000') ? $applicantUser->nrp : ($applicantUser?->username ?? '-');
             
             $applicantIdentity = $sigReq->pangkat_nrp ?: "{$applicantRank} / NRP {$applicantNrp}";
-            $applicantPosition = $sigReq->jabatan ?: ($applicantUser?->jabatan ?? 'Personel Detasemen Intelijen Kodaeral V');
+            // Sinkronisasi Jabatan & Satuan:
+            // 1. Jika Dokumen Kode Verifikasi Personel: Jabatan dari database user + Satuan default 'Denintel Kodaeral V'
+            // 2. Jika Dokumen Naskah Dinas Lainnya: Sesuai data jabatan & satuan di database
+            $isTokenDoc = str_contains(strtolower($sigReq->document_title ?? ''), 'token') 
+                       || str_contains(strtolower($sigReq->subject ?? ''), 'token')
+                       || str_contains(strtolower($sigReq->document_title ?? ''), 'verifikasi');
+
+            if ($isTokenDoc) {
+                $userJabatan = $applicantUser?->jabatan ?: 'Personel';
+                $applicantPosition = $userJabatan . ' / Denintel Kodaeral V';
+            } else {
+                if (!empty($sigReq->jabatan)) {
+                    $applicantPosition = $sigReq->jabatan;
+                } else {
+                    $pos = $applicantUser?->jabatan ?: 'Personel';
+                    $satuan = $applicantUser?->satuan ?: ($applicantUser?->unit ?: 'Denintel Kodaeral V');
+                    $applicantPosition = "$pos / $satuan";
+                }
+            }
 
             $signedDate = $sigReq->approved_at ?: $sigReq->updated_at;
             $isValid = in_array(strtolower($sigReq->status), ['approved', 'signed', 'selesai']);
