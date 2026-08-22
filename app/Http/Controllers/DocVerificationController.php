@@ -119,17 +119,28 @@ class DocVerificationController extends Controller
         }
 
         if ($sigReq) {
-            // Tarik identitas asli pengaju/pemohon dari tabel users di database
-            $applicantUser = $sigReq->user ?: ($sigReq->user_id ? User::find($sigReq->user_id) : null);
+            // Tarik identitas asli pengaju/pemohon (subjek pada berkas PDF) dari pangkalan data users
+            $applicantUser = null;
+            if (!empty($sigReq->person_name)) {
+                $applicantUser = User::where('name', trim($sigReq->person_name))->first();
+            }
+            if (!$applicantUser && !empty($sigReq->pangkat_nrp)) {
+                if (preg_match('/NRP\.?\s*([A-Za-z0-9\/]+)/i', $sigReq->pangkat_nrp, $matches)) {
+                    $extractedNrp = trim($matches[1]);
+                    $applicantUser = User::where('nrp', $extractedNrp)->first();
+                }
+            }
+            if (!$applicantUser) {
+                $applicantUser = $sigReq->user ?: ($sigReq->user_id ? User::find($sigReq->user_id) : null);
+            }
+
             $applicantName = $sigReq->person_name ?: ($applicantUser?->name ?? 'Personel Denintel Kodaeral V');
-            
             $applicantRank = $applicantUser?->pangkat ?: 'Prajurit TNI AL';
             $applicantNrp = ($applicantUser?->nrp && $applicantUser->nrp !== '00000000000000') ? $applicantUser->nrp : ($applicantUser?->username ?? '-');
             
             $applicantIdentity = $sigReq->pangkat_nrp ?: "{$applicantRank} / NRP {$applicantNrp}";
-            // Sinkronisasi Jabatan & Satuan:
-            // 1. Jika Dokumen Kode Verifikasi Personel: Jabatan dari database user + Satuan default 'Denintel Kodaeral V'
-            // 2. Jika Dokumen Naskah Dinas Lainnya: Sesuai data jabatan & satuan di database
+            
+            // Sinkronisasi Jabatan & Satuan Personel Subjek Berkas
             $userJabatanName = $this->formatUserJabatan($applicantUser);
             $sigReqJabatan = trim($sigReq->jabatan ?? '');
             
