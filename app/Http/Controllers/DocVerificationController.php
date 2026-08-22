@@ -92,21 +92,20 @@ class DocVerificationController extends Controller
             // Sinkronisasi Jabatan & Satuan:
             // 1. Jika Dokumen Kode Verifikasi Personel: Jabatan dari database user + Satuan default 'Denintel Kodaeral V'
             // 2. Jika Dokumen Naskah Dinas Lainnya: Sesuai data jabatan & satuan di database
-            $isTokenDoc = str_contains(strtolower($sigReq->document_title ?? ''), 'token') 
-                       || str_contains(strtolower($sigReq->subject ?? ''), 'token')
-                       || str_contains(strtolower($sigReq->document_title ?? ''), 'verifikasi');
+            $userJabatanName = $this->formatUserJabatan($applicantUser);
+            $sigReqJabatan = trim($sigReq->jabatan ?? '');
+            
+            // Cek apakah jabatan pada SignatureRequest bernilai generik (Personel / Pendaftaran Otoritas)
+            $isGenericJabatan = empty($sigReqJabatan) 
+                             || str_contains(strtolower($sigReqJabatan), 'personel') 
+                             || str_contains(strtolower($sigReqJabatan), 'pendaftaran otoritas');
 
-            if ($isTokenDoc) {
-                $userJabatan = $applicantUser?->jabatan ?: 'Personel';
-                $applicantPosition = $userJabatan . ' / Denintel Kodaeral V';
+            if (!$isGenericJabatan) {
+                $applicantPosition = $sigReqJabatan;
             } else {
-                if (!empty($sigReq->jabatan)) {
-                    $applicantPosition = $sigReq->jabatan;
-                } else {
-                    $pos = $applicantUser?->jabatan ?: 'Personel';
-                    $satuan = $applicantUser?->satuan ?: ($applicantUser?->unit ?: 'Denintel Kodaeral V');
-                    $applicantPosition = "$pos / $satuan";
-                }
+                $applicantPosition = str_contains(strtolower($userJabatanName), 'denintel') 
+                                   ? $userJabatanName 
+                                   : ($userJabatanName . ' / Denintel Kodaeral V');
             }
 
             $signedDate = $sigReq->approved_at ?: $sigReq->updated_at;
