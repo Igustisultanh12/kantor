@@ -231,10 +231,10 @@ const formatDateIndo = (dateStr) => {
 
           <div class="pt-2 border-t border-white/10 flex justify-between items-center text-xs font-bold">
             <Link :href="route('login')" class="text-blue-400 hover:text-blue-300 hover:underline cursor-pointer">
-              â† Kembali ke Portal SINDEN
+              &larr; Kembali ke Portal SINDEN
             </Link>
             <Link :href="route('skhpp.index')" class="text-slate-400 hover:text-white cursor-pointer">
-              Verifikasi SKHPP â†’
+              Verifikasi SKHPP &rarr;
             </Link>
           </div>
 

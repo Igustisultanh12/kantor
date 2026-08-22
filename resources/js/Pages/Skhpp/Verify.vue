@@ -214,7 +214,7 @@ const formatDateIndo = (dateStr) => {
 
           <div class="pt-2 border-t border-white/10">
             <Link :href="route('login')" class="w-full text-center text-xs font-bold text-blue-400 hover:text-blue-300 hover:underline block cursor-pointer">
-              â† Kembali ke Portal SINDEN
+              &larr; Kembali ke Portal SINDEN
             </Link>
           </div>
 
