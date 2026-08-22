@@ -281,15 +281,7 @@ class UserController extends Controller
         $signerJabatan = ($user->role === 'admin' || $user->name === 'I Gusti Sultan H.A, A.Md.Kom') ? 'Administrator SINDEN' : 'Administrator Sistem';
         $signerName = $user->name;
         $signerPangkat = $user->pangkat ?: 'MAYOR LAUT (P)';
-        $signerNrp = $user->nrp ?: '12000018012200216';
-
-        $qrCodeBase64 = null;
-        try {
-            $verifCode = !empty($user->nrp) ? $user->nrp : ('DOC-USER-' . $user->id);
-            $verifyUrl = route('skhpp.verify', $verifCode);
-            $qrApiUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' . urlencode($verifyUrl);
-            $qrCodeBase64 = 'data:image/png;base64,' . base64_encode(file_get_contents($qrApiUrl));
-        } catch (\Exception $e) {}
+        $signerNrp = (!empty($user->nrp) && $user->nrp !== '00000000000000') ? $user->nrp : '-';
 
         // Auto-increment Nomor Urut Cetak Dokumen Token
         $seqSetting = Setting::firstOrCreate(['key' => 'token_pdf_counter'], ['value' => '0']);
@@ -301,6 +293,14 @@ class UserController extends Controller
         $currentYear = date('Y');
 
         $formattedNomor = "SINDEN / " . $seq . " / VERIF / " . $romanMonth . " / " . $currentYear;
+        $docVerificationCode = 'TTE-DOC-' . date('Ymd') . '-' . strtoupper(Str::random(6));
+
+        $qrCodeBase64 = null;
+        try {
+            $verifyUrl = route('doc.verify', $docVerificationCode);
+            $qrApiUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' . urlencode($verifyUrl);
+            $qrCodeBase64 = 'data:image/png;base64,' . base64_encode(file_get_contents($qrApiUrl));
+        } catch (\Exception $e) {}
 
         $bulanIndo = [
             1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 => 'Mei', 6 => 'Juni',
@@ -322,7 +322,7 @@ class UserController extends Controller
         $pdf = Pdf::loadView('pdf.kodeverifikasi', $data)->setPaper('a4', 'portrait');
         $pdfOutput = $pdf->output();
 
-        // SIMPAN OTOMATIS KE MODUL TANDA TANGAN DIGITAL (SIGNATURE_REQUESTS)
+        // SIMPAN OTOMATIS KE MODUL TANDA TANGAN DIGITAL (SIGNATURE_REQUESTS) DENGAN KODE UNIK BERKAS
         try {
             if (!Storage::disk('public')->exists('signature_reqs')) {
                 Storage::disk('public')->makeDirectory('signature_reqs');
@@ -347,7 +347,7 @@ class UserController extends Controller
                 'letter_number' => $formattedNomor,
                 'file_path' => $filePath,
                 'status' => 'approved',
-                'verification_code' => $formattedNomor,
+                'verification_code' => $docVerificationCode,
             ]);
         } catch (\Exception $e) {
             Log::warning('Gagal auto-save Token PDF ke SignatureRequest: ' . $e->getMessage());
