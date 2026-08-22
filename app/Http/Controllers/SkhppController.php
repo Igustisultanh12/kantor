@@ -495,30 +495,36 @@ class SkhppController extends Controller
      */
         private function formatUserJabatan($user)
     {
-        if (!$user) return 'Personel Denintel Kodaeral V';
-        if (!empty($user->jabatan) && strtolower(trim($user->jabatan)) !== 'personel') {
+        if (!$user) return 'PERSONEL SATUAN';
+        if (!empty($user->jabatan) && !in_array(strtolower(trim($user->jabatan)), ['personel', 'personel satuan'])) {
             return $user->jabatan;
         }
 
         $role = strtolower(trim($user->role ?? ''));
         $roleMap = [
-            'komandan' => 'Komandan Detasemen Intelijen Kodaeral V',
-            'wadan'    => 'Wakil Komandan Denintel Kodaeral V',
-            'pasops'   => 'Pasops Denintel Kodaeral V',
-            'pasiops'  => 'Pasiops Denintel Kodaeral V',
-            'pasimin'  => 'Pasimin Denintel Kodaeral V',
-            'pasintel' => 'Pasintel Denintel Kodaeral V',
-            'pasilog'  => 'Pasilog Denintel Kodaeral V',
-            'dantim'   => 'Dantim Denintel Kodaeral V',
-            'danunit'  => 'Danunit Denintel Kodaeral V',
-            'admin'    => 'Administrator SINDEN',
-            'bintara'  => 'Bintara Intel Denintel Kodaeral V',
-            'tamtama'  => 'Tamtama Intel Denintel Kodaeral V',
-            'pns'      => 'PNS Denintel Kodaeral V',
-            'personel' => 'Personel Denintel Kodaeral V',
+            'admin'         => 'ADMINISTRATOR SISTEM',
+            'komandan'      => 'KOMANDAN',
+            'wadan'         => 'WAKIL KOMANDAN',
+            'pasops'        => 'PASOPS',
+            'pasiops'       => 'PASIOPS',
+            'pasimin'       => 'PASIMIN',
+            'pasintel'      => 'PASINTEL',
+            'pasilog'       => 'PASILOG',
+            'dantim'        => 'DANTIM',
+            'danunit'       => 'DANUNIT',
+            'danunit1'      => 'DAN UNIT I / LID',
+            'danunit2'      => 'DAN UNIT II / PAMGAL',
+            'danunitteknis' => 'DAN UNIT TEKNIS',
+            'kaurmintel'    => 'KAUR MINTEL',
+            'paurset'       => 'PAUR SET',
+            'staf'          => 'STAF ADMINISTRASI',
+            'personel'      => 'PERSONEL SATUAN',
+            'bintara'       => 'BINTARA INTEL',
+            'tamtama'       => 'TAMTAMA INTEL',
+            'pns'           => 'PNS INTEL',
         ];
 
-        return $roleMap[$role] ?? (!empty($role) ? (strtoupper($role) . ' Denintel Kodaeral V') : 'Personel Denintel Kodaeral V');
+        return $roleMap[$role] ?? (!empty($role) ? strtoupper($role) : 'PERSONEL SATUAN');
     }
 
     public function verify($code)
