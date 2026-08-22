@@ -77,7 +77,7 @@ class DocVerificationController extends Controller
             $aNrp = ($aUser?->nrp && $aUser->nrp !== '00000000000000') ? $aUser->nrp : '12000018012200216';
 
             $signerName = "a.n. KOMANDAN DETASEMEN INTELIJEN KODAERAL V";
-            $signerTitle = "a.n. Komandan Detasemen Intelijen Kodaeral V - {$aRank} {$aName} NRP {$aNrp}";
+            $signerTitle = "{$aRank} {$aName} NRP {$aNrp}";
         }
 
         if ($sigReq) {
