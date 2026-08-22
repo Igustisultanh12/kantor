@@ -47,7 +47,7 @@ class DocVerificationController extends Controller
         $commanderName = $commander?->name ?? 'Hari Bagio Wijayanto, M.Tr.Opsla.';
         $commanderRank = $commander?->pangkat ?? 'Kolonel Laut (E)';
         $commanderNrp = ($commander?->nrp && $commander->nrp !== '00000000000000') ? $commander->nrp : '16085/P';
-        $commanderTitle = "Komandan Detasemen Intelijen Kodaeral V â€” {$commanderRank} NRP {$commanderNrp}";
+        $commanderTitle = "Komandan Detasemen Intelijen Kodaeral V - {$commanderRank} NRP {$commanderNrp}";
 
         if ($sigReq) {
             // Tarik identitas asli pengaju/pemohon dari tabel users di database
@@ -89,7 +89,7 @@ class DocVerificationController extends Controller
             ]);
         }
 
-        // Jika tidak ditemukan di SignatureRequest, periksa apakah merupakan token SKHPP (Peralihan Ramah Pengguna)
+        // Jika tidak ditemukan di SignatureRequest, periksa apakah merupakan token SKHPP
         $skhpp = Skhpp::where('verification_code', $code)->first();
         if ($skhpp) {
             return redirect()->route('skhpp.verify', $code);
@@ -110,12 +110,10 @@ class DocVerificationController extends Controller
     {
         $code = trim($code);
 
-        // Jika diawali SKHPP atau terdaftar di SKHPP -> Arahkan ke Verifikasi SKHPP
         if (str_starts_with(strtoupper($code), 'SKHPP-') || Skhpp::where('verification_code', $code)->exists()) {
             return redirect()->route('skhpp.verify', $code);
         }
 
-        // Default arahkan ke Verifikasi Berkas Dinas
         return $this->verify($code);
     }
 }
