@@ -72,7 +72,7 @@ class SignatureRequestController extends Controller
                 'letter_number' => $request->letter_number,
                 'file_path' => $path,
                 'status' => 'pending',
-                'verification_code' => 'TTE-DOC-' . date('Ymd') . '-' . strtoupper(\Illuminate\\Support\\Str::random(6)),
+                'verification_code' => 'TTE-DOC-' . date('Ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(6)),
                 'x' => $request->x ?? 0.58,
                 'y' => $request->y ?? 0.72,
                 'width' => $request->width ?? 0.15,
@@ -169,7 +169,7 @@ class SignatureRequestController extends Controller
                 Log::info("ID Request: " . $signatureRequest->id);
 
                 if (!$signatureRequest->verification_code) {
-                    $signatureRequest->verification_code = 'TTE-DOC-' . date('Ymd') . '-' . strtoupper(\Illuminate\\Support\\Str::random(6));
+                    $signatureRequest->verification_code = 'TTE-DOC-' . date('Ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(6));
                 }
 
                 $originalPath = storage_path('app/public/' . $signatureRequest->file_path);
@@ -178,7 +178,7 @@ class SignatureRequestController extends Controller
                 $sourcePdfPath = $this->normalizePdfForFpdi($originalPath);
 
                 // Generate QR Code TTD Image
-                $verifyUrl = route('skhpp.verify', $signatureRequest->verification_code);
+                $verifyUrl = route('doc.verify', $signatureRequest->verification_code);
                 $qrApiUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' . urlencode($verifyUrl);
                 $qrImageContent = @file_get_contents($qrApiUrl);
 
