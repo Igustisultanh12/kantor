@@ -26,6 +26,7 @@ use App\Http\Controllers\CommanderAccountController; // SINDEN CORRECTION: Kalib
 use App\Http\Controllers\MitraPaymentController;
 use App\Http\Controllers\TechnicalUnitCashController;
 use App\Http\Controllers\SkhppController;
+use App\Http\Controllers\DocVerificationController;
 use App\Models\User;
 use App\Models\LetterLog;
 use App\Models\Letter;
@@ -299,6 +300,14 @@ Route::middleware('auth')->group(function () {
     Route::delete('/notifications/{id}', [\App\Http\Controllers\NotificationController::class, 'destroy'])->name('notifications.destroy');
 });
 
+
+// =========================================================================
+// JALUR VERIFIKASI PUBLIK TTE BERKAS DINAS LAINNYA (DEDICATED CONTROLLER & VUE)
+// =========================================================================
+Route::get('/verify-doc/{code}', [DocVerificationController::class, 'verify'])->name('doc.verify');
+Route::get('/verify-berkas/{code}', [DocVerificationController::class, 'verify'])->name('berkas.verify');
+Route::get('/verify-signature/{code}', [DocVerificationController::class, 'verify'])->name('signature.verify');
+Route::get('/verify/{code}', [DocVerificationController::class, 'verifyGeneral'])->name('general.verify');
 // Jalur Verifikasi Publik QR Code Scan TTD Komandan SKHPP
 Route::get('/verify-skhpp/{code}', [SkhppController::class, 'verify'])->name('skhpp.verify');
 
@@ -1198,18 +1207,29 @@ Route::get('/api/mobile/verify-signature', function (\Illuminate\Http\Request $r
 
         if ($sig) {
             $isValid = in_array(strtolower($sig->status), ['approved', 'signed', 'selesai']);
+            $applicantUser = $sig->user ?: ($sig->user_id ? \App\Models\User::find($sig->user_id) : null);
+            $applicantName = $sig->person_name ?: ($applicantUser?->name ?? 'Personel Denintel');
+            $applicantRank = $applicantUser?->pangkat ?: 'Prajurit TNI AL';
+            $applicantNrp = ($applicantUser?->nrp && $applicantUser->nrp !== '00000000000000') ? $applicantUser->nrp : ($applicantUser?->username ?? '-');
+            $applicantIdentity = $sig->pangkat_nrp ?: "{$applicantRank} / NRP {$applicantNrp}";
+
+            $commander = \App\Models\User::where('role', 'komandan')->first() ?? \App\Models\User::where('role', 'admin')->first();
+            $commanderRank = $commander?->pangkat ?? 'Kolonel Laut (E)';
+            $commanderNrp = ($commander?->nrp && $commander->nrp !== '00000000000000') ? $commander->nrp : '16085/P';
+            $signedBy = "KOMANDAN DETASEMEN INTELIJEN KODAERAL V ({$commanderRank} NRP {$commanderNrp})";
+
             return response()->json([
                 'status' => 'success',
                 'valid' => $isValid,
                 'document_type' => 'NASKAH DINAS / DOKUMEN RESMI KEDINASAN',
                 'title' => $sig->subject ?? $sig->document_title ?? 'Dokumen Resmi',
-                'number' => $sig->letter_number ?? "DOC-{$sig->id}",
-                'person_name' => $sig->person_name ?? $sig->user?->name ?? 'Personel Denintel',
-                'pangkat_nrp' => $sig->pangkat_nrp ?? $sig->user?->pangkat ?? '-',
-                'signed_by' => 'KOMANDAN DETASEMEN INTELIJEN KODAERAL V',
-                'signed_at' => $sig->updated_at ? $sig->updated_at->format('d/m/Y H:i:s') : now()->format('d/m/Y H:i:s'),
+                'number' => $sig->letter_number ?? "B/{$sig->id}/VIII/2026/Denintel",
+                'person_name' => $applicantName,
+                'pangkat_nrp' => $applicantIdentity,
+                'signed_by' => $signedBy,
+                'signed_at' => ($sig->approved_at ?? $sig->updated_at) ? \Carbon\Carbon::parse($sig->approved_at ?? $sig->updated_at)->format('d/m/Y H:i:s') : now()->format('d/m/Y H:i:s'),
                 'verification_code' => $sig->verification_code,
-                'hash_sha256' => hash('sha256', $sig->verification_code . ($sig->updated_at ?? now())),
+                'hash_sha256' => hash('sha256', $sig->verification_code . ($sig->approved_at ?? $sig->updated_at ?? now())),
                 'message' => $isValid ? 'DOKUMEN RESMI DINAS ASLI & TERVERIFIKASI' : 'DOKUMEN DITEMUKAN TETAPI BELUM DISAHKAN',
             ]);
         }
@@ -1258,7 +1278,7 @@ Route::post('/api/mobile/signature-requests/{id}/sign-custom', function (\Illumi
         $x = (float)($data['x'] ?? 0.65);
         $y = (float)($data['y'] ?? 0.75);
         $targetPage = (int)($data['target_page'] ?? 1);
-        $code = $sig->verification_code ?: ('DOC-' . strtoupper(\Illuminate\Support\Str::random(10)));
+        $code = $sig->verification_code ?: ('TTE-DOC-' . date('Ymd') . '-' . strtoupper(\\Illuminate\\Support\\Str::random(6)));
 
         $sig->update([
             'status' => 'approved',

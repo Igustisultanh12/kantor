@@ -72,7 +72,7 @@ class SignatureRequestController extends Controller
                 'letter_number' => $request->letter_number,
                 'file_path' => $path,
                 'status' => 'pending',
-                'verification_code' => 'DOC-' . strtoupper(\Illuminate\Support\Str::random(10)),
+                'verification_code' => 'TTE-DOC-' . date('Ymd') . '-' . strtoupper(\\Illuminate\\Support\\Str::random(6)),
                 'x' => $request->x ?? 0.58,
                 'y' => $request->y ?? 0.72,
                 'width' => $request->width ?? 0.15,
@@ -169,7 +169,7 @@ class SignatureRequestController extends Controller
                 Log::info("ID Request: " . $signatureRequest->id);
 
                 if (!$signatureRequest->verification_code) {
-                    $signatureRequest->verification_code = 'DOC-' . strtoupper(\Illuminate\Support\Str::random(10));
+                    $signatureRequest->verification_code = 'TTE-DOC-' . date('Ymd') . '-' . strtoupper(\\Illuminate\\Support\\Str::random(6));
                 }
 
                 $originalPath = storage_path('app/public/' . $signatureRequest->file_path);

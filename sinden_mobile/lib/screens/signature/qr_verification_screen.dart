@@ -95,7 +95,7 @@ class _QrVerificationScreenState extends State<QrVerificationScreen> {
               controller: _codeController,
               decoration: InputDecoration(
                 labelText: 'Kode Verifikasi / URL TTE',
-                hintText: 'Contoh: DOC-A1B2C3D4E5 atau tempel tautan TTE',
+                hintText: 'Contoh: TTE-DOC-20260822-9F2K1A atau tempel tautan TTE',
                 prefixIcon: const Icon(Icons.security, color: AppTheme.primaryNavy),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.search, color: AppTheme.primaryNavy),
