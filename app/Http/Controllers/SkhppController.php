@@ -522,6 +522,26 @@ class SkhppController extends Controller
             ]);
         }
 
+        // Logika a.n. Komandan vs Komandan Langsung pada SKHPP
+        $approverUser = $skhpp->approver;
+        $isKomandanLangsung = false;
+
+        if ($approverUser) {
+            $isKomandanLangsung = ($approverUser->role === 'komandan' || str_contains(strtolower($approverUser->name), 'hari bagio'));
+        }
+
+        if ($isKomandanLangsung) {
+            $skhpp->signer_name = 'HARI BAGIO WIJAYANTO, M.TR.OPSLA.';
+            $skhpp->signer_title = 'Komandan Detasemen Intelijen Kodaeral V - Kolonel Laut (E) NRP 16085/P';
+        } else {
+            $aName = $approverUser?->name ?? 'Administrator SINDEN';
+            $aRank = $approverUser?->pangkat ?? 'Letnan Dua Laut (KC)';
+            $aNrp = ($approverUser?->nrp && $approverUser->nrp !== '00000000000000') ? $approverUser->nrp : '12000018012200216';
+
+            $skhpp->signer_name = 'a.n. KOMANDAN DETASEMEN INTELIJEN KODAERAL V';
+            $skhpp->signer_title = "a.n. Komandan Detasemen Intelijen Kodaeral V - {$aRank} {$aName} NRP {$aNrp}";
+        }
+
         return Inertia::render('Skhpp/Verify', [
             'skhpp' => $skhpp,
             'verify_code' => $code,

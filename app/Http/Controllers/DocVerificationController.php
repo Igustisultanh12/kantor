@@ -44,15 +44,41 @@ class DocVerificationController extends Controller
             ->orWhere('letter_number', $code)
             ->first();
 
-        // 3. Data Pejabat Penandatangan (Komandan Detasemen Intelijen) dari Database
-        $commander = User::where('role', 'komandan')->first() 
-                  ?? User::where('role', 'admin')->where('name', 'like', '%Hari Bagio%')->first()
-                  ?? User::where('role', 'admin')->first();
+        // 3. Logika Penentuan Pejabat Penandatangan (Komandan Langsung vs a.n. Komandan)
+        $komandan = User::where('role', 'komandan')->first() 
+                 ?? User::where('name', 'like', '%Hari Bagio%')->first();
 
-        $commanderName = $commander?->name ?? 'Hari Bagio Wijayanto, M.Tr.Opsla.';
-        $commanderRank = $commander?->pangkat ?? 'Kolonel Laut (E)';
-        $commanderNrp = ($commander?->nrp && $commander->nrp !== '00000000000000') ? $commander->nrp : '16085/P';
-        $commanderTitle = "Komandan Detasemen Intelijen Kodaeral V - {$commanderRank} NRP {$commanderNrp}";
+        $approverUser = null;
+        if ($sigReq && !empty($sigReq->approved_by)) {
+            $approverUser = User::find($sigReq->approved_by);
+        }
+
+        // Jika disahkan oleh Komandan Langsung
+        $isKomandanLangsung = false;
+        if ($approverUser) {
+            $isKomandanLangsung = ($approverUser->role === 'komandan' || str_contains(strtolower($approverUser->name), 'hari bagio'));
+        } elseif ($sigReq) {
+            // Default untuk dokumen yang langsung diajukan/disahkan komandan
+            $isKomandanLangsung = ($sigReq->user?->role === 'komandan');
+        }
+
+        if ($isKomandanLangsung) {
+            $cName = $komandan?->name ?? 'Hari Bagio Wijayanto, M.Tr.Opsla.';
+            $cRank = $komandan?->pangkat ?? 'Kolonel Laut (E)';
+            $cNrp = ($komandan?->nrp && $komandan->nrp !== '00000000000000') ? $komandan->nrp : '16085/P';
+
+            $signerName = strtoupper($cName);
+            $signerTitle = "Komandan Detasemen Intelijen Kodaeral V - {$cRank} NRP {$cNrp}";
+        } else {
+            // a.n. Komandan (Disahkan oleh Admin / Administrator / Staf Otoritas)
+            $aUser = $approverUser ?: ($sigReq?->user ?: auth()->user());
+            $aName = $aUser?->name ?? 'Administrator SINDEN';
+            $aRank = $aUser?->pangkat ?? 'Letnan Dua Laut (KC)';
+            $aNrp = ($aUser?->nrp && $aUser->nrp !== '00000000000000') ? $aUser->nrp : '12000018012200216';
+
+            $signerName = "a.n. KOMANDAN DETASEMEN INTELIJEN KODAERAL V";
+            $signerTitle = "a.n. Komandan Detasemen Intelijen Kodaeral V - {$aRank} {$aName} NRP {$aNrp}";
+        }
 
         if ($sigReq) {
             // Tarik identitas asli pengaju/pemohon dari tabel users di database
@@ -87,8 +113,8 @@ class DocVerificationController extends Controller
                 'tanggal_dokumen' => $signedDate,
                 'status' => $sigReq->status,
                 'is_valid' => $isValid,
-                'signer_name' => $commanderName,
-                'signer_title' => $commanderTitle,
+                'signer_name' => $signerName,
+                'signer_title' => $signerTitle,
                 'sha256_hash' => hash('sha256', $uniqueDocCode . ($signedDate ?? now())),
                 'file_url' => $sigReq->file_path ? asset('storage/' . $sigReq->file_path) : null,
             ];

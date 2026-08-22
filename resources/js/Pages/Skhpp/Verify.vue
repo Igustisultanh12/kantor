@@ -169,8 +169,8 @@ const formatDateIndo = (dateStr) => {
                 <div class="sm:col-span-2 p-3 rounded-xl border border-white/10 bg-white/5 flex items-center justify-between gap-3">
                   <div>
                     <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Pejabat Penandatangan (TTE)</span>
-                    <p class="text-xs font-bold text-white">Hari Bagio Wijayanto, M.Tr.Opsla.</p>
-                    <p class="text-[10px] text-slate-300">Komandan Detasemen Intelijen Kodaeral V - Kolonel Laut (E) NRP 16085/P</p>
+                    <p class="text-xs font-bold text-white">{{ skhpp.signer_name || 'Hari Bagio Wijayanto, M.Tr.Opsla.' }}</p>
+                    <p class="text-[10px] text-slate-300">{{ skhpp.signer_title || 'Komandan Detasemen Intelijen Kodaeral V - Kolonel Laut (E) NRP 16085/P' }}</p>
                   </div>
                   <div class="text-emerald-400 shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 stroke-current" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
