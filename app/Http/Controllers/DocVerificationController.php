@@ -25,6 +25,44 @@ class DocVerificationController extends Controller
     }
 
     /**
+     * Helper Formatter Jabatan Personel Berdasarkan Role & Database
+     */
+    private function formatUserJabatan($user)
+    {
+        if (!$user) return 'PERSONEL SATUAN';
+        
+        if (!empty($user->jabatan) && !in_array(strtolower(trim($user->jabatan)), ['personel', 'personel satuan'])) {
+            return $user->jabatan;
+        }
+
+        $role = strtolower(trim($user->role ?? ''));
+        $roleMap = [
+            'admin'         => 'ADMINISTRATOR SISTEM',
+            'komandan'      => 'KOMANDAN',
+            'wadan'         => 'WAKIL KOMANDAN',
+            'pasops'        => 'PASOPS',
+            'pasiops'       => 'PASIOPS',
+            'pasimin'       => 'PASIMIN',
+            'pasintel'      => 'PASINTEL',
+            'pasilog'       => 'PASILOG',
+            'dantim'        => 'DANTIM',
+            'danunit'       => 'DANUNIT',
+            'danunit1'      => 'DAN UNIT I / LID',
+            'danunit2'      => 'DAN UNIT II / PAMGAL',
+            'danunitteknis' => 'DAN UNIT TEKNIS',
+            'kaurmintel'    => 'KAUR MINTEL',
+            'paurset'       => 'PAUR SET',
+            'staf'          => 'STAF ADMINISTRASI',
+            'personel'      => 'PERSONEL SATUAN',
+            'bintara'       => 'BINTARA INTEL',
+            'tamtama'       => 'TAMTAMA INTEL',
+            'pns'           => 'PNS INTEL',
+        ];
+
+        return $roleMap[$role] ?? (!empty($role) ? strtoupper($role) : 'PERSONEL SATUAN');
+    }
+
+    /**
      * Halaman Publik Verifikasi TTE Berkas Dinas Lainnya
      */
     public function verify($code)
