@@ -91,12 +91,14 @@ const formatDateIndo = (dateStr) => {
           <!-- KONDISI 1: BERKAS DINAS RESMI TERVERIFIKASI & SAH -->
           <div v-if="doc && doc.is_valid" class="space-y-5">
             
-            <!-- BANNER STATUS SAH -->
+            <!-- BANNER STATUS SAH DENGAN ICON SVG CENTANG HIJAU MANDIRI -->
             <div class="p-4 rounded-2xl text-center space-y-1.5 border shadow-xs bg-emerald-500/20 border-emerald-400/40 text-emerald-200">
-              <div class="w-10 h-10 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto text-lg font-bold shadow-md shadow-emerald-500/30">
-                âœ“
+              <div class="w-12 h-12 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto shadow-md shadow-emerald-500/30">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 stroke-current" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
               </div>
-              <h3 class="text-base font-extrabold tracking-tight uppercase">TTE BERKAS DINAS TERVERIFIKASI & SAH</h3>
+              <h3 class="text-base font-extrabold tracking-tight uppercase text-emerald-300">TTE BERKAS DINAS TERVERIFIKASI & SAH</h3>
               <p class="text-xs leading-relaxed opacity-90">
                 Dokumen Naskah Dinas Ini Sah Ditandatangani oleh Komandan Detasemen Intelijen Kodaeral V secara Digital (TTE).
               </p>
@@ -174,15 +176,17 @@ const formatDateIndo = (dateStr) => {
                   </p>
                 </div>
 
-                <!-- 8: Pejabat Penandatangan TTE Komandan -->
+                <!-- 8: Pejabat Penandatangan TTE Komandan DENGAN ICON SHIELD SVG -->
                 <div class="sm:col-span-2 p-3 rounded-xl border border-white/10 bg-white/5 flex items-center justify-between gap-3">
                   <div>
                     <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Pejabat Penandatangan (TTE)</span>
                     <p class="text-xs font-bold text-white">{{ doc.signer_name }}</p>
                     <p class="text-[10px] text-slate-300">{{ doc.signer_title }}</p>
                   </div>
-                  <div class="text-emerald-400 text-xl font-black shrink-0">
-                    ðŸ›¡ï¸
+                  <div class="text-emerald-400 shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 stroke-current" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
                   </div>
                 </div>
 
@@ -195,8 +199,13 @@ const formatDateIndo = (dateStr) => {
               </div>
 
               <!-- Jaminan Keaslian -->
-              <div class="p-3.5 rounded-xl text-xs leading-relaxed border border-cyan-400/30 bg-cyan-500/10 text-cyan-200 space-y-0.5">
-                <strong class="block font-bold text-[11px]">ðŸ›¡ï¸ Jaminan Keaslian Naskah Kedinasan:</strong>
+              <div class="p-3.5 rounded-xl text-xs leading-relaxed border border-cyan-400/30 bg-cyan-500/10 text-cyan-200 space-y-1">
+                <div class="flex items-center gap-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 stroke-current text-cyan-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  <strong class="font-bold text-[11px] text-cyan-300">Jaminan Keaslian Naskah Kedinasan:</strong>
+                </div>
                 <p class="text-[10px] opacity-90 leading-relaxed">
                   Jika data pada berkas fisik / cetak berbeda dengan manifes otentikasi di atas, maka naskah dinas tersebut dinyatakan <strong>TIDAK SAH / PALSU</strong>.
                 </p>
@@ -208,10 +217,12 @@ const formatDateIndo = (dateStr) => {
           <!-- KONDISI 2: KODE BERKAS TIDAK DITEMUKAN / TIDAK VALID -->
           <div v-else class="space-y-4">
             <div class="p-6 rounded-2xl text-center space-y-3 border bg-red-500/20 border-red-400/40 text-red-200">
-              <div class="w-12 h-12 bg-red-500 text-white rounded-full flex items-center justify-center mx-auto text-xl font-bold shadow-md shadow-red-500/30">
-                âœ•
+              <div class="w-12 h-12 bg-red-500 text-white rounded-full flex items-center justify-center mx-auto shadow-md shadow-red-500/30">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 stroke-current" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </div>
-              <h3 class="text-lg font-extrabold tracking-tight uppercase">TTE BERKAS TIDAK TERDAFTAR</h3>
+              <h3 class="text-lg font-extrabold tracking-tight uppercase text-red-300">TTE BERKAS TIDAK TERDAFTAR</h3>
               <p class="text-xs leading-relaxed">
                 Kode verifikasi berkas dinas ({{ verify_code }}) tidak ditemukan pada basis data resmi SINDEN Detasemen Intelijen Kodaeral V atau berkas belum disahkan secara resmi oleh Komandan.
               </p>

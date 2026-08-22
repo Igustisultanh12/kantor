@@ -49,12 +49,10 @@ const formatDateIndo = (dateStr) => {
     <div class="relative z-10 w-full min-h-screen flex flex-col lg:flex-row">
       
       <!-- Bagian Kiri: Logo & Informasi Aplikasi (Desktop) -->
-      <div 
-        class="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 lg:p-16 text-white z-10"
-      >
+      <div class="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 lg:p-16 text-white z-10">
         <div></div>
         
-        <!-- Live Preview Logo dengan Efek Mentul-Mentul (animate-float-slow) -->
+        <!-- Live Preview Logo -->
         <div class="my-auto max-w-lg space-y-6 flex flex-col items-center text-center mx-auto">
           <div class="flex justify-center animate-float-slow">
             <img v-if="configuredLogo" :src="configuredLogo" class="h-36 lg:h-44 object-contain drop-shadow-[0_10px_25px_rgba(0,0,0,0.6)]" alt="Logo SINDEN" />
@@ -67,22 +65,23 @@ const formatDateIndo = (dateStr) => {
             <h2 class="text-3xl font-extrabold tracking-tight uppercase text-white drop-shadow-md">
               {{ appName }} DETASEMEN INTELIJEN
             </h2>
-            <p class="text-xs leading-relaxed max-w-md mx-auto text-slate-300 font-medium"> Portal Otentikasi & Verifikasi Keabsahan Dokumen Resmi Surat Keterangan Hasil Penelitian Personel (SKHPP) Komando Daerah TNI Angkatan Laut V.
+            <p class="text-xs leading-relaxed max-w-md mx-auto text-slate-300 font-medium">
+              Portal Otentikasi & Verifikasi Keabsahan Dokumen Resmi Surat Keterangan Hasil Penelitian Personel (SKHPP) Komando Daerah TNI Angkatan Laut V.
             </p>
           </div>
         </div>
 
         <p class="text-xs text-slate-400 text-center font-medium">
-          © {{ new Date().getFullYear() }} {{ appName }}. Detasemen Intelijen Komando Daerah TNI Angkatan Laut V. All Rights Reserved.
+          Â© {{ new Date().getFullYear() }} {{ appName }}. Detasemen Intelijen Komando Daerah TNI Angkatan Laut V. All Rights Reserved.
         </p>
       </div>
 
-      <!-- Bagian Kanan: Card Form Verifikasi Dokumen Publik (animate-float-card) -->
+      <!-- Bagian Kanan: Card Form Verifikasi Dokumen Publik -->
       <div class="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 z-10 my-auto">
         <div 
           class="w-full max-w-[620px] p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 space-y-5 bg-slate-900/90 backdrop-blur-md border border-white/10 text-white animate-float-card"
         >
-          <!-- Header logo di mobile dengan Efek Mentul-Mentul -->
+          <!-- Header logo di mobile -->
           <div class="lg:hidden flex flex-col items-center justify-center gap-2 mb-2 text-center animate-float-slow">
             <img v-if="configuredLogo" :src="configuredLogo" class="h-16 object-contain drop-shadow-md" />
             <h1 class="text-sm font-black uppercase text-white tracking-wider">{{ appName }} LEGALITAS DIGITAL</h1>
@@ -92,21 +91,23 @@ const formatDateIndo = (dateStr) => {
           <div v-if="skhpp" class="space-y-5">
             
             <!-- BANNER STATUS SAH -->
-            <div 
-              class="p-4 rounded-2xl text-center space-y-1.5 border shadow-xs bg-emerald-500/20 border-emerald-400/40 text-emerald-200"
-            >
-              <div class="w-10 h-10 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto text-lg font-bold shadow-md shadow-emerald-500/30">
-                
+            <div class="p-4 rounded-2xl text-center space-y-1.5 border shadow-xs bg-emerald-500/20 border-emerald-400/40 text-emerald-200">
+              <div class="w-12 h-12 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto shadow-md shadow-emerald-500/30">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 stroke-current" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
               </div>
-              <h3 class="text-base font-extrabold tracking-tight uppercase">DOKUMEN RESMI TERVERIFIKASI & SAH</h3>
-              <p class="text-xs leading-relaxed opacity-90"> Surat Keterangan Hasil Penelitian Personel Ini Sah Ditandatangani Komandan Detasemen Intelijen Kodaeral V secara Digital.
+              <h3 class="text-base font-extrabold tracking-tight uppercase text-emerald-300">DOKUMEN RESMI TERVERIFIKASI & SAH</h3>
+              <p class="text-xs leading-relaxed opacity-90">
+                Surat Keterangan Hasil Penelitian Personel Ini Sah Ditandatangani Komandan Detasemen Intelijen Kodaeral V secara Digital.
               </p>
             </div>
 
-            <!-- DETAIL HASIL VERIFIKASI (INFORMASI MENSAMPING GRID 2 KOLOM) -->
+            <!-- DETAIL HASIL VERIFIKASI -->
             <div class="space-y-3.5">
               <div class="flex items-center justify-between border-b border-white/10 pb-2.5">
-                <span class="text-xs font-bold uppercase tracking-wider text-slate-300"> Manifes Otentikasi (Kode Unik)
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-300">
+                  Manifes Otentikasi (Kode Unik)
                 </span>
                 <span class="font-mono text-xs font-bold px-2.5 py-0.5 rounded border bg-white/10 border-white/20 text-orange-300">
                   {{ skhpp.verification_code }}
@@ -164,26 +165,32 @@ const formatDateIndo = (dateStr) => {
                   <p class="text-xs font-medium text-slate-300 leading-relaxed">{{ skhpp.peruntukan }}</p>
                 </div>
 
-                <!-- 8: Yang Bertanda Tangan (Span 2 Full Width) -->
+                <!-- 8: Yang Bertanda Tangan (Span 2 Full Width) DENGAN ICON SHIELD SVG -->
                 <div class="sm:col-span-2 p-3 rounded-xl border border-white/10 bg-white/5 flex items-center justify-between gap-3">
                   <div>
                     <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Pejabat Penandatangan (TTE)</span>
                     <p class="text-xs font-bold text-white">Hari Bagio Wijayanto, M.Tr.Opsla.</p>
-                    <p class="text-[10px] text-slate-300">Komandan Detasemen Intelijen Kodaeral V — Kolonel Laut (E) NRP 16085/P</p>
+                    <p class="text-[10px] text-slate-300">Komandan Detasemen Intelijen Kodaeral V - Kolonel Laut (E) NRP 16085/P</p>
                   </div>
-                  <div class="text-emerald-400 text-xl font-black shrink-0">
-                    
+                  <div class="text-emerald-400 shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 stroke-current" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
                   </div>
                 </div>
 
               </div>
 
-              <!-- CATATAN JAMINAN KEASLIAN -->
-              <div 
-                class="p-3.5 rounded-xl text-xs leading-relaxed border border-blue-400/30 bg-blue-500/10 text-blue-200 space-y-0.5"
-              >
-                <strong class="block font-bold text-[11px]"> Catatan Jaminan Keaslian:</strong>
-                <p class="text-[10px] opacity-90 leading-relaxed"> Jika data pada dokumen fisik / lembar cetak berbeda dengan data di atas, maka dokumen tersebut dinyatakan <strong>TIDAK SAH / PALSU</strong>.
+              <!-- CATATAN JAMINAN KEASLIAN DENGAN ICON SHIELD SVG -->
+              <div class="p-3.5 rounded-xl text-xs leading-relaxed border border-blue-400/30 bg-blue-500/10 text-blue-200 space-y-1">
+                <div class="flex items-center gap-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 stroke-current text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  <strong class="font-bold text-[11px] text-blue-300">Catatan Jaminan Keaslian:</strong>
+                </div>
+                <p class="text-[10px] opacity-90 leading-relaxed">
+                  Jika data pada dokumen fisik / lembar cetak berbeda dengan data di atas, maka dokumen tersebut dinyatakan <strong>TIDAK SAH / PALSU</strong>.
                 </p>
               </div>
             </div>
@@ -192,21 +199,22 @@ const formatDateIndo = (dateStr) => {
 
           <!-- KONDISI 2: KODE DOKUMEN TIDAK DITEMUKAN / TIDAK VALID -->
           <div v-else class="space-y-4">
-            <div 
-              class="p-6 rounded-2xl text-center space-y-3 border bg-red-500/20 border-red-400/40 text-red-200"
-            >
-              <div class="w-12 h-12 bg-red-500 text-white rounded-full flex items-center justify-center mx-auto text-xl font-bold shadow-md shadow-red-500/30">
-                
+            <div class="p-6 rounded-2xl text-center space-y-3 border bg-red-500/20 border-red-400/40 text-red-200">
+              <div class="w-12 h-12 bg-red-500 text-white rounded-full flex items-center justify-center mx-auto shadow-md shadow-red-500/30">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 stroke-current" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </div>
-              <h3 class="text-lg font-extrabold tracking-tight uppercase">DOKUMEN TIDAK TERDAFTAR</h3>
-              <p class="text-xs leading-relaxed"> Kode verifikasi tidak ditemukan pada basis data resmi SINDEN Detasemen Intelijen Kodaeral V.
+              <h3 class="text-lg font-extrabold tracking-tight uppercase text-red-300">DOKUMEN TIDAK TERDAFTAR</h3>
+              <p class="text-xs leading-relaxed">
+                Kode verifikasi tidak ditemukan pada basis data resmi SINDEN Detasemen Intelijen Kodaeral V.
               </p>
             </div>
           </div>
 
           <div class="pt-2 border-t border-white/10">
             <Link :href="route('login')" class="w-full text-center text-xs font-bold text-blue-400 hover:text-blue-300 hover:underline block cursor-pointer">
-              ← Kembali ke Portal SINDEN
+              â† Kembali ke Portal SINDEN
             </Link>
           </div>
 
@@ -218,7 +226,7 @@ const formatDateIndo = (dateStr) => {
 
 <style>
 html, body {
-  background-color: #020617 !important; /* bg-slate-950 */
+  background-color: #020617 !important;
   margin: 0;
   padding: 0;
   min-height: 100vh;
