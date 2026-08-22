@@ -539,7 +539,7 @@ class SkhppController extends Controller
             $aNrp = ($approverUser?->nrp && $approverUser->nrp !== '00000000000000') ? $approverUser->nrp : '12000018012200216';
 
             $skhpp->signer_name = 'a.n. KOMANDAN DETASEMEN INTELIJEN KODAERAL V';
-            $skhpp->signer_title = "a.n. Komandan Detasemen Intelijen Kodaeral V - {$aRank} {$aName} NRP {$aNrp}";
+            $skhpp->signer_title = "{$aRank} {$aName} NRP {$aNrp}";
         }
 
         return Inertia::render('Skhpp/Verify', [
