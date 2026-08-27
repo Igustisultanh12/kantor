@@ -463,9 +463,32 @@ class BackupController extends Controller
 
     public function download($id)
     {
-        $backup = Backup::findOrFail($id);
-        if ($backup->is_folder) return back()->with('error', 'Folder tidak bisa diunduh langsung.');
-        return Storage::disk('public')->download($backup->file_path, $backup->file_name);
+        try {
+            $backup = Backup::findOrFail($id);
+
+            if ($backup->is_folder) {
+                return back()->with('error', 'Folder tidak bisa diunduh langsung.');
+            }
+
+            $fullPath = storage_path('app/public/' . $backup->file_path);
+
+            if (!file_exists($fullPath)) {
+                Log::warning("File backup ID {$id} tidak ditemukan di path: {$fullPath}");
+                return back()->with('error', 'Berkas fisik tidak ditemukan di server penyimpanan. Berkas mungkin belum diunggah sempurna atau telah dipindahkan.');
+            }
+
+            $mimeType = @mime_content_type($fullPath) ?: 'application/octet-stream';
+            $fileSize = @filesize($fullPath) ?: 0;
+
+            return response()->download($fullPath, $backup->file_name, [
+                'Content-Type' => $mimeType,
+                'Content-Length' => $fileSize,
+                'Cache-Control' => 'no-cache, must-revalidate'
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Gagal unduh berkas backup ID {$id}: " . $e->getMessage());
+            return back()->with('error', 'Gagal mengunduh berkas: ' . $e->getMessage());
+        }
     }
 
     public function destroyBackup($id)
