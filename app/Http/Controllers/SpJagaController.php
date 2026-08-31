@@ -480,8 +480,18 @@ class SpJagaController extends Controller
             }
         }
 
+        // Ambil Data Pejabat Dan Unit 1 Lid dari Database Users
+        $danunitUser = User::where('role', 'danunit1')->first()
+                    ?? User::where('name', 'like', '%Indra Gunawan%')->first()
+                    ?? User::where('role', 'danunit')->first();
+
+        $danunitPangkat = $danunitUser?->pangkat ?? 'Kapten Laut (P)';
+        $danunitNama = $danunitUser?->name ?? 'Indra Gunawan';
+        $danunitNrp = $danunitUser?->nrp ? 'NRP ' . $danunitUser->nrp : 'NRP 19739/P';
+        $danunitJabatan = 'Dan Unit 1 Lid Den Intel Kodaeral V';
+
         // Generate PDF Dinamis 3 Halaman via DomPDF
-        $pdf = Pdf::loadView('pdf.sp_jaga', compact('spJaga', 'qr_base64'));
+        $pdf = Pdf::loadView('pdf.sp_jaga', compact('spJaga', 'qr_base64', 'danunitPangkat', 'danunitNama', 'danunitNrp', 'danunitJabatan'));
         $pdf->setPaper([0, 0, 609.45, 935.43], 'portrait'); // Ukuran Folio / F4
 
         $filename = "SP_JAGA_" . strtoupper(Carbon::createFromDate($spJaga->tahun, $spJaga->bulan, 1)->isoFormat('MMMM_Y')) . ".pdf";

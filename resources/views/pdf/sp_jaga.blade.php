@@ -5,7 +5,7 @@
     <title>Surat Perintah Jaga - {{ $spJaga->nomor_sprin ?: 'SINDEN' }}</title>
     <style>
         @page {
-            margin: 0.8cm 1.5cm 1cm 1.5cm;
+            margin: 1cm 1.5cm 1cm 1.5cm;
             size: 215mm 330mm portrait; /* Format F4 / Folio Resmi Kedinasan TNI */
         }
 
@@ -35,7 +35,7 @@
 
         .table-bordered th, .table-bordered td {
             border: 1px solid #000000;
-            padding: 4px 6px;
+            padding: 5px 6px;
             text-align: left;
         }
 
@@ -68,7 +68,7 @@
         }
 
         .ttd-box {
-            width: 320px;
+            width: 310px;
             margin-left: auto;
             text-align: center;
             font-size: 10.5pt;
@@ -112,10 +112,10 @@
         </div>
 
         <!-- Konsideran: Menimbang & Dasar -->
-        <table style="width: 100%; margin-bottom: 10px;">
+        <table style="width: 100%; margin-bottom: 10px; font-size: 11pt;">
             <tr>
-                <td style="width: 110px; vertical-align: top;">Menimbang</td>
-                <td style="width: 20px; vertical-align: top; text-align: center;">:</td>
+                <td style="width: 100px; vertical-align: top;">Menimbang</td>
+                <td style="width: 15px; vertical-align: top; text-align: center;">:</td>
                 <td style="vertical-align: top; text-align: justify;">
                     bahwa dalam rangka melaksanakan tugas jaga Siaga Sintel Kepada Perwira Sintel/Den Intel/Pam Denma Kodaeral V, maka perlu dikeluarkan surat perintah.
                 </td>
@@ -134,20 +134,20 @@
             DIPERINTAHKAN
         </div>
 
-        <!-- Diktum: Kepada & Untuk -->
-        <table style="width: 100%; margin-bottom: 15px;">
+        <!-- Diktum: Kepada & Untuk (Font 11pt) -->
+        <table style="width: 100%; margin-bottom: 15px; font-size: 11pt;">
             <tr>
-                <td style="width: 110px; vertical-align: top;">Kepada</td>
-                <td style="width: 20px; vertical-align: top; text-align: center;">:</td>
+                <td style="width: 100px; vertical-align: top;">Kepada</td>
+                <td style="width: 15px; vertical-align: top; text-align: center;">:</td>
                 <td style="vertical-align: top; text-align: justify;">
-                    {{ $spJaga->perwira_tertua_nama ?: 'Kapten Laut (P) Indra Gunawan T.Z' }} {{ $spJaga->perwira_tertua_pangkat_nrp ?: 'NRP 19739/P' }}, {{ $spJaga->perwira_tertua_jabatan ?: 'Dan Unit 1 Lid Den Intel Kodaeral V' }}, beserta {{ $spJaga->total_personel_terbilang ?: 'Dua puluh enam' }} ({{ $spJaga->total_personel_count ?: '26' }}) orang sesuai lampiran.
+                    {{ $danunitPangkat ?? 'Kapten Laut (P)' }} {{ $danunitNama ?? 'Indra Gunawan' }} {{ $danunitNrp ?? 'NRP 19739/P' }}, {{ $danunitJabatan ?? 'Dan Unit 1 Lid Den Intel Kodaeral V' }}, beserta Dua Puluh Enam (26) orang sesuai lampiran.
                 </td>
             </tr>
             <tr>
                 <td style="vertical-align: top; padding-top: 10px;">Untuk</td>
                 <td style="vertical-align: top; text-align: center; padding-top: 10px;">:</td>
                 <td style="vertical-align: top; padding-top: 10px;">
-                    <table style="width: 100%;">
+                    <table style="width: 100%; font-size: 11pt;">
                         <tr>
                             <td style="width: 25px; vertical-align: top;">1.</td>
                             <td style="text-align: justify;">
@@ -175,7 +175,7 @@
             </tr>
         </table>
 
-        <div style="margin-bottom: 15px;">Selesai.</div>
+        <div style="margin-bottom: 15px; font-size: 11pt;">Selesai.</div>
 
         <!-- Kolom Tanda Tangan & Tanggal Keluar -->
         <table style="width: 100%; margin-top: 5px;">
@@ -289,31 +289,31 @@
             </div>
         </div>
 
-        <!-- Tabel Perwira Jaga -->
-        <table class="table-bordered" style="margin-bottom: 15px;">
+        <!-- Tabel Perwira Jaga (Width 100% Fixed, Font 10pt) -->
+        <table class="table-bordered" style="width: 100%; table-layout: fixed; margin-bottom: 12px; font-size: 10pt;">
             <thead>
                 <tr>
-                    <th style="width: 32px;">NO.</th>
-                    <th style="width: 170px;">N A M A</th>
-                    <th style="width: 130px;">PANGKAT, KORPS</th>
-                    <th style="width: 80px;">NRP</th>
-                    <th colspan="7">{{ $namaBulanTahun }}<br>TANGGAL</th>
+                    <th style="width: 5%;">NO.</th>
+                    <th style="width: 25%;">N A M A</th>
+                    <th style="width: 20%;">PANGKAT, KORPS</th>
+                    <th style="width: 15%;">NRP</th>
+                    <th colspan="7" style="width: 35%;">{{ $namaBulanTahun }}<br>TANGGAL</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse($spJaga->perwiras as $idx => $perwira)
                 <tr>
-                    <td class="text-center">{{ $idx + 1 }}.</td>
-                    <td>{{ $perwira->nama }}</td>
-                    <td>{{ $perwira->pangkat_korps }}</td>
-                    <td class="text-center">{{ $perwira->nrp }}</td>
-                    <td class="text-center" style="width: 30px;">{{ $perwira->tgl_1 ?: '-' }}</td>
-                    <td class="text-center" style="width: 30px;">{{ $perwira->tgl_2 ?: '-' }}</td>
-                    <td class="text-center" style="width: 30px;">{{ $perwira->tgl_3 ?: '-' }}</td>
-                    <td class="text-center" style="width: 30px;">{{ $perwira->tgl_4 ?: '-' }}</td>
-                    <td class="text-center" style="width: 30px;">{{ $perwira->tgl_5 ?: '-' }}</td>
-                    <td class="text-center" style="width: 30px;">{{ $perwira->tgl_6 ?: '-' }}</td>
-                    <td class="text-center" style="width: 30px;">{{ $perwira->tgl_7 ?: '-' }}</td>
+                    <td class="text-center" style="padding: 5px 2px;">{{ $idx + 1 }}.</td>
+                    <td style="padding: 5px 6px;">{{ $perwira->nama }}</td>
+                    <td style="padding: 5px 6px;">{{ $perwira->pangkat_korps }}</td>
+                    <td class="text-center" style="padding: 5px 4px;">{{ $perwira->nrp }}</td>
+                    <td class="text-center" style="width: 5%; padding: 5px 2px;">{{ $perwira->tgl_1 ?: '-' }}</td>
+                    <td class="text-center" style="width: 5%; padding: 5px 2px;">{{ $perwira->tgl_2 ?: '-' }}</td>
+                    <td class="text-center" style="width: 5%; padding: 5px 2px;">{{ $perwira->tgl_3 ?: '-' }}</td>
+                    <td class="text-center" style="width: 5%; padding: 5px 2px;">{{ $perwira->tgl_4 ?: '-' }}</td>
+                    <td class="text-center" style="width: 5%; padding: 5px 2px;">{{ $perwira->tgl_5 ?: '-' }}</td>
+                    <td class="text-center" style="width: 5%; padding: 5px 2px;">{{ $perwira->tgl_6 ?: '-' }}</td>
+                    <td class="text-center" style="width: 5%; padding: 5px 2px;">{{ $perwira->tgl_7 ?: '-' }}</td>
                 </tr>
                 @empty
                 <tr>
@@ -324,7 +324,7 @@
         </table>
 
         <!-- Catatan SOP Jaga -->
-        <div style="font-size: 10pt; margin-bottom: 15px;">
+        <div style="font-size: 10pt; margin-bottom: 12px;">
             <div style="font-weight: normal; margin-bottom: 2px;">Catatan:</div>
             <table style="width: 100%;">
                 <tr>
@@ -343,7 +343,7 @@
         </div>
 
         <!-- Kolom Tanda Tangan Lampiran 1 -->
-        <table style="width: 100%; margin-top: 10px;">
+        <table style="width: 100%; margin-top: 5px;">
             <tr>
                 <td style="width: 50%;"></td>
                 <td style="width: 50%;">
@@ -394,49 +394,66 @@
             </div>
         </div>
 
-        <!-- Tabel Anggota Jaga Divisi -->
-        <table class="table-bordered" style="margin-bottom: 12px;">
+        <!-- Tabel Anggota Jaga Divisi (Width 100% Fixed, Font 10pt) -->
+        <table class="table-bordered" style="width: 100%; table-layout: fixed; margin-bottom: 12px; font-size: 10pt;">
             <thead>
                 <tr>
-                    <th style="width: 32px;">NO</th>
-                    <th style="width: 140px;">TANGGAL</th>
-                    <th style="width: 180px;">N A M A</th>
-                    <th style="width: 120px;">PANGKAT/KORPS</th>
-                    <th style="width: 110px;">NRP/NIP</th>
-                    <th style="width: 70px;">KET</th>
+                    <th style="width: 5%;">NO</th>
+                    <th style="width: 22%;">TANGGAL</th>
+                    <th style="width: 25%;">NAMA</th>
+                    <th style="width: 18%;">PANGKAT/<br>KORPS</th>
+                    <th style="width: 18%;">NRP/NIP</th>
+                    <th style="width: 12%;">KET</th>
+                </tr>
+                <tr style="background-color: #fafafa; font-size: 9pt;">
+                    <th style="font-weight: normal; padding: 2px;">1</th>
+                    <th style="font-weight: normal; padding: 2px;">2</th>
+                    <th style="font-weight: normal; padding: 2px;">3</th>
+                    <th style="font-weight: normal; padding: 2px;">4</th>
+                    <th style="font-weight: normal; padding: 2px;">5</th>
+                    <th style="font-weight: normal; padding: 2px;">6</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse($spJaga->anggotas as $idx => $divisi)
                     @php
                         $items = is_array($divisi->anggota_items) ? $divisi->anggota_items : json_decode($divisi->anggota_items, true) ?? [];
-                        $rowCount = count($items) > 0 ? count($items) : 1;
-                        
-                        // Pastikan teks bulan pada tanggal disesuaikan dengan bulan periode SP Jaga aktif
                         $rawTgl = $divisi->tanggal_list_text;
                         $tglClean = preg_replace('/[A-Za-z]+\s+[0-9]{4}/i', $namaBulanTahun, $rawTgl);
                         if (!str_contains($tglClean, $namaBulanTahun)) {
                             $tglClean .= ' ' . $namaBulanTahun;
                         }
                     @endphp
-                    @foreach($items as $itemIdx => $item)
                     <tr>
-                        @if($itemIdx === 0)
-                            <td class="text-center" rowspan="{{ $rowCount }}" style="vertical-align: middle;">{{ $idx + 1 }}.</td>
-                            <td class="text-center" rowspan="{{ $rowCount }}" style="vertical-align: middle; font-weight: bold;">
-                                {{ $tglClean }}
-                            </td>
-                        @endif
-                        <td>{{ $item['nama'] ?? '-' }}</td>
-                        <td>{{ $item['pangkat_korps'] ?? '-' }}</td>
-                        <td class="text-center">{{ $item['nrp_nip'] ?? '-' }}</td>
-                        <td class="text-center" style="font-weight: bold;">{{ $item['role_jaga'] ?? 'ANGGOTA' }}</td>
+                        <td class="text-center" style="vertical-align: middle; font-weight: normal; padding: 6px 4px;">{{ $idx + 1 }}.</td>
+                        <td class="text-center" style="vertical-align: middle; font-weight: bold; padding: 6px 4px; line-height: 1.4;">
+                            {{ $tglClean }}
+                        </td>
+                        <td style="vertical-align: middle; padding: 6px 6px; line-height: 1.5;">
+                            @foreach($items as $item)
+                                <div style="font-weight: normal; white-space: nowrap;">{{ $item['nama'] ?? '-' }}</div>
+                            @endforeach
+                        </td>
+                        <td style="vertical-align: middle; padding: 6px 6px; line-height: 1.5;">
+                            @foreach($items as $item)
+                                <div style="white-space: nowrap;">{{ $item['pangkat_korps'] ?? '-' }}</div>
+                            @endforeach
+                        </td>
+                        <td class="text-center" style="vertical-align: middle; padding: 6px 4px; line-height: 1.5;">
+                            @foreach($items as $item)
+                                <div style="white-space: nowrap;">{{ $item['nrp_nip'] ?? '-' }}</div>
+                            @endforeach
+                        </td>
+                        <td class="text-center" style="vertical-align: middle; padding: 6px 4px; line-height: 1.5;">
+                            @foreach($items as $item)
+                                <div style="font-weight: normal; white-space: nowrap;">{{ $item['role_jaga'] ?? 'ANGGOTA' }}</div>
+                            @endforeach
+                        </td>
                     </tr>
-                    @endforeach
                 @empty
-                <tr>
-                    <td colspan="6" class="text-center">Belum ada data regu anggota jaga.</td>
-                </tr>
+                    <tr>
+                        <td colspan="6" class="text-center">Belum ada data regu anggota jaga.</td>
+                    </tr>
                 @endforelse
             </tbody>
         </table>
