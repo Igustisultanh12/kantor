@@ -258,13 +258,13 @@ const downloadPDF = () => {
                                                 @click="moveMitra(mitra.id, 'up')" 
                                                 :disabled="index === 0"class="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-20 hover:bg-white rounded transition"title="Geser Ke Atas"
                                             >
-                                                ▲
+                                                
                                             </button>
                                             <button 
                                                 @click="moveMitra(mitra.id, 'down')" 
                                                 :disabled="index === filteredMitras.length - 1"class="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-20 hover:bg-white rounded transition"title="Geser Ke Bawah"
                                             >
-                                                ▼
+                                                
                                             </button>
                                         </div>
                                     </td>

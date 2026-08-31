@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import Swal from 'sweetalert2';
 
 const props = defineProps({
@@ -106,9 +106,9 @@ const formatMonthName = (bulan, tahun) => {
                 <div>
                     <div class="flex items-center gap-2 mb-1.5">
                         <span class="px-3 py-1 bg-blue-50 text-blue-700 font-extrabold text-[10px] uppercase rounded-full tracking-wider">
-                            ðŸ›¡ï¸ Dinas Jaga Siaga Sintel
+                            Dinas Jaga Siaga Sintel
                         </span>
-                        <span class="text-slate-400 text-xs font-semibold">â€¢ Detasemen Intelijen</span>
+                        <span class="text-slate-400 text-xs font-semibold">&bull; Detasemen Intelijen</span>
                     </div>
                     <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
                         Surat Perintah Jaga Siaga Sintel
@@ -137,7 +137,6 @@ const formatMonthName = (bulan, tahun) => {
                     class="px-4 py-2.5 rounded-xl font-extrabold text-xs uppercase tracking-wider transition cursor-pointer flex items-center gap-2"
                     :class="activeTab === 'my_schedule' ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
                 >
-                    <span>ðŸ‘¤</span>
                     <span>Jadwal Jaga Saya</span>
                 </button>
 
@@ -148,7 +147,6 @@ const formatMonthName = (bulan, tahun) => {
                     class="px-4 py-2.5 rounded-xl font-extrabold text-xs uppercase tracking-wider transition cursor-pointer flex items-center gap-2"
                     :class="activeTab === 'all' ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
                 >
-                    <span>ðŸ“‹</span>
                     <span>Daftar SP Jaga</span>
                     <span class="px-2 py-0.5 rounded-full text-[10px] font-bold" :class="activeTab === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'">
                         {{ spJagas?.total || 0 }}
@@ -163,7 +161,6 @@ const formatMonthName = (bulan, tahun) => {
                     class="px-4 py-2.5 rounded-xl font-extrabold text-xs uppercase tracking-wider transition cursor-pointer flex items-center gap-2"
                     :class="activeTab === 'pending' ? 'bg-amber-500 text-slate-950 font-black shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
                 >
-                    <span>âœï¸</span>
                     <span>Antrean TTE Pasops</span>
                     <span v-if="pendingSignatures?.length > 0" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-red-500 text-white animate-pulse">
                         {{ pendingSignatures.length }}
@@ -194,7 +191,7 @@ const formatMonthName = (bulan, tahun) => {
                             target="_blank"
                             class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider bg-amber-400 hover:bg-amber-500 text-slate-950 transition shadow-lg shadow-amber-400/20 active:scale-[0.98]"
                         >
-                            <span>ðŸ“¥ Unduh PDF Resmi 3 Halaman</span>
+                            <span>Unduh PDF Resmi 3 Halaman</span>
                         </a>
                     </div>
 
@@ -219,16 +216,13 @@ const formatMonthName = (bulan, tahun) => {
                                 </span>
                             </div>
                             <p class="text-[11px] text-slate-400 pt-2 font-medium">
-                                ðŸ“ Lokasi Dinas: Kantor Sintel / Kantor Tim Intel Kodaeral V (Jl. Stasiun Benteng Ujung Surabaya).
+                                Lokasi Dinas: Kantor Sintel / Kantor Tim Intel Kodaeral V (Jl. Stasiun Benteng Ujung Surabaya).
                             </p>
                         </div>
                     </div>
                 </div>
 
                 <div v-else class="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-3">
-                    <div class="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center text-2xl mx-auto">
-                        ðŸ›¡ï¸
-                    </div>
                     <h3 class="text-base font-bold text-slate-800">Tidak Ada Jadwal Jaga Aktif</h3>
                     <p class="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
                         Nama Anda saat ini belum tercantum pada jadwal jaga siaga yang telah terbit. Silakan cek tab <b>Daftar SP Jaga</b> untuk melihat dokumen lengkap.
@@ -299,7 +293,7 @@ const formatMonthName = (bulan, tahun) => {
                                             class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs inline-flex items-center gap-1 transition"
                                             title="Unduh PDF Resmi"
                                         >
-                                            <span>ðŸ“¥ PDF</span>
+                                            <span>Unduh PDF</span>
                                         </a>
 
                                         <!-- Upload Scan TTD Basah (Khusus Manual & Admin) -->
@@ -309,7 +303,7 @@ const formatMonthName = (bulan, tahun) => {
                                             class="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 font-bold text-xs inline-flex items-center gap-1 transition cursor-pointer"
                                             title="Upload Scan PDF Bertanda Tangan Basah"
                                         >
-                                            <span>ðŸ“¤ Upload Scan</span>
+                                            <span>Upload Scan</span>
                                         </button>
 
                                         <!-- Edit / Koreksi -->
@@ -319,7 +313,7 @@ const formatMonthName = (bulan, tahun) => {
                                             class="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs inline-flex items-center gap-1 transition"
                                             title="Koreksi Jadwal"
                                         >
-                                            <span>âœï¸</span>
+                                            <span>Edit</span>
                                         </Link>
 
                                         <!-- Hapus (Admin) -->
@@ -329,7 +323,7 @@ const formatMonthName = (bulan, tahun) => {
                                             class="px-2.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs transition cursor-pointer"
                                             title="Hapus SP Jaga"
                                         >
-                                            <span>ðŸ—‘ï¸</span>
+                                            <span>Hapus</span>
                                         </button>
                                     </td>
                                 </tr>
@@ -378,13 +372,13 @@ const formatMonthName = (bulan, tahun) => {
                                     target="_blank"
                                     class="px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-slate-800 font-bold text-xs hover:bg-slate-50 transition"
                                 >
-                                    ðŸ” Pratinjau PDF
+                                    Pratinjau PDF
                                 </a>
                                 <Link 
                                     :href="route('sp-jaga.edit', sp.id)"
                                     class="px-3.5 py-2 rounded-xl bg-white border border-blue-200 text-blue-700 font-bold text-xs hover:bg-blue-50 transition"
                                 >
-                                    âœï¸ Koreksi Jadwal
+                                    Koreksi Jadwal
                                 </Link>
                             </div>
 
@@ -394,14 +388,13 @@ const formatMonthName = (bulan, tahun) => {
                                 type="button"
                                 class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-wider transition shadow-md shadow-blue-500/20 cursor-pointer"
                             >
-                                âœï¸ Setujui & TTE
+                                Setujui & TTE
                             </button>
                         </div>
                     </div>
                 </div>
 
                 <div v-else class="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-2">
-                    <span class="text-3xl">âœ…</span>
                     <h3 class="text-base font-bold text-slate-800">Tidak Ada Antrean TTE</h3>
                     <p class="text-xs text-slate-500">Seluruh berkas Surat Perintah Jaga telah disahkan dan berstatus terbit.</p>
                 </div>
@@ -434,7 +427,7 @@ const formatMonthName = (bulan, tahun) => {
                         </div>
 
                         <div class="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800 leading-relaxed font-medium">
-                            â„¹ï¸ Setelah file diunggah, status berkas akan berubah menjadi <b>Terbit (Published)</b> dan sistem akan secara otomatis mengirim notifikasi jadwal jaga ke WhatsApp seluruh personel terkait.
+                            Setelah file diunggah, status berkas akan berubah menjadi <b>Terbit (Published)</b> dan sistem akan secara otomatis mengirim notifikasi jadwal jaga ke WhatsApp seluruh personel terkait.
                         </div>
 
                         <div class="flex items-center justify-end gap-3 pt-2">

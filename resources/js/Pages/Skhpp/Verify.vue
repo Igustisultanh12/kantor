@@ -72,7 +72,7 @@ const formatDateIndo = (dateStr) => {
         </div>
 
         <p class="text-xs text-slate-400 text-center font-medium">
-          Â© {{ new Date().getFullYear() }} {{ appName }}. Detasemen Intelijen Komando Daerah TNI Angkatan Laut V. All Rights Reserved.
+          © {{ new Date().getFullYear() }} {{ appName }}. Detasemen Intelijen Komando Daerah TNI Angkatan Laut V. All Rights Reserved.
         </p>
       </div>
 

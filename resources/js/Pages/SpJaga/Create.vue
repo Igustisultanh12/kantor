@@ -334,7 +334,7 @@ const submit = () => {
                                             class="text-red-500 hover:text-red-700 font-bold p-1 cursor-pointer"
                                             title="Hapus Baris"
                                         >
-                                            âœ•
+                                            x
                                         </button>
                                     </td>
                                 </tr>
@@ -425,7 +425,7 @@ const submit = () => {
                                                     type="button" 
                                                     class="text-red-500 hover:text-red-700 font-bold p-1"
                                                 >
-                                                    âœ•
+                                                    x
                                                 </button>
                                             </td>
                                         </tr>

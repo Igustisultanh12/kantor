@@ -900,9 +900,9 @@ const getStatusClass = (status) => {
           
           <!-- Page Controls (Halaman Lebih Dari Satu) -->
           <div v-if="totalPages > 1" class="flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-xl border border-slate-200 text-xs">
-            <button @click="changePdfPage(-1)" :disabled="currentPage <= 1" class="px-2 py-0.5 rounded bg-white font-bold text-slate-700 disabled:opacity-30 hover:bg-slate-200">◀</button>
+            <button @click="changePdfPage(-1)" :disabled="currentPage <= 1" class="px-2 py-0.5 rounded bg-white font-bold text-slate-700 disabled:opacity-30 hover:bg-slate-200"></button>
             <span class="font-bold text-slate-800">Halaman {{ currentPage }} / {{ totalPages }}</span>
-            <button @click="changePdfPage(1)" :disabled="currentPage >= totalPages" class="px-2 py-0.5 rounded bg-white font-bold text-slate-700 disabled:opacity-30 hover:bg-slate-200">▶</button>
+            <button @click="changePdfPage(1)" :disabled="currentPage >= totalPages" class="px-2 py-0.5 rounded bg-white font-bold text-slate-700 disabled:opacity-30 hover:bg-slate-200"></button>
             <span v-if="activePagesList.length > 0" class="ml-1 px-2.5 py-0.5 bg-blue-600 text-white rounded-md text-[10px] font-extrabold uppercase shadow-xs"> TTD Terpasang di {{ activePagesList.length }} Hal: (Hal. {{ activePagesList.join(', ') }})
             </span>
           </div>
@@ -951,7 +951,7 @@ const getStatusClass = (status) => {
 
       <!-- Banner Petunjuk Multi-Halaman -->
       <div v-if="totalPages > 1" class="bg-blue-50 border-t border-b border-blue-100 px-4 py-2.5 text-center text-xs font-bold text-blue-900 shrink-0 flex items-center justify-center gap-2 flex-wrap">
-        <span>Dokumen ini memiliki <strong>{{ totalPages }} Halaman</strong>. Buka halaman tempat TTD berada menggunakan tombol ◀ ▶ di atas, lalu pilih halaman mana saja yang ingin dipasang atau dihapus TTD-nya.</span>
+        <span>Dokumen ini memiliki <strong>{{ totalPages }} Halaman</strong>. Buka halaman tempat TTD berada menggunakan tombol   di atas, lalu pilih halaman mana saja yang ingin dipasang atau dihapus TTD-nya.</span>
       </div>
 
       <!-- Bottom Bar untuk Operator (Save Position Only) -->

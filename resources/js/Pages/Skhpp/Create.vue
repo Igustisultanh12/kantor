@@ -217,7 +217,7 @@ const submit = () => {
 
                     <div v-if="form.has_pengikut" class="space-y-4 pt-2">
                         <p class="text-[10px] text-amber-600 font-bold uppercase tracking-wider bg-amber-50 p-3 rounded-xl border border-amber-200">
-                            ⓘ Anggota pengikut yang ditambahkan akan otomatis menerbitkan **Lampiran SKHPP Halaman 2** lengkap dengan tabel daftar nama, NIK/NRP, dan TTD QR.
+                             Anggota pengikut yang ditambahkan akan otomatis menerbitkan **Lampiran SKHPP Halaman 2** lengkap dengan tabel daftar nama, NIK/NRP, dan TTD QR.
                         </p>
 
                         <div v-for="(member, idx) in form.members" :key="idx" class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">

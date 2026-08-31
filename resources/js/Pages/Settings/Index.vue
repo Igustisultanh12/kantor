@@ -264,7 +264,7 @@ onUnmounted(() => { if (waInterval) clearInterval(waInterval); });
                     <div class="pt-8 border-t border-slate-100 space-y-4">
                         <div class="flex items-center gap-2">
                             <div class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-sm">
-                                ðŸ“±
+                                ±
                             </div>
                             <div>
                                 <h3 class="text-xs font-black text-slate-900 uppercase tracking-wider">PENGATURAN KONTROL & INTEGRASI APLIKASI MOBILE (APK ANDROID)</h3>
