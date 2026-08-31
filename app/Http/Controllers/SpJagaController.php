@@ -458,8 +458,22 @@ class SpJagaController extends Controller
             return response()->download(storage_path('app/public/' . $spJaga->signed_file_path), "SP_JAGA_{$spJaga->tahun}_{$spJaga->bulan}.pdf");
         }
 
+        // Generate QR Code TTD Image
+        $qr_base64 = null;
+        if ($spJaga->ttd_type === 'tte' && $spJaga->status === 'published' && $spJaga->verification_code) {
+            try {
+                $verifyUrl = route('doc.verify', $spJaga->verification_code);
+                $qrData = @file_get_contents('https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' . urlencode($verifyUrl));
+                if ($qrData) {
+                    $qr_base64 = 'data:image/png;base64,' . base64_encode($qrData);
+                }
+            } catch (\Exception $e) {
+                Log::warning("Gagal fetch QR image: " . $e->getMessage());
+            }
+        }
+
         // Generate PDF Dinamis 3 Halaman via DomPDF
-        $pdf = Pdf::loadView('pdf.sp_jaga', compact('spJaga'));
+        $pdf = Pdf::loadView('pdf.sp_jaga', compact('spJaga', 'qr_base64'));
         $pdf->setPaper([0, 0, 609.45, 935.43], 'portrait'); // Ukuran Folio / F4
 
         $filename = "SP_JAGA_" . strtoupper(Carbon::createFromDate($spJaga->tahun, $spJaga->bulan, 1)->isoFormat('MMMM_Y')) . ".pdf";

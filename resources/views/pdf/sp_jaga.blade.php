@@ -211,15 +211,9 @@
                             <div style="margin-bottom: 5px;">{{ $spJaga->penandatangan_jabatan ?: 'Dan Unit 1 Lid' }},</div>
 
                             <!-- Area TTE QR Code vs TTD Basah -->
-                            @if($spJaga->ttd_type === 'tte' && $spJaga->status === 'published' && $spJaga->verification_code)
+                            @if($spJaga->ttd_type === 'tte' && $spJaga->status === 'published' && !empty($qr_base64))
                                 <div style="margin: 6px auto; text-align: center;">
-                                    @php
-                                        $qrUrl = route('doc.verify', $spJaga->verification_code);
-                                        $qrSvg = \SimpleSoftwareIO\QrCode\Facades\QrCode::size(75)->generate($qrUrl);
-                                    @endphp
-                                    <div style="display: inline-block;">
-                                        {!! $qrSvg !!}
-                                    </div>
+                                    <img src="{{ $qr_base64 }}" style="width: 75px; height: 75px; display: inline-block;" alt="QR TTE" />
                                     <div style="font-size: 7.5pt; font-family: monospace; color: #333; margin-top: 2px;">
                                         TTE VALID: {{ $spJaga->verification_code }}
                                     </div>
@@ -357,15 +351,9 @@
                         <div>a.n. Komandan Detasemen Intelijen Kodaeral V,</div>
                         <div style="margin-bottom: 5px;">{{ $spJaga->penandatangan_jabatan ?: 'Dan Unit 1 Lid' }},</div>
 
-                        @if($spJaga->ttd_type === 'tte' && $spJaga->status === 'published' && $spJaga->verification_code)
+                        @if($spJaga->ttd_type === 'tte' && $spJaga->status === 'published' && !empty($qr_base64))
                             <div style="margin: 6px auto; text-align: center;">
-                                @php
-                                    $qrUrl = route('doc.verify', $spJaga->verification_code);
-                                    $qrSvg = \SimpleSoftwareIO\QrCode\Facades\QrCode::size(70)->generate($qrUrl);
-                                @endphp
-                                <div style="display: inline-block;">
-                                    {!! $qrSvg !!}
-                                </div>
+                                <img src="{{ $qr_base64 }}" style="width: 70px; height: 70px; display: inline-block;" alt="QR TTE" />
                             </div>
                         @else
                             <div style="height: 60px;"></div>
@@ -488,15 +476,9 @@
                         <div>a.n. Komandan Detasemen Intelijen Kodaeral V,</div>
                         <div style="margin-bottom: 5px;">{{ $spJaga->penandatangan_jabatan ?: 'Dan Unit 1 Lid' }},</div>
 
-                        @if($spJaga->ttd_type === 'tte' && $spJaga->status === 'published' && $spJaga->verification_code)
+                        @if($spJaga->ttd_type === 'tte' && $spJaga->status === 'published' && !empty($qr_base64))
                             <div style="margin: 6px auto; text-align: center;">
-                                @php
-                                    $qrUrl = route('doc.verify', $spJaga->verification_code);
-                                    $qrSvg = \SimpleSoftwareIO\QrCode\Facades\QrCode::size(70)->generate($qrUrl);
-                                @endphp
-                                <div style="display: inline-block;">
-                                    {!! $qrSvg !!}
-                                </div>
+                                <img src="{{ $qr_base64 }}" style="width: 70px; height: 70px; display: inline-block;" alt="QR TTE" />
                             </div>
                         @else
                             <div style="height: 60px;"></div>
