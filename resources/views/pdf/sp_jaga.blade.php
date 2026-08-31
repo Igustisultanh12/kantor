@@ -5,7 +5,7 @@
     <title>Surat Perintah Jaga - {{ $spJaga->nomor_sprin ?: 'SINDEN' }}</title>
     <style>
         @page {
-            margin: 0.8cm 1.5cm 0.8cm 1.5cm;
+            margin: 0.6cm 1.5cm 0.6cm 1.5cm;
             size: 215mm 330mm portrait; /* Format F4 / Folio Resmi Kedinasan TNI */
         }
 
@@ -63,7 +63,7 @@
         .logo-tni {
             display: block;
             margin: 0 auto;
-            width: 95px;
+            width: 120px;
             height: auto;
         }
 
@@ -353,7 +353,7 @@
 
                         @if($spJaga->ttd_type === 'tte' && $spJaga->status === 'published' && !empty($qr_base64))
                             <div style="margin: 4px auto; text-align: center;">
-                                <img src="{{ $qr_base64 }}" style="width: 95px; height: 70px; display: inline-block;" alt="QR TTE" />
+                                <img src="{{ $qr_base64 }}" style="width: 70px; height: 70px; display: inline-block;" alt="QR TTE" />
                             </div>
                         @else
                             <div style="height: 60px;"></div>
@@ -502,7 +502,7 @@
 
                         @if($spJaga->ttd_type === 'tte' && $spJaga->status === 'published' && !empty($qr_base64))
                             <div style="margin: 4px auto; text-align: center;">
-                                <img src="{{ $qr_base64 }}" style="width: 95px; height: 70px; display: inline-block;" alt="QR TTE" />
+                                <img src="{{ $qr_base64 }}" style="width: 70px; height: 70px; display: inline-block;" alt="QR TTE" />
                             </div>
                         @else
                             <div style="height: 60px;"></div>
