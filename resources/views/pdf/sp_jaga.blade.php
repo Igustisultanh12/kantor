@@ -102,7 +102,7 @@
         </div>
 
         <!-- Judul Surat Perintah -->
-        <div style="text-align: center; margin-bottom: 12px;">
+        <div style="text-align: center; margin-bottom: 14px;">
             <div style="font-size: 12.5pt; font-weight: normal; text-decoration: underline; text-transform: uppercase;">
                 SURAT PERINTAH
             </div>
@@ -112,51 +112,51 @@
         </div>
 
         <!-- Konsideran: Menimbang & Dasar -->
-        <table style="width: 100%; margin-bottom: 8px; font-size: 12pt;">
+        <table style="width: 100%; margin-bottom: 8px; font-size: 12pt; border-collapse: collapse;">
             <tr>
-                <td style="width: 110px; vertical-align: top;">Menimbang</td>
-                <td style="width: 15px; vertical-align: top; text-align: center;">:</td>
-                <td style="vertical-align: top; text-align: justify; padding-left: 18px;">
+                <td style="width: 140px; vertical-align: top; padding-bottom: 8px;">Menimbang</td>
+                <td style="width: 25px; vertical-align: top; text-align: center; padding-bottom: 8px;">:</td>
+                <td style="vertical-align: top; text-align: justify; padding-bottom: 8px; padding-left: 15px;">
                     Bahwa dalam rangka melaksanakan tugas jaga Siaga Sintel Kepada Perwira Sintel/Den Intel/Pam Denma Kodaeral V, maka perlu dikeluarkan surat perintah.
                 </td>
             </tr>
             <tr>
-                <td style="vertical-align: top; padding-top: 6px;">Dasar</td>
-                <td style="vertical-align: top; text-align: center; padding-top: 6px;">:</td>
-                <td style="vertical-align: top; text-align: justify; padding-top: 6px; padding-left: 18px;">
+                <td style="vertical-align: top; padding-bottom: 8px;">Dasar</td>
+                <td style="vertical-align: top; text-align: center; padding-bottom: 8px;">:</td>
+                <td style="vertical-align: top; text-align: justify; padding-bottom: 8px; padding-left: 15px;">
                     Prosedur Tetap Dankodaeral V Nomor Protap/01/II/2015 tanggal 18 Maret 2015 tentang Pengamanan Basis TNI AL dan Obyek Vital di Ujung Surabaya.
                 </td>
             </tr>
         </table>
 
         <!-- DIPERINTAHKAN -->
-        <div style="text-align: center; font-weight: normal; margin: 10px 0; text-transform: uppercase; letter-spacing: 1px; font-size: 12pt;">
+        <div style="text-align: center; font-weight: normal; margin: 12px 0; text-transform: uppercase; letter-spacing: 1px; font-size: 12pt;">
             DIPERINTAHKAN
         </div>
 
         <!-- Diktum: Kepada & Untuk (Font 12pt) -->
-        <table style="width: 100%; margin-bottom: 10px; font-size: 12pt;">
+        <table style="width: 100%; margin-bottom: 10px; font-size: 12pt; border-collapse: collapse;">
             <tr>
-                <td style="width: 110px; vertical-align: top;">Kepada</td>
-                <td style="width: 15px; vertical-align: top; text-align: center;">:</td>
-                <td style="vertical-align: top; text-align: justify; padding-left: 18px;">
-                    {{ $danunitPangkat ?? 'Kapten Laut (P)' }} {{ $danunitNama ?? 'Indra Gunawan' }} {{ $danunitNrp ?? 'NRP 19739/P' }}, {{ $danunitJabatan ?? 'Dan Unit 1 Lid Den Intel Kodaeral V' }}, beserta Dua Puluh Enam (26) orang sesuai lampiran.
+                <td style="width: 140px; vertical-align: top; padding-bottom: 10px;">Kepada</td>
+                <td style="width: 25px; vertical-align: top; text-align: center; padding-bottom: 10px;">:</td>
+                <td style="vertical-align: top; text-align: justify; padding-bottom: 10px; padding-left: 15px;">
+                    {{ $danunitPangkat ?? 'Kapten Laut (P)' }} {{ $danunitNama ?? 'Indra Gunawan' }} {{ $danunitNrp ?? 'NRP 19739/P' }}, {{ $danunitJabatan ?? 'Dan Unit 1 Lid Den Intel Kodaeral V' }}, beserta 26 (Dua puluh enam) orang sesuai lampiran.
                 </td>
             </tr>
             <tr>
-                <td style="vertical-align: top; padding-top: 8px;">Untuk</td>
-                <td style="vertical-align: top; text-align: center; padding-top: 8px;">:</td>
-                <td style="vertical-align: top; padding-top: 8px; padding-left: 18px;">
-                    <table style="width: 100%; font-size: 12pt;">
+                <td style="vertical-align: top;">Untuk</td>
+                <td style="vertical-align: top; text-align: center;">:</td>
+                <td style="vertical-align: top; padding-left: 15px;">
+                    <table style="width: 100%; font-size: 12pt; border-collapse: collapse;">
                         <tr>
-                            <td style="width: 25px; vertical-align: top;">1.</td>
-                            <td style="text-align: justify; padding-left: 15px;">
+                            <td style="width: 25px; vertical-align: top; padding-bottom: 6px;">1.</td>
+                            <td style="vertical-align: top; text-align: justify; padding-bottom: 6px; padding-left: 8px;">
                                 Seterimanya surat perintah ini disamping tugas dan tanggungjawab yang ada, ditunjuk menjabat sebagai Perwira Siaga dan Anggota Siaga Sintel Kodaeral V sesuai dengan Jadwal terlampir.
                             </td>
                         </tr>
                         <tr>
-                            <td style="vertical-align: top; padding-top: 5px;">2.</td>
-                            <td style="text-align: justify; padding-top: 5px; padding-left: 15px;">
+                            <td style="vertical-align: top; padding-bottom: 6px;">2.</td>
+                            <td style="vertical-align: top; text-align: justify; padding-bottom: 6px; padding-left: 8px;">
                                 @php
                                     $tmtMulai = $spJaga->tmt_mulai ? \Carbon\Carbon::parse($spJaga->tmt_mulai)->isoFormat('DD') : '01';
                                     $tmtSelesai = $spJaga->tmt_selesai ? \Carbon\Carbon::parse($spJaga->tmt_selesai)->isoFormat('D MMMM Y') : '30 September 2026';
@@ -165,8 +165,8 @@
                             </td>
                         </tr>
                         <tr>
-                            <td style="vertical-align: top; padding-top: 5px;">3.</td>
-                            <td style="text-align: justify; padding-top: 5px; padding-left: 15px;">
+                            <td style="vertical-align: top; padding-bottom: 6px;">3.</td>
+                            <td style="vertical-align: top; text-align: justify; padding-bottom: 6px; padding-left: 8px;">
                                 Melaksanakan perintah ini dengan penuh rasa tanggung jawab, serta melaporkan hasil pelaksanaannya kepada Asintel Dankodaeral V dan Danden Intel Kodaeral V.
                             </td>
                         </tr>
