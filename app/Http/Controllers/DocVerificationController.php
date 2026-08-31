@@ -78,6 +78,16 @@ class DocVerificationController extends Controller
             ->first();
 
         if ($spJaga) {
+            $pasopsUser = User::where('role', 'pasops')->first()
+                       ?? User::where('role', 'like', '%pasops%')->first()
+                       ?? User::where('role', 'like', '%pasiops%')->first()
+                       ?? User::where('name', 'like', '%Roni%')->first();
+
+            $pName = $pasopsUser?->name ?? ($spJaga->penandatangan_nama ?: 'Roni Sumantri');
+            $pRank = $pasopsUser?->pangkat ?? 'Mayor Laut (P)';
+            $pNrp = ($pasopsUser && $pasopsUser->nrp) ? 'NRP ' . $pasopsUser->nrp : ($spJaga->penandatangan_pangkat_nrp ?: 'NRP 17456/P');
+            $pRankNrp = str_contains($pNrp, $pRank) ? $pNrp : "{$pRank} {$pNrp}";
+
             $namaBulanTahun = strtoupper(Carbon::createFromDate($spJaga->tahun, $spJaga->bulan, 1)->isoFormat('MMMM Y'));
             $docData = (object) [
                 'id' => $spJaga->id,
@@ -93,7 +103,7 @@ class DocVerificationController extends Controller
                 'status' => ($spJaga->status === 'published') ? 'approved' : 'pending',
                 'is_valid' => ($spJaga->status === 'published'),
                 'signer_name' => "a.n. KOMANDAN DETASEMEN INTELIJEN KODAERAL V",
-                'signer_title' => "Pasiops - " . ($spJaga->penandatangan_pangkat_nrp ?: 'Mayor Laut (P) NRP 17456/P') . " " . ($spJaga->penandatangan_nama ?: 'Roni Sumantri'),
+                'signer_title' => "Pasiops - {$pRankNrp} {$pName}",
             ];
 
             return Inertia::render('Verify/DocVerify', [

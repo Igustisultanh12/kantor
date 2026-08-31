@@ -490,8 +490,28 @@ class SpJagaController extends Controller
         $danunitNrp = $danunitUser?->nrp ? 'NRP ' . $danunitUser->nrp : 'NRP 19739/P';
         $danunitJabatan = 'Dan Unit 1 Lid Den Intel Kodaeral V';
 
+        // Ambil Data Pejabat Pasops / Pasiops dari Database Users (role: pasops)
+        $pasopsUser = User::where('role', 'pasops')->first()
+                   ?? User::where('role', 'like', '%pasops%')->first()
+                   ?? User::where('role', 'like', '%pasiops%')->first()
+                   ?? User::where('name', 'like', '%Roni%')->first();
+
+        $pasiopsPangkat = $pasopsUser?->pangkat ?? 'Mayor Laut (P)';
+        $pasiopsNama = $pasopsUser?->name ?? 'Roni Sumantri';
+        $pasiopsNrp = $pasopsUser?->nrp ? 'NRP ' . $pasopsUser->nrp : 'NRP 17456/P';
+        $pasiopsPangkatNrp = "$pasiopsPangkat $pasiopsNrp";
+
         // Generate PDF Dinamis 3 Halaman via DomPDF
-        $pdf = Pdf::loadView('pdf.sp_jaga', compact('spJaga', 'qr_base64', 'danunitPangkat', 'danunitNama', 'danunitNrp', 'danunitJabatan'));
+        $pdf = Pdf::loadView('pdf.sp_jaga', compact(
+            'spJaga', 
+            'qr_base64', 
+            'danunitPangkat', 
+            'danunitNama', 
+            'danunitNrp', 
+            'danunitJabatan',
+            'pasiopsNama',
+            'pasiopsPangkatNrp'
+        ));
         $pdf->setPaper([0, 0, 609.45, 935.43], 'portrait'); // Ukuran Folio / F4
 
         $filename = "SP_JAGA_" . strtoupper(Carbon::createFromDate($spJaga->tahun, $spJaga->bulan, 1)->isoFormat('MMMM_Y')) . ".pdf";

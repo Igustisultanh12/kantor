@@ -223,10 +223,10 @@
                             @endif
 
                             <div style="font-weight: normal; text-decoration: none;">
-                                {{ $spJaga->penandatangan_nama ?: 'Roni Sumantri' }}
+                                {{ $pasiopsNama ?? ($spJaga->penandatangan_nama ?: 'Roni Sumantri') }}
                             </div>
                             <div style="font-size: 10pt;">
-                                {{ $spJaga->penandatangan_pangkat_nrp ?: 'Mayor Laut (P) NRP 17456/P' }}
+                                {{ $pasiopsPangkatNrp ?? ($spJaga->penandatangan_pangkat_nrp ?: 'Mayor Laut (P) NRP 17456/P') }}
                             </div>
                         </div>
                     </div>
@@ -360,10 +360,10 @@
                         @endif
 
                         <div style="font-weight: normal; text-decoration: none;">
-                            {{ $spJaga->penandatangan_nama ?: 'Roni Sumantri' }}
+                            {{ $pasiopsNama ?? ($spJaga->penandatangan_nama ?: 'Roni Sumantri') }}
                         </div>
                         <div style="font-size: 10pt;">
-                            {{ $spJaga->penandatangan_pangkat_nrp ?: 'Mayor Laut (P) NRP 17456/P' }}
+                            {{ $pasiopsPangkatNrp ?? ($spJaga->penandatangan_pangkat_nrp ?: 'Mayor Laut (P) NRP 17456/P') }}
                         </div>
                     </div>
                 </td>
@@ -509,10 +509,10 @@
                         @endif
 
                         <div style="font-weight: normal; text-decoration: none;">
-                            {{ $spJaga->penandatangan_nama ?: 'Roni Sumantri' }}
+                            {{ $pasiopsNama ?? ($spJaga->penandatangan_nama ?: 'Roni Sumantri') }}
                         </div>
                         <div style="font-size: 10pt;">
-                            {{ $spJaga->penandatangan_pangkat_nrp ?: 'Mayor Laut (P) NRP 17456/P' }}
+                            {{ $pasiopsPangkatNrp ?? ($spJaga->penandatangan_pangkat_nrp ?: 'Mayor Laut (P) NRP 17456/P') }}
                         </div>
                     </div>
                 </td>
