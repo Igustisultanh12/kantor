@@ -27,6 +27,7 @@ use App\Http\Controllers\MitraPaymentController;
 use App\Http\Controllers\TechnicalUnitCashController;
 use App\Http\Controllers\SkhppController;
 use App\Http\Controllers\DocVerificationController;
+use App\Http\Controllers\SpJagaController;
 use App\Models\User;
 use App\Models\LetterLog;
 use App\Models\Letter;
@@ -136,6 +137,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/letter-logs', [LetterLogController::class, 'index'])->name('letter-logs.index');
     Route::post('/letter-logs', [LetterLogController::class, 'store'])->name('letter-logs.store');
     Route::get('/letter-logs/next-number', [LetterLogController::class, 'getNextNumber'])->name('letter-logs.next-number');
+    
+    // --- MODUL SURAT PERINTAH (SP) JAGA SIAGA SINTEL ---
+    Route::get('/sp-jaga', [SpJagaController::class, 'index'])->name('sp-jaga.index');
+    Route::get('/sp-jaga/create', [SpJagaController::class, 'create'])->name('sp-jaga.create');
+    Route::post('/sp-jaga', [SpJagaController::class, 'store'])->name('sp-jaga.store');
+    Route::get('/sp-jaga/{id}/edit', [SpJagaController::class, 'edit'])->name('sp-jaga.edit');
+    Route::put('/sp-jaga/{id}', [SpJagaController::class, 'update'])->name('sp-jaga.update');
+    Route::delete('/sp-jaga/{id}', [SpJagaController::class, 'destroy'])->name('sp-jaga.destroy');
+    Route::post('/sp-jaga/{id}/approve-tte', [SpJagaController::class, 'approveTte'])->name('sp-jaga.approve-tte');
+    Route::post('/sp-jaga/{id}/upload-manual-signed', [SpJagaController::class, 'uploadManualSigned'])->name('sp-jaga.upload-manual-signed');
+    Route::get('/sp-jaga/{id}/download-pdf', [SpJagaController::class, 'downloadPdf'])->name('sp-jaga.download-pdf');
     
     // Modul TTD Komandan (Otoritas Permohonan Surat)
     Route::get('/signature-requests', [SignatureRequestController::class, 'index'])->name('signature.index');
