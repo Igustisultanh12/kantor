@@ -406,7 +406,7 @@ const downloadPDF = () => {
                 
                 <!-- Kop / Judul Utama Sesuai Gambar Foto Lampiran -->
                 <div class="text-center mb-6 uppercase">
-                    <h2 style="margin: 0; font-size: 18px; font-weight: bold; letter-spacing: 1px;">DAFTAR NAMA – NAMA MITRA</h2>
+                    <h2 style="margin: 0; font-size: 18px; font-weight: bold; letter-spacing: 1px;">DAFTAR NAMA  NAMA MITRA</h2>
                     <p style="margin: 4px 0 0 0; font-size: 11px; font-weight: bold;">TAHUN {{ selectedYear }}</p>
                 </div>
 

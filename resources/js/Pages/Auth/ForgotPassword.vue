@@ -61,7 +61,7 @@ const submit = () => {
                         <h2 class="text-3xl font-extrabold tracking-tight uppercase text-white drop-shadow-md">
                             {{ appName }}
                         </h2>
-                        <p class="text-xs leading-relaxed max-w-md mx-auto text-slate-300 font-medium"> Pemulihan Kata Kunci — Intelligence Digital System SINDEN Detasemen Intelijen.
+                        <p class="text-xs leading-relaxed max-w-md mx-auto text-slate-300 font-medium"> Pemulihan Kata Kunci  Intelligence Digital System SINDEN Detasemen Intelijen.
                         </p>
                     </div>
                 </div>
@@ -108,7 +108,7 @@ const submit = () => {
                         <Link :href="route('password.request.custom')" class="text-orange-400 hover:underline"> Reset Pakai Token 6-Digit
                         </Link>
                         <Link :href="route('login')" class="text-xs font-semibold text-orange-400 hover:underline">
-                            ← Kembali ke Login
+                             Kembali ke Login
                         </Link>
                     </div>
                 </div>

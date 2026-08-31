@@ -330,7 +330,7 @@ onUnmounted(() => {
                 <div class="flex items-center gap-4">
                     <Link v-if="currentFolderId" 
                           :href="route('backup.explore', { id: pc.id, folder: parentFolderId })"class="bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-800 p-2.5 rounded-2xl transition shadow-xs flex items-center justify-center w-11 h-11"title="Kembali Mundur">
-                        <span class="font-black text-lg">←</span>
+                        <span class="font-black text-lg"></span>
                     </Link>
 
                     <div>

@@ -93,7 +93,7 @@ const submit = () => {
                         <h2 class="text-3xl font-extrabold tracking-tight uppercase text-white drop-shadow-md">
                             {{ appName }}
                         </h2>
-                        <p class="text-xs leading-relaxed max-w-md mx-auto text-slate-300 font-medium"> Aktivasi Otoritas Akun Personel — Intelligence Digital System SINDEN Detasemen Intelijen.
+                        <p class="text-xs leading-relaxed max-w-md mx-auto text-slate-300 font-medium"> Aktivasi Otoritas Akun Personel  Intelligence Digital System SINDEN Detasemen Intelijen.
                         </p>
                     </div>
                 </div>
@@ -160,7 +160,7 @@ const submit = () => {
 
                     <div class="mt-6 text-center border-t border-white/10 pt-6">
                         <Link :href="route('login')" class="text-xs font-semibold text-orange-400 hover:underline">
-                            ← Kembali ke Halaman Login
+                             Kembali ke Halaman Login
                         </Link>
                     </div>
                 </div>

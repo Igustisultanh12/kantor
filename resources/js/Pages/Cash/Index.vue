@@ -646,7 +646,7 @@ const formatLongDate = (dateStr) => {
                                     </div>
                                     <div class="mt-2 flex justify-between items-center text-[10px] font-black text-gray-500 uppercase">
                                         <span>Berkas #{{ idx + 1 }}</span>
-                                        <a :href="file.url" target="_blank" class="text-indigo-600 hover:underline">↗ Buka Penuh</a>
+                                        <a :href="file.url" target="_blank" class="text-indigo-600 hover:underline"> Buka Penuh</a>
                                     </div>
                                 </div>
                             </div>

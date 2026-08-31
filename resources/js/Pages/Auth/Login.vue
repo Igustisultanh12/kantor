@@ -166,7 +166,7 @@ const submit = async () => {
                         <h2 class="text-3xl font-extrabold tracking-tight uppercase text-white drop-shadow-md">
                             {{ appName }}
                         </h2>
-                        <p class="text-xs leading-relaxed max-w-md mx-auto text-slate-300 font-medium"> Sistem Informasi Detasemen Intelijen — Integrasi Otoritas Akses, Pengawasan Lokasi, Administrasi Surat & Logistik Terpadu.
+                        <p class="text-xs leading-relaxed max-w-md mx-auto text-slate-300 font-medium"> Sistem Informasi Detasemen Intelijen  Integrasi Otoritas Akses, Pengawasan Lokasi, Administrasi Surat & Logistik Terpadu.
                         </p>
                     </div>
                 </div>
@@ -204,7 +204,7 @@ const submit = async () => {
                                 </Link>
                             </div>
                             <input 
-                                type="password"v-model="form.password"class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white"placeholder="••••••••"required 
+                                type="password"v-model="form.password"class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white"placeholder=""required 
                             />
                             <InputError class="mt-1 text-xs text-red-400" :message="form.errors.password" />
                         </div>

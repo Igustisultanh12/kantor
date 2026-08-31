@@ -60,7 +60,7 @@ const submit = () => {
                         <h2 class="text-3xl font-extrabold tracking-tight uppercase text-white drop-shadow-md">
                             {{ appName }}
                         </h2>
-                        <p class="text-xs leading-relaxed max-w-md mx-auto text-slate-300 font-medium"> Verifikasi Token Otoritas Reset — Intelligence Digital System SINDEN Detasemen Intelijen.
+                        <p class="text-xs leading-relaxed max-w-md mx-auto text-slate-300 font-medium"> Verifikasi Token Otoritas Reset  Intelligence Digital System SINDEN Detasemen Intelijen.
                         </p>
                     </div>
                 </div>
@@ -105,7 +105,7 @@ const submit = () => {
                                 <label class="block text-xs font-semibold uppercase tracking-wider mb-1 text-slate-300"> Password Baru *
                                 </label>
                                 <input 
-                                    type="password"v-model="form.password"class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white"placeholder="••••••••"required 
+                                    type="password"v-model="form.password"class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white"placeholder=""required 
                                 />
                             </div>
 
@@ -113,7 +113,7 @@ const submit = () => {
                                 <label class="block text-xs font-semibold uppercase tracking-wider mb-1 text-slate-300"> Konfirmasi *
                                 </label>
                                 <input 
-                                    type="password"v-model="form.password_confirmation"class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white"placeholder="••••••••"required 
+                                    type="password"v-model="form.password_confirmation"class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white"placeholder=""required 
                                 />
                             </div>
                         </div>
@@ -130,7 +130,7 @@ const submit = () => {
 
                     <div class="mt-6 text-center border-t border-white/10 pt-6">
                         <Link :href="route('login')" class="text-xs font-semibold text-orange-400 hover:underline">
-                            ← Kembali ke Halaman Login
+                             Kembali ke Halaman Login
                         </Link>
                     </div>
                 </div>

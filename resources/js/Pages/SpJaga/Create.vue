@@ -181,7 +181,7 @@ const submit = () => {
                     :href="route('sp-jaga.index')"
                     class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition"
                 >
-                    â† Kembali
+                    â Kembali
                 </Link>
             </div>
 

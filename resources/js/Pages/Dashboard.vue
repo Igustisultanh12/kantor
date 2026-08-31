@@ -53,11 +53,11 @@ onMounted(() => {
                 <div>
                     <div class="flex items-center gap-2 mb-2">
                         <span class="px-3 py-1 bg-blue-50 text-blue-600 font-extrabold text-[10px] uppercase rounded-full tracking-wider">Dashboard Analitik</span>
-                        <span class="text-slate-400 text-xs font-semibold">• Live System SINDEN</span>
+                        <span class="text-slate-400 text-xs font-semibold"> Live System SINDEN</span>
                     </div>
                     <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight"> Selamat datang kembali, {{ $page.props.auth.user.pangkat || '' }} {{ $page.props.auth.user.name }}
                     </h1>
-                    <p class="text-xs text-slate-500 font-medium mt-1 leading-relaxed max-w-2xl"> Sistem Informasi Detasemen Intelijen — Siap mendukung efisiensi, pengawasan lokasi, administrasi surat, & manajemen data personel hari ini.
+                    <p class="text-xs text-slate-500 font-medium mt-1 leading-relaxed max-w-2xl"> Sistem Informasi Detasemen Intelijen  Siap mendukung efisiensi, pengawasan lokasi, administrasi surat, & manajemen data personel hari ini.
                     </p>
                 </div>
 

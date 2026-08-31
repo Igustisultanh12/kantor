@@ -167,7 +167,7 @@ const submit = () => {
                     <p class="text-xs text-slate-500 font-semibold mt-0.5">Sistem Manajemen Pengarsipan & Penyimpanan Berkas Dokumen</p>
                 </div>
                 <Link :href="route('letters.index')" class="text-xs font-extrabold text-slate-400 hover:text-slate-700 uppercase tracking-wider shrink-0">
-                    ← Kembali
+                     Kembali
                 </Link>
             </div>
 

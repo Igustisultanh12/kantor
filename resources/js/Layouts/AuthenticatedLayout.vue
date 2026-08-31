@@ -715,7 +715,7 @@ onUnmounted(() => {
 
                             <!-- Footer Dropdown Popover: Lihat Semua Notifikasi -->
                             <div class="pt-2 border-t border-slate-100 text-center">
-                                <Link :href="route('notifications.index')" @click="isNotifOpen = false" class="text-[11px] font-extrabold text-blue-600 hover:text-blue-800 transition py-1.5 block uppercase tracking-wider"> Lihat Semua Notifikasi →
+                                <Link :href="route('notifications.index')" @click="isNotifOpen = false" class="text-[11px] font-extrabold text-blue-600 hover:text-blue-800 transition py-1.5 block uppercase tracking-wider"> Lihat Semua Notifikasi 
                                 </Link>
                             </div>
                         </div>

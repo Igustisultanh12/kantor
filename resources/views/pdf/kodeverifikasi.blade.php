@@ -102,7 +102,7 @@
             <li>Setelah mengisi formulir, masukkan <strong>Kode Verifikasi</strong> (Token) sesuai nama Anda pada tabel di atas.</li>
             <li>Buat Kata Sandi (Password) baru minimal 8 karakter lalu konfirmasi.</li>
             <li>Klik tombol <strong>Aktifkan Otoritas Akun</strong>. Akun Anda akan langsung aktif.</li>
-            <li><em>Kode Verifikasi bersifat RAHASIA "” distribusikan hanya kepada personel bersangkutan.</em></li>
+            <li><em>Kode Verifikasi bersifat RAHASIA " distribusikan hanya kepada personel bersangkutan.</em></li>
         </ol>
     </div>
 

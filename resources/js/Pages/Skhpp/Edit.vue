@@ -95,7 +95,7 @@ const submit = () => {
                 </div>
 
                 <Link :href="route('skhpp.index')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold uppercase rounded-xl transition-all">
-                    ← Batal / Kembali
+                     Batal / Kembali
                 </Link>
             </div>
 

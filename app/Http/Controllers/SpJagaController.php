@@ -6,7 +6,6 @@ use App\Models\SpJaga;
 use App\Models\SpJagaPerwira;
 use App\Models\SpJagaAnggota;
 use App\Models\User;
-use App\Models\AppNotification;
 use App\Services\WhatsappService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -269,14 +268,15 @@ class SpJagaController extends Controller
                        ?? User::where('role', 'admin')->whereNotNull('phone')->first();
 
                 if ($pasops && $pasops->phone) {
-                    $pesan = "ðŸš¨ *SI SINDEN: PENGAJUAN TTE SP JAGA BARU*\n\n" .
+                    $bulanNama = strtoupper(Carbon::createFromDate($spJaga->tahun, $spJaga->bulan, 1)->isoFormat('MMMM Y'));
+                    $pesan = "*SI SINDEN: PENGAJUAN TTE SP JAGA BARU*\n\n" .
                              "Mohon izin Pasops, terdapat pengajuan Surat Perintah Jaga Siaga Sintel baru yang memerlukan pemeriksaan & tanda tangan elektronik (TTE):\n\n" .
-                             ""¢ *Nomor Sprin:* {$spJaga->nomor_sprin}\n" .
-                             ""¢ *Bulan/Tahun:* " . strtoupper(Carbon::createFromDate($spJaga->tahun, $spJaga->bulan, 1)->isoFormat('MMMM Y')) . "\n" .
-                             ""¢ *Total Personel:* {$totalPersonel} Orang\n" .
-                             ""¢ *Operator Pengaju:* {$user->name}\n\n" .
+                             "- *Nomor Sprin:* " . $spJaga->nomor_sprin . "\n" .
+                             "- *Bulan/Tahun:* " . $bulanNama . "\n" .
+                             "- *Total Personel:* " . $totalPersonel . " Orang\n" .
+                             "- *Operator Pengaju:* " . $user->name . "\n\n" .
                              "Silakan periksa & bubuhkan TTE digital melalui Portal SINDEN:\n" .
-                             "— " . route('sp-jaga.index');
+                             route('sp-jaga.index');
 
                     WhatsappService::sendMessage($pasops->phone, $pesan);
                 }
@@ -504,16 +504,16 @@ class SpJagaController extends Controller
                 }
                 $tanggalText = implode(', ', $dates) . ' ' . $namaBulanTahun;
 
-                $pesan = "âš“ *DETASEMEN INTELIJEN KODAERAL V*\n" .
+                $pesan = "*DETASEMEN INTELIJEN KODAERAL V*\n" .
                          "*PEMBERITAHUAN JADWAL JAGA SIAGA SINTEL*\n\n" .
                          "Yth. {$perwira->pangkat_korps} {$perwira->nama} (NRP: {$perwira->nrp})\n\n" .
                          "Diberitahukan bahwa Surat Perintah Jaga Siaga Sintel Bulan {$namaBulanTahun} ({$spJaga->nomor_sprin}) telah resmi diterbitkan.\n\n" .
-                         "Œ *Rincian Jadwal Jaga Anda:*\n" .
-                         ""¢ *Peran:* Perwira Siaga Sintel\n" .
-                         ""¢ *Tanggal Jaga:* {$tanggalText}\n" .
-                         ""¢ *Lokasi:* Kantor Sintel / Tim Intel Kodaeral V\n\n" .
+                         "*Rincian Jadwal Jaga Anda:*\n" .
+                         "- *Peran:* Perwira Siaga Sintel\n" .
+                         "- *Tanggal Jaga:* {$tanggalText}\n" .
+                         "- *Lokasi:* Kantor Sintel / Tim Intel Kodaeral V\n\n" .
                          "Untuk rincian jadwal lengkap dan mengunduh berkas PDF resmi, silakan login ke Portal SINDEN:\n" .
-                         "— " . route('sp-jaga.index') . "\n\n" .
+                         route('sp-jaga.index') . "\n\n" .
                          "Demikian untuk dipedomani dan dilaksanakan dengan penuh rasa tanggung jawab.";
 
                 WhatsappService::sendMessage($phone, $pesan);
@@ -531,17 +531,17 @@ class SpJagaController extends Controller
                     $notifiedPhones[] = $phone;
                     $roleLabel = ($item['role_jaga'] ?? 'ANGGOTA') === 'BAGA' ? 'Bintara Jaga (BAGA)' : 'Anggota Siaga Sintel';
 
-                    $pesan = "âš“ *DETASEMEN INTELIJEN KODAERAL V*\n" .
+                    $pesan = "*DETASEMEN INTELIJEN KODAERAL V*\n" .
                              "*PEMBERITAHUAN JADWAL JAGA SIAGA SINTEL*\n\n" .
                              "Yth. " . ($item['pangkat_korps'] ?? '') . " " . ($item['nama'] ?? '') . " (NRP/NIP: " . ($item['nrp_nip'] ?? '-') . ")\n\n" .
                              "Diberitahukan bahwa Surat Perintah Jaga Siaga Sintel Bulan {$namaBulanTahun} ({$spJaga->nomor_sprin}) telah resmi diterbitkan.\n\n" .
-                             "Œ *Rincian Jadwal Jaga Anda:*\n" .
-                             ""¢ *Peran:* {$roleLabel}\n" .
-                             ""¢ *Divisi:* Kelompok Divisi {$divisi->divisi_no}\n" .
-                             ""¢ *Tanggal Jaga:* {$divisi->tanggal_list_text}\n" .
-                             ""¢ *Lokasi:* Kantor Sintel / Tim Intel Kodaeral V\n\n" .
+                             "*Rincian Jadwal Jaga Anda:*\n" .
+                             "- *Peran:* {$roleLabel}\n" .
+                             "- *Divisi:* Kelompok Divisi {$divisi->divisi_no}\n" .
+                             "- *Tanggal Jaga:* {$divisi->tanggal_list_text}\n" .
+                             "- *Lokasi:* Kantor Sintel / Tim Intel Kodaeral V\n\n" .
                              "Untuk rincian jadwal lengkap dan mengunduh berkas PDF resmi, silakan login ke Portal SINDEN:\n" .
-                             "— " . route('sp-jaga.index') . "\n\n" .
+                             route('sp-jaga.index') . "\n\n" .
                              "Demikian untuk dipedomani dan dilaksanakan dengan penuh rasa tanggung jawab.";
 
                     WhatsappService::sendMessage($phone, $pesan);

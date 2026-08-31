@@ -42,9 +42,9 @@ const approveSkhpp = () => {
                 <div>
                     <label class="block font-bold uppercase mb-1 text-slate-700">Derajat Kecepatan / Prioritas (Logika Penyamaran Kode SKHPP)</label>
                     <select id="swal-priority-show" class="w-full text-xs font-bold p-2.5 border rounded-xl">
-                        <option value="R" selected>R (RAHASIA) — Format: R / [NOMOR] / SKHPP / [BULAN] / [TAHUN]</option>
-                        <option value="B">B (BIASA) — Format: B / [NOMOR] / SKHPP / [BULAN] / [TAHUN]</option>
-                        <option value="K">K (KILAT) — Format: K / [NOMOR] / SKHPP / [BULAN] / [TAHUN]</option>
+                        <option value="R" selected>R (RAHASIA)  Format: R / [NOMOR] / SKHPP / [BULAN] / [TAHUN]</option>
+                        <option value="B">B (BIASA)  Format: B / [NOMOR] / SKHPP / [BULAN] / [TAHUN]</option>
+                        <option value="K">K (KILAT)  Format: K / [NOMOR] / SKHPP / [BULAN] / [TAHUN]</option>
                     </select>
                 </div>
             </div>
@@ -86,7 +86,7 @@ const formatDateIndo = (dateStr) => {
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-3xl shadow-xs border border-slate-100">
                 <div class="flex items-center gap-3">
                     <Link :href="route('skhpp.index')" class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all">
-                        ← Halaman Utama
+                         Halaman Utama
                     </Link>
                     <div>
                         <h1 class="text-base font-black text-slate-900 uppercase">Dokumen SKHPP {{ skhpp.nama }}</h1>

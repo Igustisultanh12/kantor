@@ -876,7 +876,7 @@ const getStatusClass = (status) => {
 
         <!-- Modal Footer Actions (Mobile Friendly) -->
         <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center border-t border-slate-300 pt-3 gap-2.5 shrink-0">
-          <Link :href="`/skhpp/${selectedSkhpp.id}`" class="text-[11px] sm:text-xs font-bold text-blue-600 hover:underline flex items-center justify-center sm:justify-start gap-1"> Buka Halaman Cetak Lengkap (Dengan Lampiran Jika Ada) →
+          <Link :href="`/skhpp/${selectedSkhpp.id}`" class="text-[11px] sm:text-xs font-bold text-blue-600 hover:underline flex items-center justify-center sm:justify-start gap-1"> Buka Halaman Cetak Lengkap (Dengan Lampiran Jika Ada) 
           </Link>
           <div class="flex gap-2 w-full sm:w-auto">
             <template v-if="(user.role === 'admin' || user.role === 'komandan') && selectedSkhpp.status === 'pending'">

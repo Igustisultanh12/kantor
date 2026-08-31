@@ -55,9 +55,9 @@ const approveSkhpp = (skhpp) => {
                 <div>
                     <label class="block font-bold uppercase mb-1 text-slate-700 text-[10px]">Derajat Kecepatan / Prioritas Surat</label>
                     <select id="swal-priority" class="w-full text-xs font-bold p-2.5 border rounded-xl">
-                        <option value="R" selected>R (RAHASIA) — Format: R / [NOMOR] / SKHPP / [BULAN] / [TAHUN]</option>
-                        <option value="B">B (BIASA) — Format: B / [NOMOR] / SKHPP / [BULAN] / [TAHUN]</option>
-                        <option value="K">K (KILAT) — Format: K / [NOMOR] / SKHPP / [BULAN] / [TAHUN]</option>
+                        <option value="R" selected>R (RAHASIA)  Format: R / [NOMOR] / SKHPP / [BULAN] / [TAHUN]</option>
+                        <option value="B">B (BIASA)  Format: B / [NOMOR] / SKHPP / [BULAN] / [TAHUN]</option>
+                        <option value="K">K (KILAT)  Format: K / [NOMOR] / SKHPP / [BULAN] / [TAHUN]</option>
                     </select>
                 </div>
             </div>
