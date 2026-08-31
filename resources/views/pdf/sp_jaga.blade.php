@@ -116,14 +116,14 @@
             <tr>
                 <td style="width: 110px; vertical-align: top;">Menimbang</td>
                 <td style="width: 15px; vertical-align: top; text-align: center;">:</td>
-                <td style="vertical-align: top; text-align: justify;">
-                    bahwa dalam rangka melaksanakan tugas jaga Siaga Sintel Kepada Perwira Sintel/Den Intel/Pam Denma Kodaeral V, maka perlu dikeluarkan surat perintah.
+                <td style="vertical-align: top; text-align: justify; padding-left: 18px;">
+                    Bahwa dalam rangka melaksanakan tugas jaga Siaga Sintel Kepada Perwira Sintel/Den Intel/Pam Denma Kodaeral V, maka perlu dikeluarkan surat perintah.
                 </td>
             </tr>
             <tr>
                 <td style="vertical-align: top; padding-top: 6px;">Dasar</td>
                 <td style="vertical-align: top; text-align: center; padding-top: 6px;">:</td>
-                <td style="vertical-align: top; text-align: justify; padding-top: 6px;">
+                <td style="vertical-align: top; text-align: justify; padding-top: 6px; padding-left: 18px;">
                     Prosedur Tetap Dankodaeral V Nomor Protap/01/II/2015 tanggal 18 Maret 2015 tentang Pengamanan Basis TNI AL dan Obyek Vital di Ujung Surabaya.
                 </td>
             </tr>
@@ -139,24 +139,24 @@
             <tr>
                 <td style="width: 110px; vertical-align: top;">Kepada</td>
                 <td style="width: 15px; vertical-align: top; text-align: center;">:</td>
-                <td style="vertical-align: top; text-align: justify;">
+                <td style="vertical-align: top; text-align: justify; padding-left: 18px;">
                     {{ $danunitPangkat ?? 'Kapten Laut (P)' }} {{ $danunitNama ?? 'Indra Gunawan' }} {{ $danunitNrp ?? 'NRP 19739/P' }}, {{ $danunitJabatan ?? 'Dan Unit 1 Lid Den Intel Kodaeral V' }}, beserta Dua Puluh Enam (26) orang sesuai lampiran.
                 </td>
             </tr>
             <tr>
                 <td style="vertical-align: top; padding-top: 8px;">Untuk</td>
                 <td style="vertical-align: top; text-align: center; padding-top: 8px;">:</td>
-                <td style="vertical-align: top; padding-top: 8px;">
+                <td style="vertical-align: top; padding-top: 8px; padding-left: 18px;">
                     <table style="width: 100%; font-size: 12pt;">
                         <tr>
                             <td style="width: 25px; vertical-align: top;">1.</td>
-                            <td style="text-align: justify;">
+                            <td style="text-align: justify; padding-left: 15px;">
                                 Seterimanya surat perintah ini disamping tugas dan tanggungjawab yang ada, ditunjuk menjabat sebagai Perwira Siaga dan Anggota Siaga Sintel Kodaeral V sesuai dengan Jadwal terlampir.
                             </td>
                         </tr>
                         <tr>
                             <td style="vertical-align: top; padding-top: 5px;">2.</td>
-                            <td style="text-align: justify; padding-top: 5px;">
+                            <td style="text-align: justify; padding-top: 5px; padding-left: 15px;">
                                 @php
                                     $tmtMulai = $spJaga->tmt_mulai ? \Carbon\Carbon::parse($spJaga->tmt_mulai)->isoFormat('DD') : '01';
                                     $tmtSelesai = $spJaga->tmt_selesai ? \Carbon\Carbon::parse($spJaga->tmt_selesai)->isoFormat('D MMMM Y') : '30 September 2026';
@@ -166,7 +166,7 @@
                         </tr>
                         <tr>
                             <td style="vertical-align: top; padding-top: 5px;">3.</td>
-                            <td style="text-align: justify; padding-top: 5px;">
+                            <td style="text-align: justify; padding-top: 5px; padding-left: 15px;">
                                 Melaksanakan perintah ini dengan penuh rasa tanggung jawab, serta melaporkan hasil pelaksanaannya kepada Asintel Dankodaeral V dan Danden Intel Kodaeral V.
                             </td>
                         </tr>
@@ -196,12 +196,12 @@
                             <tr>
                                 <td style="width: 100px;">Dikeluarkan di</td>
                                 <td style="width: 10px;">:</td>
-                                <td>Surabaya</td>
+                                <td style="padding-left: 10px;">Surabaya</td>
                             </tr>
                             <tr>
                                 <td>pada tanggal</td>
                                 <td>:</td>
-                                <td>{{ $spJaga->tanggal_surat ? \Carbon\Carbon::parse($spJaga->tanggal_surat)->isoFormat('D MMMM Y') : '30 Agustus 2026' }}</td>
+                                <td style="padding-left: 10px;">{{ $spJaga->tanggal_surat ? \Carbon\Carbon::parse($spJaga->tanggal_surat)->isoFormat('D MMMM Y') : '30 Agustus 2026' }}</td>
                             </tr>
                         </table>
                         <div style="border-bottom: 1px solid #000; margin-bottom: 4px;"></div>
@@ -257,17 +257,17 @@
                             <tr>
                                 <td style="vertical-align: top; width: 75px;">Lampiran</td>
                                 <td style="vertical-align: top; width: 10px;">:</td>
-                                <td>Sprin Danden Intel Kodaeral V</td>
+                                <td style="padding-left: 10px;">Sprin Danden Intel Kodaeral V</td>
                             </tr>
                             <tr>
                                 <td style="vertical-align: top;">Nomor</td>
                                 <td style="vertical-align: top;">:</td>
-                                <td>{{ $spJaga->nomor_sprin ?: 'Sprin/ ' . ($spJaga->nomor_urut ?? '   ') . ' /' . ($spJaga->bulan_romawi ?? 'VI') . '/' . ($spJaga->tahun ?? '2026') }}</td>
+                                <td style="padding-left: 10px;">{{ $spJaga->nomor_sprin ?: 'Sprin/ ' . ($spJaga->nomor_urut ?? '   ') . ' /' . ($spJaga->bulan_romawi ?? 'VI') . '/' . ($spJaga->tahun ?? '2026') }}</td>
                             </tr>
                             <tr>
                                 <td style="vertical-align: top;">Tanggal</td>
                                 <td style="vertical-align: top;">:</td>
-                                <td>{{ $spJaga->tanggal_surat ? \Carbon\Carbon::parse($spJaga->tanggal_surat)->isoFormat('D MMMM Y') : '30 Agustus 2026' }}</td>
+                                <td style="padding-left: 10px;">{{ $spJaga->tanggal_surat ? \Carbon\Carbon::parse($spJaga->tanggal_surat)->isoFormat('D MMMM Y') : '30 Agustus 2026' }}</td>
                             </tr>
                         </table>
                         <div style="border-bottom: 1px solid #000; margin-top: 3px;"></div>
@@ -329,15 +329,15 @@
             <table style="width: 100%; font-size: 11pt;">
                 <tr>
                     <td style="width: 20px; vertical-align: top;">1.</td>
-                    <td style="text-align: justify;">Perwira Siaga Intel bertanggung jawab atas keamanan dan kebersihan kantor Sintel dan Kantor Tim Intel.</td>
+                    <td style="text-align: justify; padding-left: 10px;">Perwira Siaga Intel bertanggung jawab atas keamanan dan kebersihan kantor Sintel dan Kantor Tim Intel.</td>
                 </tr>
                 <tr>
                     <td style="vertical-align: top; padding-top: 2px;">2.</td>
-                    <td style="text-align: justify; padding-top: 2px;">Apabila anggota Jaga yang melaksanakan ijin/cuti, sehari sebelumnya laporan kepada Wadantim/Pasops.</td>
+                    <td style="text-align: justify; padding-top: 2px; padding-left: 10px;">Apabila anggota Jaga yang melaksanakan ijin/cuti, sehari sebelumnya laporan kepada Wadantim/Pasops.</td>
                 </tr>
                 <tr>
                     <td style="vertical-align: top; padding-top: 2px;">3.</td>
-                    <td style="text-align: justify; padding-top: 2px;">Apabila ada pertukaran/ganti jaga harap melaporkan ke Wadantim/Pasops.</td>
+                    <td style="text-align: justify; padding-top: 2px; padding-left: 10px;">Apabila ada pertukaran/ganti jaga harap melaporkan ke Wadantim/Pasops.</td>
                 </tr>
             </table>
         </div>
@@ -464,15 +464,15 @@
             <table style="width: 100%; font-size: 11pt;">
                 <tr>
                     <td style="width: 20px; vertical-align: top;">1.</td>
-                    <td style="text-align: justify;">Anggota Siaga Sintel bertanggung jawab atas keamanan dan kebersihan kantor Sintel dan kantor Tim intel.</td>
+                    <td style="text-align: justify; padding-left: 10px;">Anggota Siaga Sintel bertanggung jawab atas keamanan dan kebersihan kantor Sintel dan kantor Tim intel.</td>
                 </tr>
                 <tr>
                     <td style="vertical-align: top; padding-top: 2px;">2.</td>
-                    <td style="text-align: justify; padding-top: 2px;">Apabila anggota Divisi Jaga yang melaksanakan ijin / cuti, sehari sebelumnya laporan kepada Wadantim / Pasops.</td>
+                    <td style="text-align: justify; padding-top: 2px; padding-left: 10px;">Apabila anggota Divisi Jaga yang melaksanakan ijin / cuti, sehari sebelumnya laporan kepada Wadantim / Pasops.</td>
                 </tr>
                 <tr>
                     <td style="vertical-align: top; padding-top: 2px;">3.</td>
-                    <td style="text-align: justify; padding-top: 2px;">Apabila ada pertukaran/ganti jaga harap melaporkan ke Wadantim/Pasops.</td>
+                    <td style="text-align: justify; padding-top: 2px; padding-left: 10px;">Apabila ada pertukaran/ganti jaga harap melaporkan ke Wadantim/Pasops.</td>
                 </tr>
             </table>
         </div>
@@ -487,12 +487,12 @@
                             <tr>
                                 <td style="width: 100px;">Dikeluarkan di</td>
                                 <td style="width: 10px;">:</td>
-                                <td>Surabaya</td>
+                                <td style="padding-left: 10px;">Surabaya</td>
                             </tr>
                             <tr>
                                 <td>pada tanggal</td>
                                 <td>:</td>
-                                <td>{{ $spJaga->tanggal_surat ? \Carbon\Carbon::parse($spJaga->tanggal_surat)->isoFormat('D MMMM Y') : '30 Agustus 2026' }}</td>
+                                <td style="padding-left: 10px;">{{ $spJaga->tanggal_surat ? \Carbon\Carbon::parse($spJaga->tanggal_surat)->isoFormat('D MMMM Y') : '30 Agustus 2026' }}</td>
                             </tr>
                         </table>
                         <div style="border-bottom: 1px solid #000; margin-bottom: 4px;"></div>
