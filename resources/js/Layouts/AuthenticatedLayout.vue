@@ -1,30 +1,41 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { usePage, Link } from '@inertiajs/vue3';
+import { usePage, Link, router } from '@inertiajs/vue3';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import Swal from 'sweetalert2';
 
 const page = usePage();
 
-/**
- * Data Pengaturan & Identitas Personel
- */
 const settings = computed(() => page.props.settings || {});
 const agencyName = computed(() => settings.value.agency_name || 'DENINTEL KODAERAL V');
 const appLogo = computed(() => {
-    const logo = settings.value.agency_logo || settings.value.logo;
-    if (!logo) return null;
-    return (logo.startsWith('http') || logo.startsWith('/storage')) ? logo : '/storage/' + logo;
+    const logo = settings.value.agency_logo || settings.value.logo || settings.value.logo_tni;
+    if (!logo) return '/images/logo.png';
+    return (logo.startsWith('http') || logo.startsWith('/storage') || logo.startsWith('/images')) ? logo : '/storage/' + logo;
 });
 const isAdmin = computed(() => page.props.auth.user.role === 'admin');
 const user = computed(() => page.props.auth.user);
 
-/**
- * LOGIKA PENCARIAN GLOBAL CORETAX
- */
+// Theme & Language Engine
+const isDarkMode = ref(true);
+const currentLang = ref('id');
+const isLangMenuOpen = ref(false);
+const isProfileMenuOpen = ref(false);
+
+const toggleTheme = () => {
+    isDarkMode.value = !isDarkMode.value;
+};
+
+const setLanguage = (lang) => {
+    currentLang.value = lang;
+    isLangMenuOpen.value = false;
+};
+
+// Global Search (Ctrl + K)
 const searchQuery = ref('');
 const searchInputRef = ref(null);
+const searchInputMobileRef = ref(null);
 
 const handleSearchInput = () => {
     const searchEvent = new CustomEvent('sinden-global-search', {
@@ -38,15 +49,13 @@ const handleKeyDown = (event) => {
         event.preventDefault();
         if (searchInputRef.value) {
             searchInputRef.value.focus();
+        } else if (searchInputMobileRef.value) {
+            searchInputMobileRef.value.focus();
         }
     }
 };
 
-/**
- * SISTEM NOTIFIKASI REAL-TIME & IN-APP BELL
- */
-import { router } from '@inertiajs/vue3';
-
+// Sistem Notifikasi In-App Bell
 const isNotifOpen = ref(false);
 const notifications = ref([]);
 const unreadCount = ref(0);
@@ -105,7 +114,7 @@ const handleNotifClick = async (notif) => {
             html: `<p class="text-xs font-medium text-slate-600 leading-relaxed">${notif.message}</p>`,
             icon: notif.type || 'info',
             confirmButtonText: 'Tutup',
-            confirmButtonColor: '#2563eb',
+            confirmButtonColor: '#f59e0b',
         });
     }
 };
@@ -124,9 +133,7 @@ const markAllRead = async () => {
     } catch (e) {}
 };
 
-/**
- * OTORITAS KAS & REKENING KOMANDAN
- */
+// Otoritas Modul Khusus
 const canAccessCash = computed(() => {
     return isAdmin.value || user.value.name === 'I Gusti Sultan H.A, A.Md.Kom' || user.value.name === 'Suma Nurhasanah';
 });
@@ -147,593 +154,742 @@ const canAccessTechnicalCash = computed(() => {
     return isAdmin.value || isDanUnitTeknis.value || Boolean(user.value.can_access_technical_cash) || user.value.name === 'I Gusti Sultan H.A, A.Md.Kom';
 });
 
-const isMobileMenuOpen = ref(false);
+// CORETAX MEGA MENU SYSTEM
+// activeMegaMenu: null | 'portal' | 'arsip' | 'skhpp' | 'tte' | 'kas' | 'radar' | 'backup' | 'admin'
+const activeMegaMenu = ref(null);
 
-const isMobile = ref(false);
-const checkMobile = () => {
-    isMobile.value = window.innerWidth < 1024;
+const toggleMegaMenu = (menuKey) => {
+    if (activeMegaMenu.value === menuKey) {
+        activeMegaMenu.value = null;
+    } else {
+        activeMegaMenu.value = menuKey;
+    }
 };
+
+const closeMegaMenu = () => {
+    activeMegaMenu.value = null;
+};
+
+// Mobile Drawer & Navigation
+const isMobileDrawerOpen = ref(false);
+const activeMobileTab = ref('portal');
 
 let notifTimer = null;
 
 onMounted(() => {
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
     window.addEventListener('keydown', handleKeyDown);
-
     fetchNotifications();
-    notifTimer = setInterval(fetchNotifications, 5000); // Poll notifikasi setiap 5 detik
+    notifTimer = setInterval(fetchNotifications, 5000);
 });
 
 onUnmounted(() => {
-    window.removeEventListener('resize', checkMobile);
     window.removeEventListener('keydown', handleKeyDown);
     if (notifTimer) clearInterval(notifTimer);
 });
 </script>
 
 <template>
-    <div class="min-h-screen bg-[#F8FAFC] flex text-[#334155] font-sans antialiased">
-        
-        <!-- Mobile Sidebar Drawer Overlay & Menu -->
-        <div v-if="isMobileMenuOpen" class="fixed inset-0 z-50 lg:hidden flex">
-            <!-- Backdrop Overlay -->
-            <div 
-                class="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity"
-                @click="isMobileMenuOpen = false"
-            ></div>
-
-            <!-- Drawer Content -->
-            <aside class="relative flex-1 w-full max-w-xs bg-white flex flex-col justify-between shadow-2xl h-full overflow-y-auto z-50">
-                <div>
-                    <!-- Mobile Drawer Header -->
-                    <div class="pt-6 pb-4 px-6 flex items-center justify-between border-b border-slate-100">
-                        <Link :href="route('dashboard')" @click="isMobileMenuOpen = false" class="flex items-center gap-3">
-                            <img v-if="appLogo" :src="appLogo" alt="Logo" class="w-8 h-8 object-contain select-none shrink-0" />
-                            <div v-else class="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-extrabold text-base shadow-sm shrink-0"> S
-                            </div>
-                            <div class="text-xl font-extrabold tracking-tight text-slate-900"> SINDEN<span class="text-[#2563EB]">.</span>
-                            </div>
-                        </Link>
-
-                        <button @click="isMobileMenuOpen = false" class="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                        </button>
-                    </div>
-
-                    <!-- Mobile Sidebar Navigation Links -->
-                    <nav class="px-4 py-4 space-y-5">
-                        <!-- UTAMA -->
-                        <div class="space-y-1">
-                            <p class="px-4 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Utama</p>
-                            <Link 
-                                :href="route('dashboard')" 
-                                @click="isMobileMenuOpen = false"
-                                :class="route().current('dashboard') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-3.5 px-4 py-3 rounded-2xl text-xs transition duration-150"
-                            >
-                                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-                                <span>Dashboard Utama</span>
-                            </Link>
+    <div 
+        class="min-h-screen font-sans antialiased transition-colors duration-300 flex flex-col justify-between"
+        :class="isDarkMode ? 'bg-[#0B0F19] text-slate-100' : 'bg-[#F4F6F9] text-slate-800'"
+    >
+        <!-- ========================================================================= -->
+        <!-- HEADER UTAMA (CORETAX DJP DESKTOP & MOBILE HEADER)                        -->
+        <!-- ========================================================================= -->
+        <header 
+            class="sticky top-0 z-40 w-full border-b transition-colors duration-300"
+            :class="isDarkMode ? 'border-white/10 bg-[#0B0F19]' : 'border-slate-200 bg-white shadow-xs'"
+        >
+            <!-- TOP BAR: Logo, Search Ctrl+K, Notification, Theme, Language, Profile -->
+            <div class="px-4 sm:px-8 py-3 flex items-center justify-between gap-4">
+                
+                <!-- Left: Logo & Brand -->
+                <div class="flex items-center gap-3 shrink-0">
+                    <Link :href="route('dashboard')" class="flex items-center gap-2.5 group">
+                        <img v-if="appLogo" :src="appLogo" class="h-9 sm:h-10 object-contain drop-shadow-md" alt="Logo SINDEN" />
+                        <div class="flex flex-col">
+                            <span class="text-xl sm:text-2xl font-black tracking-tight" :class="isDarkMode ? 'text-white' : 'text-slate-900'">
+                                SIN<span class="text-[#FFC107]">DEN</span>
+                            </span>
+                            <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400 hidden sm:block">
+                                Detasemen Intelijen Kodaeral V
+                            </span>
                         </div>
-
-                        <!-- SURAT & NASKAH -->
-                        <div class="space-y-1">
-                            <p class="px-4 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Surat & Naskah</p>
-                            <Link 
-                                :href="route('letter-logs.index')" 
-                                @click="isMobileMenuOpen = false"
-                                :class="route().current('letter-logs.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
-                            >
-                                <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                <span>Agenda Surat</span>
-                            </Link>
-
-                            <Link 
-                                :href="route('letters.index')" 
-                                @click="isMobileMenuOpen = false"
-                                :class="route().current('letters.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
-                            >
-                                <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                                <span>Buat & Draf Surat</span>
-                            </Link>
-
-                            <Link 
-                                :href="route('skhpp.index')" 
-                                @click="isMobileMenuOpen = false"
-                                :class="route().current('skhpp.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
-                            >
-                                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-                                <span>Penerbitan SKHPP</span>
-                            </Link>
-
-                            <Link 
-                                :href="route('categories.index')" 
-                                @click="isMobileMenuOpen = false"
-                                :class="route().current('categories.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
-                            >
-                                <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 11h.01M7 15h.01M11 7h7M11 11h7M11 15h7"></path></svg>
-                                <span>Kategori Surat</span>
-                            </Link>
-                        </div>
-
-                        <!-- VALIDASI & TTE -->
-                        <div class="space-y-1">
-                            <p class="px-4 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Validasi & TTE</p>
-                            
-                            <Link 
-                                :href="route('signature.index')" 
-                                @click="isMobileMenuOpen = false"
-                                :class="route().current('signature.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
-                            >
-                                <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                                <span>Tanda Tangan Digital</span>
-                            </Link>
-                        </div>
-
-                        <!-- LOGISTIK & FINANSIAL -->
-                        <div class="space-y-1">
-                            <p class="px-4 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Logistik & Keuangan</p>
-                            
-                            <Link 
-                                v-if="canAccessCash"
-                                :href="route('cash.index')" 
-                                @click="isMobileMenuOpen = false"
-                                :class="route().current('cash.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
-                            >
-                                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                <span>Buku Kas Unit</span>
-                            </Link>
-
-                            <Link 
-                                v-if="canAccessCommanderAccount"
-                                :href="route('commander.index')" 
-                                @click="isMobileMenuOpen = false"
-                                :class="route().current('commander.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
-                            >
-                                <svg class="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                                <span>Rekening Komandan</span>
-                            </Link>
-
-                            <Link 
-                                v-if="canAccessMitra && (!isDanUnitTeknis || isAdmin)"
-                                :href="route('mitras.index')" 
-                                @click="isMobileMenuOpen = false"
-                                :class="route().current('mitras.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
-                            >
-                                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0h4m-4 0V11m0 0h4m-4 0H7m4 0v10"></path></svg>
-                                <span>Pencatatan Mitra</span>
-                            </Link>
-
-                            <Link 
-                                v-if="canAccessTechnicalCash"
-                                :href="route('technical-cash.index')" 
-                                @click="isMobileMenuOpen = false"
-                                :class="route().current('technical-cash.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
-                            >
-                                <svg class="w-4 h-4 text-cyan-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                                <span>Buku Kas Dan Unit Teknis</span>
-                            </Link>
-
-                            <Link 
-                                v-if="!isDanUnitTeknis || isAdmin"
-                                :href="route('backup.index')" 
-                                @click="isMobileMenuOpen = false"
-                                :class="route().current('backup.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
-                            >
-                                <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
-                                <span>Explorer Backup</span>
-                            </Link>
-                        </div>
-
-                        <!-- PENGAMANAN -->
-                        <div class="space-y-1">
-                            <p class="px-4 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Pengamanan</p>
-                            
-                            <Link 
-                                :href="route('soldier-violations.index')" 
-                                @click="isMobileMenuOpen = false"
-                                :class="route().current('soldier-violations.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
-                            >
-                                <svg class="w-4 h-4 text-rose-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                                <span>Catatan Pelanggaran</span>
-                            </Link>
-
-                            <Link 
-                                :href="route('activities.index')" 
-                                @click="isMobileMenuOpen = false"
-                                :class="route().current('activities.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
-                            >
-                                <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><circle cx="12" cy="11" r="3"></circle></svg>
-                                <span>Radar Kegiatan</span>
-                            </Link>
-                        </div>
-
-                        <!-- SISTEM -->
-                        <div class="space-y-1 pb-6">
-                            <p class="px-4 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Sistem</p>
-                            
-                            <Link 
-                                v-if="isAdmin"
-                                :href="route('users.index')" 
-                                @click="isMobileMenuOpen = false"
-                                :class="route().current('users.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
-                            >
-                                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                                <span>Kelola Pengguna</span>
-                            </Link>
-
-                            <Link 
-                                :href="route('visitor-logs.index')" 
-                                @click="isMobileMenuOpen = false"
-                                :class="route().current('visitor-logs.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
-                            >
-                                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
-                                <span>Log Pengunjung & Audit</span>
-                            </Link>
-
-                            <Link 
-                                v-if="isAdmin"
-                                :href="route('settings.index')" 
-                                @click="isMobileMenuOpen = false"
-                                :class="route().current('settings.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
-                            >
-                                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                                <span>Pengaturan Sistem</span>
-                            </Link>
-                        </div>
-                    </nav>
+                    </Link>
                 </div>
 
-                <!-- Footer Drawer Profile & Logout -->
-                <div class="p-4 border-t border-slate-100 bg-slate-50/50">
-                    <Link 
-                        :href="route('profile.edit')" 
-                        @click="isMobileMenuOpen = false"class="flex items-center gap-3 mb-3 p-2 rounded-xl bg-white border border-slate-200/80 shadow-xs"
+                <!-- Middle: Global Search Input with Ctrl+K shortcut (Desktop) -->
+                <div class="hidden md:flex flex-1 max-w-md mx-4">
+                    <div class="relative w-full">
+                        <span class="absolute left-3.5 top-2.5 text-slate-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        </span>
+                        <input 
+                            ref="searchInputRef"
+                            type="text" 
+                            v-model="searchQuery"
+                            @input="handleSearchInput"
+                            placeholder="Cari layanan, surat, SKHPP, personel..." 
+                            class="w-full pl-10 pr-16 py-2 rounded-xl border text-xs transition-all focus:outline-hidden focus:ring-2 focus:ring-amber-500/50"
+                            :class="isDarkMode ? 'bg-[#121827] border-white/10 text-white placeholder-slate-500' : 'bg-slate-100 border-slate-200 text-slate-900 placeholder-slate-400'"
+                        />
+                        <span class="absolute right-2.5 top-2 px-1.5 py-0.5 rounded border text-[10px] font-mono font-bold text-slate-400"
+                            :class="isDarkMode ? 'border-white/10 bg-white/5' : 'border-slate-300 bg-white'"
+                        >
+                            Ctrl K
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Right: Action Controls (Theme, Notif, Lang, Profile) -->
+                <div class="flex items-center gap-2.5 sm:gap-3 shrink-0">
+                    
+                    <!-- Theme Toggle (Sun/Moon) -->
+                    <button 
+                        @click="toggleTheme" 
+                        type="button"
+                        class="p-2 rounded-xl transition-all cursor-pointer flex items-center justify-center"
+                        :class="isDarkMode ? 'bg-white/10 text-amber-400 hover:bg-white/20' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+                        :title="isDarkMode ? 'Mode Terang' : 'Mode Gelap'"
                     >
-                        <div class="w-8 h-8 rounded-xl bg-[#2563EB] text-white flex items-center justify-center font-bold text-xs uppercase shrink-0">
-                            {{ user.name ? user.name.substring(0, 2).toUpperCase() : 'US' }}
-                        </div>
-                        <div class="text-xs truncate flex-1" v-if="user">
-                            <p class="font-bold text-slate-800 truncate">{{ user.name }}</p>
-                            <p class="text-slate-400 truncate text-[10px]">NRP. {{ user.nrp || '--------' }}</p>
-                        </div>
-                    </Link>
-                    
-                    <Link :href="route('logout')" method="post" as="button" class="w-full py-2 px-3 text-center text-xs text-[#EF4444] bg-red-50 hover:bg-red-100 rounded-xl font-bold transition duration-150 cursor-pointer block"> Keluar Sistem
-                    </Link>
-                </div>
-            </aside>
-        </div>
-
-        <!-- Desktop Sidebar (SISFOPERSKC Style) -->
-        <aside class="hidden lg:flex w-72 bg-white border-r border-[#E2E8F0] flex-col justify-between shadow-sm shrink-0 z-30 sticky top-0 h-screen overflow-y-auto">
-            <div>
-                <!-- Brand Header & Logo -->
-                <div class="pt-8 pb-6 px-7 flex flex-col select-none border-b border-slate-100">
-                    <Link :href="route('dashboard')" class="flex items-center gap-3">
-                        <img v-if="appLogo" :src="appLogo" alt="Logo" class="w-8 h-8 object-contain select-none shrink-0" />
-                        <div v-else class="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-extrabold text-base shadow-sm shrink-0"> S
-                        </div>
-                        <div class="text-2xl font-extrabold tracking-tight text-slate-900"> SINDEN<span class="text-[#2563EB]">.</span>
-                        </div>
-                    </Link>
-                    <span class="text-[9px] font-bold tracking-wider text-[#94A3B8] uppercase mt-2 truncate">
-                        {{ agencyName }}
-                    </span>
-                </div>
-
-                <!-- Sidebar Nav Menu -->
-                <nav class="px-4 py-3 space-y-5">
-                    
-                    <!-- UTAMA -->
-                    <div class="space-y-1">
-                        <p class="px-5 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Utama</p>
-                        <Link 
-                            :href="route('dashboard')" 
-                            :class="route().current('dashboard') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
-                        >
-                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-                            <span>Dashboard Utama</span>
-                        </Link>
-                    </div>
-
-                    <!-- ADMINISTRASI SURAT -->
-                    <div class="space-y-1">
-                        <p class="px-5 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Surat & Naskah</p>
-                        
-                        <Link 
-                            :href="route('letter-logs.index')" 
-                            :class="route().current('letter-logs.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
-                        >
-                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                            <span>Agenda Surat</span>
-                        </Link>
-
-                        <Link 
-                            :href="route('letters.index')" 
-                            :class="route().current('letters.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
-                        >
-                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-amber-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                            <span>Buat & Draf Surat</span>
-                        </Link>
-
-                        <Link 
-                            :href="route('skhpp.index')" 
-                            :class="route().current('skhpp.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
-                        >
-                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-                            <span>Penerbitan SKHPP</span>
-                        </Link>
-
-                        <Link 
-                            :href="route('categories.index')" 
-                            :class="route().current('categories.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
-                        >
-                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 11h.01M7 15h.01M11 7h7M11 11h7M11 15h7"></path></svg>
-                            <span>Kategori Surat</span>
-                        </Link>
-                    </div>
-
-                    <!-- VALIDASI & TTE -->
-                    <div class="space-y-1">
-                        <p class="px-5 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Validasi & TTE</p>
-                        
-                        <Link 
-                            :href="route('signature.index')" 
-                            :class="route().current('signature.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
-                        >
-                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-purple-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                            <span>Tanda Tangan Digital</span>
-                        </Link>
-                    </div>
-
-                    <!-- LOGISTIK & FINANSIAL -->
-                    <div class="space-y-1">
-                        <p class="px-5 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Logistik & Keuangan</p>
-                        
-                        <Link 
-                            v-if="canAccessCash && (!isDanUnitTeknis || isAdmin)"
-                            :href="route('cash.index')" 
-                            :class="route().current('cash.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
-                        >
-                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            <span>Buku Kas Unit</span>
-                        </Link>
-
-                        <Link 
-                            v-if="canAccessCommanderAccount && (!isDanUnitTeknis || isAdmin)"
-                            :href="route('commander.index')" 
-                            :class="route().current('commander.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
-                        >
-                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-emerald-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                            <span>Rekening Komandan</span>
-                        </Link>
-
-                        <Link 
-                            v-if="canAccessMitra && (!isDanUnitTeknis || isAdmin)"
-                            :href="route('mitras.index')" 
-                            :class="route().current('mitras.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
-                        >
-                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0h4m-4 0V11m0 0h4m-4 0H7m4 0v10"></path></svg>
-                            <span>Pencatatan Mitra</span>
-                        </Link>
-
-                        <Link 
-                            v-if="canAccessTechnicalCash"
-                            :href="route('technical-cash.index')" 
-                            :class="route().current('technical-cash.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
-                        >
-                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-cyan-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                            <span>Buku Kas Dan Unit Teknis</span>
-                        </Link>
-
-                        <Link 
-                            v-if="!isDanUnitTeknis || isAdmin"
-                            :href="route('backup.index')" 
-                            :class="route().current('backup.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
-                        >
-                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
-                            <span>Explorer Backup</span>
-                        </Link>
-                    </div>
-
-                    <!-- SEKTOR PENGAMANAN -->
-                    <div class="space-y-1">
-                        <p class="px-5 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Pengamanan</p>
-                        
-                        <Link 
-                            :href="route('soldier-violations.index')" 
-                            :class="route().current('soldier-violations.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
-                        >
-                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-rose-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                            <span>Catatan Pelanggaran</span>
-                        </Link>
-
-                        <Link 
-                            :href="route('activities.index')" 
-                            :class="route().current('activities.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
-                        >
-                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><circle cx="12" cy="11" r="3"></circle></svg>
-                            <span>Radar Kegiatan</span>
-                        </Link>
-                    </div>
-
-                    <!-- PENGATURAN & AKSES -->
-                    <div class="space-y-1 pb-6">
-                        <p class="px-5 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Sistem</p>
-                        
-                        <Link 
-                            v-if="isAdmin"
-                            :href="route('users.index')" 
-                            :class="route().current('users.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
-                        >
-                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                            <span>Kelola Pengguna</span>
-                        </Link>
-
-                        <Link 
-                            :href="route('visitor-logs.index')" 
-                            :class="route().current('visitor-logs.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
-                        >
-                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
-                            <span>Log Pengunjung & Audit</span>
-                        </Link>
-
-                        <Link 
-                            v-if="isAdmin"
-                            :href="route('settings.index')" 
-                            :class="route().current('settings.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
-                        >
-                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                            <span>Pengaturan Sistem</span>
-                        </Link>
-                    </div>
-
-                </nav>
-            </div>
-
-            <!-- Profile Widget Footer Sidebar -->
-            <div class="p-5 border-t border-[#E2E8F0] bg-slate-50/50">
-                <Link 
-                    :href="route('profile.edit')" 
-                    :class="route().current('profile.edit') ? 'bg-[#2563EB]/5 text-[#2563EB]' : 'hover:bg-slate-100/80'"class="flex items-center gap-3.5 mb-3 p-2 rounded-xl transition duration-150 group cursor-pointer"
-                >
-                    <div class="w-10 h-10 rounded-xl bg-[#2563EB]/10 flex items-center justify-center font-bold text-xs text-[#2563EB] uppercase select-none group-hover:bg-[#2563EB] group-hover:text-white transition duration-150 shrink-0">
-                        {{ user.name ? user.name.substring(0, 2).toUpperCase() : 'US' }}
-                    </div>
-                    <div class="text-xs truncate flex-1" v-if="user">
-                        <p class="font-bold text-slate-800 truncate group-hover:text-[#2563EB] transition duration-150">
-                            {{ user.name }}
-                        </p>
-                        <p class="text-slate-400 truncate text-[11px] mt-0.5"> NRP. {{ user.nrp || '--------' }}
-                        </p>
-                    </div>
-                </Link>
-                
-                <Link :href="route('logout')" method="post" as="button" class="w-full py-2.5 px-3 text-center text-xs text-[#EF4444] hover:bg-red-50 rounded-xl font-bold border border-transparent hover:border-red-100/50 transition duration-150 cursor-pointer block"> Keluar Sistem
-                </Link>
-            </div>
-        </aside>
-
-        <!-- Main Content Area -->
-        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
-            
-            <!-- Header Topbar Desktop & Mobile -->
-            <header class="bg-white border-b border-[#E2E8F0] sticky top-0 z-20 shadow-xs h-16 flex items-center px-3 sm:px-8 justify-between gap-2 sm:gap-4">
-                
-                <!-- Toggle Mobile & Search Bar -->
-                <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                    <button @click="isMobileMenuOpen = !isMobileMenuOpen" class="lg:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100 shrink-0">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                        <svg v-if="isDarkMode" class="w-4 h-4 sm:w-5 sm:h-5 fill-current" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.03 0-1.41s-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36c.39-.39.39-1.03 0-1.41s-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z"/></svg>
+                        <svg v-else class="w-4 h-4 sm:w-5 sm:h-5 fill-current" viewBox="0 0 24 24"><path d="M12.3 2a10 10 0 0 0-1.9 20 10 10 0 0 0 9.8-7.7 1 1 0 0 0-1.2-1.2A8 8 0 0 1 10.9 4a1 1 0 0 0-1.2-1.2 10 10 0 0 0 2.6-.8z"/></svg>
                     </button>
 
-                    <!-- Global Search Bar (Desktops & Tablets) -->
-                    <div class="hidden sm:flex max-w-md w-full relative items-center">
-                        <svg class="w-4 h-4 text-slate-400 absolute left-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <input 
-                            type="text"ref="searchInputRef"v-model="searchQuery"
-                            @input="handleSearchInput"placeholder="Cari data log, nama personel, atau instansi..."class="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl pl-10 pr-12 py-2 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition"
-                        />
-                        <span class="hidden md:inline-block absolute right-3 bg-white border border-slate-200 rounded-lg px-2 py-0.5 text-[9px] font-mono text-slate-400 font-bold shadow-xs">Ctrl K</span>
-                    </div>
-
-                    <!-- Compact Search Input for Mobile Only -->
-                    <div class="flex sm:hidden flex-1 relative items-center">
-                        <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <input 
-                            type="text"v-model="searchQuery"
-                            @input="handleSearchInput"placeholder="Cari..."class="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl pl-7 pr-2 py-1.5 text-[11px] font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition"
-                        />
-                    </div>
-                </div>
-
-                <!-- Right Header Actions (Notif & Profile) -->
-                <div class="flex items-center gap-1.5 sm:gap-3 shrink-0">
-                    
-                    <!-- Notifikasi Popover (Lonceng Notifikasi Sistem Real-time) -->
+                    <!-- In-App Notification Bell -->
                     <div class="relative">
-                        <button @click="isNotifOpen = !isNotifOpen" class="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition relative flex items-center justify-center">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                            </svg>
-                            <!-- Badge Indikator Bulatan Biru/Merah Real-Time -->
-                            <span v-if="unreadCount > 0" class="absolute top-1 right-1 h-3.5 w-3.5 bg-blue-600 rounded-full animate-ping opacity-75"></span>
-                            <span v-if="unreadCount > 0" class="absolute top-1 right-1 min-w-[14px] h-3.5 px-1 bg-blue-600 text-white font-extrabold text-[8px] rounded-full flex items-center justify-center border border-white shadow-xs">
-                                {{ unreadCount > 9 ? '9+' : unreadCount }}
+                        <button 
+                            @click="isNotifOpen = !isNotifOpen"
+                            type="button"
+                            class="p-2 rounded-xl transition-all cursor-pointer relative flex items-center justify-center"
+                            :class="isDarkMode ? 'bg-white/10 text-slate-200 hover:bg-white/20' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+                        >
+                            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                            <!-- Badge Counter -->
+                            <span 
+                                v-if="unreadCount > 0" 
+                                class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full ring-2"
+                                :class="isDarkMode ? 'ring-[#0B0F19]' : 'ring-white'"
+                            >
+                                {{ unreadCount > 99 ? '99+' : unreadCount }}
                             </span>
                         </button>
 
-                        <div v-if="isNotifOpen" class="absolute right-0 mt-3 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 z-50 animate-float-card">
-                            <div class="flex justify-between items-center pb-3 border-b border-slate-100">
-                                <div class="flex items-center gap-2">
-                                    <h4 class="font-extrabold text-xs uppercase tracking-wider text-slate-800">Notifikasi Sistem</h4>
-                                    <span v-if="unreadCount > 0" class="text-[9px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100">{{ unreadCount }} Belum Dibaca</span>
-                                </div>
-                                <button v-if="unreadCount > 0" @click="markAllRead" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 transition"> Tandai Semua Dibaca
-                                </button>
+                        <!-- Notification Dropdown Menu -->
+                        <div 
+                            v-if="isNotifOpen" 
+                            class="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl shadow-2xl border py-2 z-50 transition-all"
+                            :class="isDarkMode ? 'bg-[#121827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'"
+                        >
+                            <div class="px-4 py-2 flex items-center justify-between border-b" :class="isDarkMode ? 'border-white/10' : 'border-slate-100'">
+                                <span class="text-xs font-bold uppercase tracking-wider">Notifikasi Sistem</span>
+                                <button @click="markAllRead" class="text-[11px] font-bold text-amber-400 hover:underline">Tandai semua dibaca</button>
                             </div>
-
-                            <div class="divide-y divide-slate-100 max-h-80 overflow-y-auto my-2 custom-scrollbar">
-                                <div v-for="notif in notifications" :key="notif.id" 
-                                    @click="handleNotifClick(notif)" 
-                                    :class="!notif.is_read ? 'bg-blue-50/50 hover:bg-blue-50' : 'hover:bg-slate-50'"class="py-3 px-2.5 rounded-xl cursor-pointer transition flex items-start gap-3">
-                                    <div class="mt-0.5 shrink-0">
-                                        <span v-if="!notif.is_read" class="w-2 h-2 rounded-full bg-blue-600 block shadow-xs"></span>
-                                        <span v-else class="w-2 h-2 rounded-full bg-slate-200 block"></span>
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-xs font-bold text-slate-800 leading-snug truncate">{{ notif.title }}</p>
-                                        <p class="text-[10px] text-slate-600 leading-relaxed mt-0.5 line-clamp-2">{{ notif.message }}</p>
-                                        <span class="text-[9px] font-semibold text-slate-400 mt-1 block">{{ formatTimeAgo(notif.created_at) }}</span>
+                            <div class="max-h-72 overflow-y-auto divide-y" :class="isDarkMode ? 'divide-white/5' : 'divide-slate-100'">
+                                <div 
+                                    v-for="notif in notifications" 
+                                    :key="notif.id"
+                                    @click="handleNotifClick(notif)"
+                                    class="p-3.5 hover:bg-amber-500/10 cursor-pointer transition flex items-start gap-3"
+                                    :class="!notif.is_read ? (isDarkMode ? 'bg-white/5' : 'bg-amber-50/50') : ''"
+                                >
+                                    <div class="w-2 h-2 rounded-full mt-1.5 shrink-0" :class="!notif.is_read ? 'bg-amber-500' : 'bg-transparent'"></div>
+                                    <div class="space-y-0.5 flex-1">
+                                        <p class="text-xs font-bold leading-snug">{{ notif.title }}</p>
+                                        <p class="text-[11px] text-slate-400 line-clamp-2">{{ notif.message }}</p>
+                                        <span class="text-[10px] text-slate-500 block pt-1">{{ formatTimeAgo(notif.created_at) }}</span>
                                     </div>
                                 </div>
-
-                                <div v-if="notifications.length === 0" class="py-8 text-center text-slate-400 text-xs font-medium"> Belum ada notifikasi masuk.
+                                <div v-if="notifications.length === 0" class="p-6 text-center text-xs text-slate-500">
+                                    Tidak ada notifikasi saat ini.
                                 </div>
-                            </div>
-
-                            <!-- Footer Dropdown Popover: Lihat Semua Notifikasi -->
-                            <div class="pt-2 border-t border-slate-100 text-center">
-                                <Link :href="route('notifications.index')" @click="isNotifOpen = false" class="text-[11px] font-extrabold text-blue-600 hover:text-blue-800 transition py-1.5 block uppercase tracking-wider"> Lihat Semua Notifikasi →
-                                </Link>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Dropdown Profil -->
-                    <Dropdown align="right" width="48">
-                        <template #trigger>
-                            <button class="flex items-center gap-2 p-1 sm:p-1.5 hover:bg-slate-100 rounded-2xl transition group">
-                                <div class="h-8 w-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 uppercase shadow-sm">
-                                    {{ user.name.charAt(0) }}
-                                </div>
-                                <div class="hidden md:flex flex-col text-left max-w-[130px]">
-                                    <span class="text-xs font-bold text-slate-800 truncate leading-tight">{{ user.name }}</span>
-                                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider truncate">NRP. {{ user.nrp || '--------' }}</span>
-                                </div>
-                                <svg class="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition hidden sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                            </button>
-                        </template>
-                        <template #content>
-                            <DropdownLink :href="route('profile.edit')" class="text-xs font-bold text-slate-700"> Edit Profil </DropdownLink>
-                            <DropdownLink :href="route('logout')" method="post" as="button" class="text-rose-600 font-bold text-xs"> Keluar Sistem 
-                            </DropdownLink>
-                        </template>
-                    </Dropdown>
+                    <!-- Language Switcher -->
+                    <div class="relative hidden sm:block">
+                        <button 
+                            @click="isLangMenuOpen = !isLangMenuOpen"
+                            type="button" 
+                            class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer"
+                            :class="isDarkMode ? 'border-white/15 bg-white/5 hover:bg-white/10 text-white' : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-800 shadow-2xs'"
+                        >
+                            <span class="w-4 h-3 rounded-xs flex items-center justify-center text-[10px] overflow-hidden border border-black/20 font-bold">
+                                {{ currentLang === 'id' ? 'ðŸ‡®ðŸ‡©' : 'ðŸ‡ºðŸ‡¸' }}
+                            </span>
+                            <span>{{ currentLang === 'id' ? 'ID' : 'EN' }}</span>
+                            <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+
+                        <div 
+                            v-if="isLangMenuOpen" 
+                            class="absolute right-0 mt-2 w-28 rounded-xl shadow-2xl border py-1 z-50"
+                            :class="isDarkMode ? 'bg-[#121827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'"
+                        >
+                            <button @click="setLanguage('id')" class="w-full text-left px-3 py-1.5 text-xs hover:bg-amber-500/10 hover:text-amber-400 transition">ðŸ‡®ðŸ‡© ID</button>
+                            <button @click="setLanguage('en')" class="w-full text-left px-3 py-1.5 text-xs hover:bg-amber-500/10 hover:text-amber-400 transition">ðŸ‡ºðŸ‡¸ EN</button>
+                        </div>
+                    </div>
+
+                    <!-- User Profile Pill (CORETAX Header User Badge) -->
+                    <div class="relative">
+                        <button 
+                            @click="isProfileMenuOpen = !isProfileMenuOpen"
+                            type="button"
+                            class="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-2xl border transition-all cursor-pointer"
+                            :class="isDarkMode ? 'border-white/10 bg-[#121827] hover:border-amber-500/40 text-white' : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-900 shadow-xs'"
+                        >
+                            <div class="w-7 h-7 rounded-xl bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center uppercase shrink-0">
+                                {{ user.name ? user.name.charAt(0) : 'U' }}
+                            </div>
+                            <div class="hidden xl:flex flex-col text-left">
+                                <span class="text-[11px] font-bold text-slate-400 tracking-wide truncate max-w-[140px]">
+                                    {{ user.pangkat || 'TNI AL' }} {{ user.nrp ? `(${user.nrp})` : '' }}
+                                </span>
+                                <span class="text-xs font-black uppercase text-amber-400 truncate max-w-[140px]">
+                                    {{ user.name }}
+                                </span>
+                            </div>
+                            <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+
+                        <!-- Profile Dropdown -->
+                        <div 
+                            v-if="isProfileMenuOpen" 
+                            class="absolute right-0 mt-2 w-56 rounded-2xl shadow-2xl border py-2 z-50 transition-all text-xs"
+                            :class="isDarkMode ? 'bg-[#121827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'"
+                        >
+                            <div class="px-4 py-2 border-b" :class="isDarkMode ? 'border-white/10' : 'border-slate-100'">
+                                <p class="font-bold truncate">{{ user.name }}</p>
+                                <p class="text-[10px] text-slate-400 font-mono">{{ user.email }}</p>
+                            </div>
+                            <Link :href="route('profile.edit')" @click="isProfileMenuOpen = false" class="block px-4 py-2 hover:bg-amber-500/10 hover:text-amber-400 transition">
+                                âš™ï¸ Pengaturan Profil
+                            </Link>
+                            <Link :href="route('logout')" method="post" as="button" class="w-full text-left px-4 py-2 text-red-400 hover:bg-red-500/10 transition font-bold">
+                                ðŸšª Keluar Sistem (Logout)
+                            </Link>
+                        </div>
+                    </div>
 
                 </div>
-            </header>
 
-            <!-- Main Scrollable Content -->
-            <main class="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8">
-                <slot />
-            </main>
+            </div>
 
+            <!-- ========================================================================= -->
+            <!-- DESKTOP MEGA MENU NAVIGATION BAR (8 PILAR LAYANAN PERSIS VIDEO 2)         -->
+            <!-- ========================================================================= -->
+            <div class="hidden lg:block border-t" :class="isDarkMode ? 'border-white/5 bg-[#0B0F19]' : 'border-slate-200 bg-white'">
+                <div class="px-6 flex items-center gap-1 overflow-x-auto no-scrollbar">
+                    
+                    <!-- 1. Portal Saya -->
+                    <button 
+                        @click="toggleMegaMenu('portal')"
+                        type="button" 
+                        class="flex items-center gap-2 px-4 py-2.5 rounded-t-xl font-extrabold text-xs uppercase tracking-wider transition-all cursor-pointer border-b-2"
+                        :class="activeMegaMenu === 'portal' 
+                            ? 'border-amber-400 text-amber-400 bg-white/5' 
+                            : 'border-transparent text-slate-300 hover:text-white hover:bg-white/5'"
+                    >
+                        <span>ðŸ‘¤</span>
+                        <span>Portal Saya</span>
+                        <svg class="w-3.5 h-3.5 transition-transform" :class="activeMegaMenu === 'portal' ? 'rotate-180 text-amber-400' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+
+                    <!-- 2. E-Arsip / Naskah -->
+                    <button 
+                        @click="toggleMegaMenu('arsip')"
+                        type="button" 
+                        class="flex items-center gap-2 px-4 py-2.5 rounded-t-xl font-extrabold text-xs uppercase tracking-wider transition-all cursor-pointer border-b-2"
+                        :class="activeMegaMenu === 'arsip' 
+                            ? 'border-amber-400 text-amber-400 bg-white/5' 
+                            : 'border-transparent text-slate-300 hover:text-white hover:bg-white/5'"
+                    >
+                        <span>ðŸ“</span>
+                        <span>e-Arsip & Surat</span>
+                        <svg class="w-3.5 h-3.5 transition-transform" :class="activeMegaMenu === 'arsip' ? 'rotate-180 text-amber-400' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+
+                    <!-- 3. SKHPP Online -->
+                    <button 
+                        @click="toggleMegaMenu('skhpp')"
+                        type="button" 
+                        class="flex items-center gap-2 px-4 py-2.5 rounded-t-xl font-extrabold text-xs uppercase tracking-wider transition-all cursor-pointer border-b-2"
+                        :class="activeMegaMenu === 'skhpp' 
+                            ? 'border-amber-400 text-amber-400 bg-white/5' 
+                            : 'border-transparent text-slate-300 hover:text-white hover:bg-white/5'"
+                    >
+                        <span>ðŸ›¡ï¸</span>
+                        <span>SKHPP Online</span>
+                        <svg class="w-3.5 h-3.5 transition-transform" :class="activeMegaMenu === 'skhpp' ? 'rotate-180 text-amber-400' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+
+                    <!-- 4. TTE Digital -->
+                    <button 
+                        @click="toggleMegaMenu('tte')"
+                        type="button" 
+                        class="flex items-center gap-2 px-4 py-2.5 rounded-t-xl font-extrabold text-xs uppercase tracking-wider transition-all cursor-pointer border-b-2"
+                        :class="activeMegaMenu === 'tte' 
+                            ? 'border-amber-400 text-amber-400 bg-white/5' 
+                            : 'border-transparent text-slate-300 hover:text-white hover:bg-white/5'"
+                    >
+                        <span>âœï¸</span>
+                        <span>TTE Digital</span>
+                        <svg class="w-3.5 h-3.5 transition-transform" :class="activeMegaMenu === 'tte' ? 'rotate-180 text-amber-400' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+
+                    <!-- 5. Buku Kas -->
+                    <button 
+                        v-if="canAccessCash || canAccessTechnicalCash"
+                        @click="toggleMegaMenu('kas')"
+                        type="button" 
+                        class="flex items-center gap-2 px-4 py-2.5 rounded-t-xl font-extrabold text-xs uppercase tracking-wider transition-all cursor-pointer border-b-2"
+                        :class="activeMegaMenu === 'kas' 
+                            ? 'border-amber-400 text-amber-400 bg-white/5' 
+                            : 'border-transparent text-slate-300 hover:text-white hover:bg-white/5'"
+                    >
+                        <span>ðŸ’°</span>
+                        <span>Buku Kas</span>
+                        <svg class="w-3.5 h-3.5 transition-transform" :class="activeMegaMenu === 'kas' ? 'rotate-180 text-amber-400' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+
+                    <!-- 6. Radar & Pelanggaran -->
+                    <button 
+                        @click="toggleMegaMenu('radar')"
+                        type="button" 
+                        class="flex items-center gap-2 px-4 py-2.5 rounded-t-xl font-extrabold text-xs uppercase tracking-wider transition-all cursor-pointer border-b-2"
+                        :class="activeMegaMenu === 'radar' 
+                            ? 'border-amber-400 text-amber-400 bg-white/5' 
+                            : 'border-transparent text-slate-300 hover:text-white hover:bg-white/5'"
+                    >
+                        <span>ðŸ“¡</span>
+                        <span>Radar & Disiplin</span>
+                        <svg class="w-3.5 h-3.5 transition-transform" :class="activeMegaMenu === 'radar' ? 'rotate-180 text-amber-400' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+
+                    <!-- 7. PC Backup -->
+                    <button 
+                        @click="toggleMegaMenu('backup')"
+                        type="button" 
+                        class="flex items-center gap-2 px-4 py-2.5 rounded-t-xl font-extrabold text-xs uppercase tracking-wider transition-all cursor-pointer border-b-2"
+                        :class="activeMegaMenu === 'backup' 
+                            ? 'border-amber-400 text-amber-400 bg-white/5' 
+                            : 'border-transparent text-slate-300 hover:text-white hover:bg-white/5'"
+                    >
+                        <span>ðŸ’¾</span>
+                        <span>PC Backup</span>
+                        <svg class="w-3.5 h-3.5 transition-transform" :class="activeMegaMenu === 'backup' ? 'rotate-180 text-amber-400' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+
+                    <!-- 8. Manajemen Sistem (Admin) -->
+                    <button 
+                        v-if="isAdmin"
+                        @click="toggleMegaMenu('admin')"
+                        type="button" 
+                        class="flex items-center gap-2 px-4 py-2.5 rounded-t-xl font-extrabold text-xs uppercase tracking-wider transition-all cursor-pointer border-b-2"
+                        :class="activeMegaMenu === 'admin' 
+                            ? 'border-amber-400 text-amber-400 bg-white/5' 
+                            : 'border-transparent text-slate-300 hover:text-white hover:bg-white/5'"
+                    >
+                        <span>âš™ï¸</span>
+                        <span>Manajemen Sistem</span>
+                        <svg class="w-3.5 h-3.5 transition-transform" :class="activeMegaMenu === 'admin' ? 'rotate-180 text-amber-400' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+
+                </div>
+            </div>
+
+            <!-- ========================================================================= -->
+            <!-- FULL WIDTH MEGA MENU DROPDOWN PANEL (PERSIS VIDEO 2 CORETAX)              -->
+            <!-- ========================================================================= -->
+            <div 
+                v-if="activeMegaMenu" 
+                class="hidden lg:block w-full border-t border-b shadow-2xl transition-all duration-200 z-50 animate-slide-down"
+                :class="isDarkMode ? 'bg-[#121827] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'"
+            >
+                <div class="max-w-7xl mx-auto px-8 py-6">
+                    
+                    <!-- MENU 1: PORTAL SAYA -->
+                    <div v-if="activeMegaMenu === 'portal'" class="grid grid-cols-3 gap-8">
+                        <div class="space-y-3">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block border-b pb-1" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">Profil & Identitas</span>
+                            <ul class="space-y-2 text-xs">
+                                <li><Link :href="route('profile.edit')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1">Profil Saya & Password</Link></li>
+                                <li><Link :href="route('dashboard')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1">Dashboard Personal</Link></li>
+                            </ul>
+                        </div>
+                        <div class="space-y-3">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block border-b pb-1" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">Aktivitas & Log Saya</span>
+                            <ul class="space-y-2 text-xs">
+                                <li><Link :href="route('activities.map')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1">Riwayat Radar GPS Saya</Link></li>
+                                <li><Link :href="route('signature.index')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1">Pengajuan Berkas TTE Saya</Link></li>
+                            </ul>
+                        </div>
+                        <div class="space-y-3">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block border-b pb-1" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">Mitra & Otoritas</span>
+                            <ul class="space-y-2 text-xs">
+                                <li v-if="canAccessMitra"><Link :href="route('mitra.index')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1">Daftar Mitra Kerja TNI AL</Link></li>
+                                <li><Link :href="route('skhpp.index')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1">Permohonan SKHPP Saya</Link></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- MENU 2: E-ARSIP & SURAT -->
+                    <div v-if="activeMegaMenu === 'arsip'" class="grid grid-cols-3 gap-8">
+                        <div class="space-y-3">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block border-b pb-1" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">Agenda Surat Keluar</span>
+                            <ul class="space-y-2 text-xs">
+                                <li><Link :href="route('letter-logs.index')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1 font-bold text-amber-300">Agenda & Booking Nomor Surat</Link></li>
+                                <li><Link :href="route('letter-logs.index', { status: 'booked' })" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1">Nomor Terbooking</Link></li>
+                            </ul>
+                        </div>
+                        <div class="space-y-3">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block border-b pb-1" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">Draf & Penerbitan Naskah</span>
+                            <ul class="space-y-2 text-xs">
+                                <li><Link :href="route('letters.index')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1">Daftar Draf & Arsip Surat</Link></li>
+                                <li><Link :href="route('letters.create')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1">Buat Surat Baru (+ Template)</Link></li>
+                            </ul>
+                        </div>
+                        <div class="space-y-3">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block border-b pb-1" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">Klasifikasi & Tata Naskah</span>
+                            <ul class="space-y-2 text-xs">
+                                <li><Link :href="route('categories.index')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1">Klasifikasi Surat Dinas</Link></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- MENU 3: SKHPP ONLINE -->
+                    <div v-if="activeMegaMenu === 'skhpp'" class="grid grid-cols-3 gap-8">
+                        <div class="space-y-3">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block border-b pb-1" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">Layanan SKHPP Militer / PNS</span>
+                            <ul class="space-y-2 text-xs">
+                                <li><Link :href="route('skhpp.index')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1 font-bold text-amber-300">Daftar Pengajuan SKHPP</Link></li>
+                                <li><Link :href="route('skhpp.create', { kategori: 'militer' })" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1">Buat SKHPP Militer / PNS (+ TTE)</Link></li>
+                            </ul>
+                        </div>
+                        <div class="space-y-3">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block border-b pb-1" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">Layanan SKHPP Mitra Perusahaan</span>
+                            <ul class="space-y-2 text-xs">
+                                <li><Link :href="route('skhpp.create', { kategori: 'perusahaan' })" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1">Buat SKHPP Mitra Kerja Perusahaan</Link></li>
+                                <li><Link :href="route('mitra.index')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1">Database Perusahaan Rekanan</Link></li>
+                            </ul>
+                        </div>
+                        <div class="space-y-3">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block border-b pb-1" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">Verifikasi & Validitas</span>
+                            <ul class="space-y-2 text-xs">
+                                <li><Link :href="route('skhpp.index')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1">Lacak Status Pengesahan Komandan</Link></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- MENU 4: TTE DIGITAL -->
+                    <div v-if="activeMegaMenu === 'tte'" class="grid grid-cols-3 gap-8">
+                        <div class="space-y-3">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block border-b pb-1" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">Pengesahan Naskah Dinas</span>
+                            <ul class="space-y-2 text-xs">
+                                <li><Link :href="route('signature.index')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1 font-bold text-amber-300">Daftar Pengajuan TTE Berkas</Link></li>
+                                <li><Link :href="route('signature.index')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1">Unggah Berkas PDF untuk TTE</Link></li>
+                            </ul>
+                        </div>
+                        <div class="space-y-3">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block border-b pb-1" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">Pengaturan Cap & TTD</span>
+                            <ul class="space-y-2 text-xs" v-if="isAdmin">
+                                <li><Link :href="route('settings.stamp')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1">Cap Kedinasan & TTD Komandan</Link></li>
+                            </ul>
+                        </div>
+                        <div class="space-y-3">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block border-b pb-1" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">Otentikasi Publik</span>
+                            <ul class="space-y-2 text-xs">
+                                <li><span class="text-slate-400 block py-1">QR Code terhubung ke /verify-doc/{code}</span></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- MENU 5: BUKU KAS -->
+                    <div v-if="activeMegaMenu === 'kas'" class="grid grid-cols-3 gap-8">
+                        <div class="space-y-3" v-if="canAccessCash">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block border-b pb-1" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">Buku Kas Umum</span>
+                            <ul class="space-y-2 text-xs">
+                                <li><Link :href="route('cash.index')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1 font-bold text-amber-300">Buku Kas Satuan</Link></li>
+                            </ul>
+                        </div>
+                        <div class="space-y-3" v-if="canAccessTechnicalCash">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block border-b pb-1" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">Kas Unit Teknis</span>
+                            <ul class="space-y-2 text-xs">
+                                <li><Link :href="route('technical-cash.index')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1 font-bold text-amber-300">Buku Kas Unit Teknis</Link></li>
+                            </ul>
+                        </div>
+                        <div class="space-y-3" v-if="canAccessCommanderAccount">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block border-b pb-1" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">Rekening Komandan</span>
+                            <ul class="space-y-2 text-xs">
+                                <li><Link :href="route('commander.account')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1">Laporan Rekening Khusus</Link></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- MENU 6: RADAR & PELANGGARAN -->
+                    <div v-if="activeMegaMenu === 'radar'" class="grid grid-cols-3 gap-8">
+                        <div class="space-y-3">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block border-b pb-1" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">Radar & Tracking Intelijen</span>
+                            <ul class="space-y-2 text-xs">
+                                <li><Link :href="route('activities.map')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1 font-bold text-amber-300">Peta GPS & Radar Lapangan</Link></li>
+                            </ul>
+                        </div>
+                        <div class="space-y-3">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block border-b pb-1" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">Disiplin & Hukum</span>
+                            <ul class="space-y-2 text-xs">
+                                <li><Link :href="route('violations.index')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1 font-bold text-red-400">Catatan Pelanggaran Personel</Link></li>
+                            </ul>
+                        </div>
+                        <div class="space-y-3" v-if="isAdmin">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block border-b pb-1" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">Radar Satuan</span>
+                            <ul class="space-y-2 text-xs">
+                                <li><Link :href="route('admin.birthday.radar')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1">Radar Ulang Tahun Personel</Link></li>
+                                <li><Link :href="route('admin.pess')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1">Evaluasi Kinerja (PESS)</Link></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- MENU 7: PC BACKUP -->
+                    <div v-if="activeMegaMenu === 'backup'" class="grid grid-cols-3 gap-8">
+                        <div class="space-y-3">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block border-b pb-1" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">Penyimpanan Komputer</span>
+                            <ul class="space-y-2 text-xs">
+                                <li><Link :href="route('backup.index')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1 font-bold text-amber-300">Daftar PC & Cloud Backup</Link></li>
+                            </ul>
+                        </div>
+                        <div class="space-y-3">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block border-b pb-1" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">Radar Jaringan</span>
+                            <ul class="space-y-2 text-xs">
+                                <li><Link :href="route('backup.index')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1">Radar IP Kedinasan</Link></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- MENU 8: MANAJEMEN SISTEM (ADMIN) -->
+                    <div v-if="activeMegaMenu === 'admin'" class="grid grid-cols-3 gap-8">
+                        <div class="space-y-3">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block border-b pb-1" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">Otoritas Personel</span>
+                            <ul class="space-y-2 text-xs">
+                                <li><Link :href="route('users.index')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1 font-bold text-amber-300">Data Personel & Token Aktivasi</Link></li>
+                            </ul>
+                        </div>
+                        <div class="space-y-3">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block border-b pb-1" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">Audit & Keamanan</span>
+                            <ul class="space-y-2 text-xs">
+                                <li><Link :href="route('audit-logs.index')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1">Audit Log Aktivitas Sistem</Link></li>
+                            </ul>
+                        </div>
+                        <div class="space-y-3">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-amber-400 block border-b pb-1" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">Konfigurasi</span>
+                            <ul class="space-y-2 text-xs">
+                                <li><Link :href="route('settings.index')" @click="closeMegaMenu" class="hover:text-amber-400 transition block py-1">Pengaturan Aplikasi SINDEN</Link></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </header>
+
+        <!-- ========================================================================= -->
+        <!-- KONTEN HALAMAN DINAMIS (SLOT UTAMA)                                       -->
+        <!-- ========================================================================= -->
+        <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-8 py-6 pb-28 lg:pb-8">
+            <slot />
+        </main>
+
+        <!-- ========================================================================= -->
+        <!-- MOBILE BOTTOM FLOATING NAVIGATION DOCK (PERSIS VIDEO 1 SMARTPHONE)        -->
+        <!-- ========================================================================= -->
+        <nav 
+            class="lg:hidden fixed bottom-4 left-4 right-4 z-40 rounded-2xl border p-2 flex items-center justify-around shadow-2xl backdrop-blur-xl transition-all"
+            :class="isDarkMode ? 'bg-[#121827]/95 border-white/15 text-white' : 'bg-white/95 border-slate-200 text-slate-800'"
+        >
+            <!-- 1. Portal Saya -->
+            <Link 
+                :href="route('dashboard')"
+                class="flex flex-col items-center gap-1 p-2 rounded-xl text-center transition"
+                :class="route().current('dashboard') ? 'text-amber-400 font-bold' : 'text-slate-400'"
+            >
+                <span class="text-base">ðŸ‘¤</span>
+                <span class="text-[9px] font-bold">Portal</span>
+            </Link>
+
+            <!-- 2. E-Arsip -->
+            <Link 
+                :href="route('letter-logs.index')"
+                class="flex flex-col items-center gap-1 p-2 rounded-xl text-center transition"
+                :class="route().current('letter-logs.*') || route().current('letters.*') ? 'text-amber-400 font-bold' : 'text-slate-400'"
+            >
+                <span class="text-base">ðŸ“</span>
+                <span class="text-[9px] font-bold">e-Arsip</span>
+            </Link>
+
+            <!-- 3. SKHPP -->
+            <Link 
+                :href="route('skhpp.index')"
+                class="flex flex-col items-center gap-1 p-2 rounded-xl text-center transition"
+                :class="route().current('skhpp.*') ? 'text-amber-400 font-bold' : 'text-slate-400'"
+            >
+                <span class="text-base">ðŸ›¡ï¸</span>
+                <span class="text-[9px] font-bold">SKHPP</span>
+            </Link>
+
+            <!-- 4. TTE -->
+            <Link 
+                :href="route('signature.index')"
+                class="flex flex-col items-center gap-1 p-2 rounded-xl text-center transition"
+                :class="route().current('signature.*') ? 'text-amber-400 font-bold' : 'text-slate-400'"
+            >
+                <span class="text-base">âœï¸</span>
+                <span class="text-[9px] font-bold">TTE</span>
+            </Link>
+
+            <!-- 5. Menu Lengkap Drawer Button -->
+            <button 
+                @click="isMobileDrawerOpen = true"
+                type="button"
+                class="flex flex-col items-center gap-1 p-2 rounded-xl text-center cursor-pointer text-slate-400 hover:text-amber-400"
+            >
+                <span class="text-base">â˜°</span>
+                <span class="text-[9px] font-bold">Menu</span>
+            </button>
+        </nav>
+
+        <!-- ========================================================================= -->
+        <!-- MOBILE SLIDING DRAWER MENU LENGKAP                                        -->
+        <!-- ========================================================================= -->
+        <div v-if="isMobileDrawerOpen" class="fixed inset-0 z-50 lg:hidden flex flex-col justify-end">
+            <div class="fixed inset-0 bg-black/70 backdrop-blur-xs" @click="isMobileDrawerOpen = false"></div>
+            
+            <div 
+                class="relative w-full max-h-[85vh] rounded-t-3xl border-t p-6 overflow-y-auto space-y-6 z-10 transition-all animate-slide-up"
+                :class="isDarkMode ? 'bg-[#0B0F19] border-white/15 text-white' : 'bg-white border-slate-200 text-slate-900'"
+            >
+                <!-- Drawer Header -->
+                <div class="flex items-center justify-between border-b pb-4" :class="isDarkMode ? 'border-white/10' : 'border-slate-200'">
+                    <div class="flex items-center gap-2">
+                        <img v-if="appLogo" :src="appLogo" class="h-7 w-7 object-contain" alt="Logo" />
+                        <span class="text-base font-black">Layanan SINDEN</span>
+                    </div>
+                    <button @click="isMobileDrawerOpen = false" class="p-1.5 rounded-full bg-white/10 text-slate-400 hover:text-white">âœ•</button>
+                </div>
+
+                <!-- Drawer Links -->
+                <div class="grid grid-cols-2 gap-3 text-xs font-bold">
+                    <Link :href="route('dashboard')" @click="isMobileDrawerOpen = false" class="p-3.5 rounded-xl border flex items-center gap-2.5" :class="isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'">
+                        <span>ðŸ‘¤</span> Portal Personal
+                    </Link>
+                    <Link :href="route('letter-logs.index')" @click="isMobileDrawerOpen = false" class="p-3.5 rounded-xl border flex items-center gap-2.5" :class="isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'">
+                        <span>ðŸ“</span> Agenda Surat
+                    </Link>
+                    <Link :href="route('letters.index')" @click="isMobileDrawerOpen = false" class="p-3.5 rounded-xl border flex items-center gap-2.5" :class="isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'">
+                        <span>ðŸ“</span> Buat Draf Surat
+                    </Link>
+                    <Link :href="route('skhpp.index')" @click="isMobileDrawerOpen = false" class="p-3.5 rounded-xl border flex items-center gap-2.5" :class="isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'">
+                        <span>ðŸ›¡ï¸</span> SKHPP Online
+                    </Link>
+                    <Link :href="route('signature.index')" @click="isMobileDrawerOpen = false" class="p-3.5 rounded-xl border flex items-center gap-2.5" :class="isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'">
+                        <span>âœï¸</span> TTE Digital Berkas
+                    </Link>
+                    <Link v-if="canAccessCash" :href="route('cash.index')" @click="isMobileDrawerOpen = false" class="p-3.5 rounded-xl border flex items-center gap-2.5" :class="isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'">
+                        <span>ðŸ’°</span> Buku Kas Umum
+                    </Link>
+                    <Link v-if="canAccessTechnicalCash" :href="route('technical-cash.index')" @click="isMobileDrawerOpen = false" class="p-3.5 rounded-xl border flex items-center gap-2.5" :class="isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'">
+                        <span>ðŸ’µ</span> Kas Unit Teknis
+                    </Link>
+                    <Link :href="route('activities.map')" @click="isMobileDrawerOpen = false" class="p-3.5 rounded-xl border flex items-center gap-2.5" :class="isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'">
+                        <span>ðŸ“¡</span> Radar GPS Lapangan
+                    </Link>
+                    <Link :href="route('violations.index')" @click="isMobileDrawerOpen = false" class="p-3.5 rounded-xl border flex items-center gap-2.5 text-red-400" :class="isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'">
+                        <span>âš–ï¸</span> Pelanggaran Disiplin
+                    </Link>
+                    <Link :href="route('backup.index')" @click="isMobileDrawerOpen = false" class="p-3.5 rounded-xl border flex items-center gap-2.5" :class="isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'">
+                        <span>ðŸ’¾</span> PC Cloud Backup
+                    </Link>
+                    <Link v-if="isAdmin" :href="route('users.index')" @click="isMobileDrawerOpen = false" class="p-3.5 rounded-xl border flex items-center gap-2.5 text-amber-400" :class="isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'">
+                        <span>ðŸ‘¥</span> Manajemen Personel
+                    </Link>
+                    <Link v-if="isAdmin" :href="route('audit-logs.index')" @click="isMobileDrawerOpen = false" class="p-3.5 rounded-xl border flex items-center gap-2.5" :class="isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'">
+                        <span>ðŸ“‹</span> Audit Log Sistem
+                    </Link>
+                </div>
+            </div>
         </div>
 
+        <!-- ========================================================================= -->
+        <!-- FOOTER KEDINASAN RESMI (PERSIS VIDEO 2 CORETAX DJP)                       -->
+        <!-- ========================================================================= -->
+        <footer 
+            class="w-full border-t transition-colors duration-300 py-8 px-4 sm:px-8 text-xs hidden lg:block"
+            :class="isDarkMode ? 'border-white/10 bg-[#0B0F19] text-slate-400' : 'border-slate-200 bg-white text-slate-600'"
+        >
+            <div class="max-w-7xl mx-auto grid grid-cols-4 gap-8">
+                <!-- Col 1: Brand & Alamat -->
+                <div class="space-y-3">
+                    <div class="flex items-center gap-2">
+                        <img v-if="appLogo" :src="appLogo" class="h-8 w-8 object-contain" alt="Logo" />
+                        <span class="text-base font-black tracking-tight" :class="isDarkMode ? 'text-white' : 'text-slate-900'">
+                            SIN<span class="text-[#FFC107]">DEN</span>
+                        </span>
+                    </div>
+                    <p class="text-[11px] leading-relaxed">
+                        Detasemen Intelijen Komando Daerah TNI Angkatan Laut V.<br>
+                        Surabaya, Jawa Timur.
+                    </p>
+                </div>
+
+                <!-- Col 2: Hubungi Kami -->
+                <div class="space-y-2">
+                    <span class="font-bold text-[11px] uppercase tracking-wider block" :class="isDarkMode ? 'text-white' : 'text-slate-900'">Hubungi Kami</span>
+                    <p class="text-[11px]">(031) SINDEN-INTEL</p>
+                    <p class="text-[11px]">informasi@sisinden.my.id</p>
+                </div>
+
+                <!-- Col 3: Layanan Digital -->
+                <div class="space-y-2">
+                    <span class="font-bold text-[11px] uppercase tracking-wider block" :class="isDarkMode ? 'text-white' : 'text-slate-900'">Layanan Digital</span>
+                    <p class="text-[11px]">Sistem TTE Digital Resmi</p>
+                    <p class="text-[11px]">Portal SKHPP Terintegrasi</p>
+                </div>
+
+                <!-- Col 4: Temukan Kami -->
+                <div class="space-y-2">
+                    <span class="font-bold text-[11px] uppercase tracking-wider block" :class="isDarkMode ? 'text-white' : 'text-slate-900'">Detasemen Intelijen</span>
+                    <p class="text-[11px]">Komando Daerah TNI AL V</p>
+                    <p class="text-[10px] text-slate-500 pt-2">Â© {{ new Date().getFullYear() }} SINDEN. Seluruh hak cipta dilindungi.</p>
+                </div>
+            </div>
+        </footer>
     </div>
 </template>
+
+<style scoped>
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-down {
+    animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-up {
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+</style>
