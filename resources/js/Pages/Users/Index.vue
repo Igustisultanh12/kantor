@@ -10,6 +10,7 @@ import html2pdf from 'html2pdf.js'; // Library Sakti untuk Cetak Tanpa RAM Serve
 const props = defineProps({
     users: Object, // Data pagination (10 orang)
     allUsers: Array, // Data lengkap untuk Rekap PDF
+    pendingSpPersonnel: Array, // Data antrean dari SP Jaga PDF
 });
 
 const user = computed(() => usePage().props.auth.user);
@@ -26,7 +27,8 @@ const roleLabels = {
     kaurmintel: 'KAUR MINTEL',
     paurset: 'PAUR SET',
     staf: 'STAF ADMINISTRASI',
-    personel: 'PERSONEL SATUAN'
+    personel: 'PERSONEL SATUAN',
+    anggotasintel: 'ANGGOTA SINTEL'
 };
 
 // State Management
@@ -113,6 +115,13 @@ const isSubmittingBulk = ref(false);
 const bulkRows = ref([
     { name: '', pangkat: '', nrp: '', email: '', phone: '', role: 'personel' }
 ]);
+
+const loadPendingSpPersonnel = () => {
+    if (props.pendingSpPersonnel && props.pendingSpPersonnel.length > 0) {
+        bulkRows.value = JSON.parse(JSON.stringify(props.pendingSpPersonnel));
+        showBulkModal.value = true;
+    }
+};
 
 const openBulkModal = () => {
     bulkRows.value = [
@@ -341,6 +350,29 @@ onUnmounted(() => {
                 </div>
             </div>
 
+            <!-- BANNER ANTREAN PERSONEL DARI SP JAGA -->
+            <div v-if="pendingSpPersonnel && pendingSpPersonnel.length > 0" class="p-6 rounded-3xl bg-amber-50 border border-amber-300 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="px-3 py-1 bg-amber-400 text-slate-950 font-black text-[10px] uppercase rounded-full tracking-wider">
+                            Antrean Personel SP Jaga
+                        </span>
+                        <span class="text-xs font-bold text-slate-800">{{ pendingSpPersonnel.length }} Personel Belum Terdaftar</span>
+                    </div>
+                    <p class="text-xs text-slate-600 font-medium max-w-2xl">
+                        Ditemukan data nama, pangkat, & NRP dari dokumen SP Jaga Siaga Sintel yang belum ada di database. Klik tombol di samping untuk memuat seluruhnya ke antrean pendaftaran masal (Bulk) dan tinggal memasukkan nomor WhatsApp saja.
+                    </p>
+                </div>
+
+                <button 
+                    @click="loadPendingSpPersonnel"
+                    type="button"
+                    class="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider rounded-2xl transition shadow-md shadow-amber-500/20 active:scale-[0.98] shrink-0 cursor-pointer"
+                >
+                    + Muat {{ pendingSpPersonnel.length }} Personel ke Bulk
+                </button>
+            </div>
+
             <!-- Table Card -->
             <div class="bg-white rounded-2xl sm:rounded-3xl border border-[#E2E8F0] shadow-xs overflow-hidden p-3 sm:p-6">
                 <div class="overflow-x-auto">
@@ -512,6 +544,7 @@ onUnmounted(() => {
                         <div class="col-span-2">
                             <label class="text-[9px] font-black text-gray-400 uppercase ml-2">Otoritas Akses (Role)</label>
                             <select v-model="addForm.role" class="w-full bg-indigo-50 border-none rounded-2xl p-4 text-[11px] font-black uppercase focus:ring-2 focus:ring-indigo-600">
+                                <option value="anggotasintel">ANGGOTA SINTEL</option>
                                 <option value="personel">PERSONEL SATUAN</option>
                                 <option value="staf">STAF ADMINISTRASI</option>
                                 <option value="komandan">KOMANDAN (APPROVER)</option>
@@ -745,7 +778,8 @@ onUnmounted(() => {
                                 </td>
                                 <td class="p-2">
                                     <select v-model="row.role" class="w-full text-xs rounded-xl border-slate-200 font-bold focus:ring-indigo-500 bg-white">
-                                        <option value="personel">PERSONEL SATUAN</option>
+                                        <option value="anggotasintel">ANGGOTA SINTEL</option>
+                                <option value="personel">PERSONEL SATUAN</option>
                                         <option value="staf">STAF ADMINISTRASI</option>
                                         <option value="danunit1">DAN UNIT I / LID</option>
                                         <option value="danunit2">DAN UNIT II / PAMGAL</option>

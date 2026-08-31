@@ -20,10 +20,71 @@ use Illuminate\Support\Facades\Log;
 class UserController extends Controller
 {
     /**
-     * Menampilkan daftar personel utama
+     * Menampilkan daftar personel utama + Antrean Personel dari Dokumen SP Jaga
      */
     public function index()
     {
+        $rawPdfPersonnel = [
+            ['name' => 'Bambang', 'pangkat' => 'Peltu Saa', 'nrp' => '82068', 'role' => 'anggotasintel'],
+            ['name' => 'Rizal Nurdin W.', 'pangkat' => 'Kapten Laut (P)', 'nrp' => '20873/P', 'role' => 'anggotasintel'],
+            ['name' => 'Alex Hamid R.T.', 'pangkat' => 'Kapten Laut (P)', 'nrp' => '22029/P', 'role' => 'anggotasintel'],
+            ['name' => 'Indra Gunawan', 'pangkat' => 'Kapten Laut (P)', 'nrp' => '19739/P', 'role' => 'danunit1'],
+            ['name' => 'Erwan Junaidi', 'pangkat' => 'Peltu Ttg', 'nrp' => '84025', 'role' => 'anggotasintel'],
+            ['name' => "Agus Sub'chan", 'pangkat' => 'Lettu Laut (T)', 'nrp' => '25724/P', 'role' => 'anggotasintel'],
+            ['name' => 'Agus Musonif', 'pangkat' => 'Lettu Laut (P)', 'nrp' => '26327/P', 'role' => 'anggotasintel'],
+            ['name' => 'HASAN BASRI', 'pangkat' => 'PELDA MAR', 'nrp' => '106737', 'role' => 'anggotasintel'],
+            ['name' => 'ADITYA H.', 'pangkat' => 'SERMA KOM', 'nrp' => '115980', 'role' => 'anggotasintel'],
+            ['name' => 'ACHMAD H.', 'pangkat' => 'KOPKA LIS', 'nrp' => '89853', 'role' => 'anggotasintel'],
+            ['name' => 'SUNARKO, S.H', 'pangkat' => 'PENATA III/C', 'nrp' => '197308261994011001', 'role' => 'anggotasintel'],
+            ['name' => 'ANDIS Y.', 'pangkat' => 'SERKA EKO', 'nrp' => '114153', 'role' => 'anggotasintel'],
+            ['name' => 'PUJIANTO', 'pangkat' => 'SERKA TKU', 'nrp' => '117387', 'role' => 'anggotasintel'],
+            ['name' => 'RINO Y', 'pangkat' => 'KOPTU TLG', 'nrp' => '113623', 'role' => 'anggotasintel'],
+            ['name' => 'HADIS S.', 'pangkat' => 'PENDA TK I III/B', 'nrp' => '197101311994031002', 'role' => 'anggotasintel'],
+            ['name' => 'HARTANTO', 'pangkat' => 'PELTU NAV', 'nrp' => '98486', 'role' => 'anggotasintel'],
+            ['name' => 'DWI PURNOMO', 'pangkat' => 'SERTU TTU', 'nrp' => '105224', 'role' => 'anggotasintel'],
+            ['name' => 'RUMADI', 'pangkat' => 'SERTU TTU', 'nrp' => '88386', 'role' => 'anggotasintel'],
+            ['name' => 'EKO YANUAR', 'pangkat' => 'PENG TK I II/D', 'nrp' => '197201141998031003', 'role' => 'anggotasintel'],
+            ['name' => 'TRI WINDARTO', 'pangkat' => 'SERMA PDK', 'nrp' => '114222', 'role' => 'anggotasintel'],
+            ['name' => 'KARIYADI', 'pangkat' => 'SERKA JAS', 'nrp' => '85822', 'role' => 'anggotasintel'],
+            ['name' => 'IFAN SUSANTO', 'pangkat' => 'KOPKA MES', 'nrp' => '99018', 'role' => 'anggotasintel'],
+            ['name' => 'SAGUS N', 'pangkat' => 'PENATA TK I III/D', 'nrp' => '19701221994021001', 'role' => 'anggotasintel'],
+            ['name' => 'RIBUT JOHAN P', 'pangkat' => 'SERMA KEU', 'nrp' => '112631', 'role' => 'anggotasintel'],
+            ['name' => 'HENDRA S', 'pangkat' => 'SERMA KOM', 'nrp' => '114931', 'role' => 'anggotasintel'],
+            ['name' => 'HERI WARSITO', 'pangkat' => 'PENDA TK I III/B', 'nrp' => '197502022002122006', 'role' => 'anggotasintel'],
+            ['name' => 'GUNAWAN', 'pangkat' => 'PENDA III/A', 'nrp' => '197810062005011005', 'role' => 'anggotasintel'],
+        ];
+
+        $allUsers = User::all();
+        $existingNrps = $allUsers->pluck('nrp')->filter()->map(fn($n) => strtolower(trim(preg_replace('/[^A-Za-z0-9]/', '', $n))))->toArray();
+        $existingNames = $allUsers->pluck('name')->filter()->map(fn($n) => strtolower(trim($n)))->toArray();
+
+        $pendingSpPersonnel = [];
+        foreach ($rawPdfPersonnel as $p) {
+            $cleanNrp = strtolower(trim(preg_replace('/[^A-Za-z0-9]/', '', $p['nrp'])));
+            $cleanName = strtolower(trim($p['name']));
+
+            $exists = in_array($cleanNrp, $existingNrps);
+            if (!$exists) {
+                foreach ($existingNames as $exName) {
+                    if (str_contains($exName, $cleanName) || str_contains($cleanName, $exName)) {
+                        $exists = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!$exists) {
+                $pendingSpPersonnel[] = [
+                    'name' => $p['name'],
+                    'pangkat' => $p['pangkat'],
+                    'nrp' => $p['nrp'],
+                    'email' => strtolower($cleanNrp) . '@sinden.my.id',
+                    'phone' => '',
+                    'role' => $p['role'] ?? 'anggotasintel',
+                ];
+            }
+        }
+
         return Inertia::render('Users/Index', [
             'users' => User::where('id', '!=', auth()->id()) 
                 ->orderBy('created_at', 'desc')
@@ -32,7 +93,9 @@ class UserController extends Controller
 
             'allUsers' => User::where('id', '!=', auth()->id())
                 ->orderBy('role', 'asc')
-                ->get()
+                ->get(),
+
+            'pendingSpPersonnel' => $pendingSpPersonnel,
         ]);
     }
 
@@ -47,7 +110,7 @@ class UserController extends Controller
             'nrp' => 'required|string|unique:users,nrp',
             'phone' => 'required|string|unique:users,phone',
             'email' => 'required|email|unique:users,email',
-            'role' => 'required|string|in:admin,komandan,wadan,pasops,danunit1,danunit2,danunitteknis,kaurmintel,paurset,staf,personel'
+            'role' => 'required|string|in:admin,komandan,wadan,pasops,danunit1,danunit2,danunitteknis,kaurmintel,paurset,staf,personel,anggotasintel'
         ]);
 
         try {
@@ -73,7 +136,8 @@ class UserController extends Controller
                 'kaurmintel'     => 'KAUR MINTEL',
                 'paurset'        => 'PAUR SET',
                 'staf'           => 'STAF ADMINISTRASI',
-                'personel'       => 'PERSONEL SATUAN'
+                'personel'       => 'PERSONEL SATUAN',
+                'anggotasintel'  => 'ANGGOTA SINTEL',
             ];
             $roleLabel = $roleMapping[$request->role] ?? 'PERSONEL';
 
@@ -102,7 +166,7 @@ class UserController extends Controller
 
             DB::commit();
 
-            // PROSES KIRIM WA (Pesan Bersih tanpa Karakter Aneh)
+            // PROSES KIRIM WA
             try {
                 $targetPhone = $user->phone;
                 if (str_starts_with($targetPhone, '0')) {
@@ -198,7 +262,7 @@ class UserController extends Controller
     }
 
     /**
-     * FITUR: TAMBAH BANYAK PERSONEL (BULK) + CETAK TOKEN AKTIVASI PDF (TANPA WA)
+     * FITUR: TAMBAH BANYAK PERSONEL (BULK) + CETAK TOKEN AKTIVASI PDF
      */
     public function storeBulk(Request $request)
     {
@@ -217,11 +281,26 @@ class UserController extends Controller
         try {
             DB::beginTransaction();
 
+            $roleMapping = [
+                'admin'          => 'ADMINISTRATOR SISTEM',
+                'komandan'       => 'KOMANDAN (APPROVER)',
+                'wadan'          => 'WAKIL KOMANDAN',
+                'pasops'         => 'PASOPS',
+                'danunit1'       => 'DAN UNIT I / LID',
+                'danunit2'       => 'DAN UNIT II / PAMGAL',
+                'danunitteknis'  => 'DAN UNIT TEKNIS',
+                'kaurmintel'     => 'KAUR MINTEL',
+                'paurset'        => 'PAUR SET',
+                'staf'           => 'STAF ADMINISTRASI',
+                'personel'       => 'PERSONEL SATUAN',
+                'anggotasintel'  => 'ANGGOTA SINTEL',
+            ];
+
             foreach ($request->users as $item) {
                 $activationToken = 'SINDEN-' . strtoupper(Str::random(6));
                 $rawNrp = preg_replace('/[^A-Za-z0-9]/', '', $item['nrp']);
                 $email = !empty($item['email']) ? $item['email'] : (strtolower($rawNrp) . '@sinden.my.id');
-                $role = !empty($item['role']) ? $item['role'] : 'personel';
+                $role = !empty($item['role']) ? $item['role'] : 'anggotasintel';
                 $phone = !empty($item['phone']) ? $item['phone'] : null;
 
                 $user = User::create([
@@ -247,6 +326,31 @@ class UserController extends Controller
                     'description'      => "Mendaftarkan masal {$user->name} ({$user->pangkat}/{$user->nrp}). Kode verifikasi via PDF.",
                     'ip_address'       => $request->ip(),
                 ]);
+
+                // Jika nomor telepon diisi, kirim notifikasi WA
+                if (!empty($user->phone)) {
+                    try {
+                        $targetPhone = $user->phone;
+                        if (str_starts_with($targetPhone, '0')) {
+                            $targetPhone = '62' . substr($targetPhone, 1);
+                        }
+                        $pesanWA = "*AKTIVASI AKSES SI SINDEN*\n\n" .
+                                   "Mohon izin, *{$user->pangkat} {$user->name}*.\n" .
+                                   "Akun SINDEN Anda telah dibuat.\n\n" .
+                                   "*Detail Aktivasi:*\n" .
+                                   "- Jabatan: *" . ($roleMapping[$user->role] ?? 'ANGGOTA SINTEL') . "*\n" .
+                                   "- NRP: *{$user->nrp}*\n" .
+                                   "- Email: *{$user->email}*\n" .
+                                   "- Token: *{$activationToken}*\n\n" .
+                                   "Silakan aktivasi akun dan buat password Anda di:\n" .
+                                   "https://sisinden.my.id/aktivasi\n\n" .
+                                   "_Harap segera lakukan aktivasi demi kelancaran kedinasan._";
+
+                        WhatsappService::sendMessage($targetPhone, $pesanWA);
+                    } catch (\Exception $waErr) {
+                        Log::warning('Gagal kirim WA bulk: ' . $waErr->getMessage());
+                    }
+                }
             }
 
             DB::commit();
@@ -259,247 +363,188 @@ class UserController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Gagal tambah personel bulk: ' . $e->getMessage());
-            return response()->json(['message' => 'Gagal memproses pendaftaran masal: ' . $e->getMessage()], 422);
+            Log::error('Gagal Bulk Personel: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
+            ], 500);
         }
     }
 
     /**
-     * FITUR: CETAK KODE VERIFIKASI & TOKEN AKTIVASI PDF (FORMAT RESMI DETASEMEN INTELIJEN)
+     * FITUR CETAK KODE VERIFIKASI (TOKEN AKTIVASI) PDF
      */
-        private function formatUserJabatan($user)
-    {
-        if (!$user) return 'PERSONEL SATUAN';
-        if (!empty($user->jabatan) && !in_array(strtolower(trim($user->jabatan)), ['personel', 'personel satuan'])) {
-            return $user->jabatan;
-        }
-
-        $role = strtolower(trim($user->role ?? ''));
-        $roleMap = [
-            'admin'         => 'ADMINISTRATOR SISTEM',
-            'komandan'      => 'KOMANDAN',
-            'wadan'         => 'WAKIL KOMANDAN',
-            'pasops'        => 'PASOPS',
-            'pasiops'       => 'PASIOPS',
-            'pasimin'       => 'PASIMIN',
-            'pasintel'      => 'PASINTEL',
-            'pasilog'       => 'PASILOG',
-            'dantim'        => 'DANTIM',
-            'danunit'       => 'DANUNIT',
-            'danunit1'      => 'DAN UNIT I / LID',
-            'danunit2'      => 'DAN UNIT II / PAMGAL',
-            'danunitteknis' => 'DAN UNIT TEKNIS',
-            'kaurmintel'    => 'KAUR MINTEL',
-            'paurset'       => 'PAUR SET',
-            'staf'          => 'STAF ADMINISTRASI',
-            'personel'      => 'PERSONEL SATUAN',
-            'bintara'       => 'BINTARA INTEL',
-            'tamtama'       => 'TAMTAMA INTEL',
-            'pns'           => 'PNS INTEL',
-        ];
-
-        return $roleMap[$role] ?? (!empty($role) ? strtoupper($role) : 'PERSONEL SATUAN');
-    }
-
     public function printTokenPdf(Request $request)
     {
         $idsParam = $request->query('ids');
+        $query = User::where('is_active', false)->whereNotNull('activation_token');
+
         if ($idsParam) {
             $ids = explode(',', $idsParam);
-            $personels = User::whereIn('id', $ids)->get();
-        } else {
-            $personels = User::where('is_active', false)->whereNotNull('activation_token')->get();
+            $query->whereIn('id', $ids);
         }
 
-        $user = auth()->user();
-        $signerJabatan = ($user->role === 'admin' || $user->name === 'I Gusti Sultan H.A, A.Md.Kom') ? 'Administrator SINDEN' : 'Administrator Sistem';
-        $signerName = $user->name;
-        $signerPangkat = $user->pangkat ?: 'MAYOR LAUT (P)';
-        $signerNrp = (!empty($user->nrp) && $user->nrp !== '00000000000000') ? $user->nrp : '-';
+        $users = $query->orderBy('name', 'asc')->get();
 
-        // Auto-increment Nomor Urut Cetak Dokumen Token
-        $seqSetting = Setting::firstOrCreate(['key' => 'token_pdf_counter'], ['value' => '0']);
-        $seq = (int)$seqSetting->value + 1;
-        $seqSetting->update(['value' => (string)$seq]);
-
-        $romanMonths = [1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V', 6 => 'VI', 7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII'];
-        $romanMonth = $romanMonths[(int)date('n')];
-        $currentYear = date('Y');
-
-        $formattedNomor = "SINDEN / " . $seq . " / VERIF / " . $romanMonth . " / " . $currentYear;
-        $docVerificationCode = 'TTE-DOC-' . date('Ymd') . '-' . strtoupper(Str::random(6));
-
-        $qrCodeBase64 = null;
-        try {
-            $verifyUrl = route('doc.verify', $docVerificationCode);
-            $qrApiUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' . urlencode($verifyUrl);
-            $qrCodeBase64 = 'data:image/png;base64,' . base64_encode(file_get_contents($qrApiUrl));
-        } catch (\Exception $e) {}
-
-        $bulanIndo = [
-            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 => 'Mei', 6 => 'Juni',
-            7 => 'Juli', 8 => 'Agustus', 9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
-        ];
-        $generatedAtIndo = date('d') . ' ' . $bulanIndo[(int)date('n')] . ' ' . date('Y');
-
-        $data = [
-            'personels' => $personels,
-            'nomorSurat' => $formattedNomor,
-            'generatedAt' => $generatedAtIndo,
-            'signerJabatan' => $signerJabatan,
-            'signerName' => $signerName,
-            'signerPangkat' => $signerPangkat,
-            'signerNrp' => $signerNrp,
-            'qrCodeBase64' => $qrCodeBase64
-        ];
-
-        $pdf = Pdf::loadView('pdf.kodeverifikasi', $data)->setPaper('a4', 'portrait');
-        $pdfOutput = $pdf->output();
-
-        // SIMPAN OTOMATIS KE MODUL TANDA TANGAN DIGITAL (SIGNATURE_REQUESTS) DENGAN KODE UNIK BERKAS
-        try {
-            if (!Storage::disk('public')->exists('signature_reqs')) {
-                Storage::disk('public')->makeDirectory('signature_reqs');
-            }
-
-            $fileName = 'signed_token_pdf_' . time() . '_' . Str::random(6) . '.pdf';
-            $filePath = 'signature_reqs/' . $fileName;
-            Storage::disk('public')->put($filePath, $pdfOutput);
-
-            $isSingle = (count($personels) === 1);
-            $targetName = $isSingle ? $personels->first()->name : ('Daftar ' . count($personels) . ' Personel (Bulk)');
-            $targetPangkatNrp = $isSingle ? (($personels->first()->pangkat ?: 'TNI AL') . ($personels->first()->nrp ? ' / NRP. ' . $personels->first()->nrp : '')) : 'Daftar Masal Token';
-
-            SignatureRequest::create([
-                'user_id' => auth()->id(),
-                'subject' => 'Dokumen Kode Verifikasi & Token Aktivasi Personel (' . $formattedNomor . ')',
-                'document_title' => 'DAFTAR KODE VERIFIKASI & TOKEN AKTIVASI AKUN PERSONEL',
-                'person_name' => $targetName,
-                'pangkat_nrp' => $targetPangkatNrp,
-                'jabatan' => ($personels->first()?->jabatan ?: 'Personel') . ' / Denintel Kodaeral V',
-                'peruntukan' => 'Dokumen Kedinasan Kode Verifikasi Otoritas Akun Personel SINDEN',
-                'letter_number' => $formattedNomor,
-                'file_path' => $filePath,
-                'status' => 'approved',
-                'verification_code' => $docVerificationCode,
-            ]);
-        } catch (\Exception $e) {
-            Log::warning('Gagal auto-save Token PDF ke SignatureRequest: ' . $e->getMessage());
+        if ($users->isEmpty()) {
+            return redirect()->back()->with('error', 'Tidak ada data token personel belum aktif yang dapat dicetak.');
         }
 
-        return response($pdfOutput, 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="Laporan_Kode_Verifikasi_' . date('Ymd_His') . '.pdf"'
-        ]);
+        $pdf = Pdf::loadView('pdf.kodeverifikasi', compact('users'));
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf->stream('Kode_Verifikasi_Personel_SINDEN.pdf');
     }
 
     /**
-     * FITUR: CETAK REKAP PERSONEL
+     * GENERATE TOKEN MANUAL DARI ADMIN
      */
-    public function printPdf()
+    public function generateToken(User $user)
     {
-        $users = User::where('id', '!=', auth()->id())->orderBy('role', 'asc')->get();
-        $agencyName = Setting::where('key', 'agency_name')->first()->value ?? 'DENINTEL KODAERAL V';
-        
-        return Inertia::render('Users/Index-pdf', [
-            'users' => $users,
-            'title' => 'REKAPITULASI OTORITAS AKSES PERSONEL',
-            'unit' => $agencyName,
-            'date' => $generatedAtIndo
-        ]);
-    }
-
-    /**
-     * Update Data Personel
-     */
-    public function update(Request $request, User $user)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'pangkat' => 'required|string',
-            'nrp' => 'required|string|unique:users,nrp,' . $user->id,
-            'email' => 'required|email|unique:users,email,' . $user->id,
-            'phone' => 'required|string|unique:users,phone,' . $user->id,
-        ]);
+        $token = strtoupper(Str::random(6));
+        $expiresAt = now()->addMinutes(5);
 
         $user->update([
-            'name' => trim($request->name),
-            'pangkat' => $request->pangkat,
-            'nrp' => $request->nrp,
-            'email' => $request->email,
-            'phone' => $request->phone,
+            'reset_token' => $token,
+            'token_expires_at' => $expiresAt
         ]);
 
         AuditLog::create([
             'user_id'          => auth()->id(),
             'admin_name'       => auth()->user()->name,
-            'action'           => 'EDIT DATA',
+            'action'           => 'REQUEST TOKEN',
             'target_personnel' => $user->name,
-            'description'      => "Admin memperbarui data identitas: {$user->name}",
-            'ip_address'       => $request->ip(),
+            'description'      => "Men-generate token reset password untuk {$user->name}",
+            'ip_address'       => request()->ip(),
         ]);
 
-        return redirect()->back()->with('message', 'Data Personel berhasil diperbarui.');
+        return back()->with('flash', [
+            'token' => $token,
+            'message' => "Token untuk {$user->name} berhasil dibuat: {$token}"
+        ]);
     }
 
     /**
-     * Generate Reset Token
+     * TOGGLE STATUS AKTIF / NONAKTIF PERSONEL
      */
-    public function generateResetToken(Request $request, User $user)
-    {
-        $token = (string) rand(100000, 999999);
-        $user->update([
-            'reset_token' => $token,
-            'token_expires_at' => now()->addMinutes(10)
-        ]);
-
-        session()->flash('flash.token', $token);
-        return redirect()->back()->with('message', 'Token berhasil dibuat.');
-    }
-
-    /**
-     * Toggle Status Aktif/Non-aktif
-     */
-    public function toggleStatus(Request $request, User $user)
+    public function toggle(Request $request, User $user)
     {
         $request->validate(['password' => 'required']);
 
         if (!Hash::check($request->password, auth()->user()->password)) {
-            throw ValidationException::withMessages([
-                'password' => 'Otoritas Gagal: Password Admin tidak valid.',
-            ]);
+            throw ValidationException::withMessages(['password' => 'Password Konfirmasi Salah!']);
         }
 
-        $statusNew = $user->is_active ? 'NON-AKTIF (SUSPEND)' : 'AKTIF (VERIFIKASI)';
-        $user->update(['is_active' => !$user->is_active]);
+        $oldStatus = $user->is_active;
+        $user->update(['is_active' => !$oldStatus]);
 
-        AuditLog::create([
-            'user_id'          => auth()->id(),
-            'admin_name'       => auth()->user()->name, 
-            'action'           => 'TOGGLE STATUS', 
-            'target_personnel' => $user->name,
-            'description'      => "Admin mengubah status akses menjadi {$statusNew}",
-            'ip_address'       => $request->ip(),
-        ]);
-
-        return redirect()->back()->with('message', "Akses berhasil diubah menjadi {$statusNew}.");
-    }
-
-    /**
-     * Hapus Akun
-     */
-    public function destroy(Request $request, User $user)
-    {
         AuditLog::create([
             'user_id'          => auth()->id(),
             'admin_name'       => auth()->user()->name,
-            'action'           => 'HAPUS AKUN',
+            'action'           => $user->is_active ? 'AKTIVASI USER' : 'SUSPEND USER',
             'target_personnel' => $user->name,
-            'description'      => "Admin menghapus permanen akses akun: {$user->name}",
+            'description'      => "Merubah status akses {$user->name} menjadi " . ($user->is_active ? 'Aktif' : 'Nonaktif'),
             'ip_address'       => $request->ip(),
         ]);
 
+        return back()->with('message', 'Status akses berhasil diperbarui.');
+    }
+
+    /**
+     * UPDATE DATA PERSONEL
+     */
+    public function update(Request $request, User $user)
+    {
+        $request->validate([
+            'name'    => 'required|string|max:255',
+            'pangkat' => 'required|string',
+            'nrp'     => 'required|string|unique:users,nrp,' . $user->id,
+            'phone'   => 'nullable|string',
+            'email'   => 'required|email|unique:users,email,' . $user->id,
+            'role'    => 'nullable|string|in:admin,komandan,wadan,pasops,danunit1,danunit2,danunitteknis,kaurmintel,paurset,staf,personel,anggotasintel',
+        ]);
+
+        $updateData = [
+            'name'    => trim($request->name),
+            'pangkat' => $request->pangkat,
+            'nrp'     => $request->nrp,
+            'phone'   => $request->phone,
+            'email'   => $request->email,
+        ];
+
+        if ($request->filled('role')) {
+            $updateData['role'] = $request->role;
+        }
+
+        $user->update($updateData);
+
+        AuditLog::create([
+            'user_id'          => auth()->id(),
+            'admin_name'       => auth()->user()->name,
+            'action'           => 'UPDATE PERSONEL',
+            'target_personnel' => $user->name,
+            'description'      => "Memperbarui data profil {$user->name}",
+            'ip_address'       => $request->ip(),
+        ]);
+
+        return back()->with('message', 'Data personel berhasil diperbarui.');
+    }
+
+    /**
+     * TOGGLE HAK AKSES MITRA
+     */
+    public function toggleMitraAccess(User $user)
+    {
+        $user->update(['can_access_mitra' => !$user->can_access_mitra]);
+
+        AuditLog::create([
+            'user_id'          => auth()->id(),
+            'admin_name'       => auth()->user()->name,
+            'action'           => 'UPDATE HAK AKSES MITRA',
+            'target_personnel' => $user->name,
+            'description'      => "Mengubah hak akses mitra untuk {$user->name} menjadi " . ($user->can_access_mitra ? 'Diizinkan' : 'Dilarang'),
+            'ip_address'       => request()->ip(),
+        ]);
+
+        return back()->with('message', 'Hak akses mitra berhasil diperbarui.');
+    }
+
+    /**
+     * TOGGLE HAK AKSES BUKU KAS TEKNIS
+     */
+    public function toggleTechnicalCashAccess(User $user)
+    {
+        $user->update(['can_access_technical_cash' => !$user->can_access_technical_cash]);
+
+        AuditLog::create([
+            'user_id'          => auth()->id(),
+            'admin_name'       => auth()->user()->name,
+            'action'           => 'UPDATE HAK AKSES KAS TEKNIS',
+            'target_personnel' => $user->name,
+            'description'      => "Mengubah hak akses kas teknis untuk {$user->name} menjadi " . ($user->can_access_technical_cash ? 'Diizinkan' : 'Dilarang'),
+            'ip_address'       => request()->ip(),
+        ]);
+
+        return back()->with('message', 'Hak akses kas teknis berhasil diperbarui.');
+    }
+
+    /**
+     * HAPUS PERSONEL
+     */
+    public function destroy(User $user)
+    {
+        $name = $user->name;
         $user->delete();
-        return redirect()->back()->with('message', 'Data akun telah dihapus dari sistem.');
+
+        AuditLog::create([
+            'user_id'          => auth()->id(),
+            'admin_name'       => auth()->user()->name,
+            'action'           => 'HAPUS PERSONEL',
+            'target_personnel' => $name,
+            'description'      => "Menghapus akun {$name} dari sistem",
+            'ip_address'       => request()->ip(),
+        ]);
+
+        return back()->with('message', 'Personel berhasil dihapus.');
     }
 }
