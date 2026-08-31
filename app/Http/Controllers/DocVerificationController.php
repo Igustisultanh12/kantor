@@ -78,6 +78,17 @@ class DocVerificationController extends Controller
             ->first();
 
         if ($spJaga) {
+            // Ambil Data Pejabat Pengaju / Pimpinan Jaga (Dan Unit 1 Lid - Kapten Laut (P) Indra Gunawan)
+            $danunitUser = User::where('role', 'danunit1')->first()
+                        ?? User::where('name', 'like', '%Indra Gunawan%')->first()
+                        ?? User::where('role', 'danunit')->first();
+
+            $danunitPangkat = $danunitUser?->pangkat ?? 'Kapten Laut (P)';
+            $danunitNama = $danunitUser?->name ?? 'Indra Gunawan T.Z';
+            $danunitNrp = $danunitUser?->nrp ? 'NRP ' . $danunitUser->nrp : 'NRP 19739/P';
+            $danunitJabatan = 'Dan Unit 1 Lid / Denintel Kodaeral V';
+
+            // Ambil Data Pejabat Penandatangan Pasops / Pasiops
             $pasopsUser = User::where('role', 'pasops')->first()
                        ?? User::where('role', 'like', '%pasops%')->first()
                        ?? User::where('role', 'like', '%pasiops%')->first()
@@ -96,9 +107,9 @@ class DocVerificationController extends Controller
                 'letter_number' => $spJaga->nomor_sprin,
                 'subject' => "Dinas Jaga Siaga Sintel Bulan {$namaBulanTahun}",
                 'peruntukan' => "Pelaksanaan Tugas Jaga Siaga Sintel Denintel Kodaeral V Periode Bulan {$namaBulanTahun}",
-                'nama' => $spJaga->perwira_tertua_nama . ' dkk (' . $spJaga->total_personel_count . ' Personel)',
-                'pangkat_korps_nrp' => $spJaga->perwira_tertua_pangkat_nrp,
-                'jabatan_pekerjaan' => $spJaga->perwira_tertua_jabatan ?: 'Dan Unit 1 Lid Den Intel Kodaeral V',
+                'nama' => "$danunitNama dkk (" . ($spJaga->total_personel_count ?: '27') . " Personel)",
+                'pangkat_korps_nrp' => "$danunitPangkat / $danunitNrp",
+                'jabatan_pekerjaan' => $danunitJabatan,
                 'tanggal_dokumen' => $spJaga->approved_at ?: $spJaga->tanggal_surat,
                 'status' => ($spJaga->status === 'published') ? 'approved' : 'pending',
                 'is_valid' => ($spJaga->status === 'published'),
