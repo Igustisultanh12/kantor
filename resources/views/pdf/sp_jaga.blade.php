@@ -12,7 +12,7 @@
         body {
             font-family: Arial, Helvetica, sans-serif;
             font-size: 11pt;
-            line-height: 1.3;
+            line-height: 1.35;
             color: #000000;
             margin: 0;
             padding: 0;
@@ -159,7 +159,7 @@
                             <td style="text-align: justify; padding-top: 6px;">
                                 @php
                                     $tmtMulai = $spJaga->tmt_mulai ? \Carbon\Carbon::parse($spJaga->tmt_mulai)->isoFormat('DD') : '01';
-                                    $tmtSelesai = $spJaga->tmt_selesai ? \Carbon\Carbon::parse($spJaga->tmt_selesai)->isoFormat('D MMMM Y') : '31 Juli 2026';
+                                    $tmtSelesai = $spJaga->tmt_selesai ? \Carbon\Carbon::parse($spJaga->tmt_selesai)->isoFormat('D MMMM Y') : '30 September 2026';
                                 @endphp
                                 Pelaksanaan TMT {{ $tmtMulai }} s.d. {{ $tmtSelesai }}
                             </td>
@@ -175,10 +175,10 @@
             </tr>
         </table>
 
-        <div style="margin-bottom: 20px;">Selesai.</div>
+        <div style="margin-bottom: 15px;">Selesai.</div>
 
         <!-- Kolom Tanda Tangan & Tanggal Keluar -->
-        <table style="width: 100%; margin-top: 10px;">
+        <table style="width: 100%; margin-top: 5px;">
             <tr>
                 <td style="width: 45%; vertical-align: bottom;">
                     <!-- Tembusan -->
@@ -201,14 +201,14 @@
                             <tr>
                                 <td>pada tanggal</td>
                                 <td>:</td>
-                                <td>{{ $spJaga->tanggal_surat ? \Carbon\Carbon::parse($spJaga->tanggal_surat)->isoFormat('D MMMM Y') : '30 Juni 2026' }}</td>
+                                <td>{{ $spJaga->tanggal_surat ? \Carbon\Carbon::parse($spJaga->tanggal_surat)->isoFormat('D MMMM Y') : '30 Agustus 2026' }}</td>
                             </tr>
                         </table>
                         <div style="border-bottom: 1px solid #000; margin-bottom: 5px;"></div>
 
                         <div style="text-align: center;">
                             <div>a.n. Komandan Detasemen Intelijen Kodaeral V,</div>
-                            <div style="margin-bottom: 5px;">{{ $spJaga->penandatangan_jabatan ?: 'Dan Unit 1 Lid' }},</div>
+                            <div style="margin-bottom: 5px;">Pasiops,</div>
 
                             <!-- Area TTE QR Code vs TTD Basah -->
                             @if($spJaga->ttd_type === 'tte' && $spJaga->status === 'published' && !empty($qr_base64))
@@ -222,11 +222,11 @@
                                 <div style="height: 65px;"></div>
                             @endif
 
-                            <div style="font-weight: normal; text-decoration: underline;">
-                                {{ $spJaga->penandatangan_nama ?: 'Indra Gunawan, T.Z' }}
+                            <div style="font-weight: normal; text-decoration: none;">
+                                {{ $spJaga->penandatangan_nama ?: 'Roni Sumantri' }}
                             </div>
                             <div style="font-size: 10pt;">
-                                {{ $spJaga->penandatangan_pangkat_nrp ?: 'Kapten Laut (P) NRP 19739/P' }}
+                                {{ $spJaga->penandatangan_pangkat_nrp ?: 'Mayor Laut (P) NRP 17456/P' }}
                             </div>
                         </div>
                     </div>
@@ -252,11 +252,11 @@
                     </div>
                 </td>
                 <td style="width: 50%; vertical-align: top; text-align: right; font-size: 10pt;">
-                    <div style="width: 280px; margin-left: auto; text-align: left;">
-                        <table>
+                    <div style="width: 290px; margin-left: auto; text-align: left;">
+                        <table style="width: 100%;">
                             <tr>
-                                <td style="vertical-align: top; width: 65px;">Lampiran</td>
-                                <td style="vertical-align: top; width: 8px;">:</td>
+                                <td style="vertical-align: top; width: 70px;">Lampiran</td>
+                                <td style="vertical-align: top; width: 10px;">:</td>
                                 <td>Sprin Danden Intel Kodaeral V</td>
                             </tr>
                             <tr>
@@ -267,7 +267,7 @@
                             <tr>
                                 <td style="vertical-align: top;">Tanggal</td>
                                 <td style="vertical-align: top;">:</td>
-                                <td>{{ $spJaga->tanggal_surat ? \Carbon\Carbon::parse($spJaga->tanggal_surat)->isoFormat('D MMMM Y') : '30 Juni 2026' }}</td>
+                                <td>{{ $spJaga->tanggal_surat ? \Carbon\Carbon::parse($spJaga->tanggal_surat)->isoFormat('D MMMM Y') : '30 Agustus 2026' }}</td>
                             </tr>
                         </table>
                         <div style="border-bottom: 1px solid #000; margin-top: 3px;"></div>
@@ -293,10 +293,10 @@
         <table class="table-bordered" style="margin-bottom: 15px;">
             <thead>
                 <tr>
-                    <th style="width: 35px;">NO.</th>
+                    <th style="width: 32px;">NO.</th>
                     <th style="width: 170px;">N A M A</th>
                     <th style="width: 130px;">PANGKAT, KORPS</th>
-                    <th style="width: 85px;">NRP</th>
+                    <th style="width: 80px;">NRP</th>
                     <th colspan="7">{{ $namaBulanTahun }}<br>TANGGAL</th>
                 </tr>
             </thead>
@@ -324,7 +324,7 @@
         </table>
 
         <!-- Catatan SOP Jaga -->
-        <div style="font-size: 10pt; margin-bottom: 20px;">
+        <div style="font-size: 10pt; margin-bottom: 15px;">
             <div style="font-weight: normal; margin-bottom: 2px;">Catatan:</div>
             <table style="width: 100%;">
                 <tr>
@@ -343,13 +343,13 @@
         </div>
 
         <!-- Kolom Tanda Tangan Lampiran 1 -->
-        <table style="width: 100%; margin-top: 15px;">
+        <table style="width: 100%; margin-top: 10px;">
             <tr>
                 <td style="width: 50%;"></td>
                 <td style="width: 50%;">
                     <div class="ttd-box">
                         <div>a.n. Komandan Detasemen Intelijen Kodaeral V,</div>
-                        <div style="margin-bottom: 5px;">{{ $spJaga->penandatangan_jabatan ?: 'Dan Unit 1 Lid' }},</div>
+                        <div style="margin-bottom: 5px;">Pasiops,</div>
 
                         @if($spJaga->ttd_type === 'tte' && $spJaga->status === 'published' && !empty($qr_base64))
                             <div style="margin: 6px auto; text-align: center;">
@@ -359,11 +359,11 @@
                             <div style="height: 60px;"></div>
                         @endif
 
-                        <div style="font-weight: normal; text-decoration: underline;">
-                            {{ $spJaga->penandatangan_nama ?: 'Indra Gunawan, T.Z' }}
+                        <div style="font-weight: normal; text-decoration: none;">
+                            {{ $spJaga->penandatangan_nama ?: 'Roni Sumantri' }}
                         </div>
                         <div style="font-size: 10pt;">
-                            {{ $spJaga->penandatangan_pangkat_nrp ?: 'Kapten Laut (P) NRP 19739/P' }}
+                            {{ $spJaga->penandatangan_pangkat_nrp ?: 'Mayor Laut (P) NRP 17456/P' }}
                         </div>
                     </div>
                 </td>
@@ -395,15 +395,15 @@
         </div>
 
         <!-- Tabel Anggota Jaga Divisi -->
-        <table class="table-bordered" style="margin-bottom: 15px;">
+        <table class="table-bordered" style="margin-bottom: 12px;">
             <thead>
                 <tr>
-                    <th style="width: 35px;">NO</th>
-                    <th style="width: 150px;">TANGGAL</th>
+                    <th style="width: 32px;">NO</th>
+                    <th style="width: 140px;">TANGGAL</th>
                     <th style="width: 180px;">N A M A</th>
                     <th style="width: 120px;">PANGKAT/KORPS</th>
                     <th style="width: 110px;">NRP/NIP</th>
-                    <th style="width: 75px;">KET</th>
+                    <th style="width: 70px;">KET</th>
                 </tr>
             </thead>
             <tbody>
@@ -411,13 +411,20 @@
                     @php
                         $items = is_array($divisi->anggota_items) ? $divisi->anggota_items : json_decode($divisi->anggota_items, true) ?? [];
                         $rowCount = count($items) > 0 ? count($items) : 1;
+                        
+                        // Pastikan teks bulan pada tanggal disesuaikan dengan bulan periode SP Jaga aktif
+                        $rawTgl = $divisi->tanggal_list_text;
+                        $tglClean = preg_replace('/[A-Za-z]+\s+[0-9]{4}/i', $namaBulanTahun, $rawTgl);
+                        if (!str_contains($tglClean, $namaBulanTahun)) {
+                            $tglClean .= ' ' . $namaBulanTahun;
+                        }
                     @endphp
                     @foreach($items as $itemIdx => $item)
                     <tr>
                         @if($itemIdx === 0)
                             <td class="text-center" rowspan="{{ $rowCount }}" style="vertical-align: middle;">{{ $idx + 1 }}.</td>
                             <td class="text-center" rowspan="{{ $rowCount }}" style="vertical-align: middle; font-weight: bold;">
-                                {{ $divisi->tanggal_list_text }}
+                                {{ $tglClean }}
                             </td>
                         @endif
                         <td>{{ $item['nama'] ?? '-' }}</td>
@@ -435,7 +442,7 @@
         </table>
 
         <!-- Catatan SOP Jaga -->
-        <div style="font-size: 10pt; margin-bottom: 15px;">
+        <div style="font-size: 10pt; margin-bottom: 12px;">
             <div style="font-weight: normal; margin-bottom: 2px;">Catatan:</div>
             <table style="width: 100%;">
                 <tr>
@@ -454,7 +461,7 @@
         </div>
 
         <!-- Kolom Tanda Tangan Lampiran 2 -->
-        <table style="width: 100%; margin-top: 10px;">
+        <table style="width: 100%; margin-top: 5px;">
             <tr>
                 <td style="width: 50%;"></td>
                 <td style="width: 50%;">
@@ -468,13 +475,13 @@
                             <tr>
                                 <td>pada tanggal</td>
                                 <td>:</td>
-                                <td>{{ $spJaga->tanggal_surat ? \Carbon\Carbon::parse($spJaga->tanggal_surat)->isoFormat('D MMMM Y') : '30 Juni 2026' }}</td>
+                                <td>{{ $spJaga->tanggal_surat ? \Carbon\Carbon::parse($spJaga->tanggal_surat)->isoFormat('D MMMM Y') : '30 Agustus 2026' }}</td>
                             </tr>
                         </table>
                         <div style="border-bottom: 1px solid #000; margin-bottom: 5px;"></div>
 
                         <div>a.n. Komandan Detasemen Intelijen Kodaeral V,</div>
-                        <div style="margin-bottom: 5px;">{{ $spJaga->penandatangan_jabatan ?: 'Dan Unit 1 Lid' }},</div>
+                        <div style="margin-bottom: 5px;">Pasiops,</div>
 
                         @if($spJaga->ttd_type === 'tte' && $spJaga->status === 'published' && !empty($qr_base64))
                             <div style="margin: 6px auto; text-align: center;">
@@ -484,11 +491,11 @@
                             <div style="height: 60px;"></div>
                         @endif
 
-                        <div style="font-weight: normal; text-decoration: underline;">
-                            {{ $spJaga->penandatangan_nama ?: 'Indra Gunawan, T.Z' }}
+                        <div style="font-weight: normal; text-decoration: none;">
+                            {{ $spJaga->penandatangan_nama ?: 'Roni Sumantri' }}
                         </div>
                         <div style="font-size: 10pt;">
-                            {{ $spJaga->penandatangan_pangkat_nrp ?: 'Kapten Laut (P) NRP 19739/P' }}
+                            {{ $spJaga->penandatangan_pangkat_nrp ?: 'Mayor Laut (P) NRP 17456/P' }}
                         </div>
                     </div>
                 </td>

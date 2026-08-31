@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\SignatureRequest;
 use App\Models\Skhpp;
+use App\Models\SpJaga;
 use App\Models\User;
 use App\Models\Setting;
 use Illuminate\Http\Request;
@@ -12,9 +13,6 @@ use Carbon\Carbon;
 
 class DocVerificationController extends Controller
 {
-    /**
-     * Helper Konversi Angka Bulan ke Romawi
-     */
     private function getRomanMonth($month)
     {
         $map = [
@@ -24,9 +22,6 @@ class DocVerificationController extends Controller
         return $map[(int)$month] ?? 'I';
     }
 
-    /**
-     * Helper Formatter Jabatan Personel Berdasarkan Role & Database
-     */
     private function formatUserJabatan($user)
     {
         if (!$user) return 'PERSONEL SATUAN';
@@ -54,6 +49,7 @@ class DocVerificationController extends Controller
             'paurset'       => 'PAUR SET',
             'staf'          => 'STAF ADMINISTRASI',
             'personel'      => 'PERSONEL SATUAN',
+            'anggotasintel' => 'ANGGOTA SINTEL',
             'bintara'       => 'BINTARA INTEL',
             'tamtama'       => 'TAMTAMA INTEL',
             'pns'           => 'PNS INTEL',
@@ -70,19 +66,52 @@ class DocVerificationController extends Controller
         $code = trim($code);
         $settings = Setting::pluck('value', 'key')->all();
 
-        // 1. Jika kode ternyata milik SKHPP, alihkan langsung ke Verifikasi SKHPP
+        // 1. Jika kode milik SKHPP, alihkan ke Verifikasi SKHPP
         if (str_starts_with(strtoupper($code), 'SKHPP-') || Skhpp::where('verification_code', $code)->orWhere('nomor_skhpp', $code)->exists()) {
             return redirect()->route('skhpp.verify', $code);
         }
 
-        // 2. Cari Berkas di Tabel SignatureRequest (Naskah Dinas / Dokumen Lainnya)
+        // 2. Cari Berkas di Tabel SpJaga (Surat Perintah Jaga Siaga Sintel)
+        $spJaga = SpJaga::where('verification_code', $code)
+            ->orWhere('verification_code', 'like', "%{$code}%")
+            ->orWhere('nomor_sprin', $code)
+            ->first();
+
+        if ($spJaga) {
+            $namaBulanTahun = strtoupper(Carbon::createFromDate($spJaga->tahun, $spJaga->bulan, 1)->isoFormat('MMMM Y'));
+            $docData = (object) [
+                'id' => $spJaga->id,
+                'verification_code' => $spJaga->verification_code,
+                'document_title' => 'SURAT PERINTAH DINAS JAGA SIAGA SINTEL',
+                'letter_number' => $spJaga->nomor_sprin,
+                'subject' => "Dinas Jaga Siaga Sintel Bulan {$namaBulanTahun}",
+                'peruntukan' => "Pelaksanaan Tugas Jaga Siaga Sintel Denintel Kodaeral V Periode Bulan {$namaBulanTahun}",
+                'nama' => $spJaga->perwira_tertua_nama . ' dkk (' . $spJaga->total_personel_count . ' Personel)',
+                'pangkat_korps_nrp' => $spJaga->perwira_tertua_pangkat_nrp,
+                'jabatan_pekerjaan' => $spJaga->perwira_tertua_jabatan ?: 'Dan Unit 1 Lid Den Intel Kodaeral V',
+                'tanggal_dokumen' => $spJaga->approved_at ?: $spJaga->tanggal_surat,
+                'status' => ($spJaga->status === 'published') ? 'approved' : 'pending',
+                'is_valid' => ($spJaga->status === 'published'),
+                'signer_name' => "a.n. KOMANDAN DETASEMEN INTELIJEN KODAERAL V",
+                'signer_title' => "Pasiops - " . ($spJaga->penandatangan_pangkat_nrp ?: 'Mayor Laut (P) NRP 17456/P') . " " . ($spJaga->penandatangan_nama ?: 'Roni Sumantri'),
+            ];
+
+            return Inertia::render('Verify/DocVerify', [
+                'doc' => $docData,
+                'is_valid' => ($spJaga->status === 'published'),
+                'verify_code' => $code,
+                'settings' => $settings,
+            ]);
+        }
+
+        // 3. Cari Berkas di Tabel SignatureRequest (Naskah Dinas / Dokumen Lainnya)
         $sigReq = SignatureRequest::with('user')
             ->where('verification_code', $code)
             ->orWhere('verification_code', 'like', "%{$code}%")
             ->orWhere('letter_number', $code)
             ->first();
 
-        // 3. Logika Penentuan Pejabat Penandatangan (Komandan Langsung vs a.n. Komandan)
+        // 4. Logika Penentuan Pejabat Penandatangan (Komandan Langsung vs a.n. Komandan)
         $komandan = User::where('role', 'komandan')->first() 
                  ?? User::where('name', 'like', '%Hari Bagio%')->first();
 
@@ -91,12 +120,10 @@ class DocVerificationController extends Controller
             $approverUser = User::find($sigReq->approved_by);
         }
 
-        // Jika disahkan oleh Komandan Langsung
         $isKomandanLangsung = false;
         if ($approverUser) {
             $isKomandanLangsung = ($approverUser->role === 'komandan' || str_contains(strtolower($approverUser->name), 'hari bagio'));
         } elseif ($sigReq) {
-            // Default untuk dokumen yang langsung diajukan/disahkan komandan
             $isKomandanLangsung = ($sigReq->user?->role === 'komandan');
         }
 
@@ -108,7 +135,6 @@ class DocVerificationController extends Controller
             $signerName = strtoupper($cName);
             $signerTitle = "Komandan Detasemen Intelijen Kodaeral V - {$cRank} NRP {$cNrp}";
         } else {
-            // a.n. Komandan (Disahkan oleh Admin / Administrator / Staf Otoritas)
             $aUser = $approverUser ?: ($sigReq?->user ?: auth()->user());
             $aName = $aUser?->name ?? 'Administrator SINDEN';
             $aRank = $aUser?->pangkat ?? 'Letnan Dua Laut (KC)';
@@ -119,7 +145,6 @@ class DocVerificationController extends Controller
         }
 
         if ($sigReq) {
-            // Tarik identitas asli pengaju/pemohon (subjek pada berkas PDF) dari pangkalan data users
             $applicantUser = null;
             if (!empty($sigReq->person_name)) {
                 $applicantUser = User::where('name', trim($sigReq->person_name))->first();
@@ -140,11 +165,9 @@ class DocVerificationController extends Controller
             
             $applicantIdentity = $sigReq->pangkat_nrp ?: "{$applicantRank} / NRP {$applicantNrp}";
             
-            // Sinkronisasi Jabatan & Satuan Personel Subjek Berkas
             $userJabatanName = $this->formatUserJabatan($applicantUser);
             $sigReqJabatan = trim($sigReq->jabatan ?? '');
             
-            // Cek apakah jabatan pada SignatureRequest bernilai generik (Personel / Pendaftaran Otoritas)
             $isGenericJabatan = empty($sigReqJabatan) 
                              || str_contains(strtolower($sigReqJabatan), 'personel') 
                              || str_contains(strtolower($sigReqJabatan), 'pendaftaran otoritas');
@@ -160,7 +183,6 @@ class DocVerificationController extends Controller
             $signedDate = $sigReq->approved_at ?: $sigReq->updated_at;
             $isValid = in_array(strtolower($sigReq->status), ['approved', 'signed', 'selesai']);
 
-            // Jamin Kode Verifikasi adalah Kode Unik Berkas, Bukan NRP
             $uniqueDocCode = $sigReq->verification_code;
             if (empty($uniqueDocCode) || is_numeric($uniqueDocCode) || strlen($uniqueDocCode) > 25) {
                 $uniqueDocCode = 'TTE-DOC-' . date('Ymd', strtotime($sigReq->created_at ?? now())) . '-' . strtoupper(substr(md5($sigReq->id . ($sigReq->created_at ?? now())), 0, 6));
@@ -181,36 +203,21 @@ class DocVerificationController extends Controller
                 'is_valid' => $isValid,
                 'signer_name' => $signerName,
                 'signer_title' => $signerTitle,
-                'sha256_hash' => hash('sha256', $uniqueDocCode . ($signedDate ?? now())),
-                'file_url' => $sigReq->file_path ? asset('storage/' . $sigReq->file_path) : null,
             ];
 
             return Inertia::render('Verify/DocVerify', [
                 'doc' => $docData,
-                'verify_code' => $uniqueDocCode,
+                'is_valid' => $isValid,
+                'verify_code' => $code,
                 'settings' => $settings
             ]);
         }
 
-        // Dokumen tidak ditemukan / Palsu
         return Inertia::render('Verify/DocVerify', [
             'doc' => null,
+            'is_valid' => false,
             'verify_code' => $code,
             'settings' => $settings
         ]);
-    }
-
-    /**
-     * Rute Verifikasi Pintar Umum (/verify/{code})
-     */
-    public function verifyGeneral($code)
-    {
-        $code = trim($code);
-
-        if (str_starts_with(strtoupper($code), 'SKHPP-') || Skhpp::where('verification_code', $code)->orWhere('nomor_skhpp', $code)->exists()) {
-            return redirect()->route('skhpp.verify', $code);
-        }
-
-        return $this->verify($code);
     }
 }

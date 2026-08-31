@@ -223,9 +223,9 @@ class SpJagaController extends Controller
             'ttd_type' => $request->ttd_type,
             'status' => $status,
             'verification_code' => $uniqueCode,
-            'penandatangan_nama' => 'Indra Gunawan, T.Z',
-            'penandatangan_pangkat_nrp' => 'Kapten Laut (P) NRP 19739/P',
-            'penandatangan_jabatan' => 'Dan Unit 1 Lid',
+            'penandatangan_nama' => 'Roni Sumantri',
+            'penandatangan_pangkat_nrp' => 'Mayor Laut (P) NRP 17456/P',
+            'penandatangan_jabatan' => 'Pasiops',
             'created_by' => $user->id,
         ]);
 
@@ -400,20 +400,28 @@ class SpJagaController extends Controller
         $user = auth()->user();
         $spJaga = SpJaga::with(['perwiras', 'anggotas'])->findOrFail($id);
 
+        $pasopsUser = User::where('role', 'pasops')->first()
+                   ?? User::where('name', 'like', '%Roni Sumantri%')->first()
+                   ?? ($user->role === 'pasops' ? $user : null);
+
+        $pName = $pasopsUser ? $pasopsUser->name : 'Roni Sumantri';
+        $pRank = $pasopsUser ? $pasopsUser->pangkat : 'Mayor Laut (P)';
+        $pNrp = ($pasopsUser && $pasopsUser->nrp) ? 'NRP ' . $pasopsUser->nrp : 'NRP 17456/P';
+
         $spJaga->update([
             'status' => 'published',
             'approved_by' => $user->id,
             'approved_at' => now(),
-            'penandatangan_user_id' => $user->id,
-            'penandatangan_nama' => $user->name,
-            'penandatangan_pangkat_nrp' => ($user->pangkat ? $user->pangkat . ' ' : '') . ($user->nrp ? 'NRP ' . $user->nrp : ''),
-            'penandatangan_jabatan' => strtoupper($user->role ?? 'PASOPS'),
+            'penandatangan_user_id' => $pasopsUser?->id ?: $user->id,
+            'penandatangan_nama' => $pName,
+            'penandatangan_pangkat_nrp' => "{\} {\}",
+            'penandatangan_jabatan' => 'Pasiops',
         ]);
 
         // Kirim Broadcast Notifikasi WhatsApp ke Semua Personel Terdaftar
         $this->sendBroadcastWa($spJaga);
 
-        return back()->with('success', 'Surat Perintah Jaga berhasil ditandatangani secara TTE & Notifikasi WA telah dikirimkan ke seluruh personel.');
+        return back()->with('success', 'Surat Perintah Jaga berhasil disahkan atas nama Pasiops & Notifikasi WA telah dikirimkan ke seluruh personel.');
     }
 
     /**
