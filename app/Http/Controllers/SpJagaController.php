@@ -150,7 +150,7 @@ class SpJagaController extends Controller
      */
     public function create()
     {
-        $personels = User::select('id', 'name', 'pangkat', 'nrp', 'role', 'jabatan', 'phone')
+        $personels = User::select('id', 'name', 'pangkat', 'nrp', 'role', 'phone')
             ->orderBy('name', 'asc')
             ->get();
 
@@ -294,7 +294,7 @@ class SpJagaController extends Controller
     public function edit($id)
     {
         $spJaga = SpJaga::with(['perwiras', 'anggotas'])->findOrFail($id);
-        $personels = User::select('id', 'name', 'pangkat', 'nrp', 'role', 'jabatan', 'phone')
+        $personels = User::select('id', 'name', 'pangkat', 'nrp', 'role', 'phone')
             ->orderBy('name', 'asc')
             ->get();
 
