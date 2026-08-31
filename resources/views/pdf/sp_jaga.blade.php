@@ -398,12 +398,12 @@
         <table class="table-bordered" style="width: 100%; table-layout: fixed; margin-bottom: 12px; font-size: 10pt;">
             <thead>
                 <tr>
-                    <th style="width: 5%;">NO</th>
-                    <th style="width: 22%;">TANGGAL</th>
+                    <th style="width: 4%;">NO</th>
+                    <th style="width: 21%;">TANGGAL</th>
                     <th style="width: 25%;">NAMA</th>
-                    <th style="width: 18%;">PANGKAT/<br>KORPS</th>
-                    <th style="width: 18%;">NRP/NIP</th>
-                    <th style="width: 12%;">KET</th>
+                    <th style="width: 17%;">PANGKAT/<br>KORPS</th>
+                    <th style="width: 22%;">NRP/NIP</th>
+                    <th style="width: 11%;">KET</th>
                 </tr>
                 <tr style="background-color: #fafafa; font-size: 9pt;">
                     <th style="font-weight: normal; padding: 2px;">1</th>
@@ -425,7 +425,7 @@
                         }
                     @endphp
                     <tr>
-                        <td class="text-center" style="vertical-align: middle; font-weight: normal; padding: 6px 4px;">{{ $idx + 1 }}.</td>
+                        <td class="text-center" style="vertical-align: middle; font-weight: normal; padding: 6px 2px;">{{ $idx + 1 }}.</td>
                         <td class="text-center" style="vertical-align: middle; font-weight: bold; padding: 6px 4px; line-height: 1.4;">
                             {{ $tglClean }}
                         </td>
@@ -439,12 +439,12 @@
                                 <div style="white-space: nowrap;">{{ $item['pangkat_korps'] ?? '-' }}</div>
                             @endforeach
                         </td>
-                        <td class="text-center" style="vertical-align: middle; padding: 6px 4px; line-height: 1.5;">
+                        <td class="text-center" style="vertical-align: middle; padding: 6px 2px; line-height: 1.5; font-size: 8.5pt;">
                             @foreach($items as $item)
-                                <div style="white-space: nowrap;">{{ $item['nrp_nip'] ?? '-' }}</div>
+                                <div style="white-space: nowrap; letter-spacing: -0.2px;">{{ $item['nrp_nip'] ?? '-' }}</div>
                             @endforeach
                         </td>
-                        <td class="text-center" style="vertical-align: middle; padding: 6px 4px; line-height: 1.5;">
+                        <td class="text-center" style="vertical-align: middle; padding: 6px 2px; line-height: 1.5;">
                             @foreach($items as $item)
                                 <div style="font-weight: normal; white-space: nowrap;">{{ $item['role_jaga'] ?? 'ANGGOTA' }}</div>
                             @endforeach
