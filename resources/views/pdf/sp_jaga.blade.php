@@ -63,7 +63,7 @@
         .logo-tni {
             display: block;
             margin: 0 auto;
-            width: 70px;
+            width: 95px;
             height: auto;
         }
 
@@ -353,7 +353,7 @@
 
                         @if($spJaga->ttd_type === 'tte' && $spJaga->status === 'published' && !empty($qr_base64))
                             <div style="margin: 4px auto; text-align: center;">
-                                <img src="{{ $qr_base64 }}" style="width: 70px; height: 70px; display: inline-block;" alt="QR TTE" />
+                                <img src="{{ $qr_base64 }}" style="width: 95px; height: 70px; display: inline-block;" alt="QR TTE" />
                             </div>
                         @else
                             <div style="height: 60px;"></div>
@@ -502,7 +502,7 @@
 
                         @if($spJaga->ttd_type === 'tte' && $spJaga->status === 'published' && !empty($qr_base64))
                             <div style="margin: 4px auto; text-align: center;">
-                                <img src="{{ $qr_base64 }}" style="width: 70px; height: 70px; display: inline-block;" alt="QR TTE" />
+                                <img src="{{ $qr_base64 }}" style="width: 95px; height: 70px; display: inline-block;" alt="QR TTE" />
                             </div>
                         @else
                             <div style="height: 60px;"></div>
