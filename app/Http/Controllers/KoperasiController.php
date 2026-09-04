@@ -21,7 +21,7 @@ use Inertia\Inertia;
 class KoperasiController extends Controller
 {
     /**
-     * Halaman Utama Modul Simpan Pinjam
+     * Halaman Utama: Portal Mandiri Personel / Anggota Koperasi
      */
     public function index(Request $request)
     {
@@ -58,85 +58,7 @@ class KoperasiController extends Controller
 
         $mySavingsTransactions = KoperasiSavingsTransaction::where('user_id', $user->id)
             ->latest()
-            ->take(15)
-            ->get();
-
-        // 3. Data Khusus Pengurus & Admin
-        $metrics = null;
-        $allLoans = null;
-        $allMembers = null;
-        $allMutations = null;
-        $allInstallments = null;
-
-        if ($isPengurus) {
-            $activeLoansRemaining = (float) KoperasiLoan::where('status', 'active')->sum('remaining_amount');
-            $totalSimpananAll = (float) KoperasiAccount::sum('total_simpanan');
-            $cicilanBulanIni = (float) KoperasiInstallment::whereMonth('payment_date', now()->month)
-                ->whereYear('payment_date', now()->year)
-                ->sum('amount_paid');
-            $pendingLoansCount = KoperasiLoan::where('status', 'pending')->count();
-            $totalAnggota = KoperasiAccount::count();
-
-            // Saldo Kas Koperasi dari Mutasi Terakhir
-            $latestMutation = KoperasiCashMutation::latest('id')->first();
-            $kasKoperasiBalance = $latestMutation ? (float)$latestMutation->balance : (float)($totalSimpananAll + $cicilanBulanIni - $activeLoansRemaining);
-            if ($kasKoperasiBalance < 0) $kasKoperasiBalance = 0;
-
-            $metrics = [
-                'kas_koperasi' => $kasKoperasiBalance,
-                'pinjaman_aktif_total' => $activeLoansRemaining,
-                'simpanan_anggota_total' => $totalSimpananAll,
-                'cicilan_masuk_bulan_ini' => $cicilanBulanIni,
-                'pengajuan_pending_count' => $pendingLoansCount,
-                'total_anggota_count' => $totalAnggota,
-            ];
-
-            // Seluruh Pinjaman untuk Pengurus
-            $queryLoans = KoperasiLoan::with(['user', 'installments'])
-                ->orderBy('created_at', 'desc');
-
-            if ($request->filled('status') && $request->status !== 'all') {
-                $queryLoans->where('status', $request->status);
-            }
-
-            if ($request->filled('search')) {
-                $search = $request->search;
-                $queryLoans->where(function($q) use ($search) {
-                    $q->where('loan_code', 'like', "%{$search}%")
-                      ->orWhereHas('user', function($qu) use ($search) {
-                          $qu->where('name', 'like', "%{$search}%")
-                            ->orWhere('nrp', 'like', "%{$search}%");
-                      });
-                });
-            }
-
-            $allLoans = $queryLoans->paginate(15)->withQueryString();
-
-            // Seluruh Rekening Anggota
-            $allMembers = KoperasiAccount::with(['user', 'user.koperasiLoans' => function($q) {
-                $q->where('status', 'active');
-            }])
-            ->paginate(15, ['*'], 'members_page')
-            ->withQueryString();
-
-            // Seluruh Mutasi Kas Koperasi
-            $allMutations = KoperasiCashMutation::with('recorder')
-                ->latest()
-                ->take(30)
-                ->get();
-
-            // Riwayat Pembayaran Cicilan Terkini
-            $allInstallments = KoperasiInstallment::with(['user', 'loan', 'recorder'])
-                ->where('amount_paid', '>', 0)
-                ->latest('updated_at')
-                ->take(30)
-                ->get();
-        }
-
-        // Daftar personel aktif untuk dropdown pemilihan pengurus
-        $personels = User::select('id', 'name', 'pangkat', 'nrp', 'phone')
-            ->where('is_active', true)
-            ->orderBy('name', 'asc')
+            ->take(20)
             ->get();
 
         return Inertia::render('SimpanPinjam/Index', [
@@ -145,6 +67,89 @@ class KoperasiController extends Controller
             'myLoanHistory' => $myLoanHistory,
             'mySavingsTransactions' => $mySavingsTransactions,
             'isPengurus' => $isPengurus,
+        ]);
+    }
+
+    /**
+     * Halaman Khusus Pengurus & Administrator: Pusat Kendali Simpan Pinjam
+     */
+    public function kelola(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user->isPengurusKoperasi()) {
+            abort(403, 'Akses ditolak. Anda tidak memiliki otoritas sebagai Pengurus Koperasi.');
+        }
+
+        $activeLoansRemaining = (float) KoperasiLoan::where('status', 'active')->sum('remaining_amount');
+        $totalSimpananAll = (float) KoperasiAccount::sum('total_simpanan');
+        $cicilanBulanIni = (float) KoperasiInstallment::whereMonth('payment_date', now()->month)
+            ->whereYear('payment_date', now()->year)
+            ->sum('amount_paid');
+        $pendingLoansCount = KoperasiLoan::where('status', 'pending')->count();
+        $totalAnggota = KoperasiAccount::count();
+
+        // Saldo Kas Koperasi dari Mutasi Terakhir
+        $latestMutation = KoperasiCashMutation::latest('id')->first();
+        $kasKoperasiBalance = $latestMutation ? (float)$latestMutation->balance : (float)($totalSimpananAll + $cicilanBulanIni - $activeLoansRemaining);
+        if ($kasKoperasiBalance < 0) $kasKoperasiBalance = 0;
+
+        $metrics = [
+            'kas_koperasi' => $kasKoperasiBalance,
+            'pinjaman_aktif_total' => $activeLoansRemaining,
+            'simpanan_anggota_total' => $totalSimpananAll,
+            'cicilan_masuk_bulan_ini' => $cicilanBulanIni,
+            'pengajuan_pending_count' => $pendingLoansCount,
+            'total_anggota_count' => $totalAnggota,
+        ];
+
+        // Seluruh Pinjaman untuk Pengurus
+        $queryLoans = KoperasiLoan::with(['user', 'installments'])
+            ->orderBy('created_at', 'desc');
+
+        if ($request->filled('status') && $request->status !== 'all') {
+            $queryLoans->where('status', $request->status);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $queryLoans->where(function($q) use ($search) {
+                $q->where('loan_code', 'like', "%{$search}%")
+                  ->orWhereHas('user', function($qu) use ($search) {
+                      $qu->where('name', 'like', "%{$search}%")
+                        ->orWhere('nrp', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $allLoans = $queryLoans->paginate(15)->withQueryString();
+
+        // Seluruh Rekening Anggota
+        $allMembers = KoperasiAccount::with(['user', 'user.koperasiLoans' => function($q) {
+            $q->where('status', 'active');
+        }])
+        ->paginate(15, ['*'], 'members_page')
+        ->withQueryString();
+
+        // Seluruh Mutasi Kas Koperasi
+        $allMutations = KoperasiCashMutation::with('recorder')
+            ->latest()
+            ->take(40)
+            ->get();
+
+        // Riwayat Pembayaran Cicilan Terkini
+        $allInstallments = KoperasiInstallment::with(['user', 'loan', 'recorder'])
+            ->where('amount_paid', '>', 0)
+            ->latest('updated_at')
+            ->take(40)
+            ->get();
+
+        // Daftar personel aktif untuk dropdown
+        $personels = User::select('id', 'name', 'pangkat', 'nrp', 'phone')
+            ->where('is_active', true)
+            ->orderBy('name', 'asc')
+            ->get();
+
+        return Inertia::render('SimpanPinjam/Kelola', [
             'metrics' => $metrics,
             'allLoans' => $allLoans,
             'allMembers' => $allMembers,

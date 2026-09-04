@@ -289,12 +289,23 @@ onUnmounted(() => {
                             <Link 
                                 :href="route('simpan-pinjam.index')" 
                                 @click="isMobileMenuOpen = false"
-                                :class="route().current('simpan-pinjam.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"
+                                :class="route().current('simpan-pinjam.index') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"
                                 class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
                             >
                                 <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                 <span class="flex-1">Simpan Pinjam</span>
-                                <span v-if="canManageKoperasi" class="px-1.5 py-0.5 bg-violet-100 text-violet-700 text-[9px] font-extrabold rounded-md uppercase">Kelola</span>
+                            </Link>
+
+                            <Link 
+                                v-if="canManageKoperasi"
+                                :href="route('simpan-pinjam.kelola')" 
+                                @click="isMobileMenuOpen = false"
+                                :class="route().current('simpan-pinjam.kelola') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"
+                                class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
+                            >
+                                <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0h4m-4 0V11m0 0h4m-4 0H7m4 0v10"></path></svg>
+                                <span class="flex-1">Kelola Simpan Pinjam</span>
+                                <span class="px-1.5 py-0.5 bg-violet-100 text-violet-700 text-[9px] font-extrabold rounded-md uppercase">Pengurus</span>
                             </Link>
 
                             
@@ -525,12 +536,22 @@ onUnmounted(() => {
                         
                         <Link 
                             :href="route('simpan-pinjam.index')" 
-                            :class="route().current('simpan-pinjam.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"
+                            :class="route().current('simpan-pinjam.index') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"
                             class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
                         >
                             <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             <span class="flex-1">Simpan Pinjam</span>
-                            <span v-if="canManageKoperasi" class="px-2 py-0.5 bg-violet-100 text-violet-700 text-[10px] font-black rounded-lg uppercase tracking-wider">Kelola</span>
+                        </Link>
+
+                        <Link 
+                            v-if="canManageKoperasi"
+                            :href="route('simpan-pinjam.kelola')" 
+                            :class="route().current('simpan-pinjam.kelola') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"
+                            class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
+                        >
+                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-violet-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0h4m-4 0V11m0 0h4m-4 0H7m4 0v10"></path></svg>
+                            <span class="flex-1">Kelola Simpan Pinjam</span>
+                            <span class="px-2 py-0.5 bg-violet-100 text-violet-700 text-[10px] font-black rounded-lg uppercase tracking-wider">Pengurus</span>
                         </Link>
 
                         <Link 

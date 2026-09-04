@@ -182,6 +182,7 @@ Route::middleware('auth')->group(function () {
     // MODUL SIMPAN PINJAM (KOPERASI SINDEN)
     // =========================================================================
     Route::get('/simpan-pinjam', [KoperasiController::class, 'index'])->name('simpan-pinjam.index');
+    Route::get('/simpan-pinjam/kelola', [KoperasiController::class, 'kelola'])->name('simpan-pinjam.kelola');
     Route::post('/simpan-pinjam/apply-loan', [KoperasiController::class, 'applyLoan'])->name('simpan-pinjam.apply-loan');
     Route::post('/simpan-pinjam/approve-loan/{id}', [KoperasiController::class, 'approveLoan'])->name('simpan-pinjam.approve-loan');
     Route::post('/simpan-pinjam/reject-loan/{id}', [KoperasiController::class, 'rejectLoan'])->name('simpan-pinjam.reject-loan');
