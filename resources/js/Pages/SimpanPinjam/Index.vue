@@ -7,6 +7,7 @@ import Swal from 'sweetalert2';
 const props = defineProps({
     myAccount: Object,
     myActiveLoan: Object,
+    myLatestRejectedLoan: Object,
     myLoanHistory: Array,
     mySavingsTransactions: Array,
     isPengurus: Boolean,
@@ -250,7 +251,44 @@ const loanRepaymentProgress = computed(() => {
                     </div>
                 </div>
 
-                <!-- Jika Tidak Ada Pinjaman Aktif -->
+                <!-- Jika Ada Pengajuan Terakhir yang Ditolak -->
+                <div v-else-if="myLatestRejectedLoan" class="p-6 bg-rose-50/70 border border-rose-200 rounded-3xl space-y-4">
+                    <div class="flex flex-col sm:flex-row items-start justify-between gap-4">
+                        <div class="flex items-start gap-3.5">
+                            <div class="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center font-black shrink-0 shadow-sm">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 text-[10px] font-black uppercase tracking-wider">Pengajuan Ditolak</span>
+                                    <span class="text-xs font-mono font-bold text-slate-500">{{ myLatestRejectedLoan.loan_code }}</span>
+                                </div>
+                                <h4 class="text-base font-black text-rose-950 mt-1">Permohonan Pinjaman Belum Dapat Disetujui</h4>
+                                <p class="text-xs text-rose-800 mt-0.5">
+                                    Pengajuan sebesar <b>{{ formatRupiah(myLatestRejectedLoan.amount_requested) }}</b> (Tenor {{ myLatestRejectedLoan.duration_months }} Bulan) ditolak oleh Pengurus Koperasi pada {{ formatDate(myLatestRejectedLoan.updated_at) }}.
+                                </p>
+                            </div>
+                        </div>
+                        <button 
+                            @click="showApplyModal = true"
+                            class="w-full sm:w-auto px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black text-xs uppercase tracking-wider transition shadow-sm shrink-0"
+                        >
+                            + Ajukan Permohonan Baru
+                        </button>
+                    </div>
+
+                    <!-- Catatan Alasan Penolakan -->
+                    <div class="p-4 bg-white rounded-2xl border border-rose-200/80 text-xs space-y-1">
+                        <span class="text-[10px] font-black uppercase text-slate-400 block tracking-wider">Catatan / Alasan Penolakan Resmi Pengurus:</span>
+                        <p class="font-bold text-slate-800 italic">"{{ myLatestRejectedLoan.rejection_reason || 'Tidak memenuhi kriteria evaluasi pinjaman koperasi.' }}"</p>
+                    </div>
+
+                    <div class="text-[11px] text-rose-700/80 flex items-center justify-between border-t border-rose-200/60 pt-2">
+                        <span>Pemberitahuan resmi juga telah diterbitkan pada lonceng notifikasi aplikasi dan pesan WhatsApp kedinasan Anda.</span>
+                    </div>
+                </div>
+
+                <!-- Jika Tidak Ada Pinjaman Aktif & Tidak Ada Penolakan Baru -->
                 <div v-else class="text-center py-10 px-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
                     <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-3">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
@@ -300,6 +338,57 @@ const loanRepaymentProgress = computed(() => {
                             </tr>
                             <tr v-if="!mySavingsTransactions || mySavingsTransactions.length === 0">
                                 <td colspan="7" class="py-8 text-center text-slate-400">Belum ada riwayat mutasi simpanan tercatat.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Grid 4: Riwayat Pengajuan Pinjaman Saya -->
+            <div v-if="myLoanHistory && myLoanHistory.length > 0" class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div>
+                        <h3 class="text-base font-black text-slate-900">Riwayat Pengajuan & Pinjaman Anda</h3>
+                        <p class="text-xs text-slate-500">Seluruh riwayat permohonan pinjaman yang pernah Anda ajukan ke Koperasi SINDEN.</p>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="text-[10px] font-extrabold uppercase text-slate-400 border-b border-slate-100">
+                                <th class="py-3 px-3">Tanggal</th>
+                                <th class="py-3 px-3">Kode Pinjaman</th>
+                                <th class="py-3 px-3 text-right">Nominal Diajukan</th>
+                                <th class="py-3 px-3 text-center">Tenor</th>
+                                <th class="py-3 px-3 text-center">Status</th>
+                                <th class="py-3 px-3">Catatan / Alasan</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr v-for="lh in myLoanHistory" :key="lh.id" class="hover:bg-slate-50 transition">
+                                <td class="py-3 px-3 font-mono">{{ formatDate(lh.created_at) }}</td>
+                                <td class="py-3 px-3 font-mono font-bold text-slate-800">{{ lh.loan_code }}</td>
+                                <td class="py-3 px-3 text-right font-black text-slate-900">{{ formatRupiah(lh.amount_requested) }}</td>
+                                <td class="py-3 px-3 text-center font-bold">{{ lh.duration_months }} Bln</td>
+                                <td class="py-3 px-3 text-center">
+                                    <span :class="{
+                                        'bg-amber-100 text-amber-800': lh.status === 'pending',
+                                        'bg-emerald-100 text-emerald-800': lh.status === 'active',
+                                        'bg-rose-100 text-rose-800': lh.status === 'rejected',
+                                        'bg-blue-100 text-blue-800': lh.status === 'paid_off',
+                                    }" class="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase">
+                                        {{ lh.status === 'rejected' ? 'DITOLAK' : (lh.status === 'pending' ? 'MENUNGGU' : (lh.status === 'active' ? 'AKTIF' : 'LUNAS')) }}
+                                    </span>
+                                </td>
+                                <td class="py-3 px-3">
+                                    <span v-if="lh.status === 'rejected'" class="text-rose-600 font-bold italic">
+                                        {{ lh.rejection_reason || 'Pengajuan ditolak pengurus' }}
+                                    </span>
+                                    <span v-else class="text-slate-500">
+                                        {{ lh.purpose }}
+                                    </span>
+                                </td>
                             </tr>
                         </tbody>
                     </table>

@@ -56,6 +56,11 @@ class KoperasiController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
+        $myLatestRejectedLoan = KoperasiLoan::where('user_id', $user->id)
+            ->where('status', 'rejected')
+            ->latest('updated_at')
+            ->first();
+
         $mySavingsTransactions = KoperasiSavingsTransaction::where('user_id', $user->id)
             ->latest()
             ->take(20)
@@ -64,6 +69,7 @@ class KoperasiController extends Controller
         return Inertia::render('SimpanPinjam/Index', [
             'myAccount' => $myAccount,
             'myActiveLoan' => $myActiveLoan,
+            'myLatestRejectedLoan' => $myLatestRejectedLoan,
             'myLoanHistory' => $myLoanHistory,
             'mySavingsTransactions' => $mySavingsTransactions,
             'isPengurus' => $isPengurus,
@@ -355,16 +361,39 @@ class KoperasiController extends Controller
             'approved_at' => now(),
         ]);
 
-        if ($loan->user->phone) {
-            $msg = "PEMBERITAHUAN KOPERASI SINDEN\n"
-                . "Yth. {$loan->user->pangkat} {$loan->user->name}\n\n"
-                . "Pengajuan pinjaman nomor *{$loan->loan_code}* sebesar Rp " . number_format($loan->amount_requested, 0, ',', '.') . " saat ini *DITOLAK* dengan catatan:\n"
+        $borrower = $loan->user;
+        $amountFormatted = number_format($loan->amount_requested, 0, ',', '.');
+        $pangkatName = ($borrower->pangkat ? $borrower->pangkat . ' ' : '') . $borrower->name;
+        $nrpText = $borrower->nrp ?: '-';
+
+        // 1. Notifikasi Dalam Aplikasi (Bell Lonceng SINDEN)
+        AppNotification::create([
+            'user_id' => $borrower->id,
+            'role' => null,
+            'title' => 'Pengajuan Pinjaman Koperasi Ditolak',
+            'message' => "Yth. {$pangkatName}, pengajuan pinjaman nomor {$loan->loan_code} sebesar Rp {$amountFormatted} telah ditolak dengan catatan: \"{$request->rejection_reason}\".",
+            'type' => 'error',
+            'link' => route('simpan-pinjam.index'),
+            'is_read' => false,
+        ]);
+
+        // 2. Notifikasi WhatsApp Resmi Kedinasan
+        if ($borrower->phone) {
+            $msgWa = "PEMBERITAHUAN KOPERASI SINDEN\n"
+                . "STATUS PENGAJUAN PINJAMAN\n"
+                . "==============================\n"
+                . "Yth. {$pangkatName}\n"
+                . "NRP: {$nrpText}\n\n"
+                . "Diberitahukan bahwa permohonan pinjaman Anda nomor *{$loan->loan_code}* sebesar Rp {$amountFormatted} telah ditinjau dan dinyatakan *DITOLAK* oleh Pengurus Koperasi.\n\n"
+                . "Alasan / Catatan Penolakan:\n"
                 . "\"{$request->rejection_reason}\"\n\n"
-                . "Hubungi pengurus koperasi untuk keterangan lebih lanjut.";
-            WhatsappService::sendMessage($loan->user->phone, $msg);
+                . "Status rincian penolakan dapat dipantau langsung pada menu Simpan Pinjam di aplikasi SINDEN. Anda dapat berkonsultasi dengan Pengurus Koperasi atau mengajukan kembali permohonan baru.\n\n"
+                . "Demikian untuk menjadi maklum. Terima kasih.";
+
+            WhatsappService::sendMessage($borrower->phone, $msgWa);
         }
 
-        return back()->with('message', 'Pengajuan pinjaman telah ditolak.');
+        return back()->with('message', 'Pengajuan pinjaman telah ditolak dan notifikasi resmi telah dikirimkan.');
     }
 
     /**
