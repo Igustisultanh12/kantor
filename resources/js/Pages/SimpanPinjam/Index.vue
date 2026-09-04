@@ -130,8 +130,7 @@ const loanRepaymentProgress = computed(() => {
                     <div class="absolute -right-12 -top-12 w-48 h-48 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
                     <div class="flex justify-between items-start z-10">
                         <div>
-                            <span class="text-[10px] font-extrabold tracking-widest uppercase text-emerald-400 block mb-0.5">KOPERASI PRIMER SINDEN</span>
-                            <h3 class="text-sm font-black tracking-wide">UNIT SIMPAN PINJAM</h3>
+                            <h3 class="text-sm font-black tracking-wide text-white">UNIT SIMPAN PINJAM</h3>
                         </div>
                         <span class="px-2.5 py-1 rounded-full text-[9px] font-black uppercase bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
                             ANGGOTA AKTIF
