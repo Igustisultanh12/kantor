@@ -21,6 +21,7 @@ class Attendance extends Model
         'longitude',
         'location_name',
         'notes',
+        'photo',
     ];
 
     protected $casts = [
@@ -28,6 +29,21 @@ class Attendance extends Model
         'latitude' => 'double',
         'longitude' => 'double',
     ];
+
+    protected $appends = [
+        'photo_url',
+    ];
+
+    public function getPhotoUrlAttribute()
+    {
+        if (!$this->photo) {
+            return null;
+        }
+        if (str_starts_with($this->photo, 'http://') || str_starts_with($this->photo, 'https://')) {
+            return $this->photo;
+        }
+        return asset('storage/' . $this->photo);
+    }
 
     public function user()
     {

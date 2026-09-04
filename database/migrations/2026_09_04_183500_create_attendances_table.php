@@ -24,6 +24,7 @@ return new class extends Migration
             $table->double('longitude')->nullable();
             $table->string('location_name')->nullable();
             $table->text('notes')->nullable();
+            $table->string('photo')->nullable();
             $table->timestamps();
 
             $table->unique(['user_id', 'attendance_date']);
