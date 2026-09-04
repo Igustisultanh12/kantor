@@ -219,17 +219,59 @@ class KoperasiController extends Controller
             'notes' => 'Pengajuan mandiri via aplikasi SINDEN (Tenor Otomatis 10 Bulan)',
         ]);
 
+        // 1. Notifikasi In-App untuk Admin & Pengurus Koperasi
         AppNotification::create([
             'user_id' => null,
             'role' => 'admin',
             'title' => 'Pengajuan Pinjaman Koperasi Baru',
             'message' => "Personel {$user->name} ({$user->pangkat} NRP {$user->nrp}) mengajukan pinjaman sebesar Rp " . number_format($amountReq, 0, ',', '.') . " tenor {$months} bulan (Cicilan Rp " . number_format($monthlyEst, 0, ',', '.') . "/bulan).",
             'type' => 'info',
+            'link' => route('simpan-pinjam.kelola'),
+            'is_read' => false,
+        ]);
+
+        // 2. Notifikasi In-App untuk Personel Pemohon
+        AppNotification::create([
+            'user_id' => $user->id,
+            'role' => null,
+            'title' => 'Pengajuan Pinjaman Berhasil Diajukan',
+            'message' => "Permohonan pinjaman Anda ({$loanCode}) sebesar Rp " . number_format($amountReq, 0, ',', '.') . " telah berhasil terkirim dan sedang menunggu verifikasi Pengurus Koperasi.",
+            'type' => 'success',
             'link' => route('simpan-pinjam.index'),
             'is_read' => false,
         ]);
 
-        return back()->with('message', 'Pengajuan pinjaman berhasil dikirim. Menunggu verifikasi pengurus koperasi.');
+        // 3. Notifikasi WhatsApp Resmi ke Personel yang Bersangkutan
+        if (!empty($user->phone)) {
+            try {
+                $pangkatName = trim(($user->pangkat ?: 'Personel') . ' ' . $user->name);
+                $nrpText = $user->nrp ?: '-';
+                $amountFormatted = number_format($amountReq, 0, ',', '.');
+                $estMonthlyFormatted = number_format($monthlyEst, 0, ',', '.');
+
+                $waApplicantMsg = "PEMBERITAHUAN KOPERASI SINDEN\n"
+                    . "KONFIRMASI PENGAJUAN PINJAMAN\n"
+                    . "==============================\n"
+                    . "Yth. {$pangkatName}\n"
+                    . "NRP: {$nrpText}\n\n"
+                    . "Laporan: Permohonan pinjaman Anda telah berhasil diajukan ke sistem Koperasi SINDEN dengan rincian sebagai berikut:\n\n"
+                    . "- Nomor Registrasi: *{$loanCode}*\n"
+                    . "- Jenis Pinjaman: *" . strtoupper($request->loan_type) . "*\n"
+                    . "- Plafon Diajukan: *Rp {$amountFormatted}*\n"
+                    . "- Tenor: *{$months} Bulan*\n"
+                    . "- Estimasi Cicilan: *Rp {$estMonthlyFormatted} / bulan*\n"
+                    . "- Keperluan: {$request->purpose}\n"
+                    . "- Status Saat Ini: *MENUNGGU VERIFIKASI PENGURUS*\n\n"
+                    . "Pengurus Koperasi akan segera memverifikasi permohonan Anda. Perkembangan status pengajuan dapat dipantau langsung melalui menu Simpan Pinjam di aplikasi SINDEN.\n\n"
+                    . "Demikian pemberitahuan ini disampaikan. Terima kasih.";
+
+                WhatsappService::sendMessage($user->phone, $waApplicantMsg);
+            } catch (\Exception $waErr) {
+                Log::error("Gagal mengirim notifikasi WhatsApp pengajuan pinjaman ke pemohon: " . $waErr->getMessage());
+            }
+        }
+
+        return back()->with('message', 'Pengajuan pinjaman berhasil dikirim. Notifikasi konfirmasi telah dikirimkan ke WhatsApp Anda dan berkas sedang menunggu verifikasi pengurus.');
     }
 
     /**
