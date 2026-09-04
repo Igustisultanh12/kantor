@@ -472,8 +472,9 @@ onUnmounted(() => {
                         :href="route('profile.edit')" 
                         @click="isMobileMenuOpen = false"class="flex items-center gap-3 mb-3 p-2 rounded-xl bg-white border border-slate-200/80 shadow-xs"
                     >
-                        <div class="w-8 h-8 rounded-xl bg-[#2563EB] text-white flex items-center justify-center font-bold text-xs uppercase shrink-0">
-                            {{ user.name ? user.name.substring(0, 2).toUpperCase() : 'US' }}
+                        <div class="w-8 h-8 rounded-xl bg-[#2563EB] text-white flex items-center justify-center font-bold text-xs uppercase shrink-0 overflow-hidden">
+                            <img v-if="user.avatar" :src="'/storage/' + user.avatar" class="w-full h-full object-cover" alt="Foto Profil" />
+                            <span v-else>{{ user.name ? user.name.substring(0, 2).toUpperCase() : 'US' }}</span>
                         </div>
                         <div class="text-xs truncate flex-1" v-if="user">
                             <p class="font-bold text-slate-800 truncate">{{ user.name }}</p>
@@ -708,8 +709,9 @@ onUnmounted(() => {
                     :href="route('profile.edit')" 
                     :class="route().current('profile.edit') ? 'bg-[#2563EB]/5 text-[#2563EB]' : 'hover:bg-slate-100/80'"class="flex items-center gap-3.5 mb-3 p-2 rounded-xl transition duration-150 group cursor-pointer"
                 >
-                    <div class="w-10 h-10 rounded-xl bg-[#2563EB]/10 flex items-center justify-center font-bold text-xs text-[#2563EB] uppercase select-none group-hover:bg-[#2563EB] group-hover:text-white transition duration-150 shrink-0">
-                        {{ user.name ? user.name.substring(0, 2).toUpperCase() : 'US' }}
+                    <div class="w-10 h-10 rounded-xl bg-[#2563EB]/10 flex items-center justify-center font-bold text-xs text-[#2563EB] uppercase select-none group-hover:bg-[#2563EB] group-hover:text-white transition duration-150 shrink-0 overflow-hidden">
+                        <img v-if="user.avatar" :src="'/storage/' + user.avatar" class="w-full h-full object-cover" alt="Foto Profil" />
+                        <span v-else>{{ user.name ? user.name.substring(0, 2).toUpperCase() : 'US' }}</span>
                     </div>
                     <div class="text-xs truncate flex-1" v-if="user">
                         <p class="font-bold text-slate-800 truncate group-hover:text-[#2563EB] transition duration-150">
@@ -818,8 +820,9 @@ onUnmounted(() => {
                     <Dropdown align="right" width="48">
                         <template #trigger>
                             <button class="flex items-center gap-2 p-1 sm:p-1.5 hover:bg-slate-100 rounded-2xl transition group">
-                                <div class="h-8 w-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 uppercase shadow-sm">
-                                    {{ user.name.charAt(0) }}
+                                <div class="h-8 w-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 uppercase shadow-sm overflow-hidden">
+                                    <img v-if="user.avatar" :src="'/storage/' + user.avatar" class="w-full h-full object-cover" alt="Foto Profil" />
+                                    <span v-else>{{ user.name.charAt(0) }}</span>
                                 </div>
                                 <div class="hidden md:flex flex-col text-left max-w-[130px]">
                                     <span class="text-xs font-bold text-slate-800 truncate leading-tight">{{ user.name }}</span>

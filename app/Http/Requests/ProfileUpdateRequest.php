@@ -24,6 +24,8 @@ class ProfileUpdateRequest extends FormRequest
             'pangkat' => ['nullable', 'string', 'max:100'],
             'nrp'     => ['nullable', 'string', 'max:50'],
             'phone'   => ['nullable', 'string', 'max:20'],
+            'avatar'  => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
+            'remove_avatar' => ['nullable', 'boolean'],
         ];
     }
 }

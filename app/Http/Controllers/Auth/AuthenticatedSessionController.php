@@ -86,9 +86,9 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
-        // OTORITAS KEAMANAN: 2FA WhatsApp untuk Pimpinan (Admin, Komandan, Pasops) atau MFA Aktif
-        $leadershipRoles = ['admin', 'komandan', 'pasops'];
-        $requiresMfa = (in_array($user->role, $leadershipRoles) || (bool)$user->mfa_enabled);
+        // OTORITAS KEAMANAN: 2FA WhatsApp untuk Pimpinan (Komandan, Pasops) atau MFA Aktif (Admin dikecualikan untuk kemudahan administrasi)
+        $leadershipRoles = ['komandan', 'pasops'];
+        $requiresMfa = (in_array(strtolower($user->role), $leadershipRoles) || (bool)$user->mfa_enabled);
 
         if ($requiresMfa && !empty($user->phone) && !$request->wantsJson() && !$request->expectsJson() && !$request->is('api/*')) {
             $otp = str_pad((string)random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
