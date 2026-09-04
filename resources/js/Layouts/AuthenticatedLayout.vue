@@ -524,6 +524,16 @@ onUnmounted(() => {
                         <p class="px-5 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Logistik & Keuangan</p>
                         
                         <Link 
+                            :href="route('simpan-pinjam.index')" 
+                            :class="route().current('simpan-pinjam.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"
+                            class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
+                        >
+                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <span class="flex-1">Simpan Pinjam</span>
+                            <span v-if="canManageKoperasi" class="px-2 py-0.5 bg-violet-100 text-violet-700 text-[10px] font-black rounded-lg uppercase tracking-wider">Kelola</span>
+                        </Link>
+
+                        <Link 
                             v-if="canAccessCash && (!isDanUnitTeknis || isAdmin)"
                             :href="route('cash.index')" 
                             :class="route().current('cash.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
