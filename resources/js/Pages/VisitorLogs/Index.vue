@@ -8,11 +8,12 @@ const props = defineProps({
     filters: Object // Menerima filter search dari Controller
 });
 
-//hapus Riwayat
+// Hapus Riwayat
 const confirmDeleteLogs = () => {
-    if (confirm('LAPOR! Apakah Anda yakin ingin MEMUSNAHKAN seluruh riwayat log pengunjung? Tindakan ini tidak dapat dibatalkan.')) {
+    if (confirm('LAPOR! Apakah Anda yakin ingin MENGHAPUS seluruh riwayat log pengunjung? Tindakan ini tidak dapat dibatalkan.')) {
         router.delete(route('visitor-logs.clear'), {
-            onSuccess: () => alert('Lapor! Seluruh riwayat telah dibersihkan.'),
+            onSuccess: () => alert('Lapor! Seluruh riwayat log pengunjung telah berhasil dihapus.'),
+            onError: (err) => alert('Gagal menghapus log: ' + JSON.stringify(err)),
             preserveScroll: true
         });
     }
@@ -58,7 +59,7 @@ onMounted(() => {
                 console.log("Log Monitoring Diperbarui: " + new Date().toLocaleTimeString());
             }
         });
-    }, 1000); // Saya turunkan ke 10 detik agar Bapak lebih cepat melihat hasilnya
+    }, 10000); // Interval pembaruan 10 detik
 });
 
 onUnmounted(() => {
@@ -91,7 +92,10 @@ const formatTime = (dateStr) => {
 
                 <div class="flex items-center gap-3">
                     <button @click="confirmDeleteLogs" class="bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 px-4 py-2.5 rounded-2xl text-xs font-extrabold uppercase border border-rose-200 shadow-xs transition tracking-wider flex items-center gap-2">
-                        <span></span> Musnahkan Riwayat Log
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                        Hapus Riwayat Log
                     </button>
                 </div>
             </div>

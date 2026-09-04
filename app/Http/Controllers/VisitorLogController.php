@@ -77,19 +77,16 @@ class VisitorLogController extends Controller
             VisitorLog::truncate();
             Schema::enableForeignKeyConstraints();
 
-            return redirect()->back()->with('message', 'Seluruh riwayat log berhasil dibersihkan');
+            return redirect()->back()->with('success', 'Lapor! Seluruh riwayat log telah berhasil dihapus.');
         } catch (\Exception $e) {
-            // Fallback jika truncate dilarang oleh server aaPanel
+            // Fallback jika truncate dilarang oleh database
             VisitorLog::query()->delete();
-            return redirect()->back()->with('message', 'Riwayat log dibersihkan via manual delete');
+            return redirect()->back()->with('success', 'Lapor! Seluruh riwayat log telah berhasil dihapus.');
         }
     }
     
     public function clearLogs()
     {
-    // Menghapus seluruh riwayat log pengunjung
-    \App\Models\VisitorLog::truncate();
-
-    return redirect()->back()->with('success', 'Lapor! Seluruh riwayat log telah dimusnahkan.');
+        return $this->clearAll();
     }
 }
