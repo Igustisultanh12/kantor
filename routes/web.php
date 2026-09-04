@@ -29,12 +29,14 @@ use App\Http\Controllers\TechnicalUnitCashController;
 use App\Http\Controllers\SkhppController;
 use App\Http\Controllers\DocVerificationController;
 use App\Http\Controllers\SpJagaController;
+use App\Http\Controllers\AttendanceController;
 use App\Models\User;
 use App\Models\LetterLog;
 use App\Models\Letter;
 use App\Models\VisitorLog;
 use App\Models\AuditLog;
 use App\Models\Setting;
+use App\Models\Attendance;
 use Illuminate\Support\Facades\Http;
 
 // --- HALAMAN DEPAN (DIRECT LOGIN SINDEN) ---
@@ -69,15 +71,28 @@ Route::get('/dashboard', function () {
     });
     $combinedActivities = $user->role === 'admin' ? $recentVisitors->concat($recentAudits)->sortByDesc('created_at')->take(5)->values() : null;
 
+    $today = now()->toDateString();
+    $todayAttendance = Attendance::where('user_id', $user->id)
+        ->where('attendance_date', $today)
+        ->first();
+
+    $todayAttendancesCount = Attendance::where('attendance_date', $today)->count();
+    $recentAttendances = in_array(strtolower($user->role), ['admin', 'komandan', 'pasops'])
+        ? Attendance::with('user')->where('attendance_date', $today)->latest()->take(10)->get()
+        : null;
+
     return Inertia::render('Dashboard', [
         'stats' => [
             'total_logs' => LetterLog::count(), 
             'total_archives' => Letter::count(), 
             'active_personnel' => User::where('is_active', true)->count(), 
+            'today_attendances' => $todayAttendancesCount,
         ],
         'recent_logs' => LetterLog::latest()->take(5)->get(),
         'combined_activities' => $combinedActivities,
         'pending_users' => $user->role === 'admin' ? User::where('is_active', false)->latest()->take(5)->get() : null,
+        'today_attendance' => $todayAttendance,
+        'recent_attendances' => $recentAttendances,
     ]);
 })->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -126,6 +141,9 @@ Route::middleware('auth')->group(function () {
     
     // Fitur GPS Lokasi Personel
     Route::post('/update-location', [LocationController::class, 'update'])->name('location.update');
+
+    // Fitur Presensi Kehadiran Personel (Opsional)
+    Route::post('/attendances', [AttendanceController::class, 'store'])->name('attendances.store');
 
     // Fitur Profil Personel
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

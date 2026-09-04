@@ -85,6 +85,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Relasi Presensi Personel
+     */
+    public function attendances()
+    {
+        return $this->hasMany(Attendance::class, 'user_id')->latest('attendance_date');
+    }
+
+    /**
      * Cek apakah user adalah pengurus koperasi atau admin
      */
     public function isPengurusKoperasi(): bool
