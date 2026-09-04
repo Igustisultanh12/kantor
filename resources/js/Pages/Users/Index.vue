@@ -298,6 +298,13 @@ const toggleMitraAccess = (user) => {
     });
 };
 
+const toggleKoperasiAccess = (user) => {
+    router.post(route('users.toggle-koperasi-access', user.id), {}, {
+        preserveScroll: true,
+        onSuccess: () => Swal.fire('SUKSES', `Hak Akses Pengurus Simpan Pinjam untuk ${user.name} berhasil diperbarui.`, 'success')
+    });
+};
+
 const toggleTechnicalCashAccess = (user) => {
     router.post(route('users.toggle-technical-cash-access', user.id), {}, {
         preserveScroll: true,
@@ -417,6 +424,9 @@ onUnmounted(() => {
                                     </button>
                                     <button @click="toggleTechnicalCashAccess(user)" 
                                         :class="user.can_access_technical_cash ? 'bg-cyan-100 text-cyan-800 hover:bg-cyan-600 hover:text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-700 hover:text-white'"class="px-2.5 py-1.5 text-[8px] font-black uppercase rounded-lg transition-all shadow-xs"title="Toggle Hak Akses Buku Kas Dan Unit Teknis"> Kas Teknis: {{ user.can_access_technical_cash ? 'AKTIF' : 'OFF' }}
+                                    </button>
+                                    <button @click="toggleKoperasiAccess(user)" 
+                                        :class="user.can_manage_koperasi ? 'bg-violet-100 text-violet-800 hover:bg-violet-600 hover:text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-700 hover:text-white'" class="px-2.5 py-1.5 text-[8px] font-black uppercase rounded-lg transition-all shadow-xs" title="Toggle Hak Akses Pengurus Simpan Pinjam (Koperasi)"> Koperasi: {{ user.can_manage_koperasi ? 'PENGURUS' : 'OFF' }}
                                     </button>
                                                                         <button v-if="!user.is_active" @click="printSingleTokenPdf(user.id)" class="px-2.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[8px] font-black uppercase rounded-lg hover:bg-emerald-600 hover:text-white transition-all shadow-xs flex items-center gap-1 cursor-pointer" title="Cetak Token PDF Perorangan">
                                         <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>

@@ -143,6 +143,10 @@ const isDanUnitTeknis = computed(() => {
     return user.value.role === 'danunitteknis' || user.value.role === 'DAN UNIT TEKNIS' || user.value.role === 'dan unit teknis';
 });
 
+const canManageKoperasi = computed(() => {
+    return isAdmin.value || Boolean(user.value.can_manage_koperasi) || user.value.name === 'I Gusti Sultan H.A, A.Md.Kom';
+});
+
 const canAccessTechnicalCash = computed(() => {
     return isAdmin.value || isDanUnitTeknis.value || Boolean(user.value.can_access_technical_cash) || user.value.name === 'I Gusti Sultan H.A, A.Md.Kom';
 });
@@ -282,6 +286,17 @@ onUnmounted(() => {
                         <!-- LOGISTIK & FINANSIAL -->
                         <div class="space-y-1">
                             <p class="px-4 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Logistik & Keuangan</p>
+                            <Link 
+                                :href="route('simpan-pinjam.index')" 
+                                @click="isMobileMenuOpen = false"
+                                :class="route().current('simpan-pinjam.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"
+                                class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
+                            >
+                                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <span class="flex-1">Simpan Pinjam</span>
+                                <span v-if="canManageKoperasi" class="px-1.5 py-0.5 bg-violet-100 text-violet-700 text-[9px] font-extrabold rounded-md uppercase">Kelola</span>
+                            </Link>
+
                             
                             <Link 
                                 v-if="canAccessCash"

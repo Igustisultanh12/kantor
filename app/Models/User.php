@@ -29,6 +29,7 @@ class User extends Authenticatable
         'is_active',
         'can_access_mitra',
         'can_access_technical_cash',
+        'can_manage_koperasi',
         'activation_token',
         'must_change_password', // TAMBAHKAN INI: Agar sistem tahu user perlu ganti password
         'reset_token',
@@ -60,8 +61,33 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'can_access_mitra' => 'boolean',
             'can_access_technical_cash' => 'boolean',
+            'can_manage_koperasi' => 'boolean',
             'must_change_password' => 'boolean', // Tambahkan cast agar logika Vue Bapak akurat
             'token_expires_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Relasi Rekening Koperasi Anggota
+     */
+    public function koperasiAccount()
+    {
+        return $this->hasOne(KoperasiAccount::class, 'user_id');
+    }
+
+    /**
+     * Relasi Pinjaman Koperasi
+     */
+    public function koperasiLoans()
+    {
+        return $this->hasMany(KoperasiLoan::class, 'user_id')->latest();
+    }
+
+    /**
+     * Cek apakah user adalah pengurus koperasi atau admin
+     */
+    public function isPengurusKoperasi(): bool
+    {
+        return $this->role === 'admin' || (bool)$this->can_manage_koperasi || $this->name === 'I Gusti Sultan H.A, A.Md.Kom';
     }
 }

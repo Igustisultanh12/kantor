@@ -547,4 +547,24 @@ class UserController extends Controller
 
         return back()->with('message', 'Personel berhasil dihapus.');
     }
+
+    /**
+     * TOGGLE HAK AKSES PENGURUS SIMPAN PINJAM (KOPERASI)
+     */
+    public function toggleKoperasiAccess(User $user)
+    {
+        $user->update(['can_manage_koperasi' => !$user->can_manage_koperasi]);
+
+        AuditLog::create([
+            'user_id'          => auth()->id(),
+            'admin_name'       => auth()->user()->name,
+            'action'           => 'UPDATE HAK AKSES PENGURUS KOPERASI',
+            'target_personnel' => $user->name,
+            'description'      => "Mengubah hak akses pengurus simpan pinjam untuk {$user->name} menjadi " . ($user->can_manage_koperasi ? 'Diizinkan' : 'Dilarang'),
+            'ip_address'       => request()->ip(),
+        ]);
+
+        return back()->with('message', 'Hak akses Pengurus Simpan Pinjam berhasil diperbarui.');
+    }
+
 }

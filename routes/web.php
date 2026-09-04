@@ -19,6 +19,7 @@ use App\Http\Controllers\CommunityActivityController;
 use App\Http\Controllers\StampController;
 use App\Http\Controllers\BackupController; 
 use App\Http\Controllers\CashController;
+use App\Http\Controllers\KoperasiController;
 use App\Http\Controllers\PersonnelController;
 use App\Http\Controllers\PESSAdminController; // SULTAN CONFIG: Pangkalan Pemisah Logika Otoritas Kerja Admin PESS
 use App\Http\Controllers\API\PESSReceiverController; // SULTAN CONFIG: Controller Penerima File Lintas VPS
@@ -176,6 +177,20 @@ Route::middleware('auth')->group(function () {
     Route::delete('/soldier-violations/{id}/delete-update', [SoldierViolationController::class, 'deleteUpdate'])->name('soldier-violations.delete-update');
     Route::delete('/soldier-violations/{id}', [SoldierViolationController::class, 'destroy'])->name('soldier-violations.destroy');
     
+    
+    // =========================================================================
+    // MODUL SIMPAN PINJAM (KOPERASI SINDEN)
+    // =========================================================================
+    Route::get('/simpan-pinjam', [KoperasiController::class, 'index'])->name('simpan-pinjam.index');
+    Route::post('/simpan-pinjam/apply-loan', [KoperasiController::class, 'applyLoan'])->name('simpan-pinjam.apply-loan');
+    Route::post('/simpan-pinjam/approve-loan/{id}', [KoperasiController::class, 'approveLoan'])->name('simpan-pinjam.approve-loan');
+    Route::post('/simpan-pinjam/reject-loan/{id}', [KoperasiController::class, 'rejectLoan'])->name('simpan-pinjam.reject-loan');
+    Route::post('/simpan-pinjam/record-installment/{loanId}', [KoperasiController::class, 'recordInstallment'])->name('simpan-pinjam.record-installment');
+    Route::post('/simpan-pinjam/deposit-saving', [KoperasiController::class, 'depositSaving'])->name('simpan-pinjam.deposit-saving');
+    Route::post('/simpan-pinjam/withdraw-saving', [KoperasiController::class, 'withdrawSaving'])->name('simpan-pinjam.withdraw-saving');
+    Route::get('/simpan-pinjam/receipt/{installmentId}', [KoperasiController::class, 'printReceipt'])->name('simpan-pinjam.receipt');
+    Route::get('/simpan-pinjam/export-ledger', [KoperasiController::class, 'exportLedgerPdf'])->name('simpan-pinjam.export-ledger');
+    
     // Modul Keuangan / Cash Buku Kas Detasemen
     Route::get('/cash', [CashController::class, 'index'])->name('cash.index');
     Route::post('/cash', [CashController::class, 'store'])->name('cash.store');
@@ -240,6 +255,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
         Route::post('/users/{id}/toggle-mitra-access', [MitraPaymentController::class, 'toggleUserAccess'])->name('users.toggle-mitra-access');
         Route::post('/users/{id}/toggle-technical-cash-access', [TechnicalUnitCashController::class, 'toggleUserAccess'])->name('users.toggle-technical-cash-access');
+        Route::post('/users/{user}/toggle-koperasi-access', [UserController::class, 'toggleKoperasiAccess'])->name('users.toggle-koperasi-access');
 
         // Kategori Arsip Surat Mako V
         Route::resource('categories', CategoryController::class);
