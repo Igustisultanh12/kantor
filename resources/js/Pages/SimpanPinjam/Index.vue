@@ -33,21 +33,45 @@ const showLoanDetailModal = ref(false);
 
 const selectedLoan = ref(null);
 
-// Form Pengajuan Pinjaman Mandiri
+// Form Pengajuan Pinjaman Mandiri (Otomatis Tenor 10 Bulan)
 const applyForm = useForm({
     loan_type: 'reguler',
-    amount_requested: 5000000,
+    amount_requested: 1000000,
     duration_months: 10,
     purpose: '',
     document: null,
 });
 
-// Kalkulator Cicilan Realtime
+// Kalkulator Cicilan Realtime (Otomatis Tenor 10 Bulan)
 const calculatedMonthlyInstallment = computed(() => {
     const amount = Number(applyForm.amount_requested) || 0;
-    const months = Number(applyForm.duration_months) || 1;
-    return Math.round(amount / months);
+    return Math.round(amount / 10);
 });
+
+// Pemicu Broadcast Pengingat Tanggal 1 (Pengurus)
+const triggerBroadcastReminders = () => {
+    Swal.fire({
+        title: 'SIARKAN PENGINGAT TANGGAL 1?',
+        html: `Sistem akan memancarkan notifikasi lonceng SINDEN dan pesan WhatsApp kepada seluruh personel yang memiliki pinjaman aktif berjalan.<br><br><span class="text-xs text-slate-500">Jadwal otomatis juga aktif berjalan setiap tanggal 1 pukul 07.00 WIB.</span>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Kirim Sekarang',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#d97706',
+    }).then((res) => {
+        if (res.isConfirmed) {
+            router.post(route('simpan-pinjam.broadcast-reminders'), {}, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire('BERHASIL DISIARKAN', 'Notifikasi pengingat pembayaran tanggal 1 telah dikirimkan ke personel.', 'success');
+                },
+                onError: (err) => {
+                    Swal.fire('GAGAL', Object.values(err)[0] || 'Kendala saat mengirim siaran pengingat.', 'error');
+                }
+            });
+        }
+    });
+};
 
 const submitApplyLoan = () => {
     applyForm.post(route('simpan-pinjam.apply-loan'), {
@@ -793,18 +817,43 @@ const activeLoansList = computed(() => {
             <!-- ================================================================= -->
             <div v-if="activeTab === 'admin_installments' && isPengurus" class="space-y-6">
                 <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
+                    <!-- Banner Jadwal Otomatis Pengingat Tanggal 1 -->
+                    <div class="p-3.5 bg-amber-50/80 border border-amber-200 rounded-2xl flex items-center justify-between text-xs text-amber-950">
+                        <div class="flex items-center gap-3">
+                            <span class="relative flex h-2.5 w-2.5">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                            </span>
+                            <div>
+                                <span class="font-black text-amber-900">Jadwal Pengingat Otomatis Aktif:</span>
+                                <span class="text-amber-800 ml-1">Sistem SINDEN terjadwal otomatis mengirim pengingat via Notifikasi Bell dan WhatsApp setiap <b>tanggal 1 pukul 07.00 WIB</b> kepada seluruh personel yang memiliki pinjaman aktif.</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
                         <div>
                             <h3 class="text-base font-extrabold text-slate-900">Pencatatan Pembayaran Cicilan Anggota</h3>
                             <p class="text-xs text-slate-500">Input setoran cicilan dengan nominal berapa pun. Sistem otomatis menghitung sisa hutang dan menerbitkan kuitansi.</p>
                         </div>
-                        <button 
-                            @click="showRecordInstallmentModal = true"
-                            class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-indigo-500/20 transition flex items-center gap-2"
-                        >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
-                            <span>Form Input Cicilan Baru</span>
-                        </button>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button 
+                                @click="triggerBroadcastReminders"
+                                type="button"
+                                class="px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-black text-xs uppercase tracking-wider rounded-2xl transition flex items-center gap-2 shadow-xs"
+                                title="Kirim pengingat pembayaran cicilan ke seluruh personel yang memiliki pinjaman aktif"
+                            >
+                                <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                                <span>Broadcast Pengingat Tgl 1</span>
+                            </button>
+                            <button 
+                                @click="showRecordInstallmentModal = true"
+                                class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-md shadow-indigo-500/20 transition flex items-center gap-2"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
+                                <span>Form Input Cicilan Baru</span>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Riwayat Seluruh Pembayaran Cicilan Terkini -->
@@ -1006,33 +1055,41 @@ const activeLoansList = computed(() => {
                         />
                     </div>
 
-                    <!-- Pilihan Tenor Bulan -->
-                    <div class="space-y-1">
-                        <label class="font-bold text-slate-700 block">Jangka Waktu Angsuran (Tenor)</label>
-                        <div class="grid grid-cols-4 sm:grid-cols-7 gap-2">
-                            <button 
-                                v-for="m in [3, 6, 10, 12, 18, 24, 36]" :key="m"
-                                type="button"
-                                @click="applyForm.duration_months = m"
-                                :class="applyForm.duration_months === m ? 'bg-emerald-600 text-white font-black' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold'"
-                                class="py-2.5 rounded-xl text-center text-xs transition"
-                            >
-                                {{ m }} Bln
-                            </button>
+                    <!-- Pilihan Tenor Otomatis 10 Bulan Sesuai Kebijakan Koperasi -->
+                    <div class="space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <label class="font-bold text-slate-700 block">Jangka Waktu Angsuran (Tenor)</label>
+                            <span class="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider">Otomatis 10 Bulan</span>
+                        </div>
+                        <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm shadow-xs">
+                                    10
+                                </div>
+                                <div>
+                                    <div class="font-extrabold text-xs text-slate-900">10 Bulan (Standar Koperasi SINDEN)</div>
+                                    <div class="text-[11px] text-slate-500">Cicilan pokok dibagi rata 10 kali tanpa bunga tambahan</div>
+                                </div>
+                            </div>
+                            <span class="text-xs font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl">
+                                Pokok / 10
+                            </span>
                         </div>
                     </div>
 
                     <!-- Kalkulator Simulasi Cicilan Interaktif -->
-                    <div class="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 flex items-center justify-between">
+                    <div class="p-4 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-100/40 border border-emerald-200 flex items-center justify-between">
                         <div>
-                            <span class="text-[10px] uppercase font-bold text-emerald-800 block">Estimasi Angsuran / Bulan</span>
-                            <span class="text-xs text-emerald-600">Tanpa biaya administrasi tersembunyi</span>
+                            <span class="text-[10px] uppercase font-black text-emerald-800 block tracking-wider">Cicilan Rutin / Bulan</span>
+                            <span class="text-[11px] text-emerald-700 font-medium">Jatuh tempo setiap tanggal 1 setiap bulannya</span>
                         </div>
                         <div class="text-right">
-                            <div class="text-lg font-black text-emerald-900">
+                            <div class="text-xl font-black text-emerald-900">
                                 {{ formatRupiah(calculatedMonthlyInstallment) }}
                             </div>
-                            <span class="text-[10px] text-emerald-700 font-bold">x {{ applyForm.duration_months }} Bulan</span>
+                            <span class="text-[10px] text-emerald-800 font-extrabold bg-emerald-200/60 px-2 py-0.5 rounded-md inline-block mt-0.5">
+                                x 10 Bulan (Lunas)
+                            </span>
                         </div>
                     </div>
 

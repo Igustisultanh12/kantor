@@ -165,7 +165,7 @@ class KoperasiController extends Controller
         $request->validate([
             'loan_type' => 'required|string|in:reguler,darurat,barang,pendidikan',
             'amount_requested' => 'required|numeric|min:100000|max:100000000',
-            'duration_months' => 'required|integer|in:3,6,10,12,18,24,36',
+            'duration_months' => 'nullable|integer',
             'purpose' => 'required|string|max:1000',
             'document' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
@@ -186,7 +186,8 @@ class KoperasiController extends Controller
 
         $loanCode = 'PINJ-' . date('Ym') . '-' . str_pad(KoperasiLoan::count() + 1, 4, '0', STR_PAD_LEFT);
         $amountReq = (float)$request->amount_requested;
-        $months = (int)$request->duration_months;
+        // Tenor otomatis 10 bulan sesuai kebijakan Koperasi SINDEN
+        $months = 10;
         $monthlyEst = round($amountReq / $months);
 
         $loan = KoperasiLoan::create([
@@ -204,14 +205,14 @@ class KoperasiController extends Controller
             'purpose' => $request->purpose,
             'status' => 'pending',
             'document_path' => $documentPath,
-            'notes' => 'Pengajuan mandiri via aplikasi SINDEN',
+            'notes' => 'Pengajuan mandiri via aplikasi SINDEN (Tenor Otomatis 10 Bulan)',
         ]);
 
         AppNotification::create([
             'user_id' => null,
             'role' => 'admin',
             'title' => 'Pengajuan Pinjaman Koperasi Baru',
-            'message' => "Personel {$user->name} ({$user->pangkat} NRP {$user->nrp}) mengajukan pinjaman sebesar Rp " . number_format($amountReq, 0, ',', '.') . " tenor {$months} bulan.",
+            'message' => "Personel {$user->name} ({$user->pangkat} NRP {$user->nrp}) mengajukan pinjaman sebesar Rp " . number_format($amountReq, 0, ',', '.') . " tenor {$months} bulan (Cicilan Rp " . number_format($monthlyEst, 0, ',', '.') . "/bulan).",
             'type' => 'info',
             'link' => route('simpan-pinjam.index'),
             'is_read' => false,
@@ -238,13 +239,14 @@ class KoperasiController extends Controller
 
         $request->validate([
             'amount_approved' => 'required|numeric|min:100000',
-            'duration_months' => 'required|integer|min:1|max:60',
+            'duration_months' => 'nullable|integer|min:1|max:60',
             'interest_rate_percent' => 'nullable|numeric|min:0|max:10',
             'notes' => 'nullable|string',
         ]);
 
         $approvedAmount = (float)$request->amount_approved;
-        $months = (int)$request->duration_months;
+        // Tenor otomatis 10 bulan, suku bunga 0%
+        $months = (int)($request->duration_months ?: 10);
         $rate = (float)($request->interest_rate_percent ?? 0);
 
         $totalInterest = round(($approvedAmount * ($rate / 100)) * $months);
@@ -268,13 +270,14 @@ class KoperasiController extends Controller
                 'notes' => $request->notes ?: $loan->notes,
             ]);
 
-            // Bentuk Jadwal Angsuran
+            // Bentuk Jadwal Angsuran: Jatuh tempo tepat pada tanggal 1 setiap bulan berikutnya
             for ($i = 1; $i <= $months; $i++) {
+                $dueDate = now()->copy()->startOfMonth()->addMonths($i)->format('Y-m-d');
                 KoperasiInstallment::create([
                     'loan_id' => $loan->id,
                     'user_id' => $loan->user_id,
                     'installment_no' => $i,
-                    'due_date' => now()->addMonths($i)->format('Y-m-d'),
+                    'due_date' => $dueDate,
                     'amount_due' => $monthlyInstallment,
                     'amount_paid' => 0,
                     'remaining_loan_after' => $totalLoan,
@@ -688,4 +691,24 @@ class KoperasiController extends Controller
 
         return $pdf->stream("BUKU_KAS_KOPERASI_" . date('Ymd') . ".pdf");
     }
+
+    /**
+     * Manual Trigger: Siaran Pengingat Tagihan Cicilan Tanggal 1 ke Seluruh Anggota Aktif via SINDEN & WhatsApp
+     */
+    public function broadcastReminders(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user->isPengurusKoperasi()) {
+            abort(403, 'Akses ditolak. Anda tidak memiliki otoritas Pengurus Koperasi.');
+        }
+
+        try {
+            \Illuminate\Support\Facades\Artisan::call('koperasi:send-reminders', ['--force' => true]);
+            return back()->with('message', 'Pengingat cicilan tagihan tanggal 1 berhasil dipancarkan ke seluruh personel peminjam via notifikasi SINDEN dan WhatsApp.');
+        } catch (\Exception $e) {
+            Log::error("Gagal siaran pengingat koperasi: " . $e->getMessage());
+            return back()->with('error', 'Kendala saat menyiarkan pengingat: ' . $e->getMessage());
+        }
+    }
 }
+

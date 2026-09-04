@@ -190,6 +190,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/simpan-pinjam/withdraw-saving', [KoperasiController::class, 'withdrawSaving'])->name('simpan-pinjam.withdraw-saving');
     Route::get('/simpan-pinjam/receipt/{installmentId}', [KoperasiController::class, 'printReceipt'])->name('simpan-pinjam.receipt');
     Route::get('/simpan-pinjam/export-ledger', [KoperasiController::class, 'exportLedgerPdf'])->name('simpan-pinjam.export-ledger');
+    Route::post('/simpan-pinjam/broadcast-reminders', [KoperasiController::class, 'broadcastReminders'])->name('simpan-pinjam.broadcast-reminders');
     
     // Modul Keuangan / Cash Buku Kas Detasemen
     Route::get('/cash', [CashController::class, 'index'])->name('cash.index');
