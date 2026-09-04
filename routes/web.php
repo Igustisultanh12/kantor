@@ -191,6 +191,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/simpan-pinjam/withdraw-saving', [KoperasiController::class, 'withdrawSaving'])->name('simpan-pinjam.withdraw-saving');
     Route::get('/simpan-pinjam/receipt/{installmentId}', [KoperasiController::class, 'printReceipt'])->name('simpan-pinjam.receipt');
     Route::get('/simpan-pinjam/export-ledger', [KoperasiController::class, 'exportLedgerPdf'])->name('simpan-pinjam.export-ledger');
+    Route::post('/simpan-pinjam/record-cash-mutation', [KoperasiController::class, 'recordCashMutation'])->name('simpan-pinjam.record-cash-mutation');
+    Route::post('/simpan-pinjam/early-payoff/{loanId}', [KoperasiController::class, 'earlyPayoff'])->name('simpan-pinjam.early-payoff');
     Route::post('/simpan-pinjam/broadcast-reminders', [KoperasiController::class, 'broadcastReminders'])->name('simpan-pinjam.broadcast-reminders');
     
     // Modul Keuangan / Cash Buku Kas Detasemen
@@ -328,6 +330,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.read');
     Route::post('/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
     Route::delete('/notifications/{id}', [\App\Http\Controllers\NotificationController::class, 'destroy'])->name('notifications.destroy');
+
+    // Modul Pencarian Global Cepat (Command Palette) & Jejak Audit
+    Route::get('/api/global-search', [\App\Http\Controllers\GlobalSearchController::class, 'search'])->name('api.global-search');
+    Route::get('/api/audit-trail', [\App\Http\Controllers\AuditTrailController::class, 'getTrail'])->name('api.audit-trail');
+    Route::get('/api/ping', fn() => response()->json(['status' => 'pong', 'timestamp' => time()]))->name('api.ping');
 });
 
 

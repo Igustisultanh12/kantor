@@ -1,5 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import AuditTrailModal from '@/Components/AuditTrailModal.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import Swal from 'sweetalert2';
@@ -17,6 +18,14 @@ const isCommander = computed(() => user.value.role === 'admin' || user.value.rol
 const search = ref(props.filters?.search || '');
 const statusFilter = ref(props.filters?.status || 'all');
 const kategoriFilter = ref(props.filters?.kategori || 'all');
+
+const showAuditModal = ref(false);
+const auditTarget = ref('');
+
+const openAuditTrail = (target) => {
+    auditTarget.value = target;
+    showAuditModal.value = true;
+};
 
 const applyFilter = () => {
     router.get(route('skhpp.index'), {
@@ -311,10 +320,15 @@ const formatDate = (dateStr) => {
 
                                 <td class="py-4 px-6 text-right">
                                     <div class="flex items-center justify-end gap-2">
-                                        <a :href="route('skhpp.export-pdf', skhpp.id)" target="_blank"class="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs flex items-center gap-1"title="Unduh PDF DomPDF"> PDF
+                                        <button @click="openAuditTrail(skhpp.nomor_skhpp || skhpp.nama)" class="px-2.5 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-700 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs flex items-center gap-1" title="Jejak Audit & Riwayat Dokumen">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                            Audit
+                                        </button>
+
+                                        <a :href="route('skhpp.export-pdf', skhpp.id)" target="_blank" class="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs flex items-center gap-1" title="Unduh PDF DomPDF"> PDF
                                         </a>
 
-                                        <Link :href="route('skhpp.show', skhpp.id)"class="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs"title="Pratinjau Dokumen"> Detail
+                                        <Link :href="route('skhpp.show', skhpp.id)" class="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs" title="Pratinjau Dokumen"> Detail
                                         </Link>
 
                                         <!-- Tombol Edit & Revisi untuk Operator jika Ditolak/Pending -->
@@ -352,5 +366,7 @@ const formatDate = (dateStr) => {
                 </div>
             </div>
         </div>
+
+        <AuditTrailModal :show="showAuditModal" :target="auditTarget" title="Jejak Audit SKHPP" @close="showAuditModal = false" />
     </AuthenticatedLayout>
 </template>

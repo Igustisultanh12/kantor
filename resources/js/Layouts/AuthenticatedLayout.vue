@@ -4,6 +4,7 @@ import { usePage, Link } from '@inertiajs/vue3';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import Swal from 'sweetalert2';
+import GlobalCommandPalette from '@/Components/GlobalCommandPalette.vue';
 
 const page = usePage();
 
@@ -20,27 +21,65 @@ const appLogo = computed(() => {
 const isAdmin = computed(() => page.props.auth.user.role === 'admin');
 const user = computed(() => page.props.auth.user);
 
+const commandPaletteRef = ref(null);
+
+const openGlobalCommandPalette = () => {
+    commandPaletteRef.value?.openPalette();
+};
+
 /**
- * LOGIKA PENCARIAN GLOBAL CORETAX
+ * PROTOKOL KEAMANAN: BATAS WAKTU SESI TIDAK AKTIF (INACTIVITY TIMEOUT)
+ * Sesi tidak aktif 20 menit: Peringatan muncul di menit ke-18 (sisa 120 detik).
  */
-const searchQuery = ref('');
-const searchInputRef = ref(null);
+const showInactivityWarning = ref(false);
+const inactivitySecondsLeft = ref(120);
+let inactivityTimer = null;
+let countdownTimer = null;
 
-const handleSearchInput = () => {
-    const searchEvent = new CustomEvent('sinden-global-search', {
-        detail: { query: searchQuery.value }
-    });
-    window.dispatchEvent(searchEvent);
+const INACTIVITY_LIMIT_MS = 18 * 60 * 1000; // 18 menit
+
+const resetInactivityTimer = () => {
+    if (showInactivityWarning.value) return;
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => {
+        triggerInactivityWarning();
+    }, INACTIVITY_LIMIT_MS);
 };
 
-const handleKeyDown = (event) => {
-    if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
-        event.preventDefault();
-        if (searchInputRef.value) {
-            searchInputRef.value.focus();
+const triggerInactivityWarning = () => {
+    showInactivityWarning.value = true;
+    inactivitySecondsLeft.value = 120; // 2 menit countdown
+
+    if (countdownTimer) clearInterval(countdownTimer);
+    countdownTimer = setInterval(() => {
+        inactivitySecondsLeft.value--;
+        if (inactivitySecondsLeft.value <= 0) {
+            clearInterval(countdownTimer);
+            executeAutoLogout();
         }
-    }
+    }, 1000);
 };
+
+const extendSession = () => {
+    showInactivityWarning.value = false;
+    if (countdownTimer) clearInterval(countdownTimer);
+    resetInactivityTimer();
+    // Ping backend agar session PHP tetap hidup
+    fetch(route('api.ping'), { headers: { 'X-Requested-With': 'XMLHttpRequest' } }).catch(() => {});
+};
+
+const executeAutoLogout = () => {
+    showInactivityWarning.value = false;
+    if (countdownTimer) clearInterval(countdownTimer);
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    router.post(route('logout'), {}, {
+        onFinish: () => {
+            window.location.href = '/login';
+        }
+    });
+};
+
+const userActivityEvents = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
 
 /**
  * SISTEM NOTIFIKASI REAL-TIME & IN-APP BELL
@@ -161,6 +200,11 @@ const checkMobile = () => {
 let notifTimer = null;
 
 onMounted(() => {
+    // Daftarkan listener aktivitas personel untuk deteksi batas waktu sesi
+    userActivityEvents.forEach(evt => {
+        window.addEventListener(evt, resetInactivityTimer, { passive: true });
+    });
+    resetInactivityTimer();
     checkMobile();
     window.addEventListener('resize', checkMobile);
     window.addEventListener('keydown', handleKeyDown);
@@ -170,6 +214,11 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+    userActivityEvents.forEach(evt => {
+        window.removeEventListener(evt, resetInactivityTimer);
+    });
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    if (countdownTimer) clearInterval(countdownTimer);
     window.removeEventListener('resize', checkMobile);
     window.removeEventListener('keydown', handleKeyDown);
     if (notifTimer) clearInterval(notifTimer);
@@ -690,28 +739,28 @@ onUnmounted(() => {
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                     </button>
 
-                    <!-- Global Search Bar (Desktops & Tablets) -->
-                    <div class="hidden sm:flex max-w-md w-full relative items-center">
-                        <svg class="w-4 h-4 text-slate-400 absolute left-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <!-- Global Command Palette Trigger Button (Desktop & Tablet) -->
+                    <button 
+                        @click="openGlobalCommandPalette"
+                        class="hidden sm:flex max-w-md w-full relative items-center bg-[#F8FAFC] hover:bg-slate-100/90 border border-[#E2E8F0] rounded-2xl pl-10 pr-14 py-2 text-xs font-semibold text-slate-400 text-left transition cursor-pointer group shadow-xs"
+                    >
+                        <svg class="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition absolute left-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
-                        <input 
-                            type="text"ref="searchInputRef"v-model="searchQuery"
-                            @input="handleSearchInput"placeholder="Cari data log, nama personel, atau instansi..."class="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl pl-10 pr-12 py-2 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition"
-                        />
-                        <span class="hidden md:inline-block absolute right-3 bg-white border border-slate-200 rounded-lg px-2 py-0.5 text-[9px] font-mono text-slate-400 font-bold shadow-xs">Ctrl K</span>
-                    </div>
+                        <span class="truncate">Cari menu, nomor surat, personel, SKHPP, pinjaman...</span>
+                        <span class="hidden md:inline-block absolute right-3 bg-white border border-slate-200 rounded-lg px-2 py-0.5 text-[9px] font-mono text-slate-500 font-bold shadow-xs">Ctrl K</span>
+                    </button>
 
-                    <!-- Compact Search Input for Mobile Only -->
-                    <div class="flex sm:hidden flex-1 relative items-center">
-                        <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <!-- Compact Search Trigger for Mobile Only -->
+                    <button 
+                        @click="openGlobalCommandPalette"
+                        class="flex sm:hidden p-2 rounded-xl text-slate-500 hover:bg-slate-100"
+                        title="Pencarian Cepat"
+                    >
+                        <svg class="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
-                        <input 
-                            type="text"v-model="searchQuery"
-                            @input="handleSearchInput"placeholder="Cari..."class="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl pl-7 pr-2 py-1.5 text-[11px] font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition"
-                        />
-                    </div>
+                    </button>
                 </div>
 
                 <!-- Right Header Actions (Notif & Profile) -->
@@ -799,4 +848,46 @@ onUnmounted(() => {
         </div>
 
     </div>
+
+    <!-- MODAL PERINGATAN KEDINASAN: INACTIVITY TIMEOUT -->
+    <div v-if="showInactivityWarning" class="fixed inset-0 z-[250] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700/80 rounded-[2.5rem] shadow-2xl p-6 sm:p-8 max-w-md w-full text-white text-center space-y-5 animate-in zoom-in duration-200">
+            <div class="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center mx-auto shadow-inner">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <div class="space-y-1.5">
+                <span class="text-[10px] font-black uppercase text-amber-400 tracking-widest block">Protokol Keamanan Intelijen</span>
+                <h3 class="text-base font-black uppercase text-white">Peringatan Sesi Tidak Aktif</h3>
+                <p class="text-xs text-slate-300 leading-relaxed">
+                    Sistem mendeteksi tidak ada aktivitas personel selama 18 menit. Demi kerahasiaan dokumen kedinasan, sesi Anda akan diputus otomatis dalam:
+                </p>
+            </div>
+            <div class="p-3 bg-slate-950/80 rounded-2xl border border-slate-800">
+                <span class="text-3xl font-mono font-black text-amber-400 tracking-widest">
+                    {{ String(Math.floor(inactivitySecondsLeft / 60)).padStart(2, '0') }}:{{ String(inactivitySecondsLeft % 60).padStart(2, '0') }}
+                </span>
+            </div>
+            <div class="flex items-center gap-2 pt-2">
+                <button 
+                    type="button"
+                    @click="executeAutoLogout"
+                    class="w-1/2 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs uppercase rounded-xl transition cursor-pointer"
+                >
+                    Keluar Sekarang
+                </button>
+                <button 
+                    type="button"
+                    @click="extendSession"
+                    class="w-1/2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-indigo-600/30 transition cursor-pointer"
+                >
+                    Lanjutkan Sesi
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GLOBAL COMMAND PALETTE MODAL (CTRL + K) -->
+    <GlobalCommandPalette ref="commandPaletteRef" />
 </template>

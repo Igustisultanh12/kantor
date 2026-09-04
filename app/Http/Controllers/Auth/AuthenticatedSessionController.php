@@ -86,6 +86,40 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
+        // OTORITAS KEAMANAN: 2FA WhatsApp untuk Pimpinan (Admin, Komandan, Pasops) atau MFA Aktif
+        $leadershipRoles = ['admin', 'komandan', 'pasops'];
+        $requiresMfa = (in_array($user->role, $leadershipRoles) || (bool)$user->mfa_enabled);
+
+        if ($requiresMfa && !empty($user->phone) && !$request->wantsJson() && !$request->expectsJson() && !$request->is('api/*')) {
+            $otp = str_pad((string)random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
+            $expiresAt = now()->addMinutes(5)->timestamp;
+
+            session([
+                'mfa_user_id' => $user->id,
+                'mfa_otp' => $otp,
+                'mfa_expires_at' => $expiresAt,
+                'mfa_attempts' => 0,
+            ]);
+
+            Auth::guard('web')->logout();
+
+            try {
+                $waMsg = "*OTORITAS KEAMANAN SINDEN*\n"
+                    . "KODE VERIFIKASI DUA LANGKAH (2FA)\n"
+                    . "=================================\n"
+                    . "Yth. {$user->pangkat} {$user->name}\n\n"
+                    . "Kode OTP verifikasi masuk Anda adalah:\n"
+                    . "*{$otp}*\n\n"
+                    . "Kode ini berlaku selama 5 menit.\n"
+                    . "Peringatan: Dokumen intelijen bersifat rahasia. Jangan berikan kode ini kepada siapa pun demi keamanan kedinasan.";
+                \App\Services\WhatsappService::sendMessage($user->phone, $waMsg);
+            } catch (\Exception $waErr) {
+                \Illuminate\Support\Facades\Log::error("Gagal kirim OTP 2FA: " . $waErr->getMessage());
+            }
+
+            return redirect()->route('mfa.verify');
+        }
+
         $request->session()->regenerate();
 
         if ($request->filled('latitude') && $request->filled('longitude')) {
@@ -114,5 +148,127 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/');
+    }
+
+    /**
+     * Tampilan Verifikasi 2FA WhatsApp Kedinasan
+     */
+    public function showMfaVerify()
+    {
+        $userId = session('mfa_user_id');
+        $expiresAt = session('mfa_expires_at');
+
+        if (!$userId || !$expiresAt || now()->timestamp > $expiresAt) {
+            session()->forget(['mfa_user_id', 'mfa_otp', 'mfa_expires_at', 'mfa_attempts']);
+            return redirect()->route('login')->withErrors(['email' => 'Sesi verifikasi OTP telah kedaluwarsa. Silakan login kembali.']);
+        }
+
+        $user = \App\Models\User::find($userId);
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        $phone = $user->phone ?: '';
+        $maskedPhone = (strlen($phone) > 6) 
+            ? substr($phone, 0, 4) . '****' . substr($phone, -3) 
+            : $phone;
+
+        return Inertia::render('Auth/MfaVerify', [
+            'maskedPhone' => $maskedPhone,
+            'expiresAt' => $expiresAt,
+            'userName' => $user->name,
+            'userPangkat' => $user->pangkat,
+        ]);
+    }
+
+    /**
+     * Proses Verifikasi Kode OTP 2FA
+     */
+    public function verifyMfa(Request $request)
+    {
+        $request->validate([
+            'otp' => 'required|string|size:6',
+        ]);
+
+        $userId = session('mfa_user_id');
+        $storedOtp = session('mfa_otp');
+        $expiresAt = session('mfa_expires_at');
+
+        if (!$userId || !$expiresAt || now()->timestamp > $expiresAt) {
+            session()->forget(['mfa_user_id', 'mfa_otp', 'mfa_expires_at', 'mfa_attempts']);
+            return redirect()->route('login')->withErrors(['email' => 'Sesi verifikasi OTP telah kedaluwarsa.']);
+        }
+
+        $attempts = (int)session('mfa_attempts', 0);
+        if ($attempts >= 5) {
+            session()->forget(['mfa_user_id', 'mfa_otp', 'mfa_expires_at', 'mfa_attempts']);
+            return redirect()->route('login')->withErrors(['email' => 'Terlalu banyak percobaan salah. Silakan login kembali.']);
+        }
+
+        if (trim($request->otp) !== (string)$storedOtp) {
+            session(['mfa_attempts' => $attempts + 1]);
+            return back()->withErrors(['otp' => 'Kode OTP tidak sesuai. Sisa kesempatan: ' . (4 - $attempts)]);
+        }
+
+        $user = \App\Models\User::findOrFail($userId);
+
+        Auth::login($user);
+        session()->forget(['mfa_user_id', 'mfa_otp', 'mfa_expires_at', 'mfa_attempts']);
+        $request->session()->regenerate();
+
+        \App\Models\AuditLog::create([
+            'user_id' => $user->id,
+            'admin_name' => $user->name,
+            'action' => 'LOGIN_2FA_SUCCESS',
+            'target_personnel' => $user->name,
+            'description' => "Verifikasi 2FA WhatsApp sukses ({$user->role})",
+            'ip_address' => $request->ip(),
+        ]);
+
+        if ($user->must_change_password) {
+            return redirect()->route('profile.edit')->with('info', 'Otoritas Keamanan: Ini adalah login pertama Anda. Mohon perbarui password default Anda segera.');
+        }
+
+        return redirect()->intended(route('dashboard'));
+    }
+
+    /**
+     * Kirim Ulang OTP 2FA
+     */
+    public function resendMfa(Request $request)
+    {
+        $userId = session('mfa_user_id');
+        if (!$userId) {
+            return redirect()->route('login');
+        }
+
+        $user = \App\Models\User::find($userId);
+        if (!$user || empty($user->phone)) {
+            return back()->withErrors(['otp' => 'Nomor WhatsApp tidak valid.']);
+        }
+
+        $otp = str_pad((string)random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
+        $expiresAt = now()->addMinutes(5)->timestamp;
+
+        session([
+            'mfa_otp' => $otp,
+            'mfa_expires_at' => $expiresAt,
+            'mfa_attempts' => 0,
+        ]);
+
+        try {
+            $waMsg = "*OTORITAS KEAMANAN SINDEN*\n"
+                . "KODE VERIFIKASI DUA LANGKAH (2FA) BARU\n"
+                . "=====================================\n"
+                . "Yth. {$user->pangkat} {$user->name}\n\n"
+                . "Kode OTP baru Anda adalah:\n"
+                . "*{$otp}*\n\n"
+                . "Kode ini berlaku selama 5 menit.";
+            \App\Services\WhatsappService::sendMessage($user->phone, $waMsg);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Gagal kirim ulang OTP 2FA: " . $e->getMessage());
+        }
+
+        return back()->with('status', 'Kode OTP baru telah dikirimkan ke WhatsApp Anda.');
     }
 }

@@ -744,5 +744,173 @@ class KoperasiController extends Controller
             return back()->with('error', 'Kendala saat menyiarkan pengingat: ' . $e->getMessage());
         }
     }
-}
+    /**
+     * Pencatatan Mutasi Kas Koperasi Langsung (Kas Masuk / Debit & Kas Keluar / Pengeluaran Kredit)
+     * Contoh: Pembayaran keperluan A, Beli barang B, ATK kantor, Operasional, Penambahan Modal, dll.
+     */
+    public function recordCashMutation(Request $request)
+    {
+        $officer = auth()->user();
+        if (!$officer->isPengurusKoperasi()) {
+            abort(403, 'Akses ditolak. Anda tidak memiliki otoritas sebagai Pengurus Koperasi.');
+        }
 
+        $request->validate([
+            'type' => 'required|in:in,out',
+            'category' => 'required|string|max:100',
+            'amount' => 'required|numeric|min:1000',
+            'date' => 'required|date',
+            'description' => 'required|string|max:500',
+        ]);
+
+        $amount = (float)$request->amount;
+        $type = $request->type;
+
+        DB::beginTransaction();
+        try {
+            $latestMut = KoperasiCashMutation::latest('id')->first();
+            $prevBal = $latestMut ? (float)$latestMut->balance : 50000000;
+            
+            $newBal = ($type === 'in') ? ($prevBal + $amount) : ($prevBal - $amount);
+
+            $trxCode = 'MUT-' . date('YmdHis') . '-' . strtoupper($type) . '-' . rand(10, 99);
+
+            $mutation = KoperasiCashMutation::create([
+                'transaction_code' => $trxCode,
+                'date' => $request->date,
+                'type' => $type,
+                'category' => $request->category,
+                'amount' => $amount,
+                'balance' => $newBal,
+                'description' => $request->description,
+                'recorded_by' => $officer->id,
+            ]);
+
+            DB::commit();
+
+            $jenisText = ($type === 'in') ? 'Kas Masuk (Debit)' : 'Kas Keluar / Pengeluaran (Kredit)';
+            return back()->with('message', "{$jenisText} sebesar Rp " . number_format($amount, 0, ',', '.') . " berhasil dicatat ke Buku Kas Koperasi.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Gagal mencatat mutasi kas: " . $e->getMessage());
+            return back()->with('error', 'Terjadi kendala saat mencatat mutasi kas: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Pelunasan Dini / Dipercepat Pinjaman Sekaligus
+     */
+    public function earlyPayoff(Request $request, $loanId)
+    {
+        $officer = auth()->user();
+        if (!$officer->isPengurusKoperasi()) {
+            abort(403, 'Akses ditolak. Anda bukan pengurus simpan pinjam.');
+        }
+
+        $request->validate([
+            'payment_date' => 'required|date',
+            'payment_method' => 'required|in:potong_gaji,transfer,tunai',
+            'notes' => 'nullable|string|max:255',
+        ]);
+
+        $loan = KoperasiLoan::with(['user', 'installments'])->findOrFail($loanId);
+
+        if ($loan->status !== 'active') {
+            return back()->with('error', 'Pinjaman ini tidak dalam status aktif.');
+        }
+
+        $payAmount = (float)$loan->remaining_amount;
+        if ($payAmount <= 0) {
+            return back()->with('error', 'Pinjaman sudah lunas.');
+        }
+
+        DB::beginTransaction();
+        try {
+            $newTotalPaid = (float)$loan->total_paid + $payAmount;
+            $receiptNumber = 'KW-KOP-' . date('Ym') . '-' . str_pad(KoperasiInstallment::whereNotNull('receipt_number')->count() + 1, 4, '0', STR_PAD_LEFT);
+
+            // Tandai seluruh cicilan yang tersisa sebagai lunas
+            $unpaidSchedules = KoperasiInstallment::where('loan_id', $loan->id)
+                ->where('status', '!=', 'paid')
+                ->orderBy('installment_no', 'asc')
+                ->get();
+
+            if ($unpaidSchedules->count() > 0) {
+                foreach ($unpaidSchedules as $idx => $sch) {
+                    $sch->update([
+                        'status' => 'paid',
+                        'amount_paid' => ($idx === 0) ? $payAmount : 0,
+                        'payment_date' => $request->payment_date,
+                        'receipt_number' => $receiptNumber,
+                        'recorded_by' => $officer->id,
+                        'notes' => 'Pelunasan Dipercepat / Dini Sekaligus',
+                    ]);
+                }
+            } else {
+                KoperasiInstallment::create([
+                    'loan_id' => $loan->id,
+                    'user_id' => $loan->user_id,
+                    'installment_no' => KoperasiInstallment::where('loan_id', $loan->id)->count() + 1,
+                    'receipt_number' => $receiptNumber,
+                    'due_date' => $request->payment_date,
+                    'amount_due' => $payAmount,
+                    'amount_paid' => $payAmount,
+                    'remaining_loan_after' => 0,
+                    'payment_date' => $request->payment_date,
+                    'payment_method' => $request->payment_method,
+                    'status' => 'paid',
+                    'recorded_by' => $officer->id,
+                    'notes' => $request->notes ?: 'Pelunasan Dipercepat / Dini Sekaligus',
+                ]);
+            }
+
+            $loan->update([
+                'remaining_amount' => 0,
+                'total_paid' => $newTotalPaid,
+                'status' => 'paid_off',
+            ]);
+
+            $latestMut = KoperasiCashMutation::latest('id')->first();
+            $prevBal = $latestMut ? (float)$latestMut->balance : 50000000;
+            $newBal = $prevBal + $payAmount;
+
+            KoperasiCashMutation::create([
+                'transaction_code' => 'MUT-' . date('YmdHis') . '-IN',
+                'date' => $request->payment_date,
+                'type' => 'in',
+                'category' => 'pelunasan_dipercepat',
+                'amount' => $payAmount,
+                'balance' => $newBal,
+                'reference_type' => 'KoperasiLoan',
+                'reference_id' => $loan->id,
+                'description' => "Pelunasan dipercepat pinjaman {$loan->loan_code} ({$loan->user->name}) - Kuitansi: {$receiptNumber}",
+                'recorded_by' => $officer->id,
+            ]);
+
+            DB::commit();
+
+            if ($loan->user->phone) {
+                $waText = "BUKTI PELUNASAN PINJAMAN KOPERASI SINDEN\n"
+                    . "========================================\n"
+                    . "No. Kuitansi : *{$receiptNumber}*\n"
+                    . "Nama Anggota : {$loan->user->pangkat} {$loan->user->name}\n"
+                    . "NRP/NIP      : {$loan->user->nrp}\n"
+                    . "No. Pinjaman : {$loan->loan_code}\n"
+                    . "Tanggal Bayar: " . Carbon::parse($request->payment_date)->isoFormat('D MMMM Y') . "\n"
+                    . "Jumlah Bayar : *Rp " . number_format($payAmount, 0, ',', '.') . "*\n"
+                    . "Status Tagihan: *LUNAS SEPENUHNYA*\n"
+                    . "----------------------------------------\n"
+                    . "Keterangan   : Pelunasan Dipercepat (Early Settlement)\n"
+                    . "Penerima     : {$officer->name}\n\n"
+                    . "Selamat, seluruh kewajiban pinjaman Anda telah lunas dan tercatat sah pada sistem Koperasi SINDEN.";
+                WhatsappService::sendMessage($loan->user->phone, $waText);
+            }
+
+            return back()->with('message', "Pinjaman {$loan->loan_code} berhasil dilunasi sepenuhnya sebesar Rp " . number_format($payAmount, 0, ',', '.') . ".");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Gagal pelunasan dipercepat: " . $e->getMessage());
+            return back()->with('error', 'Terjadi kendala saat memproses pelunasan dipercepat: ' . $e->getMessage());
+        }
+    }
+}

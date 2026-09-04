@@ -24,6 +24,81 @@ const showRecordInstallmentModal = ref(false);
 const showDepositSavingModal = ref(false);
 const showWithdrawSavingModal = ref(false);
 const showLoanDetailModal = ref(false);
+const showCashMutationModal = ref(false);
+const cashMutationType = ref('in'); // 'in' or 'out'
+const showEarlyPayoffModal = ref(false);
+const selectedLoanForPayoff = ref(null);
+
+// Form Mutasi Kas Operasional Koperasi (Kas Masuk / Debit & Kas Keluar / Kredit)
+const cashMutationForm = useForm({
+    type: 'in',
+    category: 'operasional',
+    amount: '',
+    date: new Date().toISOString().substring(0, 10),
+    description: '',
+});
+
+const openCashMutationModal = (type) => {
+    cashMutationType.value = type;
+    cashMutationForm.type = type;
+    cashMutationForm.category = (type === 'in') ? 'modal_awal' : 'operasional';
+    cashMutationForm.amount = '';
+    cashMutationForm.date = new Date().toISOString().substring(0, 10);
+    cashMutationForm.description = '';
+    showCashMutationModal.value = true;
+};
+
+const submitCashMutation = () => {
+    if (!cashMutationForm.amount || cashMutationForm.amount <= 0) {
+        Swal.fire('PERINGATAN', 'Nominal transaksi kas wajib diisi dan lebih dari nol.', 'warning');
+        return;
+    }
+    if (!cashMutationForm.description) {
+        Swal.fire('PERINGATAN', 'Uraian keperluan transaksi kas wajib diisi.', 'warning');
+        return;
+    }
+
+    cashMutationForm.post(route('simpan-pinjam.record-cash-mutation'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showCashMutationModal.value = false;
+            cashMutationForm.reset();
+            Swal.fire('BERHASIL', 'Transaksi mutasi kas koperasi telah dicatat.', 'success');
+        },
+        onError: (err) => {
+            Swal.fire('GAGAL', Object.values(err)[0] || 'Gagal mencatat mutasi kas.', 'error');
+        }
+    });
+};
+
+// Form Pelunasan Dipercepat (Early Settlement)
+const earlyPayoffForm = useForm({
+    payment_date: new Date().toISOString().substring(0, 10),
+    payment_method: 'potong_gaji',
+    notes: 'Pelunasan Dipercepat Sekaligus',
+});
+
+const openEarlyPayoffModal = (loan) => {
+    selectedLoanForPayoff.value = loan;
+    earlyPayoffForm.payment_date = new Date().toISOString().substring(0, 10);
+    earlyPayoffForm.payment_method = 'potong_gaji';
+    earlyPayoffForm.notes = `Pelunasan dini pinjaman ${loan.loan_code}`;
+    showEarlyPayoffModal.value = true;
+};
+
+const submitEarlyPayoff = () => {
+    if (!selectedLoanForPayoff.value) return;
+    earlyPayoffForm.post(route('simpan-pinjam.early-payoff', selectedLoanForPayoff.value.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showEarlyPayoffModal.value = false;
+            Swal.fire('LUNAS SEPENUHNYA', 'Pinjaman telah dilunasi sepenuhnya dan kuitansi pelunasan telah diterbitkan.', 'success');
+        },
+        onError: (err) => {
+            Swal.fire('GAGAL', Object.values(err)[0] || 'Gagal memproses pelunasan dipercepat.', 'error');
+        }
+    });
+};
 
 const selectedLoan = ref(null);
 
@@ -400,9 +475,16 @@ const activeLoansList = computed(() => {
                                             <template v-if="loan.status === 'active'">
                                                 <button 
                                                     @click="openRecordInstallmentDirect(loan)" 
-                                                    class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[10px] uppercase rounded-lg transition"
+                                                    class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[10px] uppercase rounded-lg transition shadow-xs"
                                                 >
                                                     Catat Cicilan
+                                                </button>
+                                                <button 
+                                                    @click="openEarlyPayoffModal(loan)" 
+                                                    class="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white border border-emerald-300 font-extrabold text-[10px] uppercase rounded-lg transition shadow-xs"
+                                                    title="Pelunasan Dipercepat / Dini Sekaligus"
+                                                >
+                                                    Pelunasan Cepat
                                                 </button>
                                             </template>
 
@@ -587,16 +669,33 @@ const activeLoansList = computed(() => {
                 <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-4">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
                         <div>
-                            <h3 class="text-base font-black text-slate-900">Arus Kas Masuk & Keluar Koperasi</h3>
-                            <p class="text-xs text-slate-500">Pencatatan real-time arus dana simpanan, pencairan pinjaman, dan cicilan angsuran.</p>
+                            <h3 class="text-base font-black text-slate-900">Buku Kas & Arus Keuangan Koperasi</h3>
+                            <p class="text-xs text-slate-500">Pencatatan saldo masuk (debit), pengeluaran operasional / belanja (kredit), dan mutasi simpan pinjam.</p>
                         </div>
-                        <a 
-                            :href="route('simpan-pinjam.export-ledger')" 
-                            target="_blank"
-                            class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs uppercase rounded-xl shadow-xs transition"
-                        >
-                            Unduh Laporan PDF (A4)
-                        </a>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button 
+                                @click="openCashMutationModal('in')"
+                                class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
+                                <span>+ Kas Masuk (Debit)</span>
+                            </button>
+                            <button 
+                                @click="openCashMutationModal('out')"
+                                class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"></path></svg>
+                                <span>- Kas Keluar / Pengeluaran (Kredit)</span>
+                            </button>
+                            <a 
+                                :href="route('simpan-pinjam.export-ledger')" 
+                                target="_blank"
+                                class="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs uppercase rounded-xl shadow-xs transition flex items-center gap-1.5"
+                            >
+                                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                <span>Unduh PDF</span>
+                            </a>
+                        </div>
                     </div>
 
                     <div class="overflow-x-auto">
@@ -1012,6 +1111,244 @@ const activeLoansList = computed(() => {
                         Tutup
                     </button>
                 </div>
+            </div>
+        </div>
+
+    
+        <!-- ===================================================================== -->
+        <!-- MODAL: CATAT MUTASI KAS KOPERASI (KAS MASUK & KAS KELUAR OPERASIONAL) -->
+        <!-- ===================================================================== -->
+        <div v-if="showCashMutationModal" class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+            <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden my-auto border border-slate-100 animate-in zoom-in duration-200">
+                
+                <!-- Fixed Header -->
+                <div :class="cashMutationType === 'in' ? 'bg-emerald-50/80 border-emerald-100' : 'bg-rose-50/80 border-rose-100'" class="px-6 py-4 border-b flex items-center justify-between shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div :class="cashMutationType === 'in' ? 'bg-emerald-600' : 'bg-rose-600'" class="w-9 h-9 rounded-xl flex items-center justify-center text-white font-black shadow-sm">
+                            <svg v-if="cashMutationType === 'in'" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
+                            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"></path></svg>
+                        </div>
+                        <div>
+                            <span :class="cashMutationType === 'in' ? 'text-emerald-700' : 'text-rose-700'" class="text-[10px] font-black uppercase tracking-wider block">
+                                {{ cashMutationType === 'in' ? 'KAS MASUK (DEBIT / PENAMBAHAN SALDO)' : 'KAS KELUAR (KREDIT / PENGELUARAN OPERASIONAL)' }}
+                            </span>
+                            <h3 class="text-base font-black text-slate-900">
+                                {{ cashMutationType === 'in' ? 'Pencatatan Kas Masuk Koperasi' : 'Pencatatan Pengeluaran Koperasi' }}
+                            </h3>
+                        </div>
+                    </div>
+                    <button @click="showCashMutationModal = false" class="w-8 h-8 rounded-xl bg-slate-200/60 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-black transition cursor-pointer">
+                        &times;
+                    </button>
+                </div>
+
+                <!-- Scrollable Form Body -->
+                <form id="cashMutationFormId" @submit.prevent="submitCashMutation" class="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+                    
+                    <!-- Kategori Transaksi -->
+                    <div class="space-y-1">
+                        <label class="font-bold text-slate-700 block uppercase text-[11px]">Kategori Transaksi Kas *</label>
+                        <select 
+                            v-model="cashMutationForm.category"
+                            class="w-full rounded-xl border border-slate-200 bg-slate-50/50 p-2.5 font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition"
+                            required
+                        >
+                            <template v-if="cashMutationType === 'in'">
+                                <option value="modal_awal">Penambahan Modal Awal Koperasi</option>
+                                <option value="donasi_sumbangan">Donasi / Sumbangan Satuan</option>
+                                <option value="pendapatan_jasa">Pendapatan Jasa / Usaha Lain</option>
+                                <option value="pengembalian_kasbon">Pengembalian Kasbon Non-Pinjaman</option>
+                                <option value="lain_lain">Penerimaan Kas Lain-Lain</option>
+                            </template>
+                            <template v-else>
+                                <option value="operasional">Operasional Kegiatan Satuan (Pembayaran A)</option>
+                                <option value="pembelian_barang">Pembelian Barang / Inventaris (Beli B)</option>
+                                <option value="atk">Biaya Alat Tulis Kantor (ATK) & Cetak</option>
+                                <option value="konsumsi">Konsumsi Rapat / Kegiatan Dinas</option>
+                                <option value="pemeliharaan">Biaya Pemeliharaan Fasilitas / Sarpras</option>
+                                <option value="lain_lain">Pengeluaran Kas Lain-Lain</option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <!-- Nominal Uang -->
+                    <div class="space-y-1">
+                        <label class="font-bold text-slate-700 block uppercase text-[11px]">Nominal Transaksi (Rp) *</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 font-black text-slate-400">Rp</span>
+                            <input 
+                                type="number" 
+                                v-model="cashMutationForm.amount"
+                                placeholder="Contoh: 1500000"
+                                min="1000"
+                                class="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-10 pr-3 py-2.5 font-black text-slate-900 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 transition"
+                                required
+                            />
+                        </div>
+                        <p v-if="cashMutationForm.amount" class="text-[11px] font-bold text-indigo-600">
+                            Terbaca: {{ formatRupiah(cashMutationForm.amount) }}
+                        </p>
+                    </div>
+
+                    <!-- Tanggal Transaksi -->
+                    <div class="space-y-1">
+                        <label class="font-bold text-slate-700 block uppercase text-[11px]">Tanggal Transaksi *</label>
+                        <input 
+                            type="date" 
+                            v-model="cashMutationForm.date"
+                            class="w-full rounded-xl border border-slate-200 bg-slate-50/50 p-2.5 font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition"
+                            required
+                        />
+                    </div>
+
+                    <!-- Keterangan / Keperluan -->
+                    <div class="space-y-1">
+                        <label class="font-bold text-slate-700 block uppercase text-[11px]">Uraian Keterangan / Keperluan *</label>
+                        <textarea 
+                            v-model="cashMutationForm.description"
+                            rows="3"
+                            placeholder="Contoh: Pembayaran operasional A, Beli perlengkapan B, pengadaan ATK buku kas, dll."
+                            class="w-full rounded-xl border border-slate-200 bg-slate-50/50 p-2.5 font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition resize-none"
+                            required
+                        ></textarea>
+                    </div>
+
+                </form>
+
+                <!-- Fixed Footer -->
+                <div class="px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-2 shrink-0 bg-slate-50/60">
+                    <button 
+                        type="button" 
+                        @click="showCashMutationModal = false"
+                        class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs uppercase rounded-xl transition cursor-pointer"
+                    >
+                        Batal
+                    </button>
+                    <button 
+                        type="submit" 
+                        form="cashMutationFormId"
+                        :disabled="cashMutationForm.processing"
+                        :class="cashMutationType === 'in' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'"
+                        class="px-5 py-2.5 text-white font-black text-xs uppercase rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                        <span>{{ cashMutationForm.processing ? 'Menyimpan...' : 'Simpan Transaksi Kas' }}</span>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ===================================================================== -->
+        <!-- MODAL: PELUNASAN DIPERCEPAT (EARLY SETTLEMENT) PINJAMAN SEKALIGUS     -->
+        <!-- ===================================================================== -->
+        <div v-if="showEarlyPayoffModal && selectedLoanForPayoff" class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+            <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden my-auto border border-slate-100 animate-in zoom-in duration-200">
+                
+                <!-- Fixed Header -->
+                <div class="bg-emerald-50/80 border-b border-emerald-100 px-6 py-4 flex items-center justify-between shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-black shadow-sm">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-black uppercase text-emerald-700 tracking-wider block">Pelunasan Dipercepat (Early Settlement)</span>
+                            <h3 class="text-base font-black text-slate-900">Pelunasan Sisa Pinjaman Sekaligus</h3>
+                        </div>
+                    </div>
+                    <button @click="showEarlyPayoffModal = false" class="w-8 h-8 rounded-xl bg-slate-200/60 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-black transition cursor-pointer">
+                        &times;
+                    </button>
+                </div>
+
+                <!-- Form Body -->
+                <form id="earlyPayoffFormId" @submit.prevent="submitEarlyPayoff" class="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+                    
+                    <!-- Kartu Ringkasan Pinjaman -->
+                    <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-slate-500 uppercase text-[10px]">No. Pinjaman:</span>
+                            <span class="font-mono font-black text-slate-900">{{ selectedLoanForPayoff.loan_code }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-slate-500 uppercase text-[10px]">Peminjam:</span>
+                            <span class="font-extrabold text-slate-800 uppercase">{{ selectedLoanForPayoff.user?.pangkat }} {{ selectedLoanForPayoff.user?.name }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-slate-500 uppercase text-[10px]">Plafon Pinjaman:</span>
+                            <span class="font-black text-slate-700">{{ formatRupiah(selectedLoanForPayoff.amount_approved) }}</span>
+                        </div>
+                        <div class="flex justify-between items-center pt-2 border-t border-slate-200">
+                            <span class="font-black text-emerald-800 uppercase text-[11px]">Total Tagihan Pelunasan:</span>
+                            <span class="font-black text-emerald-700 text-base">{{ formatRupiah(selectedLoanForPayoff.remaining_amount) }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Tanggal Pelunasan -->
+                    <div class="space-y-1">
+                        <label class="font-bold text-slate-700 block uppercase text-[11px]">Tanggal Pembayaran Pelunasan *</label>
+                        <input 
+                            type="date" 
+                            v-model="earlyPayoffForm.payment_date"
+                            class="w-full rounded-xl border border-slate-200 bg-slate-50/50 p-2.5 font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 transition"
+                            required
+                        />
+                    </div>
+
+                    <!-- Metode Pembayaran -->
+                    <div class="space-y-1">
+                        <label class="font-bold text-slate-700 block uppercase text-[11px]">Metode Pembayaran *</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <label :class="earlyPayoffForm.payment_method === 'potong_gaji' ? 'border-emerald-600 bg-emerald-50/50 text-emerald-900 font-black' : 'border-slate-200 text-slate-600'" class="p-2.5 border rounded-xl flex items-center justify-center cursor-pointer transition text-center uppercase text-[10px]">
+                                <input type="radio" v-model="earlyPayoffForm.payment_method" value="potong_gaji" class="sr-only" />
+                                <span>Potong Gaji</span>
+                            </label>
+                            <label :class="earlyPayoffForm.payment_method === 'transfer' ? 'border-emerald-600 bg-emerald-50/50 text-emerald-900 font-black' : 'border-slate-200 text-slate-600'" class="p-2.5 border rounded-xl flex items-center justify-center cursor-pointer transition text-center uppercase text-[10px]">
+                                <input type="radio" v-model="earlyPayoffForm.payment_method" value="transfer" class="sr-only" />
+                                <span>Transfer</span>
+                            </label>
+                            <label :class="earlyPayoffForm.payment_method === 'tunai' ? 'border-emerald-600 bg-emerald-50/50 text-emerald-900 font-black' : 'border-slate-200 text-slate-600'" class="p-2.5 border rounded-xl flex items-center justify-center cursor-pointer transition text-center uppercase text-[10px]">
+                                <input type="radio" v-model="earlyPayoffForm.payment_method" value="tunai" class="sr-only" />
+                                <span>Tunai</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Catatan Tambahan -->
+                    <div class="space-y-1">
+                        <label class="font-bold text-slate-700 block uppercase text-[11px]">Catatan Pelunasan</label>
+                        <input 
+                            type="text" 
+                            v-model="earlyPayoffForm.notes"
+                            placeholder="Catatan pelunasan dipercepat"
+                            class="w-full rounded-xl border border-slate-200 bg-slate-50/50 p-2.5 font-medium text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 transition"
+                        />
+                    </div>
+
+                    <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900">
+                        <span class="font-black">Pemberitahuan Otomatis:</span> Saat pelunasan disetujui, pinjaman akan otomatis berstatus <b>LUNAS SEPENUHNYA</b>, kuitansi pelunasan resmi diterbitkan, dan notifikasi WhatsApp langsung terkirim ke personel.
+                    </div>
+
+                </form>
+
+                <!-- Fixed Footer -->
+                <div class="px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-2 shrink-0 bg-slate-50/60">
+                    <button 
+                        type="button" 
+                        @click="showEarlyPayoffModal = false"
+                        class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs uppercase rounded-xl transition cursor-pointer"
+                    >
+                        Batal
+                    </button>
+                    <button 
+                        type="submit" 
+                        form="earlyPayoffFormId"
+                        :disabled="earlyPayoffForm.processing"
+                        class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                        <span>{{ earlyPayoffForm.processing ? 'Memproses Pelunasan...' : 'Konfirmasi Pelunasan Sekaligus' }}</span>
+                    </button>
+                </div>
+
             </div>
         </div>
 
