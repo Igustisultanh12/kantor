@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import Swal from 'sweetalert2';
 
 const props = defineProps({
@@ -151,6 +151,51 @@ const removeAnggotaFromDivisi = (divIdx, itemIdx) => {
     }
 };
 
+
+// Fungsi Otomatis Hitung Ulang Tanggal Berdasarkan Pilihan Bulan & Tahun
+const recalculateDatesForMonth = () => {
+    const b = parseInt(form.bulan);
+    const y = parseInt(form.tahun);
+    if (!b || !y) return;
+
+    const mName = (monthNames[b] || '').toUpperCase();
+    const daysInMonth = new Date(y, b, 0).getDate();
+
+    // 1. TMT Mulai & Selesai
+    form.tmt_mulai = `${y}-${String(b).padStart(2, '0')}-01`;
+    form.tmt_selesai = `${y}-${String(b).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+
+    // 2. Tanggal Surat (Akhir Bulan Sebelumnya)
+    const prevMonth = b === 1 ? 12 : b - 1;
+    const prevYear = b === 1 ? y - 1 : y;
+    const daysInPrevMonth = new Date(prevYear, prevMonth, 0).getDate();
+    form.tanggal_surat = `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(daysInPrevMonth).padStart(2, '0')}`;
+
+    // 3. Distribusi Tanggal 5 Divisi Anggota
+    // Divisi 1 (Start tgl 4): 04, 09, 14, 19, 24, 29
+    // Divisi 2 (Start tgl 5): 05, 10, 15, 20, 25, 30
+    // Divisi 3 (Start tgl 1): 01, 06, 11, 16, 21, 26 (, 31)
+    // Divisi 4 (Start tgl 2): 02, 07, 12, 17, 22, 27
+    // Divisi 5 (Start tgl 3): 03, 08, 13, 18, 23, 28
+    const startOffsets = [4, 5, 1, 2, 3];
+    if (form.anggotas && form.anggotas.length >= 5) {
+        form.anggotas.forEach((div, idx) => {
+            if (idx < startOffsets.length) {
+                const startDay = startOffsets[idx];
+                const dates = [];
+                for (let d = startDay; d <= daysInMonth; d += 5) {
+                    dates.push(String(d).padStart(2, '0'));
+                }
+                div.tanggal_list_text = `${dates.join(', ')} ${mName} ${y}`;
+            }
+        });
+    }
+};
+
+watch(() => [form.bulan, form.tahun], () => {
+    recalculateDatesForMonth();
+});
+
 const submit = () => {
     form.post(route('sp-jaga.store'), {
         onSuccess: () => {
@@ -181,7 +226,7 @@ const submit = () => {
                     :href="route('sp-jaga.index')"
                     class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition"
                 >
-                    â Kembali
+                    ← Kembali
                 </Link>
             </div>
 
