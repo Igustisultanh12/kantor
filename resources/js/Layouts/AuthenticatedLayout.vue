@@ -207,7 +207,6 @@ onMounted(() => {
     resetInactivityTimer();
     checkMobile();
     window.addEventListener('resize', checkMobile);
-    window.addEventListener('keydown', handleKeyDown);
 
     fetchNotifications();
     notifTimer = setInterval(fetchNotifications, 5000); // Poll notifikasi setiap 5 detik
@@ -220,7 +219,6 @@ onUnmounted(() => {
     if (inactivityTimer) clearTimeout(inactivityTimer);
     if (countdownTimer) clearInterval(countdownTimer);
     window.removeEventListener('resize', checkMobile);
-    window.removeEventListener('keydown', handleKeyDown);
     if (notifTimer) clearInterval(notifTimer);
 });
 </script>
