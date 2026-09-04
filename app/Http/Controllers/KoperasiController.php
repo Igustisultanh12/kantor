@@ -249,8 +249,7 @@ class KoperasiController extends Controller
                 $amountFormatted = number_format($amountReq, 0, ',', '.');
                 $estMonthlyFormatted = number_format($monthlyEst, 0, ',', '.');
 
-                $waApplicantMsg = "PEMBERITAHUAN KOPERASI SINDEN\n"
-                    . "KONFIRMASI PENGAJUAN PINJAMAN\n"
+                $waApplicantMsg = "KONFIRMASI PENGAJUAN PINJAMAN\n"
                     . "==============================\n"
                     . "Yth. {$pangkatName}\n"
                     . "NRP: {$nrpText}\n\n"
@@ -360,7 +359,7 @@ class KoperasiController extends Controller
 
             // Notifikasi WhatsApp
             if ($loan->user->phone) {
-                $msgWa = "PEMBERITAHUAN KOPERASI SINDEN\n"
+                $msgWa = "PERSETUJUAN PENCAIRAN PINJAMAN\n"
                     . "==============================\n"
                     . "Yth. {$loan->user->pangkat} {$loan->user->name}\n\n"
                     . "Pengajuan pinjaman Anda nomor *{$loan->loan_code}* telah *DISETUJUI & DICAIRKAN*.\n\n"
@@ -421,8 +420,7 @@ class KoperasiController extends Controller
 
         // 2. Notifikasi WhatsApp Resmi Kedinasan
         if ($borrower->phone) {
-            $msgWa = "PEMBERITAHUAN KOPERASI SINDEN\n"
-                . "STATUS PENGAJUAN PINJAMAN\n"
+            $msgWa = "STATUS PENGAJUAN PINJAMAN\n"
                 . "==============================\n"
                 . "Yth. {$pangkatName}\n"
                 . "NRP: {$nrpText}\n\n"

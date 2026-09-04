@@ -102,8 +102,7 @@ class SendKoperasiReminders extends Command
             $pangkatName = ($user->pangkat ? $user->pangkat . ' ' : '') . $user->name;
             $nrpText = $user->nrp ?: '-';
 
-            $msgWa = "PEMBERITAHUAN KOPERASI SINDEN\n"
-                . "PENGINGAT PEMBAYARAN ANGSURAN BULANAN\n"
+            $msgWa = "PENGINGAT PEMBAYARAN ANGSURAN BULANAN\n"
                 . "========================================\n"
                 . "Yth. {$pangkatName}\n"
                 . "NRP: {$nrpText}\n\n"
