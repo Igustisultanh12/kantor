@@ -110,6 +110,25 @@ class ScSubmission extends Model
         return $this->belongsTo(Skhpp::class, 'skhpp_id');
     }
 
+
+    public function getStatusAttribute($value)
+    {
+        if (is_numeric($value)) {
+            return match ((int)$value) {
+                2 => 'selesai',
+                3 => 'perbaikan',
+                4 => 'ditolak',
+                default => 'proses',
+            };
+        }
+        return $value ?: 'proses';
+    }
+
+    public function setStatusAttribute($value)
+    {
+        $this->attributes['status'] = $value;
+    }
+
     public function getStageTitleAttribute()
     {
         return self::STAGES[$this->current_stage]['title'] ?? 'Dalam Proses';
@@ -209,26 +228,29 @@ class ScSubmission extends Model
     public static function ensureSchema(): void
     {
         try {
-            // Ubah seluruh kolom NOT NULL warisan (selain id) menjadi NULL DEFAULT NULL
-            try {
-                $columns = \Illuminate\Support\Facades\DB::select("SHOW COLUMNS FROM sc_submissions");
-                foreach ($columns as $col) {
-                    $fieldName = $col->Field ?? $col->field ?? null;
-                    $isNull = ($col->Null ?? $col->null ?? 'YES') === 'NO';
-                    $colType = $col->Type ?? $col->type ?? null;
+            if (\Illuminate\Support\Facades\Schema::hasTable('sc_submissions')) {
+                // Bila tabel masih kosong (0 berkas), reset dan bangun ulang secara bersih sempurna
+                $count = 0;
+                try {
+                    $count = \Illuminate\Support\Facades\DB::table('sc_submissions')->count();
+                } catch (\Throwable $e) {}
 
-                    if ($fieldName && $isNull && !in_array($fieldName, ['id', 'created_at', 'updated_at'])) {
-                        try {
-                            \Illuminate\Support\Facades\DB::statement("ALTER TABLE `sc_submissions` MODIFY COLUMN `{$fieldName}` {$colType} NULL DEFAULT NULL");
-                        } catch (\Throwable $e) {}
-                    }
+                if ($count === 0) {
+                    try {
+                        \Illuminate\Support\Facades\Schema::disableForeignKeyConstraints();
+                        \Illuminate\Support\Facades\Schema::dropIfExists('sc_submission_logs');
+                        \Illuminate\Support\Facades\Schema::dropIfExists('sc_submissions');
+                        \Illuminate\Support\Facades\Schema::enableForeignKeyConstraints();
+                    } catch (\Throwable $e) {}
                 }
-            } catch (\Throwable $e) {}
+            }
 
             if (!\Illuminate\Support\Facades\Schema::hasTable('sc_submissions')) {
                 \Illuminate\Support\Facades\Schema::create('sc_submissions', function (\Illuminate\Database\Schema\Blueprint $table) {
                     $table->id();
-                    $table->string('tracking_code')->nullable()->index();
+                    $table->string('tracking_code')->nullable()->unique();
+                    $table->string('nomor_resi')->nullable()->index();
+                    $table->string('tipe_permohonan')->nullable()->default('baru');
                     $table->string('nama')->nullable();
                     $table->string('pangkat_korps')->nullable();
                     $table->string('identifier_type')->default('nrp');
@@ -238,7 +260,7 @@ class ScSubmission extends Model
                     $table->string('phone')->nullable();
                     $table->string('keperluan')->nullable();
                     $table->unsignedTinyInteger('current_stage')->default(1)->index();
-                    $table->string('status')->default('proses')->index();
+                    $table->string('status', 50)->default('proses')->index();
                     $table->unsignedBigInteger('skhpp_id')->nullable();
                     $table->string('nomor_surat_rh')->nullable();
                     $table->string('nomor_skhpp')->nullable();
@@ -252,79 +274,25 @@ class ScSubmission extends Model
                     $table->timestamps();
                 });
             } else {
-                \Illuminate\Support\Facades\Schema::table('sc_submissions', function (\Illuminate\Database\Schema\Blueprint $table) {
-                    if (\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'nomor_resi')) {
-                        try {
-                            \Illuminate\Support\Facades\DB::statement("ALTER TABLE sc_submissions MODIFY COLUMN nomor_resi VARCHAR(255) NULL DEFAULT NULL");
-                        } catch (\Throwable $e) {}
+                // Jika tabel memiliki isi data, pastikan status adalah VARCHAR(50)
+                try {
+                    \Illuminate\Support\Facades\DB::statement("ALTER TABLE `sc_submissions` MODIFY COLUMN `status` VARCHAR(50) NOT NULL DEFAULT 'proses'");
+                } catch (\Throwable $e) {}
+
+                try {
+                    $columns = \Illuminate\Support\Facades\DB::select("SHOW COLUMNS FROM sc_submissions");
+                    foreach ($columns as $col) {
+                        $fieldName = $col->Field ?? $col->field ?? null;
+                        $isNull = ($col->Null ?? $col->null ?? 'YES') === 'NO';
+                        $colType = $col->Type ?? $col->type ?? null;
+
+                        if ($fieldName && $isNull && !in_array($fieldName, ['id', 'status', 'created_at', 'updated_at'])) {
+                            try {
+                                \Illuminate\Support\Facades\DB::statement("ALTER TABLE `sc_submissions` MODIFY COLUMN `{$fieldName}` {$colType} NULL DEFAULT NULL");
+                            } catch (\Throwable $e) {}
+                        }
                     }
-                    if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'tracking_code')) {
-                        $table->string('tracking_code')->nullable()->index();
-                    }
-                    if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'nama')) {
-                        $table->string('nama')->nullable();
-                    }
-                    if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'pangkat_korps')) {
-                        $table->string('pangkat_korps')->nullable();
-                    }
-                    if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'identifier_type')) {
-                        $table->string('identifier_type')->default('nrp');
-                    }
-                    if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'identifier_number')) {
-                        $table->string('identifier_number')->nullable()->index();
-                    }
-                    if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'kesatuan')) {
-                        $table->string('kesatuan')->nullable();
-                    }
-                    if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'jabatan')) {
-                        $table->string('jabatan')->nullable();
-                    }
-                    if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'phone')) {
-                        $table->string('phone')->nullable();
-                    }
-                    if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'keperluan')) {
-                        $table->string('keperluan')->nullable();
-                    }
-                    if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'current_stage')) {
-                        $table->unsignedTinyInteger('current_stage')->default(1)->index();
-                    }
-                    if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'status')) {
-                        $table->string('status')->default('proses')->index();
-                    }
-                    if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'skhpp_id')) {
-                        $table->unsignedBigInteger('skhpp_id')->nullable();
-                    }
-                    if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'nomor_surat_rh')) {
-                        $table->string('nomor_surat_rh')->nullable();
-                    }
-                    if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'nomor_skhpp')) {
-                        $table->string('nomor_skhpp')->nullable();
-                    }
-                    if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'file_skhpp')) {
-                        $table->string('file_skhpp')->nullable();
-                    }
-                    if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'nomor_sc')) {
-                        $table->string('nomor_sc')->nullable();
-                    }
-                    if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'file_sc_preview')) {
-                        $table->string('file_sc_preview')->nullable();
-                    }
-                    if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'sc_preview_uploaded_at')) {
-                        $table->timestamp('sc_preview_uploaded_at')->nullable();
-                    }
-                    if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'sc_preview_expired_at')) {
-                        $table->timestamp('sc_preview_expired_at')->nullable();
-                    }
-                    if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'catatan_petugas')) {
-                        $table->text('catatan_petugas')->nullable();
-                    }
-                    if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'created_by')) {
-                        $table->unsignedBigInteger('created_by')->nullable();
-                    }
-                    if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'created_at')) {
-                        $table->timestamps();
-                    }
-                });
+                } catch (\Throwable $e) {}
             }
 
             if (!\Illuminate\Support\Facades\Schema::hasTable('sc_submission_logs')) {
@@ -340,7 +308,7 @@ class ScSubmission extends Model
                 });
             }
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Self-healing ensureSchema warning: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning('ensureSchema warning: ' . $e->getMessage());
         }
     }
 

@@ -167,33 +167,57 @@ class ScSubmissionController extends Controller
                 }
             }
 
-            // Pengecekan aman universal untuk setiap kolom NOT NULL warisan yang tidak memiliki nilai bawaan
+            // Sanitasi cerdas tipe data dinamis & pengisian nilai bawaan otomatis
             try {
-                $columns = DB::select("SHOW COLUMNS FROM sc_submissions");
-                foreach ($columns as $col) {
-                    $fieldName = $col->Field ?? $col->field ?? null;
+                $dbColumns = DB::select("SHOW COLUMNS FROM sc_submissions");
+                foreach ($dbColumns as $col) {
+                    $name = $col->Field ?? $col->field ?? null;
+                    if (!$name || in_array($name, ['id', 'created_at', 'updated_at'])) {
+                        continue;
+                    }
+
+                    $type = strtolower($col->Type ?? $col->type ?? '');
                     $isNull = ($col->Null ?? $col->null ?? 'YES') === 'NO';
                     $hasDefault = ($col->Default ?? $col->default ?? null) !== null;
 
-                    if ($fieldName && $isNull && !$hasDefault && !in_array($fieldName, ['id', 'created_at', 'updated_at'])) {
-                        if (!isset($submissionData[$fieldName]) || $submissionData[$fieldName] === null || $submissionData[$fieldName] === '') {
-                            $type = strtolower($col->Type ?? $col->type ?? '');
-                            if ($fieldName === 'nomor_resi') {
-                                $submissionData[$fieldName] = $trackingCode;
-                            } elseif ($fieldName === 'tipe_permohonan') {
-                                $submissionData[$fieldName] = 'baru';
-                            } elseif (str_contains($type, 'int') || str_contains($type, 'decimal') || str_contains($type, 'float')) {
-                                $submissionData[$fieldName] = 0;
+                    // 1. Jika nilai terisi di submissionData, pastikan tipe datanya cocok dengan tipe kolom MySQL
+                    if (array_key_exists($name, $submissionData)) {
+                        $val = $submissionData[$name];
+                        if ($val !== null) {
+                            if (str_contains($type, 'int') && !is_numeric($val)) {
+                                if ($name === 'status') {
+                                    $submissionData[$name] = match ($val) {
+                                        'selesai' => 2,
+                                        'perbaikan' => 3,
+                                        'ditolak' => 4,
+                                        default => 1,
+                                    };
+                                } else {
+                                    $submissionData[$name] = (int)$val;
+                                }
+                            }
+                        }
+                    } else {
+                        // 2. Jika nilai belum terisi dan kolom MySQL berstatus NOT NULL tanpa default
+                        if ($isNull && !$hasDefault) {
+                            if (str_contains($type, 'int') || str_contains($type, 'decimal') || str_contains($type, 'float')) {
+                                $submissionData[$name] = ($name === 'status') ? 1 : 0;
                             } elseif (str_contains($type, 'date') || str_contains($type, 'time')) {
-                                $submissionData[$fieldName] = now();
+                                $submissionData[$name] = now();
                             } else {
-                                $submissionData[$fieldName] = '-';
+                                if ($name === 'nomor_resi') {
+                                    $submissionData[$name] = $trackingCode;
+                                } elseif ($name === 'tipe_permohonan') {
+                                    $submissionData[$name] = 'baru';
+                                } else {
+                                    $submissionData[$name] = '-';
+                                }
                             }
                         }
                     }
                 }
             } catch (\Throwable $e) {
-                Log::warning('Fallback check columns warning: ' . $e->getMessage());
+                Log::warning('Type-safety sanitizer error: ' . $e->getMessage());
             }
 
             $submission = ScSubmission::create($submissionData);
