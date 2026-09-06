@@ -30,6 +30,8 @@ use App\Http\Controllers\SkhppController;
 use App\Http\Controllers\DocVerificationController;
 use App\Http\Controllers\SpJagaController;
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\PublicTrackingController;
+use App\Http\Controllers\ScSubmissionController;
 use App\Models\User;
 use App\Models\LetterLog;
 use App\Models\Letter;
@@ -55,6 +57,9 @@ Route::post('/aktivasi', [UserController::class, 'activate'])->name('aktivasi.pr
 
 Route::get('forgot-password-custom', [ResetPasswordController::class, 'showResetForm'])->name('password.request.custom');
 Route::post('reset-password-custom', [ResetPasswordController::class, 'store'])->name('password.update.custom');
+
+// --- FITUR TRACKING PENGAJUAN SC (AKSES PUBLIK TANPA LOGIN) ---
+Route::get('/tracking-sc', [PublicTrackingController::class, 'index'])->name('tracking-sc.index');
 
 // --- AKSES DASHBOARD UTAMA ---
 Route::get('/dashboard', function () {
@@ -144,6 +149,10 @@ Route::middleware('auth')->group(function () {
 
     // Fitur Presensi Kehadiran Personel (Opsional)
     Route::post('/attendances', [AttendanceController::class, 'store'])->name('attendances.store');
+
+    // --- FITUR MANAJEMEN PENGAJUAN SECURITY CLEARANCE (SC) ---
+    Route::resource('sc-submissions', ScSubmissionController::class)->except(['create', 'edit', 'show']);
+    Route::post('sc-submissions/{id}/update-stage', [ScSubmissionController::class, 'updateStage'])->name('sc-submissions.update-stage');
 
     // Fitur Profil Personel
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

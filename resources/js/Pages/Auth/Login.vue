@@ -258,6 +258,29 @@ const submit = async () => {
                         </div>
                     </div>
 
+                    <!-- Fitur Publik: Pelacakan Status Pengajuan SC (Tanpa Login) -->
+                    <div class="mt-5">
+                        <Link 
+                            :href="route('tracking-sc.index')"
+                            class="w-full py-3 px-4 bg-slate-800/80 hover:bg-slate-700/90 text-white rounded-xl border border-blue-500/30 hover:border-blue-400 text-xs font-extrabold uppercase tracking-wider transition duration-150 flex items-center justify-between shadow-md group"
+                        >
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-7 h-7 rounded-lg bg-blue-600/30 border border-blue-500/40 text-blue-400 flex items-center justify-center font-black text-xs group-hover:bg-blue-600 group-hover:text-white transition">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                                    </svg>
+                                </div>
+                                <div class="text-left">
+                                    <span class="block text-white text-[11px] font-black tracking-wide">Cek Riwayat Pengajuan SC</span>
+                                    <span class="block text-[9px] text-slate-400 font-medium normal-case">Layanan publik mandiri via NRP / NIP / NIK</span>
+                                </div>
+                            </div>
+                            <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-400 group-hover:translate-x-0.5 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </Link>
+                    </div>
+
                     <div class="mt-6 text-center border-t border-white/10 pt-6 flex justify-between text-xs text-slate-300">
                         <Link href="/aktivasi" class="text-orange-400 hover:underline">Aktivasi Akun</Link>
                         <span>Belum punya akun? <Link :href="route('register')" class="font-semibold text-orange-400 hover:underline">Daftar Sekarang</Link></span>
