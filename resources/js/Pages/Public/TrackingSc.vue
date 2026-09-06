@@ -73,6 +73,77 @@ const isPrinting = ref(false);
 const pdfDoc = shallowRef(null);
 const totalPages = ref(0);
 
+// Mode Proteksi Anti-Screenshot: 'hold' (Tahan Layar - Dijamin Blank Kosong) vs 'free' (Baca Bebas)
+const viewerMode = ref('hold');
+const isHoldingReveal = ref(false);
+const liveTimeString = ref('');
+let liveTimer = null;
+
+const updateLiveTime = () => {
+    const now = new Date();
+    liveTimeString.value = now.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    }) + ' ' + now.toLocaleTimeString('id-ID', { hour12: false }) + ' WIB';
+};
+
+const isDocVisible = computed(() => {
+    if (isPrivacyBlank.value || isPrinting.value) return false;
+    if (viewerMode.value === 'hold') {
+        return isHoldingReveal.value;
+    }
+    return true;
+});
+
+const startHolding = () => {
+    if (isPrivacyBlank.value) return;
+    isHoldingReveal.value = true;
+};
+
+const stopHolding = () => {
+    isHoldingReveal.value = false;
+};
+
+const startHoldingTouch = (e) => {
+    if (isPrivacyBlank.value) return;
+    if (e.touches && e.touches.length > 1) {
+        // Multi-touch screenshot gesture detected (e.g. 3-finger swipe Android)
+        stopHolding();
+        triggerScreenshotBlank('Gestur sentuhan multi-jari terdeteksi.');
+        return;
+    }
+    isHoldingReveal.value = true;
+};
+
+const stopHoldingTouch = () => {
+    isHoldingReveal.value = false;
+};
+
+const wipeClipboard = () => {
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText('');
+        }
+    } catch (_) {}
+};
+
+const triggerScreenshotBlank = (reason = '') => {
+    isHoldingReveal.value = false;
+    isPrivacyBlank.value = true;
+    wipeClipboard();
+    setTimeout(() => {
+        isPrivacyBlank.value = false;
+    }, 2000);
+    Swal.fire({
+        title: 'Peringatan Kedinasan',
+        text: `${reason ? reason + ' ' : ''}Tangkapan layar dibatasi untuk berkas intelijen. Dokumen otomatis disamarkan (blank).`,
+        icon: 'warning',
+        confirmButtonColor: '#2563eb',
+        confirmButtonText: 'Dimengerti',
+    });
+};
+
 const openPreviewModal = async () => {
     if (!activeSubmission.value?.is_sc_preview_available) return;
 
@@ -83,6 +154,12 @@ const openPreviewModal = async () => {
         });
 
         if (response.data && response.data.stream_url) {
+            viewerMode.value = 'hold';
+            isHoldingReveal.value = false;
+            updateLiveTime();
+            if (liveTimer) clearInterval(liveTimer);
+            liveTimer = setInterval(updateLiveTime, 1000);
+
             isPreviewModalOpen.value = true;
             await loadAndRenderPdf(response.data.stream_url);
         } else {
@@ -178,8 +255,13 @@ const closePreviewModal = () => {
     isPreviewModalOpen.value = false;
     pdfDoc.value = null;
     totalPages.value = 0;
+    isHoldingReveal.value = false;
     isPrivacyBlank.value = false;
     isPrinting.value = false;
+    if (liveTimer) {
+        clearInterval(liveTimer);
+        liveTimer = null;
+    }
 };
 
 const warnAntiDownload = () => {
@@ -192,57 +274,78 @@ const warnAntiDownload = () => {
     });
 };
 
-// Pengamanan Anti-Download & Anti-Print Ketat: blokir shortcut Ctrl+S, Ctrl+P, Ctrl+U, Ctrl+C, F12, PrintScreen
+// Pengamanan Anti-Download & Anti-Screenshot Ketat
 const handleKeydown = (e) => {
     if (!isPreviewModalOpen.value) return;
-    if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.key === 'p' || e.key === 'P' || e.key === 'u' || e.key === 'U' || e.key === 'c' || e.key === 'C')) {
+
+    // 1. Deteksi Tombol PrintScreen (Windows/Linux)
+    if (e.key === 'PrintScreen' || e.code === 'PrintScreen' || e.keyCode === 44) {
+        triggerScreenshotBlank('Tombol PrintScreen terdeteksi.');
+        return;
+    }
+
+    // 2. Windows Snipping Tool (Win + Shift + S) atau Mac Screenshot (Cmd + Shift + 3/4/5)
+    if (e.shiftKey && (e.metaKey || e.ctrlKey || e.key === 'Meta')) {
+        triggerScreenshotBlank('Pintasan tangkapan layar (Snipping Tool) terdeteksi.');
+        return;
+    }
+
+    // 3. Tombol Windows (Meta) saat petinjau aktif
+    if (e.key === 'Meta' || e.code === 'MetaLeft' || e.code === 'MetaRight') {
+        isHoldingReveal.value = false;
+        isPrivacyBlank.value = true;
+        wipeClipboard();
+        return;
+    }
+
+    // 4. Shortcut Simpan / Cetak / Unduh: Ctrl+S, Ctrl+P, Ctrl+U, Ctrl+C, Ctrl+A
+    if ((e.ctrlKey || e.metaKey) && ['s', 'p', 'u', 'c', 'a'].includes(e.key.toLowerCase())) {
         e.preventDefault();
         e.stopPropagation();
-        isPrivacyBlank.value = true;
-        setTimeout(() => { isPrivacyBlank.value = false; }, 1500);
-        warnAntiDownload();
+        triggerScreenshotBlank('Pintasan unduh/simpan/cetak dinonaktifkan.');
+        return;
     }
-    if (e.key === 'F12') {
+
+    // 5. Developer tools: F12, Ctrl+Shift+I/J/C
+    if (e.key === 'F12' || ((e.ctrlKey || e.metaKey) && e.shiftKey && ['i', 'j', 'c'].includes(e.key.toLowerCase()))) {
         e.preventDefault();
-    }
-    if (e.key === 'PrintScreen' || e.keyCode === 44) {
-        e.preventDefault();
-        isPrivacyBlank.value = true;
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText('');
-        }
-        setTimeout(() => {
-            isPrivacyBlank.value = false;
-        }, 1500);
-        Swal.fire({
-            title: 'Peringatan Kedinasan',
-            text: 'Tangkapan layar dibatasi untuk berkas intelijen. Dokumen disamarkan (blank).',
-            icon: 'warning',
-            confirmButtonColor: '#2563eb',
-            confirmButtonText: 'Dimengerti',
-        });
+        e.stopPropagation();
+        triggerScreenshotBlank('Peralatan pengembang dinonaktifkan.');
+        return;
     }
 };
 
 const handleWindowBlur = () => {
     if (isPreviewModalOpen.value) {
+        isHoldingReveal.value = false;
         isPrivacyBlank.value = true;
+        wipeClipboard();
     }
 };
 
 const handleWindowFocus = () => {
     if (isPreviewModalOpen.value && !isPrinting.value) {
-        isPrivacyBlank.value = false;
+        setTimeout(() => {
+            isPrivacyBlank.value = false;
+        }, 300);
     }
 };
 
 const handleVisibilityChange = () => {
     if (document.hidden && isPreviewModalOpen.value) {
+        isHoldingReveal.value = false;
         isPrivacyBlank.value = true;
+        wipeClipboard();
     } else if (isPreviewModalOpen.value && !isPrinting.value) {
         setTimeout(() => {
             isPrivacyBlank.value = false;
         }, 300);
+    }
+};
+
+const handleMouseLeave = () => {
+    if (isPreviewModalOpen.value && viewerMode.value === 'hold') {
+        isHoldingReveal.value = false;
     }
 };
 
@@ -272,6 +375,7 @@ onMounted(() => {
     window.addEventListener('blur', handleWindowBlur);
     window.addEventListener('focus', handleWindowFocus);
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('mouseleave', handleMouseLeave);
     window.addEventListener('beforeprint', handleBeforePrint);
     window.addEventListener('afterprint', handleAfterPrint);
     window.addEventListener('resize', handleResize);
@@ -282,9 +386,14 @@ onUnmounted(() => {
     window.removeEventListener('blur', handleWindowBlur);
     window.removeEventListener('focus', handleWindowFocus);
     document.removeEventListener('visibilitychange', handleVisibilityChange);
+    document.removeEventListener('mouseleave', handleMouseLeave);
     window.removeEventListener('beforeprint', handleBeforePrint);
     window.removeEventListener('afterprint', handleAfterPrint);
     window.removeEventListener('resize', handleResize);
+    if (liveTimer) {
+        clearInterval(liveTimer);
+        liveTimer = null;
+    }
 });
 </script>
 
@@ -747,7 +856,7 @@ onUnmounted(() => {
                 <div class="bg-slate-900 border border-slate-800 rounded-3xl flex-1 flex flex-col overflow-hidden shadow-2xl relative">
                     
                     <!-- Header Modal Viewer -->
-                    <div class="px-5 py-4 border-b border-slate-800 bg-slate-950/90 flex flex-wrap items-center justify-between gap-3">
+                    <div class="px-5 py-3.5 border-b border-slate-800 bg-slate-950/95 flex flex-wrap items-center justify-between gap-3">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -759,7 +868,7 @@ onUnmounted(() => {
                                 <div class="flex items-center gap-2">
                                     <span class="text-[10px] font-black uppercase text-indigo-400 tracking-wider">PETINJAU RESMI KEDINASAN</span>
                                     <span class="px-2 py-0.5 bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-full text-[9px] font-black uppercase">
-                                        PROTEKSI ANTI-DOWNLOAD
+                                        PROTEKSI ANTI-DOWNLOAD & SCREENSHOT
                                     </span>
                                 </div>
                                 <h3 class="text-sm sm:text-base font-extrabold text-white">
@@ -768,13 +877,36 @@ onUnmounted(() => {
                             </div>
                         </div>
 
-                        <div class="flex items-center gap-3">
-                            <span class="text-[11px] font-mono font-bold text-amber-400 bg-amber-950/60 border border-amber-800/60 px-3 py-1.5 rounded-xl">
-                                Sisa Waktu Petinjau: {{ activeSubmission?.sc_preview_remaining_hours }} Jam (2x24 Jam)
+                        <!-- Mode Switcher & Close Controls -->
+                        <div class="flex flex-wrap items-center gap-2.5">
+                            <div class="bg-slate-900 border border-slate-700/80 p-1 rounded-xl flex items-center gap-1 text-xs">
+                                <button 
+                                    type="button"
+                                    @click="viewerMode = 'hold'"
+                                    :class="viewerMode === 'hold' ? 'bg-indigo-600 text-white font-extrabold shadow' : 'text-slate-400 hover:text-slate-200 font-bold'"
+                                    class="px-2.5 py-1.5 rounded-lg transition text-[11px] flex items-center gap-1.5 cursor-pointer"
+                                >
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                    <span>Anti-Screenshot (Tahan Layar)</span>
+                                </button>
+                                <button 
+                                    type="button"
+                                    @click="viewerMode = 'free'"
+                                    :class="viewerMode === 'free' ? 'bg-slate-700 text-white font-extrabold shadow' : 'text-slate-400 hover:text-slate-200 font-bold'"
+                                    class="px-2.5 py-1.5 rounded-lg transition text-[11px] flex items-center gap-1.5 cursor-pointer"
+                                >
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                    <span>Baca Bebas</span>
+                                </button>
+                            </div>
+
+                            <span class="text-[11px] font-mono font-bold text-amber-400 bg-amber-950/60 border border-amber-800/60 px-3 py-1.5 rounded-xl hidden sm:inline-block">
+                                Sisa: {{ activeSubmission?.sc_preview_remaining_hours }} Jam
                             </span>
+
                             <button 
                                 @click="closePreviewModal" 
-                                class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-extrabold uppercase tracking-wider transition cursor-pointer border border-slate-700 flex items-center gap-1.5"
+                                class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-extrabold uppercase tracking-wider transition cursor-pointer border border-slate-700 flex items-center gap-1.5"
                             >
                                 <span>Tutup</span>
                                 <span class="text-base leading-none">&times;</span>
@@ -783,14 +915,21 @@ onUnmounted(() => {
                     </div>
 
                     <!-- Security Alert Strip -->
-                    <div class="bg-amber-500/10 border-b border-amber-500/20 px-5 py-2 text-[11px] text-amber-300 font-medium flex items-center justify-between">
+                    <div class="bg-amber-500/10 border-b border-amber-500/20 px-5 py-2 text-[11px] text-amber-300 font-medium flex flex-wrap items-center justify-between gap-2">
                         <div class="flex items-center gap-2">
                             <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                             </svg>
-                            <span>Dilarang menyebarluaskan, mencetak, atau mengambil salinan dokumen ini. Dokumen petinjau akan terhapus otomatis setelah 2x24 jam.</span>
+                            <span v-if="viewerMode === 'hold'">
+                                Mode Anti-Screenshot Aktif: Tahan tombol di bawah atau tekan lembar dokumen untuk membaca. Dokumen otomatis <b>BLANK KOSONG</b> saat jari dilepas atau saat tangkapan layar dilakukan.
+                            </span>
+                            <span v-else>
+                                Dilarang menyebarluaskan, mencetak, atau mengambil salinan dokumen intelijen ini. Segala bentuk pelanggaran dipantau watermark forensik.
+                            </span>
                         </div>
-                        <span class="font-mono text-[10px] text-amber-400/80 uppercase">STATUS: PETINJAU SEMENTARA</span>
+                        <span class="font-mono text-[10px] text-amber-400/80 uppercase">
+                            {{ viewerMode === 'hold' ? 'STATUS: MODE TAHAN LAYAR' : 'STATUS: MODE BEBAS' }}
+                        </span>
                     </div>
 
                     <!-- PDF Canvas Container With Physical Watermark, Anti-Print, Anti-Screenshot -->
@@ -799,9 +938,15 @@ onUnmounted(() => {
                         <!-- Canvas-Based PDF Viewer (Zero Browser PDF Plugin) -->
                         <div 
                             id="pdf-canvas-container" 
-                            class="flex-1 w-full overflow-y-auto p-4 sm:p-8 flex flex-col items-center space-y-6 relative select-none"
+                            class="flex-1 w-full overflow-y-auto p-4 sm:p-8 flex flex-col items-center space-y-6 relative select-none pb-24"
                             @contextmenu.prevent
                             @dragstart.prevent
+                            @pointerdown="startHolding"
+                            @pointerup="stopHolding"
+                            @pointercancel="stopHolding"
+                            @touchstart="startHoldingTouch"
+                            @touchend="stopHoldingTouch"
+                            @touchcancel="stopHoldingTouch"
                         >
                             <!-- Spinner Loading PDF -->
                             <div v-if="isRenderingPdf" class="my-auto flex flex-col items-center gap-3 py-16">
@@ -813,17 +958,60 @@ onUnmounted(() => {
                             <div 
                                 v-for="pageNum in totalPages" 
                                 :key="pageNum" 
-                                class="shrink-0 relative shadow-2xl rounded-2xl overflow-hidden bg-white mb-6 print:hidden"
+                                class="shrink-0 relative shadow-2xl rounded-2xl overflow-hidden bg-white mb-6 print:hidden transition-all duration-150"
                             >
-                                <canvas :id="'pdf-page-canvas-' + pageNum" class="block"></canvas>
+                                <!-- Canvas PDF (Hanya tampak jika isDocVisible true) -->
+                                <canvas 
+                                    :id="'pdf-page-canvas-' + pageNum" 
+                                    class="block transition-opacity duration-150"
+                                    :class="isDocVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+                                ></canvas>
+
+                                <!-- Blank Sheet Disguise (Tampil ketika isDocVisible false) -->
+                                <div 
+                                    v-if="!isDocVisible" 
+                                    class="absolute inset-0 bg-white flex flex-col items-center justify-center p-8 text-center select-none"
+                                >
+                                    <div class="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 text-slate-400 flex items-center justify-center mb-4">
+                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                        </svg>
+                                    </div>
+                                    <span class="px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-[10px] font-mono font-extrabold uppercase tracking-wider mb-2">
+                                        LEMBAR PETINJAU #{{ pageNum }} (BLANK KOSONG)
+                                    </span>
+                                    <h5 class="text-sm font-black text-slate-800 uppercase tracking-wide">
+                                        Dokumen Disamarkan (Blank)
+                                    </h5>
+                                    <p class="text-xs text-slate-500 mt-1 max-w-xs font-medium leading-relaxed">
+                                        Tahan tombol di bawah atau tekan lembar ini untuk membaca dokumen. Hasil screenshot di HP maupun PC dijamin 100% blank kosong.
+                                    </p>
+                                </div>
+
+                                <!-- Dynamic Forensic Watermark on Top of Document -->
+                                <div 
+                                    v-if="isDocVisible" 
+                                    class="pointer-events-none select-none absolute inset-0 z-20 overflow-hidden flex flex-wrap items-center justify-around gap-12 p-6 rotate-[-22deg] opacity-[0.14]"
+                                >
+                                    <div 
+                                        v-for="n in 20" 
+                                        :key="n" 
+                                        class="text-slate-900 font-mono text-[10px] font-black uppercase text-center leading-tight tracking-wider"
+                                    >
+                                        SINTEL KODAERAL V • RAHASIA<br>
+                                        {{ activeSubmission.nama }} • {{ activeSubmission.identifier_number }}<br>
+                                        {{ liveTimeString }}
+                                    </div>
+                                </div>
+
                                 <!-- Transparent Shield on top of each page canvas to block mouse drag / tap-and-hold -->
-                                <div class="absolute inset-0 z-10 cursor-default bg-transparent" @contextmenu.prevent></div>
+                                <div class="absolute inset-0 z-20 cursor-default bg-transparent" @contextmenu.prevent></div>
                             </div>
 
                             <!-- PRIVACY BLANK SHIELD (Active on Screenshot attempt, Snipping Tool, or Window Blur) -->
                             <div 
                                 v-if="isPrivacyBlank || isPrinting" 
-                                class="absolute inset-0 z-50 bg-white flex flex-col items-center justify-center p-6 text-center select-none"
+                                class="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-6 text-center select-none"
                             >
                                 <div class="w-16 h-16 rounded-3xl bg-slate-100 text-slate-400 border border-slate-200 flex items-center justify-center mb-4 shadow-sm">
                                     <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -838,6 +1026,38 @@ onUnmounted(() => {
                                 </p>
                             </div>
 
+                        </div>
+
+                        <!-- Floating Hold-to-Reveal Bar at Bottom (Hanya muncul jika viewerMode === 'hold') -->
+                        <div 
+                            v-if="viewerMode === 'hold' && !isRenderingPdf && totalPages > 0"
+                            class="absolute bottom-14 inset-x-0 flex justify-center z-40 pointer-events-none px-4"
+                        >
+                            <button 
+                                type="button"
+                                class="pointer-events-auto px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider shadow-2xl flex items-center gap-3 select-none transition-all active:scale-95 cursor-pointer touch-none"
+                                :class="isHoldingReveal ? 'bg-emerald-600 text-white shadow-emerald-600/50 ring-4 ring-emerald-400/40 scale-105' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/50 ring-2 ring-indigo-400/30'"
+                                @pointerdown.prevent="startHolding"
+                                @pointerup.prevent="stopHolding"
+                                @pointercancel.prevent="stopHolding"
+                                @pointerleave.prevent="stopHolding"
+                                @touchstart.prevent="startHoldingTouch"
+                                @touchend.prevent="stopHoldingTouch"
+                                @touchcancel.prevent="stopHoldingTouch"
+                                @contextmenu.prevent
+                            >
+                                <template v-if="!isHoldingReveal">
+                                    <svg class="w-5 h-5 animate-pulse text-amber-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    <span>👆 TEKAN & TAHAN UNTUK MEMBACA</span>
+                                </template>
+                                <template v-else>
+                                    <span class="w-2.5 h-2.5 rounded-full bg-white animate-ping"></span>
+                                    <span>👁️ DOKUMEN TERBUKA (LEPAS JARI UNTUK MENYAMARKAN)</span>
+                                </template>
+                            </button>
                         </div>
 
                         <!-- Security Watermark Banner at Bottom -->
