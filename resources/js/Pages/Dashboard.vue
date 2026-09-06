@@ -101,7 +101,7 @@ const countdownValue = ref(3);
 const isFlash = ref(false);
 const capturedPhoto = ref(null);
 const capturedSmileScore = ref(0);
-const smileThreshold = 60; // Ambang batas 60% senyum
+const smileThreshold = 50; // Ambang batas 50% senyum agar lebih responsif dan alami
 
 let mediaStream = null;
 let detectionInterval = null;
@@ -145,7 +145,7 @@ const playShutterSound = () => {
     } catch (e) {}
 };
 
-// Pemuatan Pustaka face-api dari Direktori Lokal Aplikasi
+// Pemuatan Pustaka face-api dari Direktori Lokal Aplikasi dengan Fallback CDN
 const loadFaceApiScript = () => {
     return new Promise((resolve, reject) => {
         if (window.faceapi) {
@@ -154,7 +154,10 @@ const loadFaceApiScript = () => {
         }
         const existingScript = document.getElementById('face-api-script');
         if (existingScript) {
-            existingScript.addEventListener('load', () => resolve(window.faceapi));
+            existingScript.addEventListener('load', () => {
+                if (typeof faceapi !== 'undefined' && !window.faceapi) window.faceapi = faceapi;
+                resolve(window.faceapi);
+            });
             existingScript.addEventListener('error', reject);
             return;
         }
@@ -162,12 +165,19 @@ const loadFaceApiScript = () => {
         script.id = 'face-api-script';
         script.src = '/js/face-api.min.js';
         script.async = true;
-        script.onload = () => resolve(window.faceapi);
+        script.onload = () => {
+            if (typeof faceapi !== 'undefined' && !window.faceapi) window.faceapi = faceapi;
+            resolve(window.faceapi);
+        };
         script.onerror = () => {
             // Fallback CDN jika skrip lokal terhalang
             const cdnScript = document.createElement('script');
+            cdnScript.id = 'face-api-cdn-script';
             cdnScript.src = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js';
-            cdnScript.onload = () => resolve(window.faceapi);
+            cdnScript.onload = () => {
+                if (typeof faceapi !== 'undefined' && !window.faceapi) window.faceapi = faceapi;
+                resolve(window.faceapi);
+            };
             cdnScript.onerror = reject;
             document.head.appendChild(cdnScript);
         };
@@ -178,31 +188,62 @@ const loadFaceApiScript = () => {
 const initFaceDetector = async () => {
     try {
         await loadFaceApiScript();
-        if (!modelsLoaded.value && window.faceapi) {
-            await window.faceapi.nets.tinyFaceDetector.loadFromUri('/models/face');
-            await window.faceapi.nets.faceExpressionNet.loadFromUri('/models/face');
-            modelsLoaded.value = true;
+        const api = window.faceapi || (typeof faceapi !== 'undefined' ? faceapi : null);
+        if (!api) {
+            console.warn('[FACE_AI] Pustaka face-api belum terpasang.');
+            return;
+        }
+        window.faceapi = api;
+
+        if (!modelsLoaded.value) {
+            try {
+                // 1. Muat model lokal dari /models/face
+                await Promise.all([
+                    api.nets.tinyFaceDetector.loadFromUri('/models/face'),
+                    api.nets.faceExpressionNet.loadFromUri('/models/face')
+                ]);
+                modelsLoaded.value = true;
+                console.log('[FACE_AI] Model wajah lokal berhasil dimuat.');
+            } catch (localErr) {
+                console.warn('[FACE_AI] Gagal memuat model lokal, mencoba CDN fallback...', localErr);
+                // 2. Fallback CDN jika akses berkas statis lokal bermasalah
+                const CDN_MODEL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+                await Promise.all([
+                    api.nets.tinyFaceDetector.loadFromUri(CDN_MODEL),
+                    api.nets.faceExpressionNet.loadFromUri(CDN_MODEL)
+                ]);
+                modelsLoaded.value = true;
+                console.log('[FACE_AI] Model wajah dari CDN berhasil dimuat.');
+            }
         }
         startDetectionLoop();
     } catch (err) {
-        console.warn('Inisialisasi sensor AI wajah fallback manual:', err);
+        console.error('[FACE_AI] Inisialisasi sensor AI wajah gagal:', err);
     }
 };
 
 const startDetectionLoop = () => {
     if (detectionInterval) clearInterval(detectionInterval);
-    if (!window.faceapi || !modelsLoaded.value) return;
+    const api = window.faceapi;
+    if (!api || !modelsLoaded.value) return;
 
     let consecutiveSmiles = 0;
 
     detectionInterval = setInterval(async () => {
-        if (!videoRef.value || videoRef.value.paused || videoRef.value.ended || isCountingDown.value || capturedPhoto.value) {
+        const video = videoRef.value;
+        if (!video || video.paused || video.ended || !video.videoWidth || isCountingDown.value || capturedPhoto.value) {
             return;
         }
 
         try {
-            const options = new window.faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.45 });
-            const result = await window.faceapi.detectSingleFace(videoRef.value, options).withFaceExpressions();
+            // Gunakan inputSize 320 dan scoreThreshold 0.22 agar deteksi wajah responsif dan adaptif pada jarak normal webcam
+            const options = new api.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.22 });
+            let result = null;
+            try {
+                result = await api.detectSingleFace(video, options).withFaceExpressions();
+            } catch (innerErr) {
+                result = await api.detectSingleFace(video, options);
+            }
 
             if (result) {
                 faceDetected.value = true;
@@ -223,7 +264,9 @@ const startDetectionLoop = () => {
                 smileScore.value = 0;
                 consecutiveSmiles = 0;
             }
-        } catch (e) {}
+        } catch (e) {
+            // Abaikan glitch frame sementara
+        }
     }, 200);
 };
 
@@ -308,7 +351,14 @@ const startCamera = async () => {
         await nextTick();
         if (videoRef.value) {
             videoRef.value.srcObject = stream;
-            await videoRef.value.play();
+            await new Promise((resolve) => {
+                videoRef.value.onloadedmetadata = () => {
+                    videoRef.value.play().then(resolve).catch(resolve);
+                };
+                setTimeout(() => {
+                    if (videoRef.value) videoRef.value.play().then(resolve).catch(resolve);
+                }, 300);
+            });
         }
         initFaceDetector();
     } catch (err) {
