@@ -44,11 +44,53 @@ return new class extends Migration
             });
         } else {
             Schema::table('sc_submissions', function (Blueprint $table) {
+                if (!Schema::hasColumn('sc_submissions', 'tracking_code')) {
+                    $table->string('tracking_code')->unique()->nullable();
+                }
+                if (!Schema::hasColumn('sc_submissions', 'nama')) {
+                    $table->string('nama')->nullable();
+                }
+                if (!Schema::hasColumn('sc_submissions', 'pangkat_korps')) {
+                    $table->string('pangkat_korps')->nullable();
+                }
+                if (!Schema::hasColumn('sc_submissions', 'identifier_type')) {
+                    $table->string('identifier_type')->default('nrp');
+                }
+                if (!Schema::hasColumn('sc_submissions', 'identifier_number')) {
+                    $table->string('identifier_number')->nullable();
+                }
+                if (!Schema::hasColumn('sc_submissions', 'kesatuan')) {
+                    $table->string('kesatuan')->nullable();
+                }
+                if (!Schema::hasColumn('sc_submissions', 'jabatan')) {
+                    $table->string('jabatan')->nullable();
+                }
+                if (!Schema::hasColumn('sc_submissions', 'phone')) {
+                    $table->string('phone')->nullable();
+                }
+                if (!Schema::hasColumn('sc_submissions', 'keperluan')) {
+                    $table->string('keperluan')->nullable();
+                }
+                if (!Schema::hasColumn('sc_submissions', 'current_stage')) {
+                    $table->unsignedTinyInteger('current_stage')->default(1);
+                }
+                if (!Schema::hasColumn('sc_submissions', 'status')) {
+                    $table->string('status')->default('proses');
+                }
                 if (!Schema::hasColumn('sc_submissions', 'skhpp_id')) {
                     $table->foreignId('skhpp_id')->nullable()->constrained('skhpps')->nullOnDelete();
                 }
+                if (!Schema::hasColumn('sc_submissions', 'nomor_surat_rh')) {
+                    $table->string('nomor_surat_rh')->nullable();
+                }
+                if (!Schema::hasColumn('sc_submissions', 'nomor_skhpp')) {
+                    $table->string('nomor_skhpp')->nullable();
+                }
                 if (!Schema::hasColumn('sc_submissions', 'file_skhpp')) {
                     $table->string('file_skhpp')->nullable();
+                }
+                if (!Schema::hasColumn('sc_submissions', 'nomor_sc')) {
+                    $table->string('nomor_sc')->nullable();
                 }
                 if (!Schema::hasColumn('sc_submissions', 'file_sc_preview')) {
                     $table->string('file_sc_preview')->nullable();
@@ -58,6 +100,12 @@ return new class extends Migration
                 }
                 if (!Schema::hasColumn('sc_submissions', 'sc_preview_expired_at')) {
                     $table->timestamp('sc_preview_expired_at')->nullable();
+                }
+                if (!Schema::hasColumn('sc_submissions', 'catatan_petugas')) {
+                    $table->text('catatan_petugas')->nullable();
+                }
+                if (!Schema::hasColumn('sc_submissions', 'created_by')) {
+                    $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
                 }
             });
         }

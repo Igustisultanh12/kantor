@@ -5,6 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\ScSubmission;
 use App\Models\ScSubmissionLog;
 use App\Models\Skhpp;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use App\Services\WhatsappService;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
@@ -116,49 +120,111 @@ class ScSubmissionController extends Controller
             'file_skhpp' => 'nullable|file|mimes:pdf|max:10240',
         ]);
 
-        $stage = (int)($validated['current_stage'] ?? 1);
-        $stageInfo = ScSubmission::STAGES[$stage] ?? ScSubmission::STAGES[1];
+        try {
+            DB::beginTransaction();
 
-        // Format kode tracking: SC-YYYYMMDD-XXXXX
-        $trackingCode = 'SC-' . date('Ymd') . '-' . strtoupper(Str::random(5));
+            $stage = (int)($validated['current_stage'] ?? 1);
+            $stageInfo = ScSubmission::STAGES[$stage] ?? ScSubmission::STAGES[1];
 
-        // Penanganan Unggah PDF SKHPP Tanda Tangan Basah
-        $fileSkhppPath = null;
-        if ($request->hasFile('file_skhpp')) {
-            $fileSkhppPath = $request->file('file_skhpp')->store('sc_documents', 'public');
+            // Format kode tracking: SC-YYYYMMDD-XXXXX
+            $trackingCode = 'SC-' . date('Ymd') . '-' . strtoupper(Str::random(5));
+
+            // Penanganan Unggah PDF SKHPP Tanda Tangan Basah
+            $fileSkhppPath = null;
+            if ($request->hasFile('file_skhpp')) {
+                $fileSkhppPath = $request->file('file_skhpp')->store('sc_documents', 'public');
+            }
+
+            $submissionData = [
+                'tracking_code' => $trackingCode,
+                'nama' => $validated['nama'],
+                'identifier_type' => $validated['identifier_type'],
+                'identifier_number' => trim($validated['identifier_number']),
+                'current_stage' => $stage,
+                'status' => $stage === 10 ? 'selesai' : ($validated['status'] ?? 'proses'),
+            ];
+
+            $optionalFields = [
+                'pangkat_korps',
+                'kesatuan',
+                'jabatan',
+                'phone',
+                'keperluan',
+                'catatan_petugas',
+                'nomor_surat_rh',
+                'nomor_skhpp',
+                'nomor_sc',
+            ];
+
+            foreach ($optionalFields as $field) {
+                if (isset($validated[$field]) && Schema::hasColumn('sc_submissions', $field)) {
+                    $submissionData[$field] = $validated[$field];
+                }
+            }
+
+            if (Schema::hasColumn('sc_submissions', 'file_skhpp')) {
+                $submissionData['file_skhpp'] = $fileSkhppPath;
+            }
+
+            if (Schema::hasColumn('sc_submissions', 'created_by')) {
+                $submissionData['created_by'] = Auth::id();
+            }
+
+            $submission = ScSubmission::create($submissionData);
+
+            // Catat riwayat log inisialisasi jika tabel logs ada
+            if (Schema::hasTable('sc_submission_logs')) {
+                ScSubmissionLog::create([
+                    'sc_submission_id' => $submission->id,
+                    'stage' => $stage,
+                    'stage_title' => $stageInfo['title'],
+                    'notes' => $validated['catatan_petugas'] ?: 'Pendaftaran pengajuan berkas Security Clearance di sistem.',
+                    'user_id' => Auth::id(),
+                    'user_name' => Auth::user()->name ?? 'Petugas Kedinasan',
+                ]);
+            }
+
+            DB::commit();
+
+            // Kirim Notifikasi WhatsApp ke Pemohon (Hanya diawal saat pendaftaran, tidak berlaku saat update status)
+            $targetPhone = $submission->phone;
+            if (empty($targetPhone)) {
+                $personel = User::where('nrp', $submission->identifier_number)->first();
+                $targetPhone = $personel?->phone;
+            }
+
+            if (!empty($targetPhone)) {
+                try {
+                    $pangkatNama = trim(($submission->pangkat_korps ? $submission->pangkat_korps . ' ' : '') . $submission->nama);
+                    $identitasLabel = strtoupper($submission->identifier_type);
+                    $trackingUrl = route('tracking-sc.index');
+
+                    $waMessage = "*PEMBERITAHUAN PENGAJUAN SECURITY CLEARANCE (SC)*\n" .
+                                 "*DENINTEL KODAERAL V*\n\n" .
+                                 "Yth. *{$pangkatNama}*\n" .
+                                 "{$identitasLabel}: {$submission->identifier_number}\n\n" .
+                                 "Pengajuan berkas Security Clearance (SC) Anda telah berhasil didaftarkan ke dalam sistem SINDEN dengan rincian:\n\n" .
+                                 "- *Kode Pelacakan:* {$submission->tracking_code}\n" .
+                                 "- *Keperluan:* " . ($submission->keperluan ?: 'Kedinasan') . "\n" .
+                                 "- *Satuan/Kesatuan:* " . ($submission->kesatuan ?: '-') . "\n" .
+                                 "- *Tahap Saat Ini:* Tahap {$stage}: {$stageInfo['title']}\n\n" .
+                                 "Anda dapat memantau posisi dan perkembangan berkas secara transparan tanpa harus login melalui tautan resmi:\n" .
+                                 "{$trackingUrl}\n\n" .
+                                 "*(Cukup masukkan {$identitasLabel} Anda pada halaman tersebut untuk melihat posisi berkas)*.\n\n" .
+                                 "Demikian pemberitahuan ini disampaikan. Terima kasih.";
+
+                    WhatsappService::sendMessage($targetPhone, $waMessage);
+                } catch (\Throwable $e) {
+                    Log::warning("Gagal mengirim notifikasi WA pengajuan SC: " . $e->getMessage());
+                }
+            }
+
+            return redirect()->back()->with('success', "Lapor! Pengajuan Security Clearance atas nama {$submission->nama} berhasil didaftarkan dengan Kode Tracking {$trackingCode}.");
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Gagal mendaftarkan pengajuan SC: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+            return redirect()->back()->withErrors(['error' => 'Gagal mendaftarkan berkas: ' . $e->getMessage()]);
         }
-
-        $submission = ScSubmission::create([
-            'tracking_code' => $trackingCode,
-            'nama' => $validated['nama'],
-            'pangkat_korps' => $validated['pangkat_korps'] ?? null,
-            'identifier_type' => $validated['identifier_type'],
-            'identifier_number' => trim($validated['identifier_number']),
-            'kesatuan' => $validated['kesatuan'] ?? null,
-            'jabatan' => $validated['jabatan'] ?? null,
-            'phone' => $validated['phone'] ?? null,
-            'keperluan' => $validated['keperluan'] ?? null,
-            'current_stage' => $stage,
-            'status' => $stage === 10 ? 'selesai' : ($validated['status'] ?? 'proses'),
-            'catatan_petugas' => $validated['catatan_petugas'] ?? null,
-            'nomor_surat_rh' => $validated['nomor_surat_rh'] ?? null,
-            'nomor_skhpp' => $validated['nomor_skhpp'] ?? null,
-            'file_skhpp' => $fileSkhppPath,
-            'nomor_sc' => $validated['nomor_sc'] ?? null,
-            'created_by' => Auth::id(),
-        ]);
-
-        // Catat riwayat log inisialisasi
-        ScSubmissionLog::create([
-            'sc_submission_id' => $submission->id,
-            'stage' => $stage,
-            'stage_title' => $stageInfo['title'],
-            'notes' => $validated['catatan_petugas'] ?: 'Pendaftaran pengajuan berkas Security Clearance di sistem.',
-            'user_id' => Auth::id(),
-            'user_name' => Auth::user()->name ?? 'Petugas Kedinasan',
-        ]);
-
-        return redirect()->back()->with('success', "Lapor! Pengajuan Security Clearance atas nama {$submission->nama} berhasil didaftarkan dengan Kode Tracking {$trackingCode}.");
     }
 
     /**
@@ -232,14 +298,16 @@ class ScSubmissionController extends Controller
             $logNote .= " (Berkas SKHPP TTD Basah berhasil diunggah).";
         }
 
-        ScSubmissionLog::create([
-            'sc_submission_id' => $submission->id,
-            'stage' => $newStage,
-            'stage_title' => $stageInfo['title'],
-            'notes' => $logNote,
-            'user_id' => Auth::id(),
-            'user_name' => Auth::user()->name ?? 'Petugas Kedinasan',
-        ]);
+        if (Schema::hasTable('sc_submission_logs')) {
+            ScSubmissionLog::create([
+                'sc_submission_id' => $submission->id,
+                'stage' => $newStage,
+                'stage_title' => $stageInfo['title'],
+                'notes' => $logNote,
+                'user_id' => Auth::id(),
+                'user_name' => Auth::user()->name ?? 'Petugas Kedinasan',
+            ]);
+        }
 
         return redirect()->back()->with('success', "Lapor! Berkas {$submission->nama} berhasil diperbarui ke Tahap {$newStage}: {$stageInfo['title']}.");
     }
