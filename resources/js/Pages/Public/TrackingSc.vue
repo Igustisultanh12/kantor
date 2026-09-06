@@ -573,13 +573,12 @@ onUnmounted(() => {
                     <!-- PDF Viewer Container With Built-in Physical Watermark & Anti-Download Shield -->
                     <div class="flex-1 relative bg-slate-950 overflow-hidden" @contextmenu.prevent>
                         
-                        <!-- Embedded PDF Viewer (Sandbox strictly without allow-downloads) -->
+                        <!-- Embedded PDF Viewer -->
                         <iframe 
                             v-if="previewPdfUrl"
                             :src="previewPdfUrl"
-                            class="w-full h-full border-0 select-none"
+                            class="w-full h-full border-0 select-none bg-slate-900"
                             title="Petinjau Berkas SC Resmi"
-                            sandbox="allow-scripts allow-same-origin"
                         ></iframe>
 
                         <!-- Transparent Shield across top bar of iframe to block browser PDF menu/download clicks -->

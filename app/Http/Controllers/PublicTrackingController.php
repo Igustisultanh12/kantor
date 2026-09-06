@@ -114,7 +114,7 @@ class PublicTrackingController extends Controller
 
         return response()->json([
             'success' => true,
-            'stream_url' => route('tracking-sc.stream', ['token' => $token]),
+            'stream_url' => '/tracking-sc/stream/' . $token,
         ]);
     }
 
@@ -152,7 +152,6 @@ class PublicTrackingController extends Controller
             'Expires' => '0',
             'X-Content-Type-Options' => 'nosniff',
             'X-Frame-Options' => 'SAMEORIGIN',
-            'X-Download-Options' => 'noopen',
             'X-Robots-Tag' => 'noindex, nofollow, nosnippet',
         ]);
     }
