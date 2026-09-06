@@ -167,7 +167,7 @@ class ScSubmissionController extends Controller
                 }
             }
 
-            // Pengecekan aman untuk setiap kolom NOT NULL warisan yang tidak memiliki nilai bawaan
+            // Pengecekan aman universal untuk setiap kolom NOT NULL warisan yang tidak memiliki nilai bawaan
             try {
                 $columns = DB::select("SHOW COLUMNS FROM sc_submissions");
                 foreach ($columns as $col) {
@@ -176,12 +176,18 @@ class ScSubmissionController extends Controller
                     $hasDefault = ($col->Default ?? $col->default ?? null) !== null;
 
                     if ($fieldName && $isNull && !$hasDefault && !in_array($fieldName, ['id', 'created_at', 'updated_at'])) {
-                        if (!isset($submissionData[$fieldName]) || $submissionData[$fieldName] === null) {
+                        if (!isset($submissionData[$fieldName]) || $submissionData[$fieldName] === null || $submissionData[$fieldName] === '') {
                             $type = strtolower($col->Type ?? $col->type ?? '');
-                            if (str_contains($type, 'int')) {
+                            if ($fieldName === 'nomor_resi') {
+                                $submissionData[$fieldName] = $trackingCode;
+                            } elseif ($fieldName === 'tipe_permohonan') {
+                                $submissionData[$fieldName] = 'baru';
+                            } elseif (str_contains($type, 'int') || str_contains($type, 'decimal') || str_contains($type, 'float')) {
                                 $submissionData[$fieldName] = 0;
+                            } elseif (str_contains($type, 'date') || str_contains($type, 'time')) {
+                                $submissionData[$fieldName] = now();
                             } else {
-                                $submissionData[$fieldName] = ($fieldName === 'nomor_resi') ? $trackingCode : '-';
+                                $submissionData[$fieldName] = '-';
                             }
                         }
                     }

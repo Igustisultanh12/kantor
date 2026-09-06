@@ -10,30 +10,7 @@ class ScSubmission extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'skhpp_id',
-        'tracking_code',
-        'nomor_resi',
-        'nama',
-        'pangkat_korps',
-        'identifier_type',
-        'identifier_number',
-        'kesatuan',
-        'jabatan',
-        'phone',
-        'keperluan',
-        'current_stage',
-        'status',
-        'nomor_surat_rh',
-        'nomor_skhpp',
-        'file_skhpp',
-        'nomor_sc',
-        'file_sc_preview',
-        'sc_preview_uploaded_at',
-        'sc_preview_expired_at',
-        'catatan_petugas',
-        'created_by',
-    ];
+    protected $guarded = ['id'];
 
     protected $casts = [
         'current_stage' => 'integer',
@@ -232,6 +209,22 @@ class ScSubmission extends Model
     public static function ensureSchema(): void
     {
         try {
+            // Ubah seluruh kolom NOT NULL warisan (selain id) menjadi NULL DEFAULT NULL
+            try {
+                $columns = \Illuminate\Support\Facades\DB::select("SHOW COLUMNS FROM sc_submissions");
+                foreach ($columns as $col) {
+                    $fieldName = $col->Field ?? $col->field ?? null;
+                    $isNull = ($col->Null ?? $col->null ?? 'YES') === 'NO';
+                    $colType = $col->Type ?? $col->type ?? null;
+
+                    if ($fieldName && $isNull && !in_array($fieldName, ['id', 'created_at', 'updated_at'])) {
+                        try {
+                            \Illuminate\Support\Facades\DB::statement("ALTER TABLE `sc_submissions` MODIFY COLUMN `{$fieldName}` {$colType} NULL DEFAULT NULL");
+                        } catch (\Throwable $e) {}
+                    }
+                }
+            } catch (\Throwable $e) {}
+
             if (!\Illuminate\Support\Facades\Schema::hasTable('sc_submissions')) {
                 \Illuminate\Support\Facades\Schema::create('sc_submissions', function (\Illuminate\Database\Schema\Blueprint $table) {
                     $table->id();
