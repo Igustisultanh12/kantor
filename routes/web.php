@@ -24,6 +24,7 @@ use App\Http\Controllers\PersonnelController;
 use App\Http\Controllers\PESSAdminController; // SULTAN CONFIG: Pangkalan Pemisah Logika Otoritas Kerja Admin PESS
 use App\Http\Controllers\API\PESSReceiverController; // SULTAN CONFIG: Controller Penerima File Lintas VPS
 use App\Http\Controllers\CommanderAccountController; // SINDEN CORRECTION: Kalibrasi typo dari Controkkers ke Controllers
+use App\Http\Controllers\IbuBetiAccountController;
 use App\Http\Controllers\MitraPaymentController;
 use App\Http\Controllers\TechnicalUnitCashController;
 use App\Http\Controllers\SkhppController;
@@ -254,6 +255,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/commander-account/pdf', [CommanderAccountController::class, 'exportPdf'])->name('commander.pdf');
 
     // =========================================================================
+    // MODUL STRATEGIS REKENING IBU BETI
+    // =========================================================================
+    Route::get('/rekening-ibu-beti', [IbuBetiAccountController::class, 'index'])->name('ibu-beti.index');
+    Route::post('/rekening-ibu-beti', [IbuBetiAccountController::class, 'store'])->name('ibu-beti.store');
+    Route::post('/rekening-ibu-beti/{id}', [IbuBetiAccountController::class, 'update'])->name('ibu-beti.update');
+    Route::delete('/rekening-ibu-beti/{id}', [IbuBetiAccountController::class, 'destroy'])->name('ibu-beti.destroy');
+    Route::get('/rekening-ibu-beti/pdf', [IbuBetiAccountController::class, 'exportPdf'])->name('ibu-beti.pdf');
+
+    // =========================================================================
     // MODUL MANAJEMEN PENCATATAN PEMBAYARAN MITRA (MATRIX BULANAN & CETAK PDF)
     // =========================================================================
     Route::get('/mitras', [MitraPaymentController::class, 'index'])->name('mitras.index');
@@ -291,6 +301,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/users/{id}/toggle-mitra-access', [MitraPaymentController::class, 'toggleUserAccess'])->name('users.toggle-mitra-access');
         Route::post('/users/{id}/toggle-technical-cash-access', [TechnicalUnitCashController::class, 'toggleUserAccess'])->name('users.toggle-technical-cash-access');
         Route::post('/users/{user}/toggle-koperasi-access', [UserController::class, 'toggleKoperasiAccess'])->name('users.toggle-koperasi-access');
+        Route::post('/users/{user}/toggle-ibu-beti-access', [UserController::class, 'toggleIbuBetiAccess'])->name('users.toggle-ibu-beti-access');
 
         // Kategori Arsip Surat Mako V
         Route::resource('categories', CategoryController::class);
@@ -483,6 +494,7 @@ Route::post('/api/mobile/login', function (\Illuminate\Http\Request $request) {
                 'can_access_commander' => (bool)($user->can_access_commander ?? false),
                 'can_access_mitra' => (bool)($user->can_access_mitra ?? false),
                 'can_access_technical_cash' => (bool)($user->can_access_technical_cash ?? false),
+                'can_access_ibu_beti' => (bool)($user->can_access_ibu_beti ?? false),
                 'can_access_violations' => (bool)($user->can_access_violations ?? true),
                 'can_access_activities' => (bool)($user->can_access_activities ?? true),
                 'can_access_users' => (bool)($user->role === 'admin'),
@@ -1036,6 +1048,7 @@ Route::get('/api/mobile/users', function () {
                 'can_access_cash' => (bool)($u->can_access_cash ?? false),
                 'can_access_mitra' => (bool)($u->can_access_mitra ?? false),
                 'can_access_technical_cash' => (bool)($u->can_access_technical_cash ?? false),
+                'can_access_ibu_beti' => (bool)($u->can_access_ibu_beti ?? false),
             ];
         });
         return response()->json(['status' => 'success', 'data' => $users, 'users' => $users]);

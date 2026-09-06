@@ -86,6 +86,8 @@ class HandleInertiaRequests extends Middleware
                     'is_active'  => $request->user()->is_active,
                     'can_access_mitra' => (bool)$request->user()->can_access_mitra,
                     'can_access_technical_cash' => (bool)$request->user()->can_access_technical_cash,
+                    'can_manage_koperasi' => (bool)$request->user()->can_manage_koperasi,
+                    'can_access_ibu_beti' => (bool)$request->user()->can_access_ibu_beti,
                     // Penanda khusus untuk deteksi Admin/Sultan di sisi Frontend
                     'is_commander' => ($request->user()->role === 'admin' || $request->user()->name === 'I Gusti Sultan H.A, A.Md.Kom'),
                 ] : null,

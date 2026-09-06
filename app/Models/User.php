@@ -31,6 +31,7 @@ class User extends Authenticatable
         'can_access_mitra',
         'can_access_technical_cash',
         'can_manage_koperasi',
+        'can_access_ibu_beti',
         'activation_token',
         'must_change_password', // TAMBAHKAN INI: Agar sistem tahu user perlu ganti password
         'reset_token',
@@ -63,6 +64,7 @@ class User extends Authenticatable
             'can_access_mitra' => 'boolean',
             'can_access_technical_cash' => 'boolean',
             'can_manage_koperasi' => 'boolean',
+            'can_access_ibu_beti' => 'boolean',
             'must_change_password' => 'boolean', // Tambahkan cast agar logika Vue Bapak akurat
             'token_expires_at' => 'datetime',
         ];

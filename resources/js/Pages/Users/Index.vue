@@ -429,6 +429,46 @@ const toggleTechnicalCashAccess = (user) => {
     });
 };
 
+const toggleIbuBetiAccess = (user) => {
+    if (!user) return;
+    const prev = Boolean(user.can_access_ibu_beti);
+    user.can_access_ibu_beti = !prev;
+    if (detailUser.value && detailUser.value.id === user.id) {
+        detailUser.value.can_access_ibu_beti = user.can_access_ibu_beti;
+    }
+    if (props.users?.data) {
+        const found = props.users.data.find(u => u.id === user.id);
+        if (found) found.can_access_ibu_beti = user.can_access_ibu_beti;
+    }
+
+    router.post(route('users.toggle-ibu-beti-access', user.id), {}, {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => {
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 2000,
+                timerProgressBar: true
+            });
+            Toast.fire({
+                icon: 'success',
+                title: `Akses Rekening Ibu Beti: ${user.can_access_ibu_beti ? 'DIBERIKAN (AKTIF)' : 'DINONAKTIFKAN'}`
+            });
+        },
+        onError: () => {
+            user.can_access_ibu_beti = prev;
+            if (detailUser.value && detailUser.value.id === user.id) detailUser.value.can_access_ibu_beti = prev;
+            if (props.users?.data) {
+                const found = props.users.data.find(u => u.id === user.id);
+                if (found) found.can_access_ibu_beti = prev;
+            }
+            Swal.fire('GAGAL', 'Gagal memperbarui hak akses Rekening Ibu Beti.', 'error');
+        }
+    });
+};
+
 const getStatusClass = (status) => {
     return status ? 'bg-emerald-50 text-emerald-600 border-emerald-100 shadow-sm' : 'bg-rose-50 text-rose-600 border-rose-100 shadow-sm';
 };
@@ -547,6 +587,9 @@ onUnmounted(() => {
                                     </button>
                                     <button @click="toggleKoperasiAccess(user)" 
                                         :class="user.can_manage_koperasi ? 'bg-violet-100 text-violet-800 hover:bg-violet-600 hover:text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-700 hover:text-white'" class="px-2.5 py-1.5 text-[8px] font-black uppercase rounded-lg transition-all shadow-xs" title="Toggle Hak Akses Pengurus Simpan Pinjam (Koperasi)"> Koperasi: {{ user.can_manage_koperasi ? 'PENGURUS' : 'OFF' }}
+                                    </button>
+                                    <button @click="toggleIbuBetiAccess(user)" 
+                                        :class="user.can_access_ibu_beti ? 'bg-pink-100 text-pink-700 hover:bg-pink-600 hover:text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-700 hover:text-white'" class="px-2.5 py-1.5 text-[8px] font-black uppercase rounded-lg transition-all shadow-xs" title="Toggle Hak Akses Rekening Ibu Beti"> Ibu Beti: {{ user.can_access_ibu_beti ? 'AKTIF' : 'OFF' }}
                                     </button>
                                                                         <button v-if="!user.is_active" @click="printSingleTokenPdf(user.id)" class="px-2.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[8px] font-black uppercase rounded-lg hover:bg-emerald-600 hover:text-white transition-all shadow-xs flex items-center gap-1 cursor-pointer" title="Cetak Token PDF Perorangan">
                                         <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
@@ -933,7 +976,43 @@ onUnmounted(() => {
                                 </div>
                             </div>
 
-                            <!-- 4. TANDA TANGAN DIGITAL (TTE) -->
+                            <!-- 4. MODUL REKENING IBU BETI - INTERACTIVE TOGGLE CARD -->
+                            <div 
+                                @click="toggleIbuBetiAccess(detailUser)"
+                                :class="detailUser.can_access_ibu_beti ? 'border-pink-500 bg-pink-50/50 shadow-sm ring-2 ring-pink-500/20' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/70'"
+                                class="p-4 border rounded-2xl cursor-pointer transition-all duration-200 flex flex-col justify-between group select-none relative"
+                                role="button"
+                                title="Klik untuk mengaktifkan / menonaktifkan Rekening Ibu Beti"
+                            >
+                                <div>
+                                    <div class="flex items-start justify-between gap-2 mb-2">
+                                        <div class="flex items-center gap-2.5">
+                                            <div :class="detailUser.can_access_ibu_beti ? 'bg-pink-600 text-white shadow-sm shadow-pink-600/30' : 'bg-slate-100 text-slate-500'" class="w-8 h-8 rounded-xl flex items-center justify-center font-bold shrink-0 transition-colors">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                            </div>
+                                            <div>
+                                                <span class="font-black text-slate-900 uppercase block text-[11px] tracking-tight">Rekening Ibu Beti</span>
+                                                <span class="text-[9px] text-slate-400 font-bold uppercase">Keuangan Khusus</span>
+                                            </div>
+                                        </div>
+                                        <!-- TOGGLE SWITCH VISUAL -->
+                                        <div class="flex items-center gap-1.5 shrink-0 pt-0.5">
+                                            <div :class="detailUser.can_access_ibu_beti ? 'bg-pink-600' : 'bg-slate-300'" class="w-11 h-6 rounded-full p-0.5 transition-colors duration-200 ease-in-out relative">
+                                                <div :class="detailUser.can_access_ibu_beti ? 'translate-x-5' : 'translate-x-0'" class="w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 ease-in-out"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <p class="text-[10.5px] text-slate-500 leading-snug">Otoritas akses, pencatatan mutasi kas debet/kredit, & cetak laporan Rekening Ibu Beti.</p>
+                                </div>
+                                <div class="mt-3.5 pt-2.5 border-t border-slate-100/80 flex items-center justify-between">
+                                    <span class="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider">Status Otoritas:</span>
+                                    <span :class="detailUser.can_access_ibu_beti ? 'bg-pink-600 text-white font-black shadow-xs shadow-pink-600/30' : 'bg-slate-100 text-slate-500 font-bold'" class="px-2.5 py-1 text-[9px] rounded-lg uppercase tracking-wider transition">
+                                        {{ detailUser.can_access_ibu_beti ? 'DIBERIKAN (AKTIF)' : 'NONAKTIF (OFF)' }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- 5. TANDA TANGAN DIGITAL (TTE) -->
                             <div class="p-4 bg-slate-50/60 border border-slate-200 rounded-2xl flex flex-col justify-between">
                                 <div>
                                     <div class="flex items-start justify-between gap-2 mb-2">

@@ -567,4 +567,23 @@ class UserController extends Controller
         return back()->with('message', 'Hak akses Pengurus Simpan Pinjam berhasil diperbarui.');
     }
 
+    /**
+     * TOGGLE HAK AKSES REKENING IBU BETI
+     */
+    public function toggleIbuBetiAccess(User $user)
+    {
+        $user->update(['can_access_ibu_beti' => !$user->can_access_ibu_beti]);
+
+        AuditLog::create([
+            'user_id'          => auth()->id(),
+            'admin_name'       => auth()->user()->name,
+            'action'           => 'UPDATE HAK AKSES REKENING IBU BETI',
+            'target_personnel' => $user->name,
+            'description'      => "Mengubah hak akses Rekening Ibu Beti untuk {$user->name} menjadi " . ($user->can_access_ibu_beti ? 'Diizinkan' : 'Dilarang'),
+            'ip_address'       => request()->ip(),
+        ]);
+
+        return back()->with('message', 'Hak akses Rekening Ibu Beti berhasil diperbarui.');
+    }
+
 }
