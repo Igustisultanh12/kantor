@@ -69,8 +69,8 @@ class ScSubmission extends Model
         ],
         3 => [
             'id' => 3,
-            'title' => 'Proses Cetak RH',
-            'desc' => 'Pencetakan lembar resmi Riwayat Hidup untuk penandatanganan kedinasan.',
+            'title' => 'Proses Cetak SKHPP',
+            'desc' => 'Pencetakan lembar naskah resmi SKHPP untuk penandatanganan kedinasan.',
             'category' => 'Denintel',
         ],
         4 => [

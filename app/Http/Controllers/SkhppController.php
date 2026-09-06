@@ -415,7 +415,7 @@ class SkhppController extends Controller
         }
 
         // SINKRONISASI OTOMATIS KE FITUR TRACKING PENGAJUAN SECURITY CLEARANCE (SC)
-        // Tahap 1 (Pengisian RH), 2 (Pengecekan Dokumen), 3 (Cetak RH), dan 4 (Menunggu TTD) otomatis terlewati!
+        // Tahap 1 (Pengisian RH), 2 (Pengecekan Dokumen), 3 (Cetak SKHPP), dan 4 (Menunggu TTD) otomatis terlewati!
         try {
             $identifierType = 'nrp';
             $identifierNum = null;
@@ -456,7 +456,7 @@ class SkhppController extends Controller
                 $initialLogs = [
                     ['stage' => 1, 'stage_title' => 'Pengisian RH', 'notes' => 'Pengisian Riwayat Hidup telah diproses terintegrasi pada penerbitan SKHPP.'],
                     ['stage' => 2, 'stage_title' => 'Pengecekan Kelengkapan Dokumen', 'notes' => 'Pemeriksaan berkas dan kelengkapan dokumen telah diverifikasi oleh operator Denintel.'],
-                    ['stage' => 3, 'stage_title' => 'Proses Cetak RH', 'notes' => 'Proses administrasi dan pencetakan lembar SKHPP selesai.'],
+                    ['stage' => 3, 'stage_title' => 'Proses Cetak SKHPP', 'notes' => 'Proses administrasi dan pencetakan lembar SKHPP selesai.'],
                     ['stage' => 4, 'stage_title' => 'Menunggu TTD Komandan Denintel', 'notes' => 'Persetujuan dan tanda tangan dinas elektronik (TTE) Komandan Denintel telah disahkan.'],
                     ['stage' => 5, 'stage_title' => 'SKHPP Terbit', 'notes' => "SKHPP resmi disahkan dan diterbitkan dengan nomor {$formattedNo}. Berkas beralih ke Staf Intelijen."],
                 ];
