@@ -11,49 +11,71 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('sc_submissions', function (Blueprint $table) {
-            $table->id();
-            $table->string('tracking_code')->unique();
-            $table->string('nama');
-            $table->string('pangkat_korps')->nullable();
-            $table->string('identifier_type')->default('nrp'); // nrp, nip, nik
-            $table->string('identifier_number');
-            $table->string('kesatuan')->nullable();
-            $table->string('jabatan')->nullable();
-            $table->string('phone')->nullable();
-            $table->string('keperluan')->nullable();
-            $table->unsignedTinyInteger('current_stage')->default(1); // 1 sampai 10
-            $table->string('status')->default('proses'); // proses, selesai, perbaikan, ditolak
-            $table->foreignId('skhpp_id')->nullable()->constrained('skhpps')->nullOnDelete();
-            $table->string('nomor_surat_rh')->nullable();
-            $table->string('nomor_skhpp')->nullable();
-            $table->string('file_skhpp')->nullable();
-            $table->string('nomor_sc')->nullable();
-            $table->string('file_sc_preview')->nullable();
-            $table->timestamp('sc_preview_uploaded_at')->nullable();
-            $table->timestamp('sc_preview_expired_at')->nullable();
-            $table->text('catatan_petugas')->nullable();
-            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->timestamps();
+        if (!Schema::hasTable('sc_submissions')) {
+            Schema::create('sc_submissions', function (Blueprint $table) {
+                $table->id();
+                $table->string('tracking_code')->unique();
+                $table->string('nama');
+                $table->string('pangkat_korps')->nullable();
+                $table->string('identifier_type')->default('nrp'); // nrp, nip, nik
+                $table->string('identifier_number');
+                $table->string('kesatuan')->nullable();
+                $table->string('jabatan')->nullable();
+                $table->string('phone')->nullable();
+                $table->string('keperluan')->nullable();
+                $table->unsignedTinyInteger('current_stage')->default(1); // 1 sampai 10
+                $table->string('status')->default('proses'); // proses, selesai, perbaikan, ditolak
+                $table->foreignId('skhpp_id')->nullable()->constrained('skhpps')->nullOnDelete();
+                $table->string('nomor_surat_rh')->nullable();
+                $table->string('nomor_skhpp')->nullable();
+                $table->string('file_skhpp')->nullable();
+                $table->string('nomor_sc')->nullable();
+                $table->string('file_sc_preview')->nullable();
+                $table->timestamp('sc_preview_uploaded_at')->nullable();
+                $table->timestamp('sc_preview_expired_at')->nullable();
+                $table->text('catatan_petugas')->nullable();
+                $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+                $table->timestamps();
 
-            $table->index('identifier_number');
-            $table->index('tracking_code');
-            $table->index('current_stage');
-            $table->index('status');
-        });
+                $table->index('identifier_number');
+                $table->index('tracking_code');
+                $table->index('current_stage');
+                $table->index('status');
+            });
+        } else {
+            Schema::table('sc_submissions', function (Blueprint $table) {
+                if (!Schema::hasColumn('sc_submissions', 'skhpp_id')) {
+                    $table->foreignId('skhpp_id')->nullable()->constrained('skhpps')->nullOnDelete();
+                }
+                if (!Schema::hasColumn('sc_submissions', 'file_skhpp')) {
+                    $table->string('file_skhpp')->nullable();
+                }
+                if (!Schema::hasColumn('sc_submissions', 'file_sc_preview')) {
+                    $table->string('file_sc_preview')->nullable();
+                }
+                if (!Schema::hasColumn('sc_submissions', 'sc_preview_uploaded_at')) {
+                    $table->timestamp('sc_preview_uploaded_at')->nullable();
+                }
+                if (!Schema::hasColumn('sc_submissions', 'sc_preview_expired_at')) {
+                    $table->timestamp('sc_preview_expired_at')->nullable();
+                }
+            });
+        }
 
-        Schema::create('sc_submission_logs', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('sc_submission_id')->constrained('sc_submissions')->onDelete('cascade');
-            $table->unsignedTinyInteger('stage');
-            $table->string('stage_title');
-            $table->text('notes')->nullable();
-            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->string('user_name')->nullable();
-            $table->timestamps();
+        if (!Schema::hasTable('sc_submission_logs')) {
+            Schema::create('sc_submission_logs', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('sc_submission_id')->constrained('sc_submissions')->onDelete('cascade');
+                $table->unsignedTinyInteger('stage');
+                $table->string('stage_title');
+                $table->text('notes')->nullable();
+                $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
+                $table->string('user_name')->nullable();
+                $table->timestamps();
 
-            $table->index('sc_submission_id');
-        });
+                $table->index('sc_submission_id');
+            });
+        }
     }
 
     /**
