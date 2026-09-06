@@ -2,6 +2,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     submission: Object,
@@ -78,11 +79,21 @@ const openPreviewModal = async () => {
             previewPdfUrl.value = response.data.stream_url + '#toolbar=0&navpanes=0&scrollbar=1&statusbar=0&messages=0&view=FitH';
             isPreviewModalOpen.value = true;
         } else {
-            alert('Gagal memuat sesi petinjau rahasia.');
+            Swal.fire({
+                title: 'Gagal',
+                text: 'Gagal memuat sesi petinjau rahasia.',
+                icon: 'error',
+                confirmButtonColor: '#2563eb',
+            });
         }
     } catch (err) {
         const msg = err.response?.data?.error || 'Gagal memuat berkas petinjau resmi. Masa aktif berkas mungkin telah berakhir.';
-        alert(msg);
+        Swal.fire({
+            title: 'Informasi Dokumen',
+            text: msg,
+            icon: 'warning',
+            confirmButtonColor: '#2563eb',
+        });
     } finally {
         isLoadingPreview.value = false;
     }
@@ -94,7 +105,13 @@ const closePreviewModal = () => {
 };
 
 const warnAntiDownload = () => {
-    alert('Peringatan Kedinasan: Fitur unduh dan simpan dinonaktifkan untuk dokumen petinjau resmi ber-watermark.');
+    Swal.fire({
+        title: 'Peringatan Kedinasan',
+        text: 'Fitur unduh dan simpan dinonaktifkan untuk dokumen petinjau resmi ber-watermark.',
+        icon: 'warning',
+        confirmButtonColor: '#2563eb',
+        confirmButtonText: 'Dimengerti',
+    });
 };
 
 // Pengamanan Anti-Download Ketat: blokir shortcut Ctrl+S, Ctrl+P, Ctrl+U, Ctrl+C, F12
@@ -108,7 +125,13 @@ const handleKeydown = (e) => {
         e.preventDefault();
     }
     if (e.key === 'PrintScreen') {
-        alert('Peringatan Kedinasan: Fitur tangkapan layar dibatasi untuk berkas petinjau intelijen.');
+        Swal.fire({
+            title: 'Peringatan Kedinasan',
+            text: 'Fitur tangkapan layar dibatasi untuk berkas petinjau intelijen.',
+            icon: 'warning',
+            confirmButtonColor: '#2563eb',
+            confirmButtonText: 'Dimengerti',
+        });
     }
 };
 

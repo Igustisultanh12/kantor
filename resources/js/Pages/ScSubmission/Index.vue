@@ -2,6 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     submissions: Object,
@@ -38,15 +39,42 @@ const resetFilter = () => {
 // Sinkronisasi SKHPP Terbit Otomatis
 const isSyncingSkhpp = ref(false);
 const syncSkhpp = () => {
-    if (confirm('Sinkronkan seluruh dokumen SKHPP yang telah disahkan Komandan Denintel (TTE) ke dalam daftar Pengajuan SC? Berkas yang disinkronkan akan langsung berada pada Tahap 5 (SKHPP Terbit).')) {
-        isSyncingSkhpp.value = true;
-        router.post(route('sc-submissions.sync-skhpp'), {}, {
-            preserveScroll: true,
-            onFinish: () => {
-                isSyncingSkhpp.value = false;
-            }
-        });
-    }
+    Swal.fire({
+        title: 'Konfirmasi Sinkronisasi',
+        text: 'Sinkronkan seluruh dokumen SKHPP yang telah disahkan Komandan Denintel (TTE) ke dalam daftar Pengajuan SC? Berkas yang disinkronkan akan langsung berada pada Tahap 5 (SKHPP Terbit).',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#2563eb',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Sinkronkan!',
+        cancelButtonText: 'Batal',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            isSyncingSkhpp.value = true;
+            router.post(route('sc-submissions.sync-skhpp'), {}, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        title: 'Sinkronisasi Berhasil',
+                        text: 'Seluruh berkas SKHPP yang telah terbit berhasil disinkronkan.',
+                        icon: 'success',
+                        confirmButtonColor: '#2563eb',
+                    });
+                },
+                onError: (err) => {
+                    Swal.fire({
+                        title: 'Gagal Sinkronisasi',
+                        text: Object.values(err)[0] || 'Terjadi gangguan saat sinkronisasi berkas.',
+                        icon: 'error',
+                        confirmButtonColor: '#dc2626',
+                    });
+                },
+                onFinish: () => {
+                    isSyncingSkhpp.value = false;
+                }
+            });
+        }
+    });
 };
 
 // Modal Tambah Pengajuan Baru
@@ -101,11 +129,23 @@ const submitCreate = () => {
         preserveScroll: true,
         onSuccess: () => {
             isCreateModalOpen.value = false;
+            resetCreateForm();
             isSubmittingCreate.value = false;
+            Swal.fire({
+                title: 'Berhasil Didaftarkan',
+                text: 'Pengajuan Security Clearance baru berhasil dicatat ke sistem.',
+                icon: 'success',
+                confirmButtonColor: '#2563eb',
+            });
         },
         onError: (err) => {
-            alert('Gagal mendaftarkan berkas: ' + Object.values(err)[0]);
             isSubmittingCreate.value = false;
+            Swal.fire({
+                title: 'Gagal Mendaftarkan',
+                text: Object.values(err)[0] || 'Gagal mendaftarkan berkas pengajuan.',
+                icon: 'error',
+                confirmButtonColor: '#dc2626',
+            });
         }
     });
 };
@@ -164,10 +204,21 @@ const submitUpdateStage = () => {
         onSuccess: () => {
             isUpdateStageModalOpen.value = false;
             isSubmittingStage.value = false;
+            Swal.fire({
+                title: 'Tahapan Diperbarui',
+                text: 'Perubahan tahapan berkas SC berhasil disimpan.',
+                icon: 'success',
+                confirmButtonColor: '#2563eb',
+            });
         },
         onError: (err) => {
-            alert('Gagal memperbarui tahapan: ' + Object.values(err)[0]);
             isSubmittingStage.value = false;
+            Swal.fire({
+                title: 'Gagal Memperbarui Tahapan',
+                text: Object.values(err)[0] || 'Terjadi kesalahan saat memperbarui tahapan.',
+                icon: 'error',
+                confirmButtonColor: '#dc2626',
+            });
         }
     });
 };
@@ -195,10 +246,22 @@ const handleKeydown = (e) => {
     if (!isPreviewModalOpen.value) return;
     if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.key === 'p' || e.key === 'P')) {
         e.preventDefault();
-        alert('Peringatan Kedinasan: Dokumen ini berstatus petinjau sementara dan tidak diizinkan untuk diunduh maupun dicetak.');
+        Swal.fire({
+            title: 'Peringatan Kedinasan',
+            text: 'Dokumen ini berstatus petinjau sementara dan tidak diizinkan untuk diunduh maupun dicetak.',
+            icon: 'warning',
+            confirmButtonColor: '#2563eb',
+            confirmButtonText: 'Siap, Dimengerti',
+        });
     }
     if (e.key === 'PrintScreen') {
-        alert('Peringatan Kedinasan: Fitur tangkapan layar dibatasi untuk berkas petinjau intelijen.');
+        Swal.fire({
+            title: 'Peringatan Kedinasan',
+            text: 'Fitur tangkapan layar dibatasi untuk berkas petinjau intelijen.',
+            icon: 'warning',
+            confirmButtonColor: '#2563eb',
+            confirmButtonText: 'Siap, Dimengerti',
+        });
     }
 };
 
@@ -250,21 +313,60 @@ const submitEdit = () => {
         onSuccess: () => {
             isEditModalOpen.value = false;
             isSubmittingEdit.value = false;
+            Swal.fire({
+                title: 'Perubahan Disimpan',
+                text: 'Data pemohon SC berhasil diperbarui.',
+                icon: 'success',
+                confirmButtonColor: '#2563eb',
+            });
         },
         onError: (err) => {
-            alert('Gagal mengubah data: ' + Object.values(err)[0]);
             isSubmittingEdit.value = false;
+            Swal.fire({
+                title: 'Gagal Mengubah Data',
+                text: Object.values(err)[0] || 'Terjadi kesalahan saat menyimpan perubahan.',
+                icon: 'error',
+                confirmButtonColor: '#dc2626',
+            });
         }
     });
 };
 
-// Hapus Berkas
+// Hapus Berkas dengan SweetAlert2
 const deleteSubmission = (sub) => {
-    if (confirm(`Peringatan Kedinasan: Yakin ingin menghapus seluruh data pengajuan SC atas nama ${sub.nama} (${sub.tracking_code})? Tindakan ini tidak dapat dibatalkan.`)) {
-        router.delete(route('sc-submissions.destroy', sub.id), {
-            preserveScroll: true,
-        });
-    }
+    Swal.fire({
+        title: 'Konfirmasi Penghapusan',
+        html: `<p class="text-sm text-slate-600">Yakin ingin menghapus seluruh data pengajuan SC atas nama <b class="text-slate-900">${sub.nama}</b> (<span class="font-mono font-bold text-blue-600">${sub.tracking_code}</span>)?</p><p class="text-xs text-rose-500 mt-2 font-semibold">Tindakan ini akan menghapus berkas PDF terkait dari server dan tidak dapat dibatalkan.</p>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Hapus Berkas!',
+        cancelButtonText: 'Batal',
+        reverseButtons: true,
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.delete(route('sc-submissions.destroy', sub.id), {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        title: 'Berhasil Dihapus',
+                        text: `Data pengajuan SC atas nama ${sub.nama} telah berhasil dihapus.`,
+                        icon: 'success',
+                        confirmButtonColor: '#2563eb',
+                    });
+                },
+                onError: (err) => {
+                    Swal.fire({
+                        title: 'Gagal Menghapus',
+                        text: Object.values(err)[0] || 'Gagal menghapus data pengajuan.',
+                        icon: 'error',
+                        confirmButtonColor: '#dc2626',
+                    });
+                }
+            });
+        }
+    });
 };
 
 const formatDate = (dateStr) => {
