@@ -60,6 +60,8 @@ Route::post('reset-password-custom', [ResetPasswordController::class, 'store'])-
 
 // --- FITUR TRACKING PENGAJUAN SC (AKSES PUBLIK TANPA LOGIN) ---
 Route::get('/tracking-sc', [PublicTrackingController::class, 'index'])->name('tracking-sc.index');
+Route::post('/tracking-sc/token', [PublicTrackingController::class, 'generatePreviewToken'])->name('tracking-sc.token');
+Route::get('/tracking-sc/stream/{token}', [PublicTrackingController::class, 'streamSecurePdf'])->name('tracking-sc.stream');
 Route::get('/tracking-sc/{tracking_code}/preview-pdf', [PublicTrackingController::class, 'previewPdf'])->name('tracking-sc.preview-pdf');
 
 // --- AKSES DASHBOARD UTAMA ---

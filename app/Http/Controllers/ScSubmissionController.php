@@ -332,7 +332,11 @@ class ScSubmissionController extends Controller
             if ($submission->file_sc_preview && Storage::disk('public')->exists($submission->file_sc_preview)) {
                 Storage::disk('public')->delete($submission->file_sc_preview);
             }
-            $updateData['file_sc_preview'] = $request->file('file_sc_preview')->store('sc_documents', 'public');
+            $uploadedPath = $request->file('file_sc_preview')->store('sc_documents', 'public');
+
+            // Terapkan stempel fisik watermark PETINJAU secara permanen ke dalam PDF
+            $watermarkedPath = \App\Services\PdfWatermarkService::applyWatermark($uploadedPath);
+            $updateData['file_sc_preview'] = $watermarkedPath ?: $uploadedPath;
             $updateData['sc_preview_uploaded_at'] = now();
             $updateData['sc_preview_expired_at'] = null;
         }

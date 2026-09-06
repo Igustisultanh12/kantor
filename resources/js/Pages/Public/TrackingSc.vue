@@ -1,6 +1,7 @@
 <script setup>
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import axios from 'axios';
 
 const props = defineProps({
     submission: Object,
@@ -58,29 +59,53 @@ const formatDate = (dateStr) => {
     }) + ' WIB';
 };
 
-// Modal Petinjau Hasil SC
+// Modal Petinjau Hasil SC Berproteksi Tinggi & Token Rahasia
 const isPreviewModalOpen = ref(false);
-const previewPdfUrl = computed(() => {
-    if (!activeSubmission.value || !activeSubmission.value.is_sc_preview_available) return null;
-    return route('tracking-sc.preview-pdf', activeSubmission.value.tracking_code) + '#toolbar=0&navpanes=0&scrollbar=1';
-});
+const isLoadingPreview = ref(false);
+const previewPdfUrl = ref('');
 
-const openPreviewModal = () => {
-    if (activeSubmission.value?.is_sc_preview_available) {
-        isPreviewModalOpen.value = true;
+const openPreviewModal = async () => {
+    if (!activeSubmission.value?.is_sc_preview_available) return;
+
+    isLoadingPreview.value = true;
+    try {
+        const response = await axios.post(route('tracking-sc.token'), {
+            tracking_code: activeSubmission.value.tracking_code,
+        });
+
+        if (response.data && response.data.stream_url) {
+            // Tautan rahasia dengan token heksadesimal 64 karakter (kedaluwarsa 15 menit)
+            previewPdfUrl.value = response.data.stream_url + '#toolbar=0&navpanes=0&scrollbar=1&statusbar=0&messages=0&view=FitH';
+            isPreviewModalOpen.value = true;
+        } else {
+            alert('Gagal memuat sesi petinjau rahasia.');
+        }
+    } catch (err) {
+        const msg = err.response?.data?.error || 'Gagal memuat berkas petinjau resmi. Masa aktif berkas mungkin telah berakhir.';
+        alert(msg);
+    } finally {
+        isLoadingPreview.value = false;
     }
 };
 
 const closePreviewModal = () => {
     isPreviewModalOpen.value = false;
+    previewPdfUrl.value = ''; // Segera bersihkan URL rahasia dari memori browser
 };
 
-// Pengamanan Anti-Download: blokir shortcut Ctrl+S, Ctrl+P, F12
+const warnAntiDownload = () => {
+    alert('Peringatan Kedinasan: Fitur unduh dan simpan dinonaktifkan untuk dokumen petinjau resmi ber-watermark.');
+};
+
+// Pengamanan Anti-Download Ketat: blokir shortcut Ctrl+S, Ctrl+P, Ctrl+U, Ctrl+C, F12
 const handleKeydown = (e) => {
     if (!isPreviewModalOpen.value) return;
-    if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.key === 'p' || e.key === 'P')) {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.key === 'p' || e.key === 'P' || e.key === 'u' || e.key === 'U' || e.key === 'c' || e.key === 'C')) {
         e.preventDefault();
-        alert('Peringatan Kedinasan: Dokumen ini berstatus petinjau sementara dan tidak diizinkan untuk diunduh maupun dicetak.');
+        warnAntiDownload();
+    }
+    if (e.key === 'F12') {
+        e.preventDefault();
     }
     if (e.key === 'PrintScreen') {
         alert('Peringatan Kedinasan: Fitur tangkapan layar dibatasi untuk berkas petinjau intelijen.');
@@ -311,13 +336,18 @@ onUnmounted(() => {
 
                     <button 
                         @click="openPreviewModal"
-                        class="shrink-0 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-extrabold text-xs uppercase tracking-wider transition shadow-lg shadow-indigo-600/30 flex items-center gap-2 cursor-pointer"
+                        :disabled="isLoadingPreview"
+                        class="shrink-0 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-extrabold text-xs uppercase tracking-wider transition shadow-lg shadow-indigo-600/30 flex items-center gap-2 cursor-pointer disabled:opacity-50"
                     >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <svg v-if="isLoadingPreview" class="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
-                        <span>Lihat Petinjau Dokumen</span>
+                        <span>{{ isLoadingPreview ? 'Menyiapkan Petinjau...' : 'Lihat Petinjau Dokumen' }}</span>
                     </button>
                 </div>
 
@@ -540,55 +570,34 @@ onUnmounted(() => {
                         <span class="font-mono text-[10px] text-amber-400/80 uppercase">STATUS: PETINJAU SEMENTARA</span>
                     </div>
 
-                    <!-- PDF Viewer Container With Watermark Overlay -->
+                    <!-- PDF Viewer Container With Built-in Physical Watermark & Anti-Download Shield -->
                     <div class="flex-1 relative bg-slate-950 overflow-hidden" @contextmenu.prevent>
                         
-                        <!-- Embedded PDF Viewer (Toolbar & Download Options Suppressed) -->
+                        <!-- Embedded PDF Viewer (Sandbox strictly without allow-downloads) -->
                         <iframe 
                             v-if="previewPdfUrl"
                             :src="previewPdfUrl"
-                            class="w-full h-full border-0 relative z-10"
-                            title="Petinjau Berkas SC"
+                            class="w-full h-full border-0 select-none"
+                            title="Petinjau Berkas SC Resmi"
+                            sandbox="allow-scripts allow-same-origin"
                         ></iframe>
 
-                        <!-- OVERLAY WATERMARK BESAR "(PETINJAU)" -->
-                        <div class="absolute inset-0 pointer-events-none select-none z-20 flex flex-col justify-around items-center overflow-hidden p-6">
-                            
-                            <!-- Diagonal Repeating Watermark Grid -->
-                            <div class="w-full flex justify-around items-center transform -rotate-25 opacity-30 select-none">
-                                <span class="text-4xl sm:text-6xl font-black text-red-500 tracking-widest font-mono">
-                                    (PETINJAU)
-                                </span>
-                                <span class="text-4xl sm:text-6xl font-black text-red-500 tracking-widest font-mono hidden md:inline">
-                                    (PETINJAU)
-                                </span>
-                            </div>
+                        <!-- Transparent Shield across top bar of iframe to block browser PDF menu/download clicks -->
+                        <div 
+                            class="absolute top-0 inset-x-0 h-12 z-20 cursor-default bg-transparent"
+                            @click.stop="warnAntiDownload"
+                            @contextmenu.prevent
+                        ></div>
 
-                            <div class="w-full flex justify-around items-center transform -rotate-25 opacity-35 select-none">
-                                <span class="text-5xl sm:text-7xl font-black text-red-600 tracking-widest font-mono">
-                                    (PETINJAU)
-                                </span>
-                                <span class="text-5xl sm:text-7xl font-black text-red-600 tracking-widest font-mono hidden md:inline">
-                                    (PETINJAU)
-                                </span>
-                            </div>
-
-                            <div class="w-full flex justify-around items-center transform -rotate-25 opacity-30 select-none">
-                                <span class="text-4xl sm:text-6xl font-black text-red-500 tracking-widest font-mono">
-                                    (PETINJAU)
-                                </span>
-                                <span class="text-4xl sm:text-6xl font-black text-red-500 tracking-widest font-mono hidden md:inline">
-                                    (PETINJAU)
-                                </span>
-                            </div>
-
-                            <!-- Bottom Warning Badge Overlay -->
-                            <div class="bg-red-950/80 border border-red-600/60 text-red-300 px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-2xl backdrop-blur-xs">
-                                DOKUMEN PETINJAU RESMI - TIDAK DAPAT DIUNDUH - OTOMATIS TERHAPUS DALAM 2X24 JAM
+                        <!-- Security Watermark Banner at Bottom -->
+                        <div class="absolute bottom-4 inset-x-0 z-20 pointer-events-none flex justify-center px-4">
+                            <div class="bg-red-950/90 border border-red-600/80 text-red-200 px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest shadow-2xl backdrop-blur-md flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+                                <span>DOKUMEN PETINJAU RESMI KEDINASAN - DILARANG MENYALIN / MENGUNDUH - OTOMATIS TERHAPUS DALAM 2X24 JAM</span>
                             </div>
                         </div>
 
-                    </div>
+                    </div></div>
 
                 </div>
             </div>
