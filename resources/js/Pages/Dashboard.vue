@@ -106,6 +106,8 @@ const smileThreshold = 50; // Ambang batas 50% senyum agar lebih responsif dan a
 let mediaStream = null;
 let detectionInterval = null;
 let countdownInterval = null;
+let detectCanvas = null;
+let detectCtx = null;
 
 // Efek Suara Audio Sintesis (Tanpa ketergantungan berkas eksternal)
 const playBeep = (freq = 520) => {
@@ -231,18 +233,43 @@ const startDetectionLoop = () => {
 
     detectionInterval = setInterval(async () => {
         const video = videoRef.value;
-        if (!video || video.paused || video.ended || !video.videoWidth || isCountingDown.value || capturedPhoto.value) {
+        if (!video || video.paused || video.ended || !video.videoWidth || !video.videoHeight || isCountingDown.value || capturedPhoto.value) {
             return;
         }
 
         try {
-            // Gunakan inputSize 320 dan scoreThreshold 0.22 agar deteksi wajah responsif dan adaptif pada jarak normal webcam
-            const options = new api.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.22 });
+            // Buffer Canvas 2D Intermediary:
+            // Mengatasi bug kritis WebKit / iOS Safari di mana WebGL gl.texImage2D langsung dari HTMLVideoElement WebRTC menghasilkan frame hitam kosong (0x0).
+            if (!detectCanvas) {
+                detectCanvas = document.createElement('canvas');
+                detectCtx = detectCanvas.getContext('2d', { willReadFrequently: true });
+            }
+
+            const srcW = video.videoWidth;
+            const srcH = video.videoHeight;
+            // Skala target maksimal lebar 480px untuk menjaga performa rendering cepat dan konsumsi memori ringan di mobile Safari
+            const targetW = Math.min(srcW, 480);
+            const targetH = Math.round(srcH * (targetW / srcW));
+
+            if (detectCanvas.width !== targetW || detectCanvas.height !== targetH) {
+                detectCanvas.width = targetW;
+                detectCanvas.height = targetH;
+            }
+
+            // Render frame WebRTC ke kanvas 2D terlebih dahulu
+            detectCtx.drawImage(video, 0, 0, targetW, targetH);
+
+            // Gunakan inputSize 320 dan scoreThreshold 0.20 agar deteksi wajah responsif dan adaptif
+            const options = new api.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.20 });
             let result = null;
             try {
-                result = await api.detectSingleFace(video, options).withFaceExpressions();
+                result = await api.detectSingleFace(detectCanvas, options).withFaceExpressions();
             } catch (innerErr) {
-                result = await api.detectSingleFace(video, options);
+                try {
+                    result = await api.detectSingleFace(detectCanvas, options);
+                } catch (canvasErr) {
+                    result = await api.detectSingleFace(video, options);
+                }
             }
 
             if (result) {
@@ -291,6 +318,11 @@ const triggerCountdownSequence = () => {
 const takeSnapshot = () => {
     if (!videoRef.value || !canvasRef.value) return;
 
+    if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+    }
+
     playShutterSound();
     isFlash.value = true;
     setTimeout(() => { isFlash.value = false; }, 250);
@@ -303,10 +335,12 @@ const takeSnapshot = () => {
     canvas.height = height;
 
     const ctx = canvas.getContext('2d');
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     // Mirror horizontal agar sesuai tampilan cermin
     ctx.translate(width, 0);
     ctx.scale(-1, 1);
     ctx.drawImage(video, 0, 0, width, height);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     const photoDataUrl = canvas.toDataURL('image/jpeg', 0.88);
     capturedPhoto.value = photoDataUrl;
@@ -342,22 +376,33 @@ const startCamera = async () => {
         const stream = await navigator.mediaDevices.getUserMedia({
             video: {
                 facingMode: 'user',
-                width: { ideal: 640 },
-                height: { ideal: 480 }
+                width: { ideal: 640 }
             },
             audio: false
         });
         mediaStream = stream;
         await nextTick();
         if (videoRef.value) {
-            videoRef.value.srcObject = stream;
+            const video = videoRef.value;
+            video.setAttribute('autoplay', 'true');
+            video.setAttribute('playsinline', 'true');
+            video.setAttribute('webkit-playsinline', 'true');
+            video.setAttribute('muted', 'true');
+            video.muted = true;
+            video.playsInline = true;
+            video.srcObject = stream;
+
             await new Promise((resolve) => {
-                videoRef.value.onloadedmetadata = () => {
-                    videoRef.value.play().then(resolve).catch(resolve);
+                let resolved = false;
+                const onReady = () => {
+                    if (!resolved) {
+                        resolved = true;
+                        video.play().then(resolve).catch(resolve);
+                    }
                 };
-                setTimeout(() => {
-                    if (videoRef.value) videoRef.value.play().then(resolve).catch(resolve);
-                }, 300);
+                video.onloadedmetadata = onReady;
+                video.onloadeddata = onReady;
+                setTimeout(onReady, 500);
             });
         }
         initFaceDetector();
@@ -383,6 +428,8 @@ const stopCamera = () => {
     if (videoRef.value) {
         videoRef.value.srcObject = null;
     }
+    detectCanvas = null;
+    detectCtx = null;
     cameraActive.value = false;
 };
 
@@ -921,6 +968,8 @@ onUnmounted(() => {
                                         ref="videoRef" 
                                         autoplay 
                                         playsinline 
+                                        webkit-playsinline="true"
+                                        :playsinline="true"
                                         muted 
                                         class="w-full h-full object-cover scale-x-[-1]"
                                     ></video>
@@ -1012,19 +1061,33 @@ onUnmounted(() => {
                                 </div>
                             </div>
 
-                            <!-- Tombol Rana Manual (Opsi Tambahan bila Cahaya Redup) -->
-                            <div v-if="!capturedPhoto && !cameraError" class="flex items-center justify-between text-[11px] text-slate-500 pt-0.5 px-1">
-                                <span class="text-[10px] text-slate-400">
-                                    *Kamera otomatis memotret (3, 2, 1) saat mendeteksi senyum.
+                            <!-- Tombol Rana Manual (Opsi Tambahan bila Cahaya Redup / Akses HP) -->
+                            <div v-if="!capturedPhoto && !cameraError" class="flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-500 pt-1 px-1">
+                                <span class="text-[10px] text-slate-400 text-center sm:text-left">
+                                    *Otomatis memotret saat senyum, atau gunakan tombol di samping:
                                 </span>
-                                <button 
-                                    type="button" 
-                                    @click="triggerCountdownSequence" 
-                                    :disabled="isCountingDown" 
-                                    class="text-[10px] font-extrabold text-blue-600 hover:text-blue-700 uppercase tracking-wider underline cursor-pointer disabled:opacity-50"
-                                >
-                                    {{ isCountingDown ? 'Hitung Mundur Berjalan...' : 'Potret Manual (3s)' }}
-                                </button>
+                                <div class="flex items-center gap-1.5 w-full sm:w-auto justify-end">
+                                    <button 
+                                        type="button" 
+                                        @click="takeSnapshot" 
+                                        :disabled="isCountingDown" 
+                                        class="flex-1 sm:flex-initial px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition cursor-pointer shadow-xs disabled:opacity-50 flex items-center justify-center gap-1"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        Ambil Foto Sekarang
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="triggerCountdownSequence" 
+                                        :disabled="isCountingDown" 
+                                        class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold uppercase tracking-wider transition cursor-pointer disabled:opacity-50 border border-slate-200"
+                                    >
+                                        {{ isCountingDown ? 'Mundur (' + countdownValue + 's)...' : 'Mundur (3s)' }}
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
