@@ -23,6 +23,7 @@ class ScSubmissionController extends Controller
      */
     public function index(Request $request)
     {
+        ScSubmission::ensureSchema();
         if (!Schema::hasTable('sc_submissions')) {
             return Inertia::render('ScSubmission/Index', [
                 'submissions' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15),
@@ -102,6 +103,9 @@ class ScSubmissionController extends Controller
      */
     public function store(Request $request)
     {
+        // Jalankan self-healing skema basis data sebelum DDL/DML transaksi
+        ScSubmission::ensureSchema();
+
         $validated = $request->validate([
             'nama' => 'required|string|max:255',
             'pangkat_korps' => 'nullable|string|max:100',
@@ -135,39 +139,31 @@ class ScSubmissionController extends Controller
                 $fileSkhppPath = $request->file('file_skhpp')->store('sc_documents', 'public');
             }
 
-            $submissionData = [
+            $allFields = [
                 'tracking_code' => $trackingCode,
                 'nama' => $validated['nama'],
                 'identifier_type' => $validated['identifier_type'],
                 'identifier_number' => trim($validated['identifier_number']),
                 'current_stage' => $stage,
                 'status' => $stage === 10 ? 'selesai' : ($validated['status'] ?? 'proses'),
+                'pangkat_korps' => $validated['pangkat_korps'] ?? null,
+                'kesatuan' => $validated['kesatuan'] ?? null,
+                'jabatan' => $validated['jabatan'] ?? null,
+                'phone' => $validated['phone'] ?? null,
+                'keperluan' => $validated['keperluan'] ?? null,
+                'catatan_petugas' => $validated['catatan_petugas'] ?? null,
+                'nomor_surat_rh' => $validated['nomor_surat_rh'] ?? null,
+                'nomor_skhpp' => $validated['nomor_skhpp'] ?? null,
+                'nomor_sc' => $validated['nomor_sc'] ?? null,
+                'file_skhpp' => $fileSkhppPath,
+                'created_by' => Auth::id(),
             ];
 
-            $optionalFields = [
-                'pangkat_korps',
-                'kesatuan',
-                'jabatan',
-                'phone',
-                'keperluan',
-                'catatan_petugas',
-                'nomor_surat_rh',
-                'nomor_skhpp',
-                'nomor_sc',
-            ];
-
-            foreach ($optionalFields as $field) {
-                if (isset($validated[$field]) && Schema::hasColumn('sc_submissions', $field)) {
-                    $submissionData[$field] = $validated[$field];
+            $submissionData = [];
+            foreach ($allFields as $key => $val) {
+                if ($val !== null && Schema::hasColumn('sc_submissions', $key)) {
+                    $submissionData[$key] = $val;
                 }
-            }
-
-            if (Schema::hasColumn('sc_submissions', 'file_skhpp')) {
-                $submissionData['file_skhpp'] = $fileSkhppPath;
-            }
-
-            if (Schema::hasColumn('sc_submissions', 'created_by')) {
-                $submissionData['created_by'] = Auth::id();
             }
 
             $submission = ScSubmission::create($submissionData);
@@ -187,7 +183,7 @@ class ScSubmissionController extends Controller
             DB::commit();
 
             // Kirim Notifikasi WhatsApp ke Pemohon (Hanya diawal saat pendaftaran, tidak berlaku saat update status)
-            $targetPhone = $submission->phone;
+            $targetPhone = $submission->phone ?? ($validated['phone'] ?? null);
             if (empty($targetPhone)) {
                 $personel = User::where('nrp', $submission->identifier_number)->first();
                 $targetPhone = $personel?->phone;
@@ -196,7 +192,7 @@ class ScSubmissionController extends Controller
             if (!empty($targetPhone)) {
                 try {
                     $pangkatNama = trim(($submission->pangkat_korps ? $submission->pangkat_korps . ' ' : '') . $submission->nama);
-                    $identitasLabel = strtoupper($submission->identifier_type);
+                    $identitasLabel = strtoupper($submission->identifier_type ?? 'NRP');
                     $trackingUrl = route('tracking-sc.index');
 
                     $waMessage = "*PEMBERITAHUAN PENGAJUAN SECURITY CLEARANCE (SC)*\n" .
@@ -204,7 +200,7 @@ class ScSubmissionController extends Controller
                                  "Yth. *{$pangkatNama}*\n" .
                                  "{$identitasLabel}: {$submission->identifier_number}\n\n" .
                                  "Pengajuan berkas Security Clearance (SC) Anda telah berhasil didaftarkan ke dalam sistem SINDEN dengan rincian:\n\n" .
-                                 "- *Kode Pelacakan:* {$submission->tracking_code}\n" .
+                                 "- *Kode Pelacakan:* {$trackingCode}\n" .
                                  "- *Keperluan:* " . ($submission->keperluan ?: 'Kedinasan') . "\n" .
                                  "- *Satuan/Kesatuan:* " . ($submission->kesatuan ?: '-') . "\n" .
                                  "- *Tahap Saat Ini:* Tahap {$stage}: {$stageInfo['title']}\n\n" .

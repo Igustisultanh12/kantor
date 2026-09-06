@@ -16,6 +16,7 @@ class PublicTrackingController extends Controller
      */
     public function index(Request $request)
     {
+        ScSubmission::ensureSchema();
         $identifier = trim($request->input('identifier', ''));
         $submission = null;
         $allSubmissions = collect();

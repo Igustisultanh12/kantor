@@ -14,19 +14,19 @@ return new class extends Migration
         if (Schema::hasTable('sc_submissions')) {
             Schema::table('sc_submissions', function (Blueprint $table) {
                 if (!Schema::hasColumn('sc_submissions', 'skhpp_id')) {
-                    $table->foreignId('skhpp_id')->nullable()->after('id')->constrained('skhpps')->nullOnDelete();
+                    $table->unsignedBigInteger('skhpp_id')->nullable();
                 }
                 if (!Schema::hasColumn('sc_submissions', 'file_skhpp')) {
-                    $table->string('file_skhpp')->nullable()->after('nomor_skhpp');
+                    $table->string('file_skhpp')->nullable();
                 }
                 if (!Schema::hasColumn('sc_submissions', 'file_sc_preview')) {
-                    $table->string('file_sc_preview')->nullable()->after('nomor_sc');
+                    $table->string('file_sc_preview')->nullable();
                 }
                 if (!Schema::hasColumn('sc_submissions', 'sc_preview_uploaded_at')) {
-                    $table->timestamp('sc_preview_uploaded_at')->nullable()->after('file_sc_preview');
+                    $table->timestamp('sc_preview_uploaded_at')->nullable();
                 }
                 if (!Schema::hasColumn('sc_submissions', 'sc_preview_expired_at')) {
-                    $table->timestamp('sc_preview_expired_at')->nullable()->after('sc_preview_uploaded_at');
+                    $table->timestamp('sc_preview_expired_at')->nullable();
                 }
             });
         }
