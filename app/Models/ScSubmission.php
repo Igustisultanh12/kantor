@@ -158,17 +158,21 @@ class ScSubmission extends Model
     public function checkAndPurgeExpiredPreview(): bool
     {
         if ($this->file_sc_preview && $this->sc_preview_uploaded_at) {
-            $uploadedAt = \Illuminate\Support\Carbon::parse($this->sc_preview_uploaded_at);
-            $expiresAt = $uploadedAt->copy()->addHours(48);
-            if (now()->greaterThanOrEqualTo($expiresAt)) {
-                if (Storage::disk('public')->exists($this->file_sc_preview)) {
-                    Storage::disk('public')->delete($this->file_sc_preview);
+            try {
+                $uploadedAt = \Illuminate\Support\Carbon::parse($this->sc_preview_uploaded_at);
+                $expiresTimestamp = $uploadedAt->timestamp + (48 * 3600);
+                if (now()->timestamp >= $expiresTimestamp) {
+                    if (Storage::disk('public')->exists($this->file_sc_preview)) {
+                        Storage::disk('public')->delete($this->file_sc_preview);
+                    }
+                    $this->update([
+                        'file_sc_preview' => null,
+                        'sc_preview_expired_at' => now(),
+                    ]);
+                    return true;
                 }
-                $this->update([
-                    'file_sc_preview' => null,
-                    'sc_preview_expired_at' => now(),
-                ]);
-                return true;
+            } catch (\Throwable $e) {
+                return false;
             }
         }
         return false;
@@ -179,9 +183,12 @@ class ScSubmission extends Model
         if (empty($this->file_sc_preview) || empty($this->sc_preview_uploaded_at)) {
             return false;
         }
-        $uploadedAt = \Illuminate\Support\Carbon::parse($this->sc_preview_uploaded_at);
-        $expiresAt = $uploadedAt->copy()->addHours(48);
-        return now()->lessThan($expiresAt);
+        try {
+            $uploadedAt = \Illuminate\Support\Carbon::parse($this->sc_preview_uploaded_at);
+            return now()->timestamp < ($uploadedAt->timestamp + (48 * 3600));
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     public function getScPreviewRemainingHoursAttribute(): ?int
@@ -189,12 +196,18 @@ class ScSubmission extends Model
         if (empty($this->file_sc_preview) || empty($this->sc_preview_uploaded_at)) {
             return null;
         }
-        $uploadedAt = \Illuminate\Support\Carbon::parse($this->sc_preview_uploaded_at);
-        $expiresAt = $uploadedAt->copy()->addHours(48);
-        if (now()->greaterThanOrEqualTo($expiresAt)) {
-            return 0;
+        try {
+            $uploadedAt = \Illuminate\Support\Carbon::parse($this->sc_preview_uploaded_at);
+            $expiresTimestamp = $uploadedAt->timestamp + (48 * 3600);
+            $nowTimestamp = now()->timestamp;
+            if ($nowTimestamp >= $expiresTimestamp) {
+                return 0;
+            }
+            $diffSeconds = $expiresTimestamp - $nowTimestamp;
+            return max(1, (int) ceil($diffSeconds / 3600));
+        } catch (\Throwable $e) {
+            return null;
         }
-        return max(1, (int) ceil(now()->floatDiffInHours($expiresAt, false)));
     }
 
     public function getFileSkhppUrlAttribute(): ?string

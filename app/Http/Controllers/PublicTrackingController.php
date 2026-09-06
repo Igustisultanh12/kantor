@@ -32,25 +32,31 @@ class PublicTrackingController extends Controller
         }
 
         if (!empty($identifier)) {
-            $cleanNumber = str_replace([' ', '-', '.', '/'], '', $identifier);
+            try {
+                $cleanNumber = str_replace([' ', '-', '.', '/'], '', $identifier);
+                $withRelations = Schema::hasTable('sc_submission_logs') ? ['logs'] : [];
 
-            // Cari berdasarkan identifier_number atau tracking_code
-            $results = ScSubmission::with(['logs'])
-                ->where(function ($q) use ($identifier, $cleanNumber) {
-                    $q->where('identifier_number', $identifier)
-                      ->orWhereRaw("REPLACE(REPLACE(REPLACE(identifier_number, ' ', ''), '-', ''), '.', '') = ?", [$cleanNumber])
-                      ->orWhere('tracking_code', $identifier);
-                })
-                ->orderBy('id', 'desc')
-                ->get();
+                // Cari berdasarkan identifier_number atau tracking_code
+                $results = ScSubmission::with($withRelations)
+                    ->where(function ($q) use ($identifier, $cleanNumber) {
+                        $q->where('identifier_number', $identifier)
+                          ->orWhereRaw("REPLACE(REPLACE(REPLACE(identifier_number, ' ', ''), '-', ''), '.', '') = ?", [$cleanNumber])
+                          ->orWhere('tracking_code', $identifier);
+                    })
+                    ->orderBy('id', 'desc')
+                    ->get();
 
-            if ($results->isNotEmpty()) {
-                foreach ($results as $subItem) {
-                    $subItem->checkAndPurgeExpiredPreview();
+                if ($results->isNotEmpty()) {
+                    foreach ($results as $subItem) {
+                        $subItem->checkAndPurgeExpiredPreview();
+                    }
+                    $allSubmissions = $results;
+                    $submission = $results->first();
+                } else {
+                    $notFound = true;
                 }
-                $allSubmissions = $results;
-                $submission = $results->first();
-            } else {
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Galat pelacakan SC publik: ' . $e->getMessage());
                 $notFound = true;
             }
         }

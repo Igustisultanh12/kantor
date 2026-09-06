@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 
 const props = defineProps({
     submission: Object,
@@ -23,6 +23,10 @@ const searchInput = ref(props.searched_identifier || '');
 const isSearching = ref(false);
 
 const activeSubmission = ref(props.submission);
+
+watch(() => props.submission, (newVal) => {
+    activeSubmission.value = newVal;
+});
 
 const selectSubmission = (sub) => {
     activeSubmission.value = sub;
