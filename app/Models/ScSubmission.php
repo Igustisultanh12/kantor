@@ -89,8 +89,8 @@ class ScSubmission extends Model
         ],
         10 => [
             'id' => 10,
-            'title' => 'SC Terbit dan Bisa Diambil di Mako Kodaeral V',
-            'desc' => 'Naskah Security Clearance telah selesai terbit dan siap diambil oleh personel pemohon di Mako Kodaeral V.',
+            'title' => 'SC Terbit dan Bisa Diambil di Sintel Mako Kodaeral V',
+            'desc' => 'Naskah Security Clearance telah selesai terbit dan siap diambil oleh personel pemohon di Sintel Mako Kodaeral V.',
             'category' => 'Selesai',
         ],
     ];

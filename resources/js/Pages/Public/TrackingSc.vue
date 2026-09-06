@@ -389,28 +389,51 @@ onUnmounted(() => {
                     </div>
                 </div>
 
-                <!-- BANNER KHUSUS TAHAP 10 (SIAP DIAMBIL DI MAKO KODAERAL V) -->
-                <div v-if="activeSubmission.current_stage === 10" class="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 border-2 border-emerald-500/80 rounded-3xl p-6 sm:p-8 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                <!-- BANNER KHUSUS TAHAP 10 (SIAP DIAMBIL DI SINTEL MAKO KODAERAL V) -->
+                <div v-if="activeSubmission.current_stage === 10 || activeSubmission.status === 'selesai'" class="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 border-2 border-emerald-500/80 rounded-3xl p-6 sm:p-8 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                     <div class="flex items-start gap-4">
                         <div class="w-14 h-14 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-2xl shrink-0 shadow-lg shadow-emerald-600/30">
                             <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
                             </svg>
                         </div>
-                        <div class="space-y-1">
+                        <div class="space-y-1.5">
                             <span class="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full text-[10px] font-black uppercase tracking-wider">
-                                TAHAP AKHIR TERPENUHI
+                                TAHAP AKHIR TERPENUHI - SELESAI
                             </span>
                             <h4 class="text-lg sm:text-xl font-black text-white">
-                                Dokumen SC Telah Terbit & Siap Diambil di Mako Kodaeral V
+                                Dokumen SC Telah Terbit & Siap Diambil di Sintel Mako Kodaeral V
                             </h4>
                             <p class="text-xs text-slate-300 leading-relaxed font-medium max-w-2xl">
-                                Surat Security Clearance (SC) atas nama personel bersangkutan telah resmi ditandatangani dan selesai diproses. Silakan mengambil naskah fisik di Mako Kodaeral V dengan menunjukkan identitas kedinasan resmi.
+                                Surat Security Clearance (SC) atas nama personel bersangkutan telah resmi ditandatangani dan selesai diproses. Berkas fisik siap diambil oleh pemohon di <b class="text-white">Sintel Mako Kodaeral V</b> dengan menunjukkan identitas kedinasan.
                             </p>
+                            <div class="pt-2">
+                                <a 
+                                    href="https://share.google/IgZW59hpme9ZLvxkb" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition shadow-lg shadow-emerald-600/30 cursor-pointer"
+                                >
+                                    <svg class="w-4 h-4 text-emerald-100" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    <span>Buka Koordinat / Lokasi Mako Kodaeral V</span>
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                </a>
+                            </div>
                         </div>
                     </div>
-                    <div class="shrink-0 font-mono text-xs font-bold text-emerald-300 bg-emerald-950/80 px-4 py-3 rounded-2xl border border-emerald-600/40">
-                        No. SC: {{ activeSubmission.nomor_sc || 'Tercatat di Mako' }}
+                    <div class="shrink-0 flex flex-col items-start md:items-end gap-2">
+                        <div class="font-mono text-xs font-bold text-emerald-300 bg-emerald-950/80 px-4 py-2.5 rounded-2xl border border-emerald-600/40">
+                            No. SC: {{ activeSubmission.nomor_sc || 'Tercatat di Mako' }}
+                        </div>
+                        <span class="text-[11px] font-bold text-emerald-400 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                            Status: Siap Diambil Pemohon
+                        </span>
                     </div>
                 </div>
 
@@ -429,16 +452,17 @@ onUnmounted(() => {
                             v-for="stg in stages" 
                             :key="stg.id"
                             :class="[
-                                stg.id < activeSubmission.current_stage ? 'bg-emerald-950/20 border-emerald-800/40' : '',
-                                stg.id === activeSubmission.current_stage ? 'bg-blue-950/40 border-blue-500 ring-2 ring-blue-500/30' : '',
-                                stg.id > activeSubmission.current_stage ? 'bg-slate-950/40 border-slate-800/70 opacity-60' : '',
+                                (stg.id < activeSubmission.current_stage || (stg.id === 10 && (activeSubmission.current_stage === 10 || activeSubmission.status === 'selesai'))) ? 'bg-emerald-950/20 border-emerald-800/40' : '',
+                                (stg.id === activeSubmission.current_stage && activeSubmission.current_stage < 10 && activeSubmission.status !== 'selesai') ? 'bg-blue-950/40 border-blue-500 ring-2 ring-blue-500/30' : '',
+                                (stg.id === 10 && (activeSubmission.current_stage === 10 || activeSubmission.status === 'selesai')) ? 'bg-emerald-950/30 border-emerald-500 ring-2 ring-emerald-500/40' : '',
+                                (stg.id > activeSubmission.current_stage && activeSubmission.status !== 'selesai') ? 'bg-slate-950/40 border-slate-800/70 opacity-60' : '',
                             ]"
                             class="p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex items-start gap-4"
                         >
                             <!-- Circle Status Icon -->
                             <div class="shrink-0 mt-0.5">
                                 <div 
-                                    v-if="stg.id < activeSubmission.current_stage" 
+                                    v-if="stg.id < activeSubmission.current_stage || (stg.id === 10 && (activeSubmission.current_stage === 10 || activeSubmission.status === 'selesai'))" 
                                     class="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center font-black text-sm shadow-md shadow-emerald-600/20"
                                 >
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
@@ -446,7 +470,7 @@ onUnmounted(() => {
                                     </svg>
                                 </div>
                                 <div 
-                                    v-else-if="stg.id === activeSubmission.current_stage" 
+                                    v-else-if="stg.id === activeSubmission.current_stage && activeSubmission.current_stage < 10" 
                                     class="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-mono font-black text-sm shadow-lg shadow-blue-600/30 animate-pulse"
                                 >
                                     {{ stg.id }}
@@ -472,8 +496,9 @@ onUnmounted(() => {
                                         </span>
                                     </div>
                                     
-                                    <span v-if="stg.id < activeSubmission.current_stage" class="text-[10px] font-extrabold text-emerald-400 uppercase tracking-wider">
-                                        Selesai
+                                    <span v-if="stg.id < activeSubmission.current_stage || (stg.id === 10 && (activeSubmission.current_stage === 10 || activeSubmission.status === 'selesai'))" class="text-[10px] font-extrabold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                                        <span>Selesai</span>
                                     </span>
                                     <span v-else-if="stg.id === activeSubmission.current_stage" class="text-[10px] font-extrabold text-blue-400 uppercase tracking-wider animate-pulse">
                                         Sedang Berjalan
@@ -487,8 +512,39 @@ onUnmounted(() => {
                                     {{ stg.desc }}
                                 </p>
 
+                                <!-- KOTAK KHUSUS TAHAP 10: KOORDINAT & PENGAMBILAN DOKUMEN -->
+                                <div v-if="stg.id === 10 && (activeSubmission.current_stage === 10 || activeSubmission.status === 'selesai')" class="mt-3.5 p-4 rounded-2xl bg-emerald-950/60 border border-emerald-600/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg shadow-emerald-950/40">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-9 h-9 rounded-xl bg-emerald-600/30 border border-emerald-500/40 flex items-center justify-center text-emerald-300 shrink-0">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <span class="text-xs font-black text-emerald-300 block">Siap Diambil oleh Pemohon di Sintel Mako Kodaeral V</span>
+                                            <span class="text-[11px] text-slate-300 font-medium">Silakan membawa identitas resmi kedinasan saat mengambil fisik berkas di Sintel Mako Kodaeral V.</span>
+                                        </div>
+                                    </div>
+                                    <a 
+                                        href="https://share.google/IgZW59hpme9ZLvxkb" 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        class="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition shadow-md shadow-emerald-600/30 cursor-pointer"
+                                    >
+                                        <svg class="w-4 h-4 text-emerald-100" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        <span>Koordinat Mako Kodaeral V</span>
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                        </svg>
+                                    </a>
+                                </div>
+
                                 <!-- Keterangan Khusus Tahap Aktif -->
-                                <div v-if="stg.id === activeSubmission.current_stage && activeSubmission.catatan_petugas" class="mt-2.5 p-3 rounded-xl bg-slate-950/70 border border-blue-900/50 text-xs">
+                                <div v-else-if="stg.id === activeSubmission.current_stage && activeSubmission.catatan_petugas" class="mt-2.5 p-3 rounded-xl bg-slate-950/70 border border-blue-900/50 text-xs">
                                     <span class="text-[10px] font-bold text-blue-400 uppercase block mb-0.5">Catatan Petugas:</span>
                                     <p class="text-slate-200 font-medium italic">"{{ activeSubmission.catatan_petugas }}"</p>
                                 </div>
