@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\ScSubmission;
 use App\Models\ScSubmissionLog;
+use App\Models\Skhpp;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -16,7 +18,13 @@ class ScSubmissionController extends Controller
      */
     public function index(Request $request)
     {
-        $query = ScSubmission::with(['logs', 'creator'])->orderBy('id', 'desc');
+        // Bersihkan pratinjau yang telah melewati batas 2x24 jam (48 jam)
+        $withPreviews = ScSubmission::whereNotNull('file_sc_preview')->get();
+        foreach ($withPreviews as $subItem) {
+            $subItem->checkAndPurgeExpiredPreview();
+        }
+
+        $query = ScSubmission::with(['logs', 'creator', 'skhpp'])->orderBy('id', 'desc');
 
         if ($request->filled('search')) {
             $search = trim($request->search);
@@ -58,7 +66,7 @@ class ScSubmissionController extends Controller
     }
 
     /**
-     * Mendaftarkan Pengajuan SC Baru oleh Petugas
+     * Mendaftarkan Pengajuan SC Baru secara Manual oleh Petugas (Termasuk Upload PDF SKHPP Basah)
      */
     public function store(Request $request)
     {
@@ -77,13 +85,20 @@ class ScSubmissionController extends Controller
             'nomor_surat_rh' => 'nullable|string|max:100',
             'nomor_skhpp' => 'nullable|string|max:100',
             'nomor_sc' => 'nullable|string|max:100',
+            'file_skhpp' => 'nullable|file|mimes:pdf|max:10240',
         ]);
 
         $stage = (int)($validated['current_stage'] ?? 1);
         $stageInfo = ScSubmission::STAGES[$stage] ?? ScSubmission::STAGES[1];
 
-        // Format kode tracking: SC-YYYYMMDD-XXXX
+        // Format kode tracking: SC-YYYYMMDD-XXXXX
         $trackingCode = 'SC-' . date('Ymd') . '-' . strtoupper(Str::random(5));
+
+        // Penanganan Unggah PDF SKHPP Tanda Tangan Basah
+        $fileSkhppPath = null;
+        if ($request->hasFile('file_skhpp')) {
+            $fileSkhppPath = $request->file('file_skhpp')->store('sc_documents', 'public');
+        }
 
         $submission = ScSubmission::create([
             'tracking_code' => $trackingCode,
@@ -100,6 +115,7 @@ class ScSubmissionController extends Controller
             'catatan_petugas' => $validated['catatan_petugas'] ?? null,
             'nomor_surat_rh' => $validated['nomor_surat_rh'] ?? null,
             'nomor_skhpp' => $validated['nomor_skhpp'] ?? null,
+            'file_skhpp' => $fileSkhppPath,
             'nomor_sc' => $validated['nomor_sc'] ?? null,
             'created_by' => Auth::id(),
         ]);
@@ -118,7 +134,7 @@ class ScSubmissionController extends Controller
     }
 
     /**
-     * Memperbarui Tahapan Operasional Berkas SC
+     * Memperbarui Tahapan Operasional Berkas SC & Unggah Dokumen Petinjau
      */
     public function updateStage(Request $request, $id)
     {
@@ -130,6 +146,8 @@ class ScSubmissionController extends Controller
             'status' => 'nullable|in:proses,selesai,perbaikan,ditolak',
             'nomor_skhpp' => 'nullable|string|max:100',
             'nomor_sc' => 'nullable|string|max:100',
+            'file_skhpp' => 'nullable|file|mimes:pdf|max:10240',
+            'file_sc_preview' => 'nullable|file|mimes:pdf|max:15360',
         ]);
 
         $newStage = (int)$validated['stage'];
@@ -157,14 +175,40 @@ class ScSubmissionController extends Controller
             $updateData['nomor_sc'] = $validated['nomor_sc'];
         }
 
+        // Unggah PDF SKHPP Tanda Tangan Basah
+        if ($request->hasFile('file_skhpp')) {
+            if ($submission->file_skhpp && Storage::disk('public')->exists($submission->file_skhpp)) {
+                Storage::disk('public')->delete($submission->file_skhpp);
+            }
+            $updateData['file_skhpp'] = $request->file('file_skhpp')->store('sc_documents', 'public');
+        }
+
+        // Unggah Softfile PDF Hasil SC oleh Petugas Sintel (Masa Berlaku 2x24 Jam)
+        if ($request->hasFile('file_sc_preview')) {
+            if ($submission->file_sc_preview && Storage::disk('public')->exists($submission->file_sc_preview)) {
+                Storage::disk('public')->delete($submission->file_sc_preview);
+            }
+            $updateData['file_sc_preview'] = $request->file('file_sc_preview')->store('sc_documents', 'public');
+            $updateData['sc_preview_uploaded_at'] = now();
+            $updateData['sc_preview_expired_at'] = null;
+        }
+
         $submission->update($updateData);
 
         // Catat ke riwayat log
+        $logNote = $validated['notes'] ?: "Berkas berhasil dimajukan ke Tahap {$newStage}: {$stageInfo['title']}.";
+        if ($request->hasFile('file_sc_preview')) {
+            $logNote .= " (Softfile Petinjau SC berhasil diunggah dengan masa aktif 2x24 jam).";
+        }
+        if ($request->hasFile('file_skhpp')) {
+            $logNote .= " (Berkas SKHPP TTD Basah berhasil diunggah).";
+        }
+
         ScSubmissionLog::create([
             'sc_submission_id' => $submission->id,
             'stage' => $newStage,
             'stage_title' => $stageInfo['title'],
-            'notes' => $validated['notes'] ?: "Berkas berhasil dimajukan ke Tahap {$newStage}: {$stageInfo['title']}.",
+            'notes' => $logNote,
             'user_id' => Auth::id(),
             'user_name' => Auth::user()->name ?? 'Petugas Kedinasan',
         ]);
@@ -192,7 +236,25 @@ class ScSubmissionController extends Controller
             'nomor_surat_rh' => 'nullable|string|max:100',
             'nomor_skhpp' => 'nullable|string|max:100',
             'nomor_sc' => 'nullable|string|max:100',
+            'file_skhpp' => 'nullable|file|mimes:pdf|max:10240',
+            'file_sc_preview' => 'nullable|file|mimes:pdf|max:15360',
         ]);
+
+        if ($request->hasFile('file_skhpp')) {
+            if ($submission->file_skhpp && Storage::disk('public')->exists($submission->file_skhpp)) {
+                Storage::disk('public')->delete($submission->file_skhpp);
+            }
+            $validated['file_skhpp'] = $request->file('file_skhpp')->store('sc_documents', 'public');
+        }
+
+        if ($request->hasFile('file_sc_preview')) {
+            if ($submission->file_sc_preview && Storage::disk('public')->exists($submission->file_sc_preview)) {
+                Storage::disk('public')->delete($submission->file_sc_preview);
+            }
+            $validated['file_sc_preview'] = $request->file('file_sc_preview')->store('sc_documents', 'public');
+            $validated['sc_preview_uploaded_at'] = now();
+            $validated['sc_preview_expired_at'] = null;
+        }
 
         $submission->update($validated);
 
@@ -206,8 +268,86 @@ class ScSubmissionController extends Controller
     {
         $submission = ScSubmission::findOrFail($id);
         $nama = $submission->nama;
+
+        if ($submission->file_skhpp && Storage::disk('public')->exists($submission->file_skhpp)) {
+            Storage::disk('public')->delete($submission->file_skhpp);
+        }
+        if ($submission->file_sc_preview && Storage::disk('public')->exists($submission->file_sc_preview)) {
+            Storage::disk('public')->delete($submission->file_sc_preview);
+        }
+
         $submission->delete();
 
         return redirect()->back()->with('success', "Lapor! Data pengajuan SC atas nama {$nama} telah berhasil dihapus.");
+    }
+
+    /**
+     * Sinkronisasi Seluruh SKHPP yang Telah Disetujui / Terbit ke Sistem Tracking SC
+     */
+    public function syncFromApprovedSkhpp()
+    {
+        $approvedSkhpps = Skhpp::where('status', 'approved')->get();
+        $syncedCount = 0;
+
+        foreach ($approvedSkhpps as $skhpp) {
+            $exists = ScSubmission::where('skhpp_id', $skhpp->id)->first();
+            if (!$exists) {
+                $identifierType = 'nrp';
+                $identifierNum = null;
+                if (!empty($skhpp->pangkat_korps_nrp)) {
+                    if (preg_match('/(\d{5,18})/', $skhpp->pangkat_korps_nrp, $m)) {
+                        $identifierNum = $m[1];
+                        $identifierType = 'nrp';
+                    }
+                }
+                if (empty($identifierNum) && !empty($skhpp->nik)) {
+                    $identifierNum = $skhpp->nik;
+                    $identifierType = 'nik';
+                }
+                if (empty($identifierNum)) {
+                    $identifierNum = 'NRP-' . $skhpp->id;
+                }
+
+                $trackingCode = 'SC-' . date('Ymd') . '-' . strtoupper(Str::random(5));
+                $scSub = ScSubmission::create([
+                    'skhpp_id' => $skhpp->id,
+                    'tracking_code' => $trackingCode,
+                    'nama' => $skhpp->nama,
+                    'pangkat_korps' => $skhpp->pangkat_korps_nrp,
+                    'identifier_type' => $identifierType,
+                    'identifier_number' => $identifierNum,
+                    'kesatuan' => $skhpp->alamat ?: 'Kodaeral V',
+                    'jabatan' => $skhpp->jabatan_pekerjaan,
+                    'keperluan' => $skhpp->peruntukan,
+                    'nomor_skhpp' => $skhpp->nomor_skhpp,
+                    'current_stage' => 5, // TAHAP 5: SKHPP TERBIT (Tahap 1, 2, 3, 4 terlewati otomatis)
+                    'status' => 'proses',
+                    'catatan_petugas' => "Hasil sinkronisasi otomatis dari Penerbitan SKHPP No. {$skhpp->nomor_skhpp}. Tahap 1 s/d 4 terlewati.",
+                    'created_by' => Auth::id(),
+                ]);
+
+                $initialLogs = [
+                    ['stage' => 1, 'stage_title' => 'Pengisian RH', 'notes' => 'Pengisian Riwayat Hidup telah diproses terintegrasi pada penerbitan SKHPP.'],
+                    ['stage' => 2, 'stage_title' => 'Pengecekan Kelengkapan Dokumen', 'notes' => 'Pemeriksaan berkas dan kelengkapan dokumen telah diverifikasi oleh operator Denintel.'],
+                    ['stage' => 3, 'stage_title' => 'Proses Cetak RH', 'notes' => 'Proses administrasi dan pencetakan lembar SKHPP selesai.'],
+                    ['stage' => 4, 'stage_title' => 'Menunggu TTD Komandan Denintel', 'notes' => 'Persetujuan dan tanda tangan dinas elektronik (TTE) Komandan Denintel telah disahkan.'],
+                    ['stage' => 5, 'stage_title' => 'SKHPP Terbit', 'notes' => "SKHPP resmi disahkan dan diterbitkan dengan nomor {$skhpp->nomor_skhpp}. Berkas beralih ke Staf Intelijen."],
+                ];
+
+                foreach ($initialLogs as $logItem) {
+                    ScSubmissionLog::create([
+                        'sc_submission_id' => $scSub->id,
+                        'stage' => $logItem['stage'],
+                        'stage_title' => $logItem['stage_title'],
+                        'notes' => $logItem['notes'],
+                        'user_id' => Auth::id(),
+                        'user_name' => Auth::user()->name ?? 'Petugas Kedinasan',
+                    ]);
+                }
+                $syncedCount++;
+            }
+        }
+
+        return redirect()->back()->with('success', "Lapor! Sebanyak {$syncedCount} berkas SKHPP yang telah terbit berhasil disinkronkan ke sistem pelacakan SC.");
     }
 }

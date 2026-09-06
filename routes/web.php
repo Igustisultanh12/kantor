@@ -60,6 +60,7 @@ Route::post('reset-password-custom', [ResetPasswordController::class, 'store'])-
 
 // --- FITUR TRACKING PENGAJUAN SC (AKSES PUBLIK TANPA LOGIN) ---
 Route::get('/tracking-sc', [PublicTrackingController::class, 'index'])->name('tracking-sc.index');
+Route::get('/tracking-sc/{tracking_code}/preview-pdf', [PublicTrackingController::class, 'previewPdf'])->name('tracking-sc.preview-pdf');
 
 // --- AKSES DASHBOARD UTAMA ---
 Route::get('/dashboard', function () {
@@ -151,6 +152,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/attendances', [AttendanceController::class, 'store'])->name('attendances.store');
 
     // --- FITUR MANAJEMEN PENGAJUAN SECURITY CLEARANCE (SC) ---
+    Route::post('sc-submissions/sync-skhpp', [ScSubmissionController::class, 'syncFromApprovedSkhpp'])->name('sc-submissions.sync-skhpp');
     Route::resource('sc-submissions', ScSubmissionController::class)->except(['create', 'edit', 'show']);
     Route::post('sc-submissions/{id}/update-stage', [ScSubmissionController::class, 'updateStage'])->name('sc-submissions.update-stage');
 

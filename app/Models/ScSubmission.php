@@ -4,12 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class ScSubmission extends Model
 {
     use HasFactory;
 
     protected $fillable = [
+        'skhpp_id',
         'tracking_code',
         'nama',
         'pangkat_korps',
@@ -23,13 +25,19 @@ class ScSubmission extends Model
         'status',
         'nomor_surat_rh',
         'nomor_skhpp',
+        'file_skhpp',
         'nomor_sc',
+        'file_sc_preview',
+        'sc_preview_uploaded_at',
+        'sc_preview_expired_at',
         'catatan_petugas',
         'created_by',
     ];
 
     protected $casts = [
         'current_stage' => 'integer',
+        'sc_preview_uploaded_at' => 'datetime',
+        'sc_preview_expired_at' => 'datetime',
     ];
 
     protected $appends = [
@@ -37,6 +45,10 @@ class ScSubmission extends Model
         'stage_description',
         'progress_percentage',
         'all_stages',
+        'is_sc_preview_available',
+        'sc_preview_remaining_hours',
+        'file_skhpp_url',
+        'file_sc_preview_url',
     ];
 
     /**
@@ -115,6 +127,11 @@ class ScSubmission extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function skhpp()
+    {
+        return $this->belongsTo(Skhpp::class, 'skhpp_id');
+    }
+
     public function getStageTitleAttribute()
     {
         return self::STAGES[$this->current_stage]['title'] ?? 'Dalam Proses';
@@ -133,5 +150,66 @@ class ScSubmission extends Model
     public function getAllStagesAttribute()
     {
         return array_values(self::STAGES);
+    }
+
+    /**
+     * Memeriksa dan membersihkan berkas petinjau SC jika telah melampaui 2x24 jam (48 jam).
+     */
+    public function checkAndPurgeExpiredPreview(): bool
+    {
+        if ($this->file_sc_preview && $this->sc_preview_uploaded_at) {
+            $uploadedAt = \Illuminate\Support\Carbon::parse($this->sc_preview_uploaded_at);
+            $expiresAt = $uploadedAt->copy()->addHours(48);
+            if (now()->greaterThanOrEqualTo($expiresAt)) {
+                if (Storage::disk('public')->exists($this->file_sc_preview)) {
+                    Storage::disk('public')->delete($this->file_sc_preview);
+                }
+                $this->update([
+                    'file_sc_preview' => null,
+                    'sc_preview_expired_at' => now(),
+                ]);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public function getIsScPreviewAvailableAttribute(): bool
+    {
+        if (empty($this->file_sc_preview) || empty($this->sc_preview_uploaded_at)) {
+            return false;
+        }
+        $uploadedAt = \Illuminate\Support\Carbon::parse($this->sc_preview_uploaded_at);
+        $expiresAt = $uploadedAt->copy()->addHours(48);
+        return now()->lessThan($expiresAt);
+    }
+
+    public function getScPreviewRemainingHoursAttribute(): ?int
+    {
+        if (empty($this->file_sc_preview) || empty($this->sc_preview_uploaded_at)) {
+            return null;
+        }
+        $uploadedAt = \Illuminate\Support\Carbon::parse($this->sc_preview_uploaded_at);
+        $expiresAt = $uploadedAt->copy()->addHours(48);
+        if (now()->greaterThanOrEqualTo($expiresAt)) {
+            return 0;
+        }
+        return max(1, (int) ceil(now()->floatDiffInHours($expiresAt, false)));
+    }
+
+    public function getFileSkhppUrlAttribute(): ?string
+    {
+        if (!$this->file_skhpp) {
+            return null;
+        }
+        return asset('storage/' . $this->file_skhpp);
+    }
+
+    public function getFileScPreviewUrlAttribute(): ?string
+    {
+        if (!$this->file_sc_preview || !$this->is_sc_preview_available) {
+            return null;
+        }
+        return asset('storage/' . $this->file_sc_preview);
     }
 }

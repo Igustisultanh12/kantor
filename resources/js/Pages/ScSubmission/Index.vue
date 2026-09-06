@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 
 const props = defineProps({
     submissions: Object,
@@ -35,6 +35,20 @@ const resetFilter = () => {
     handleFilter();
 };
 
+// Sinkronisasi SKHPP Terbit Otomatis
+const isSyncingSkhpp = ref(false);
+const syncSkhpp = () => {
+    if (confirm('Sinkronkan seluruh dokumen SKHPP yang telah disahkan Komandan Denintel (TTE) ke dalam daftar Pengajuan SC? Berkas yang disinkronkan akan langsung berada pada Tahap 5 (SKHPP Terbit).')) {
+        isSyncingSkhpp.value = true;
+        router.post(route('sc-submissions.sync-skhpp'), {}, {
+            preserveScroll: true,
+            onFinish: () => {
+                isSyncingSkhpp.value = false;
+            }
+        });
+    }
+};
+
 // Modal Tambah Pengajuan Baru
 const isCreateModalOpen = ref(false);
 const isSubmittingCreate = ref(false);
@@ -53,6 +67,7 @@ const createForm = ref({
     nomor_surat_rh: '',
     nomor_skhpp: '',
     nomor_sc: '',
+    file_skhpp: null,
 });
 
 const openCreateModal = () => {
@@ -71,8 +86,13 @@ const openCreateModal = () => {
         nomor_surat_rh: '',
         nomor_skhpp: '',
         nomor_sc: '',
+        file_skhpp: null,
     };
     isCreateModalOpen.value = true;
+};
+
+const handleCreateFileSkhpp = (e) => {
+    createForm.value.file_skhpp = e.target.files[0] || null;
 };
 
 const submitCreate = () => {
@@ -100,6 +120,8 @@ const stageForm = ref({
     status: 'proses',
     nomor_skhpp: '',
     nomor_sc: '',
+    file_skhpp: null,
+    file_sc_preview: null,
 });
 
 const openUpdateStageModal = (sub) => {
@@ -110,8 +132,18 @@ const openUpdateStageModal = (sub) => {
         status: sub.status || 'proses',
         nomor_skhpp: sub.nomor_skhpp || '',
         nomor_sc: sub.nomor_sc || '',
+        file_skhpp: null,
+        file_sc_preview: null,
     };
     isUpdateStageModalOpen.value = true;
+};
+
+const handleStageFileSkhpp = (e) => {
+    stageForm.value.file_skhpp = e.target.files[0] || null;
+};
+
+const handleStageFileScPreview = (e) => {
+    stageForm.value.file_sc_preview = e.target.files[0] || null;
 };
 
 const advanceToNextStage = () => {
@@ -139,6 +171,44 @@ const submitUpdateStage = () => {
         }
     });
 };
+
+// Modal Petinjau Hasil SC (Untuk Petugas / Admin)
+const isPreviewModalOpen = ref(false);
+const activeSubmissionForPreview = ref(null);
+const previewPdfUrl = computed(() => {
+    if (!activeSubmissionForPreview.value || !activeSubmissionForPreview.value.is_sc_preview_available) return null;
+    return route('tracking-sc.preview-pdf', activeSubmissionForPreview.value.tracking_code) + '#toolbar=0&navpanes=0&scrollbar=1';
+});
+
+const openPreviewModal = (sub) => {
+    activeSubmissionForPreview.value = sub;
+    isPreviewModalOpen.value = true;
+};
+
+const closePreviewModal = () => {
+    isPreviewModalOpen.value = false;
+    activeSubmissionForPreview.value = null;
+};
+
+// Pengamanan Anti-Download: blokir shortcut Ctrl+S, Ctrl+P, F12
+const handleKeydown = (e) => {
+    if (!isPreviewModalOpen.value) return;
+    if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.key === 'p' || e.key === 'P')) {
+        e.preventDefault();
+        alert('Peringatan Kedinasan: Dokumen ini berstatus petinjau sementara dan tidak diizinkan untuk diunduh maupun dicetak.');
+    }
+    if (e.key === 'PrintScreen') {
+        alert('Peringatan Kedinasan: Fitur tangkapan layar dibatasi untuk berkas petinjau intelijen.');
+    }
+};
+
+onMounted(() => {
+    window.addEventListener('keydown', handleKeydown);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('keydown', handleKeydown);
+});
 
 // Modal Detail / Riwayat Logs
 const isLogsModalOpen = ref(false);
@@ -237,11 +307,12 @@ const formatDateTime = (dateStr) => {
                         Manajemen Pengajuan Security Clearance (SC)
                     </h1>
                     <p class="text-xs text-slate-500 font-medium mt-1 leading-relaxed max-w-2xl">
-                        Pengelolaan tahapan berkas SC mulai dari Pengisian RH, Verifikasi Denintel, Proses Sintel, hingga Penerbitan SC di Mako Kodaeral V. Dapat dilacak langsung oleh personel secara publik tanpa login.
+                        Pengelolaan alur berkas SC terpadu mulai dari Pengisian RH, Verifikasi Denintel, Integrasi SKHPP TTE/Basah, Proses Sintel, Petinjau Softfile (2x24 Jam), hingga Penerbitan Dokumen di Mako Kodaeral V.
                     </p>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-3 shrink-0">
+                    <!-- Halaman Publik Tanpa Login -->
                     <a 
                         :href="route('tracking-sc.index')" 
                         target="_blank"
@@ -253,6 +324,21 @@ const formatDateTime = (dateStr) => {
                         </svg>
                         <span>Halaman Publik</span>
                     </a>
+
+                    <!-- Tombol Sinkronisasi SKHPP Terbit -->
+                    <button 
+                        @click="syncSkhpp"
+                        :disabled="isSyncingSkhpp"
+                        class="px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-extrabold text-xs uppercase tracking-wider transition shadow-md shadow-emerald-500/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                        title="Tarik & sinkronkan data SKHPP yang telah disahkan Komandan Denintel (TTE)"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        <span>{{ isSyncingSkhpp ? 'Menyinkronkan...' : 'Sinkronkan SKHPP Terbit' }}</span>
+                    </button>
+
+                    <!-- Tombol Pendaftaran Berkas Manual -->
                     <button 
                         @click="openCreateModal"
                         class="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-extrabold text-xs uppercase tracking-wider transition shadow-md shadow-blue-500/20 flex items-center gap-2 cursor-pointer"
@@ -371,8 +457,9 @@ const formatDateTime = (dateStr) => {
                                 <th class="p-3.5 pl-5">Kode / Pemohon</th>
                                 <th class="p-3.5">Kesatuan & Keperluan</th>
                                 <th class="p-3.5">Tahapan Terkini (1-10)</th>
+                                <th class="p-3.5">Integrasi & Dokumen</th>
                                 <th class="p-3.5">Status</th>
-                                <th class="p-3.5">Tanggal Daftar</th>
+                                <th class="p-3.5">Tanggal</th>
                                 <th class="p-3.5 pr-5 text-right">Aksi Kedinasan</th>
                             </tr>
                         </thead>
@@ -396,12 +483,12 @@ const formatDateTime = (dateStr) => {
                                 <!-- Kesatuan & Keperluan -->
                                 <td class="p-3.5">
                                     <span class="font-extrabold text-slate-800 block">{{ sub.kesatuan || '-' }}</span>
-                                    <span class="text-[10px] text-slate-500 block truncate max-w-[160px]">{{ sub.keperluan || 'Kedinasan' }}</span>
+                                    <span class="text-[10px] text-slate-500 block truncate max-w-[150px]">{{ sub.keperluan || 'Kedinasan' }}</span>
                                 </td>
 
                                 <!-- Tahapan Terkini -->
                                 <td class="p-3.5">
-                                    <div class="space-y-1 min-w-[200px]">
+                                    <div class="space-y-1 min-w-[190px]">
                                         <div class="flex items-center justify-between text-[10px]">
                                             <span class="font-extrabold" :class="sub.current_stage === 10 ? 'text-emerald-700' : 'text-blue-700'">
                                                 Tahap {{ sub.current_stage }}: {{ sub.stage_title }}
@@ -418,6 +505,41 @@ const formatDateTime = (dateStr) => {
                                         <span v-if="sub.catatan_petugas" class="text-[9px] text-slate-400 italic truncate block max-w-xs">
                                             "{{ sub.catatan_petugas }}"
                                         </span>
+                                    </div>
+                                </td>
+
+                                <!-- Integrasi & Dokumen Terlampir -->
+                                <td class="p-3.5 space-y-1">
+                                    <!-- Status SKHPP -->
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-[10px] text-slate-400 font-bold uppercase">SKHPP:</span>
+                                        <span v-if="sub.skhpp_id" class="px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 font-extrabold text-[9px] flex items-center gap-1">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                            TTE Otomatis
+                                        </span>
+                                        <a v-else-if="sub.file_skhpp_url" :href="sub.file_skhpp_url" target="_blank" class="px-2 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-blue-700 font-extrabold text-[9px] hover:underline flex items-center gap-1">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                            TTD Basah (PDF)
+                                        </a>
+                                        <span v-else class="text-[10px] text-slate-400 font-medium">Belum Ada</span>
+                                    </div>
+
+                                    <!-- Status Petinjau SC Sintel -->
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-[10px] text-slate-400 font-bold uppercase">SC Sintel:</span>
+                                        <button 
+                                            v-if="sub.is_sc_preview_available"
+                                            @click="openPreviewModal(sub)"
+                                            class="px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-700 font-extrabold text-[9px] hover:bg-indigo-600 hover:text-white transition flex items-center gap-1 cursor-pointer"
+                                            title="Lihat Petinjau Dokumen SC Sintel"
+                                        >
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                            Petinjau ({{ sub.sc_preview_remaining_hours }} Jam)
+                                        </button>
+                                        <span v-else-if="sub.sc_preview_expired_at" class="text-[9px] text-rose-500 font-bold">
+                                            Kadaluarsa (Terhapus)
+                                        </span>
+                                        <span v-else class="text-[10px] text-slate-400 font-medium">-</span>
                                     </div>
                                 </td>
 
@@ -488,7 +610,7 @@ const formatDateTime = (dateStr) => {
                             </tr>
 
                             <tr v-if="!submissions.data || submissions.data.length === 0">
-                                <td colspan="6" class="p-12 text-center text-xs text-slate-400 font-semibold italic">
+                                <td colspan="7" class="p-12 text-center text-xs text-slate-400 font-semibold italic">
                                     Belum ada berkas pengajuan Security Clearance yang terdaftar.
                                 </td>
                             </tr>
@@ -648,6 +770,18 @@ const formatDateTime = (dateStr) => {
                                 </select>
                             </div>
 
+                            <!-- Upload Berkas SKHPP TTD Basah (Opsional) -->
+                            <div class="space-y-1 sm:col-span-2">
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Unggah PDF SKHPP Tanda Tangan Basah (Opsional)</label>
+                                <input 
+                                    type="file" 
+                                    accept="application/pdf"
+                                    @change="handleCreateFileSkhpp"
+                                    class="w-full text-xs font-medium p-2.5 border border-slate-200 rounded-xl bg-slate-50 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-black file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                                />
+                                <span class="text-[10px] text-slate-400 block px-1">*Format PDF, maksimal 10MB. Digunakan bila berkas SKHPP telah ditandatangani basah manual oleh Komandan.</span>
+                            </div>
+
                             <!-- Catatan Awal Petugas -->
                             <div class="space-y-1 sm:col-span-2">
                                 <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Catatan Awal Petugas</label>
@@ -746,33 +880,78 @@ const formatDateTime = (dateStr) => {
                             </div>
                         </div>
 
-                        <!-- Input Nomor SKHPP jika tahap >= 5 -->
-                        <div v-if="stageForm.stage >= 5" class="space-y-1">
-                            <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Nomor SKHPP (Denintel)</label>
-                            <input 
-                                type="text"
-                                v-model="stageForm.nomor_skhpp"
-                                placeholder="Contoh: SKHPP/123/IX/2026"
-                                class="w-full text-xs font-bold p-3 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500"
-                            />
+                        <!-- Input Nomor SKHPP & File PDF Basah jika tahap >= 5 -->
+                        <div v-if="stageForm.stage >= 5" class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-700">Nomor SKHPP (Denintel)</label>
+                                <input 
+                                    type="text" 
+                                    v-model="stageForm.nomor_skhpp" 
+                                    placeholder="Contoh: SKHPP/123/IX/2026"
+                                    class="w-full text-xs font-bold p-2.5 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-700">Unggah / Ganti PDF SKHPP (Tanda Tangan Basah)</label>
+                                <input 
+                                    type="file" 
+                                    accept="application/pdf"
+                                    @change="handleStageFileSkhpp"
+                                    class="w-full text-xs font-medium p-2 border border-slate-200 rounded-xl bg-white file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-black file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                                />
+                                <div v-if="activeSubmissionForStage.file_skhpp_url" class="pt-1 flex items-center justify-between">
+                                    <span class="text-[10px] text-slate-500">Berkas SKHPP Basah telah tersimpan:</span>
+                                    <a :href="activeSubmissionForStage.file_skhpp_url" target="_blank" class="text-[10px] font-bold text-blue-600 hover:underline flex items-center gap-1">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                        Buka PDF SKHPP
+                                    </a>
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- Input Nomor SC jika tahap >= 8 -->
-                        <div v-if="stageForm.stage >= 8" class="space-y-1">
-                            <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Nomor Naskah Security Clearance (SC)</label>
-                            <input 
-                                type="text"
-                                v-model="stageForm.nomor_sc"
-                                placeholder="Contoh: SC/456/IX/2026/Sintel"
-                                class="w-full text-xs font-bold p-3 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500"
-                            />
+                        <!-- Input Nomor SC & Upload Softfile Hasil SC Sintel jika tahap >= 8 -->
+                        <div v-if="stageForm.stage >= 8" class="p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-2xl space-y-3">
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-black uppercase tracking-wider text-indigo-950">Nomor Naskah Security Clearance (SC)</label>
+                                <input 
+                                    type="text" 
+                                    v-model="stageForm.nomor_sc" 
+                                    placeholder="Contoh: SC/456/IX/2026/Sintel"
+                                    class="w-full text-xs font-bold p-2.5 border border-indigo-200 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500"
+                                />
+                            </div>
+
+                            <div class="space-y-1">
+                                <div class="flex items-center justify-between">
+                                    <label class="text-[10px] font-black uppercase tracking-wider text-indigo-950">Softfile PDF Hasil SC (Petinjau Sintel)</label>
+                                    <span class="text-[9px] font-mono text-indigo-600 font-bold bg-indigo-100 px-2 py-0.5 rounded-full">Aktif 2x24 Jam</span>
+                                </div>
+                                <p class="text-[10px] text-indigo-800 font-medium leading-relaxed">
+                                    Softfile ini akan tampil pada portal pelacakan publik dalam mode petinjau terproteksi watermark <strong>(PETINJAU)</strong> tanpa fitur unduh, dan otomatis terhapus dalam kurun waktu 48 jam.
+                                </p>
+                                <input 
+                                    type="file" 
+                                    accept="application/pdf"
+                                    @change="handleStageFileScPreview"
+                                    class="w-full text-xs font-medium p-2 border border-indigo-200 rounded-xl bg-white file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-black file:bg-indigo-600 file:text-white hover:file:bg-indigo-700"
+                                />
+
+                                <div v-if="activeSubmissionForStage.is_sc_preview_available" class="pt-1 flex items-center justify-between">
+                                    <span class="text-[10px] text-indigo-700 font-bold">Status: Petinjau Aktif</span>
+                                    <span class="text-[10px] font-mono font-bold text-amber-600">Sisa: {{ activeSubmissionForStage.sc_preview_remaining_hours }} Jam</span>
+                                </div>
+                                <div v-else-if="activeSubmissionForStage.sc_preview_expired_at" class="text-[10px] text-rose-600 font-bold">
+                                    Petinjau sebelumnya telah kadaluarsa & terhapus otomatis.
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Catatan Petugas untuk Tahap Ini -->
                         <div class="space-y-1">
                             <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Catatan Pembaruan (Terlihat oleh Pemohon)</label>
                             <textarea 
-                                v-model="stageForm.notes"
+                                v-model="stageForm.notes" 
                                 rows="3"
                                 placeholder="Tuliskan keterangan detail posisi berkas untuk informasi personel..."
                                 class="w-full text-xs font-medium p-3 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500"
@@ -796,6 +975,99 @@ const formatDateTime = (dateStr) => {
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- MODAL PETINJAU HASIL SC (OFFICER VIEWER) -->
+        <Teleport to="body">
+            <div 
+                v-if="isPreviewModalOpen && activeSubmissionForPreview" 
+                class="fixed inset-0 z-[200] bg-slate-950/90 backdrop-blur-md flex flex-col p-2 sm:p-6 overflow-hidden animate-in fade-in duration-200"
+                @contextmenu.prevent
+            >
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl flex-1 flex flex-col overflow-hidden shadow-2xl relative">
+                    
+                    <!-- Header Modal Viewer -->
+                    <div class="px-5 py-4 border-b border-slate-800 bg-slate-950/90 flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] font-black uppercase text-indigo-400 tracking-wider">PETINJAU RESMI KEDINASAN</span>
+                                    <span class="px-2 py-0.5 bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-full text-[9px] font-black uppercase">
+                                        PROTEKSI ANTI-DOWNLOAD
+                                    </span>
+                                </div>
+                                <h3 class="text-sm sm:text-base font-extrabold text-white">
+                                    Petinjau SC: {{ activeSubmissionForPreview?.nama }} ({{ activeSubmissionForPreview?.tracking_code }})
+                                </h3>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <span class="text-[11px] font-mono font-bold text-amber-400 bg-amber-950/60 border border-amber-800/60 px-3 py-1.5 rounded-xl">
+                                Sisa Masa Aktif: {{ activeSubmissionForPreview?.sc_preview_remaining_hours }} Jam
+                            </span>
+                            <button 
+                                @click="closePreviewModal" 
+                                class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-extrabold uppercase tracking-wider transition cursor-pointer border border-slate-700 flex items-center gap-1.5"
+                            >
+                                <span>Tutup</span>
+                                <span class="text-base leading-none">&times;</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- PDF Viewer Container With Watermark Overlay -->
+                    <div class="flex-1 relative bg-slate-950 overflow-hidden" @contextmenu.prevent>
+                        <iframe 
+                            v-if="previewPdfUrl"
+                            :src="previewPdfUrl"
+                            class="w-full h-full border-0 relative z-10"
+                            title="Petinjau Berkas SC"
+                        ></iframe>
+
+                        <!-- OVERLAY WATERMARK BESAR "(PETINJAU)" -->
+                        <div class="absolute inset-0 pointer-events-none select-none z-20 flex flex-col justify-around items-center overflow-hidden p-6">
+                            <div class="w-full flex justify-around items-center transform -rotate-25 opacity-30 select-none">
+                                <span class="text-4xl sm:text-6xl font-black text-red-500 tracking-widest font-mono">
+                                    (PETINJAU)
+                                </span>
+                                <span class="text-4xl sm:text-6xl font-black text-red-500 tracking-widest font-mono hidden md:inline">
+                                    (PETINJAU)
+                                </span>
+                            </div>
+
+                            <div class="w-full flex justify-around items-center transform -rotate-25 opacity-35 select-none">
+                                <span class="text-5xl sm:text-7xl font-black text-red-600 tracking-widest font-mono">
+                                    (PETINJAU)
+                                </span>
+                                <span class="text-5xl sm:text-7xl font-black text-red-600 tracking-widest font-mono hidden md:inline">
+                                    (PETINJAU)
+                                </span>
+                            </div>
+
+                            <div class="w-full flex justify-around items-center transform -rotate-25 opacity-30 select-none">
+                                <span class="text-4xl sm:text-6xl font-black text-red-500 tracking-widest font-mono">
+                                    (PETINJAU)
+                                </span>
+                                <span class="text-4xl sm:text-6xl font-black text-red-500 tracking-widest font-mono hidden md:inline">
+                                    (PETINJAU)
+                                </span>
+                            </div>
+
+                            <div class="bg-red-950/80 border border-red-600/60 text-red-300 px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-2xl backdrop-blur-xs">
+                                DOKUMEN PETINJAU RESMI - TIDAK DAPAT DIUNDUH - OTOMATIS TERHAPUS DALAM 2X24 JAM
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </Teleport>

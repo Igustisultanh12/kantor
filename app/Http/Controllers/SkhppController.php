@@ -414,6 +414,74 @@ class SkhppController extends Controller
             \Illuminate\Support\Facades\Log::warning("Gagal auto-sync SKHPP ke LetterLog: " . $e->getMessage());
         }
 
+        // SINKRONISASI OTOMATIS KE FITUR TRACKING PENGAJUAN SECURITY CLEARANCE (SC)
+        // Tahap 1 (Pengisian RH), 2 (Pengecekan Dokumen), 3 (Cetak RH), dan 4 (Menunggu TTD) otomatis terlewati!
+        try {
+            $identifierType = 'nrp';
+            $identifierNum = null;
+            if (!empty($skhpp->pangkat_korps_nrp)) {
+                if (preg_match('/(\d{5,18})/', $skhpp->pangkat_korps_nrp, $m)) {
+                    $identifierNum = $m[1];
+                    $identifierType = 'nrp';
+                }
+            }
+            if (empty($identifierNum) && !empty($skhpp->nik)) {
+                $identifierNum = $skhpp->nik;
+                $identifierType = 'nik';
+            }
+            if (empty($identifierNum)) {
+                $identifierNum = 'NRP-' . $skhpp->id;
+            }
+
+            $scSub = \App\Models\ScSubmission::where('skhpp_id', $skhpp->id)->first();
+            if (!$scSub) {
+                $trackingCode = 'SC-' . date('Ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(5));
+                $scSub = \App\Models\ScSubmission::create([
+                    'skhpp_id' => $skhpp->id,
+                    'tracking_code' => $trackingCode,
+                    'nama' => $skhpp->nama,
+                    'pangkat_korps' => $skhpp->pangkat_korps_nrp,
+                    'identifier_type' => $identifierType,
+                    'identifier_number' => $identifierNum,
+                    'kesatuan' => $skhpp->alamat ?: 'Kodaeral V',
+                    'jabatan' => $skhpp->jabatan_pekerjaan,
+                    'keperluan' => $skhpp->peruntukan,
+                    'nomor_skhpp' => $formattedNo,
+                    'current_stage' => 5, // TAHAP 5: SKHPP TERBIT (Tahap 1, 2, 3, 4 terlewati otomatis)
+                    'status' => 'proses',
+                    'catatan_petugas' => "SKHPP resmi diterbitkan oleh Komandan Denintel (TTE) No. {$formattedNo}. Tahap 1 s/d 4 otomatis terlewati.",
+                    'created_by' => $user->id,
+                ]);
+
+                $initialLogs = [
+                    ['stage' => 1, 'stage_title' => 'Pengisian RH', 'notes' => 'Pengisian Riwayat Hidup telah diproses terintegrasi pada penerbitan SKHPP.'],
+                    ['stage' => 2, 'stage_title' => 'Pengecekan Kelengkapan Dokumen', 'notes' => 'Pemeriksaan berkas dan kelengkapan dokumen telah diverifikasi oleh operator Denintel.'],
+                    ['stage' => 3, 'stage_title' => 'Proses Cetak RH', 'notes' => 'Proses administrasi dan pencetakan lembar SKHPP selesai.'],
+                    ['stage' => 4, 'stage_title' => 'Menunggu TTD Komandan Denintel', 'notes' => 'Persetujuan dan tanda tangan dinas elektronik (TTE) Komandan Denintel telah disahkan.'],
+                    ['stage' => 5, 'stage_title' => 'SKHPP Terbit', 'notes' => "SKHPP resmi disahkan dan diterbitkan dengan nomor {$formattedNo}. Berkas beralih ke Staf Intelijen."],
+                ];
+
+                foreach ($initialLogs as $logItem) {
+                    \App\Models\ScSubmissionLog::create([
+                        'sc_submission_id' => $scSub->id,
+                        'stage' => $logItem['stage'],
+                        'stage_title' => $logItem['stage_title'],
+                        'notes' => $logItem['notes'],
+                        'user_id' => $user->id,
+                        'user_name' => $user->name ?? 'Komandan Denintel',
+                    ]);
+                }
+            } else {
+                $scSub->update([
+                    'nomor_skhpp' => $formattedNo,
+                    'current_stage' => max(5, $scSub->current_stage),
+                    'catatan_petugas' => "Pembaruan nomor SKHPP: {$formattedNo} oleh Komandan Denintel.",
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Gagal auto-sync SKHPP ke ScSubmission: " . $e->getMessage());
+        }
+
         // Kirim Notifikasi Sistem In-App Bell & WA ke Operator / Pengaju
         try {
             $operator = User::find($skhpp->submitted_by);

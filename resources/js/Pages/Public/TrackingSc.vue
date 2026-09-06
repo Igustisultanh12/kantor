@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 
 const props = defineProps({
     submission: Object,
@@ -53,6 +53,43 @@ const formatDate = (dateStr) => {
         minute: '2-digit'
     }) + ' WIB';
 };
+
+// Modal Petinjau Hasil SC
+const isPreviewModalOpen = ref(false);
+const previewPdfUrl = computed(() => {
+    if (!activeSubmission.value || !activeSubmission.value.is_sc_preview_available) return null;
+    return route('tracking-sc.preview-pdf', activeSubmission.value.tracking_code) + '#toolbar=0&navpanes=0&scrollbar=1';
+});
+
+const openPreviewModal = () => {
+    if (activeSubmission.value?.is_sc_preview_available) {
+        isPreviewModalOpen.value = true;
+    }
+};
+
+const closePreviewModal = () => {
+    isPreviewModalOpen.value = false;
+};
+
+// Pengamanan Anti-Download: blokir shortcut Ctrl+S, Ctrl+P, F12
+const handleKeydown = (e) => {
+    if (!isPreviewModalOpen.value) return;
+    if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.key === 'p' || e.key === 'P')) {
+        e.preventDefault();
+        alert('Peringatan Kedinasan: Dokumen ini berstatus petinjau sementara dan tidak diizinkan untuk diunduh maupun dicetak.');
+    }
+    if (e.key === 'PrintScreen') {
+        alert('Peringatan Kedinasan: Fitur tangkapan layar dibatasi untuk berkas petinjau intelijen.');
+    }
+};
+
+onMounted(() => {
+    window.addEventListener('keydown', handleKeydown);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('keydown', handleKeydown);
+});
 </script>
 
 <template>
@@ -91,7 +128,6 @@ const formatDate = (dateStr) => {
             
             <!-- Hero Search Card -->
             <div class="bg-gradient-to-b from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden">
-                <!-- Background Accent Graphic -->
                 <div class="absolute -right-16 -bottom-16 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
                 <div class="absolute -left-16 -top-16 w-64 h-64 bg-teal-600/10 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -216,13 +252,83 @@ const formatDate = (dateStr) => {
                             <span class="font-extrabold text-slate-200 mt-0.5 block">{{ activeSubmission.keperluan || 'Kedinasan' }}</span>
                         </div>
                         <div>
-                            <span class="text-[10px] font-bold text-slate-500 uppercase block">Tanggal Pendaftaran:</span>
-                            <span class="font-mono font-bold text-slate-200 mt-0.5 block">{{ formatDate(activeSubmission.created_at) }}</span>
+                            <span class="text-[10px] font-bold text-slate-500 uppercase block">Status SKHPP:</span>
+                            <span class="font-bold text-slate-200 mt-0.5 block">
+                                <template v-if="activeSubmission.skhpp_id">
+                                    <span class="text-emerald-400 font-extrabold flex items-center gap-1">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                        TTE Komandan
+                                    </span>
+                                </template>
+                                <template v-else-if="activeSubmission.file_skhpp">
+                                    <span class="text-blue-400 font-extrabold flex items-center gap-1">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                        TTD Basah (Unggahan)
+                                    </span>
+                                </template>
+                                <template v-else>
+                                    <span class="text-slate-400">{{ activeSubmission.nomor_skhpp || 'Menunggu Pengesahan' }}</span>
+                                </template>
+                            </span>
                         </div>
                         <div>
                             <span class="text-[10px] font-bold text-slate-500 uppercase block">Nomor SC Resmi:</span>
                             <span class="font-mono font-extrabold text-emerald-400 mt-0.5 block">{{ activeSubmission.nomor_sc || 'Menunggu Terbit' }}</span>
                         </div>
+                    </div>
+                </div>
+
+                <!-- BANNER PETINJAU HASIL SC (JIKA TERSEDIA DARI SINTEL - PROTEKSI 2X24 JAM & WATERMARK) -->
+                <div v-if="activeSubmission.is_sc_preview_available" class="bg-gradient-to-r from-indigo-950 via-slate-900 to-blue-950 border-2 border-indigo-500/80 rounded-3xl p-6 sm:p-8 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                    <div class="flex items-start gap-4">
+                        <div class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-2xl shrink-0 shadow-lg shadow-indigo-600/30">
+                            <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="px-2.5 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full text-[10px] font-black uppercase tracking-wider">
+                                    PETINJAU DIGITAL RESMI SINTEL
+                                </span>
+                                <span class="px-2.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full text-[10px] font-mono font-bold">
+                                    Sisa Masa Aktif: {{ activeSubmission.sc_preview_remaining_hours }} Jam
+                                </span>
+                            </div>
+                            <h4 class="text-lg sm:text-xl font-black text-white">
+                                Petinjau Hasil Security Clearance Tersedia
+                            </h4>
+                            <p class="text-xs text-slate-300 leading-relaxed font-medium max-w-2xl">
+                                Petugas Staf Intelijen telah mengunggah softfile petinjau dokumen Security Clearance Anda. Dokumen ini dilindungi watermark kedinasan dan tidak dapat diunduh. Berkas digital ini otomatis terhapus dalam waktu 2x24 jam demi kerahasiaan dinas.
+                            </p>
+                        </div>
+                    </div>
+
+                    <button 
+                        @click="openPreviewModal"
+                        class="shrink-0 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-extrabold text-xs uppercase tracking-wider transition shadow-lg shadow-indigo-600/30 flex items-center gap-2 cursor-pointer"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        <span>Lihat Petinjau Dokumen</span>
+                    </button>
+                </div>
+
+                <!-- NOTIFIKASI PETINJAU KADALUARSA JIKA SUDAH LEBIH 48 JAM -->
+                <div v-else-if="activeSubmission.sc_preview_expired_at || (activeSubmission.current_stage >= 8 && !activeSubmission.is_sc_preview_available)" class="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 flex items-start gap-4">
+                    <div class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 text-slate-400 flex items-center justify-center font-black shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="text-xs space-y-1">
+                        <span class="font-extrabold text-slate-300 block">Masa Berlaku Petinjau Softfile Telah Berakhir</span>
+                        <p class="text-slate-500 font-medium leading-relaxed">
+                            Sesuai protokol pengamanan informasi kedinasan, berkas softfile petinjau otomatis terhapus secara permanen setelah melampaui masa aktif 2x24 jam (48 jam). Naskah fisik sah dapat diambil di Mako Kodaeral V.
+                        </p>
                     </div>
                 </div>
 
@@ -373,6 +479,116 @@ const formatDate = (dateStr) => {
             </div>
 
         </main>
+
+        <!-- MODAL PETINJAU HASIL SC DENGAN WATERMARK & ANTI-DOWNLOAD -->
+        <Teleport to="body">
+            <div 
+                v-if="isPreviewModalOpen" 
+                class="fixed inset-0 z-[200] bg-slate-950/90 backdrop-blur-md flex flex-col p-2 sm:p-6 overflow-hidden animate-in fade-in duration-200"
+                @contextmenu.prevent
+            >
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl flex-1 flex flex-col overflow-hidden shadow-2xl relative">
+                    
+                    <!-- Header Modal Viewer -->
+                    <div class="px-5 py-4 border-b border-slate-800 bg-slate-950/90 flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] font-black uppercase text-indigo-400 tracking-wider">PETINJAU RESMI KEDINASAN</span>
+                                    <span class="px-2 py-0.5 bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-full text-[9px] font-black uppercase">
+                                        PROTEKSI ANTI-DOWNLOAD
+                                    </span>
+                                </div>
+                                <h3 class="text-sm sm:text-base font-extrabold text-white">
+                                    Petinjau Hasil SC: {{ activeSubmission?.nama }} ({{ activeSubmission?.tracking_code }})
+                                </h3>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <span class="text-[11px] font-mono font-bold text-amber-400 bg-amber-950/60 border border-amber-800/60 px-3 py-1.5 rounded-xl">
+                                Sisa Waktu Petinjau: {{ activeSubmission?.sc_preview_remaining_hours }} Jam (2x24 Jam)
+                            </span>
+                            <button 
+                                @click="closePreviewModal" 
+                                class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-extrabold uppercase tracking-wider transition cursor-pointer border border-slate-700 flex items-center gap-1.5"
+                            >
+                                <span>Tutup</span>
+                                <span class="text-base leading-none">&times;</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Security Alert Strip -->
+                    <div class="bg-amber-500/10 border-b border-amber-500/20 px-5 py-2 text-[11px] text-amber-300 font-medium flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                            <span>Dilarang menyebarluaskan, mencetak, atau mengambil salinan dokumen ini. Dokumen petinjau akan terhapus otomatis setelah 2x24 jam.</span>
+                        </div>
+                        <span class="font-mono text-[10px] text-amber-400/80 uppercase">STATUS: PETINJAU SEMENTARA</span>
+                    </div>
+
+                    <!-- PDF Viewer Container With Watermark Overlay -->
+                    <div class="flex-1 relative bg-slate-950 overflow-hidden" @contextmenu.prevent>
+                        
+                        <!-- Embedded PDF Viewer (Toolbar & Download Options Suppressed) -->
+                        <iframe 
+                            v-if="previewPdfUrl"
+                            :src="previewPdfUrl"
+                            class="w-full h-full border-0 relative z-10"
+                            title="Petinjau Berkas SC"
+                        ></iframe>
+
+                        <!-- OVERLAY WATERMARK BESAR "(PETINJAU)" -->
+                        <div class="absolute inset-0 pointer-events-none select-none z-20 flex flex-col justify-around items-center overflow-hidden p-6">
+                            
+                            <!-- Diagonal Repeating Watermark Grid -->
+                            <div class="w-full flex justify-around items-center transform -rotate-25 opacity-30 select-none">
+                                <span class="text-4xl sm:text-6xl font-black text-red-500 tracking-widest font-mono">
+                                    (PETINJAU)
+                                </span>
+                                <span class="text-4xl sm:text-6xl font-black text-red-500 tracking-widest font-mono hidden md:inline">
+                                    (PETINJAU)
+                                </span>
+                            </div>
+
+                            <div class="w-full flex justify-around items-center transform -rotate-25 opacity-35 select-none">
+                                <span class="text-5xl sm:text-7xl font-black text-red-600 tracking-widest font-mono">
+                                    (PETINJAU)
+                                </span>
+                                <span class="text-5xl sm:text-7xl font-black text-red-600 tracking-widest font-mono hidden md:inline">
+                                    (PETINJAU)
+                                </span>
+                            </div>
+
+                            <div class="w-full flex justify-around items-center transform -rotate-25 opacity-30 select-none">
+                                <span class="text-4xl sm:text-6xl font-black text-red-500 tracking-widest font-mono">
+                                    (PETINJAU)
+                                </span>
+                                <span class="text-4xl sm:text-6xl font-black text-red-500 tracking-widest font-mono hidden md:inline">
+                                    (PETINJAU)
+                                </span>
+                            </div>
+
+                            <!-- Bottom Warning Badge Overlay -->
+                            <div class="bg-red-950/80 border border-red-600/60 text-red-300 px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-2xl backdrop-blur-xs">
+                                DOKUMEN PETINJAU RESMI - TIDAK DAPAT DIUNDUH - OTOMATIS TERHAPUS DALAM 2X24 JAM
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+        </Teleport>
 
         <!-- Footer -->
         <footer class="border-t border-slate-800/80 bg-slate-950 py-6 text-center text-xs text-slate-500 font-medium">

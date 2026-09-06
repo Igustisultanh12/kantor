@@ -24,9 +24,14 @@ return new class extends Migration
             $table->string('keperluan')->nullable();
             $table->unsignedTinyInteger('current_stage')->default(1); // 1 sampai 10
             $table->string('status')->default('proses'); // proses, selesai, perbaikan, ditolak
+            $table->foreignId('skhpp_id')->nullable()->constrained('skhpps')->nullOnDelete();
             $table->string('nomor_surat_rh')->nullable();
             $table->string('nomor_skhpp')->nullable();
+            $table->string('file_skhpp')->nullable();
             $table->string('nomor_sc')->nullable();
+            $table->string('file_sc_preview')->nullable();
+            $table->timestamp('sc_preview_uploaded_at')->nullable();
+            $table->timestamp('sc_preview_expired_at')->nullable();
             $table->text('catatan_petugas')->nullable();
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
