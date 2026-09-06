@@ -150,20 +150,19 @@ const renderAllPages = async () => {
         if (!canvas) continue;
 
         const container = document.getElementById('pdf-canvas-container');
-        const availableWidth = container ? Math.min(container.clientWidth - 48, 850) : 750;
-        const baseViewport = page.getViewport({ scale: 1 });
-        const scale = (availableWidth > 320 ? availableWidth : 320) / baseViewport.width;
+        const containerW = container && container.clientWidth > 0 ? container.clientWidth : window.innerWidth;
+        const targetWidth = Math.min(Math.max(containerW - 64, 320), 820);
         
-        const outputScale = window.devicePixelRatio || 1;
+        const baseViewport = page.getViewport({ scale: 1 });
+        const scale = targetWidth / baseViewport.width;
         const viewport = page.getViewport({ scale: scale });
 
-        canvas.width = Math.floor(viewport.width * outputScale);
-        canvas.height = Math.floor(viewport.height * outputScale);
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
         canvas.style.width = Math.floor(viewport.width) + 'px';
         canvas.style.height = Math.floor(viewport.height) + 'px';
 
         const ctx = canvas.getContext('2d', { alpha: false });
-        ctx.setTransform(outputScale, 0, 0, outputScale, 0, 0);
 
         const renderContext = {
             canvasContext: ctx,
@@ -259,6 +258,15 @@ const handleAfterPrint = () => {
     isPrivacyBlank.value = false;
 };
 
+let resizeTimer = null;
+const handleResize = () => {
+    if (!isPreviewModalOpen.value || !pdfDoc.value) return;
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+        renderAllPages();
+    }, 250);
+};
+
 onMounted(() => {
     window.addEventListener('keydown', handleKeydown);
     window.addEventListener('blur', handleWindowBlur);
@@ -266,6 +274,7 @@ onMounted(() => {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('beforeprint', handleBeforePrint);
     window.addEventListener('afterprint', handleAfterPrint);
+    window.addEventListener('resize', handleResize);
 });
 
 onUnmounted(() => {
@@ -275,6 +284,7 @@ onUnmounted(() => {
     document.removeEventListener('visibilitychange', handleVisibilityChange);
     window.removeEventListener('beforeprint', handleBeforePrint);
     window.removeEventListener('afterprint', handleAfterPrint);
+    window.removeEventListener('resize', handleResize);
 });
 </script>
 
@@ -803,9 +813,9 @@ onUnmounted(() => {
                             <div 
                                 v-for="pageNum in totalPages" 
                                 :key="pageNum" 
-                                class="relative shadow-2xl rounded-xl overflow-hidden bg-white max-w-full print:hidden"
+                                class="shrink-0 relative shadow-2xl rounded-2xl overflow-hidden bg-white mb-6 print:hidden"
                             >
-                                <canvas :id="'pdf-page-canvas-' + pageNum" class="block max-w-full h-auto"></canvas>
+                                <canvas :id="'pdf-page-canvas-' + pageNum" class="block"></canvas>
                                 <!-- Transparent Shield on top of each page canvas to block mouse drag / tap-and-hold -->
                                 <div class="absolute inset-0 z-10 cursor-default bg-transparent" @contextmenu.prevent></div>
                             </div>
