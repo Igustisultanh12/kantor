@@ -13,6 +13,7 @@ class ScSubmission extends Model
     protected $fillable = [
         'skhpp_id',
         'tracking_code',
+        'nomor_resi',
         'nama',
         'pangkat_korps',
         'identifier_type',
@@ -259,6 +260,11 @@ class ScSubmission extends Model
                 });
             } else {
                 \Illuminate\Support\Facades\Schema::table('sc_submissions', function (\Illuminate\Database\Schema\Blueprint $table) {
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'nomor_resi')) {
+                        try {
+                            \Illuminate\Support\Facades\DB::statement("ALTER TABLE sc_submissions MODIFY COLUMN nomor_resi VARCHAR(255) NULL DEFAULT NULL");
+                        } catch (\Throwable $e) {}
+                    }
                     if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'tracking_code')) {
                         $table->string('tracking_code')->nullable()->index();
                     }

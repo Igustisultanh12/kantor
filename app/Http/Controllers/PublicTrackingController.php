@@ -43,6 +43,9 @@ class PublicTrackingController extends Controller
                         $q->where('identifier_number', $identifier)
                           ->orWhereRaw("REPLACE(REPLACE(REPLACE(identifier_number, ' ', ''), '-', ''), '.', '') = ?", [$cleanNumber])
                           ->orWhere('tracking_code', $identifier);
+                        if (Schema::hasColumn('sc_submissions', 'nomor_resi')) {
+                            $q->orWhere('nomor_resi', $identifier);
+                        }
                     })
                     ->orderBy('id', 'desc')
                     ->get();
@@ -76,7 +79,12 @@ class PublicTrackingController extends Controller
      */
     public function previewPdf($trackingCode)
     {
-        $submission = ScSubmission::where('tracking_code', $trackingCode)->firstOrFail();
+        $submission = ScSubmission::where(function ($q) use ($trackingCode) {
+            $q->where('tracking_code', $trackingCode);
+            if (Schema::hasColumn('sc_submissions', 'nomor_resi')) {
+                $q->orWhere('nomor_resi', $trackingCode);
+            }
+        })->firstOrFail();
 
         // Periksa apakah masa aktif 2x24 jam telah berakhir
         if ($submission->checkAndPurgeExpiredPreview() || !$submission->is_sc_preview_available) {

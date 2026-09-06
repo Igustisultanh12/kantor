@@ -141,6 +141,7 @@ class ScSubmissionController extends Controller
 
             $allFields = [
                 'tracking_code' => $trackingCode,
+                'nomor_resi' => $trackingCode,
                 'nama' => $validated['nama'],
                 'identifier_type' => $validated['identifier_type'],
                 'identifier_number' => trim($validated['identifier_number']),
@@ -164,6 +165,29 @@ class ScSubmissionController extends Controller
                 if ($val !== null && Schema::hasColumn('sc_submissions', $key)) {
                     $submissionData[$key] = $val;
                 }
+            }
+
+            // Pengecekan aman untuk setiap kolom NOT NULL warisan yang tidak memiliki nilai bawaan
+            try {
+                $columns = DB::select("SHOW COLUMNS FROM sc_submissions");
+                foreach ($columns as $col) {
+                    $fieldName = $col->Field ?? $col->field ?? null;
+                    $isNull = ($col->Null ?? $col->null ?? 'YES') === 'NO';
+                    $hasDefault = ($col->Default ?? $col->default ?? null) !== null;
+
+                    if ($fieldName && $isNull && !$hasDefault && !in_array($fieldName, ['id', 'created_at', 'updated_at'])) {
+                        if (!isset($submissionData[$fieldName]) || $submissionData[$fieldName] === null) {
+                            $type = strtolower($col->Type ?? $col->type ?? '');
+                            if (str_contains($type, 'int')) {
+                                $submissionData[$fieldName] = 0;
+                            } else {
+                                $submissionData[$fieldName] = ($fieldName === 'nomor_resi') ? $trackingCode : '-';
+                            }
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Fallback check columns warning: ' . $e->getMessage());
             }
 
             $submission = ScSubmission::create($submissionData);
