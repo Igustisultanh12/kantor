@@ -409,7 +409,7 @@ onUnmounted(() => {
                             </p>
                             <div class="pt-2">
                                 <a 
-                                    href="https://share.google/IgZW59hpme9ZLvxkb" 
+                                    href="https://maps.app.goo.gl/STtPpz4G6G2DfnKC7" 
                                     target="_blank" 
                                     rel="noopener noreferrer"
                                     class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition shadow-lg shadow-emerald-600/30 cursor-pointer"
@@ -418,7 +418,7 @@ onUnmounted(() => {
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                     </svg>
-                                    <span>Buka Koordinat / Lokasi Mako Kodaeral V</span>
+                                    <span>Buka Maps</span>
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                                     </svg>
@@ -527,7 +527,7 @@ onUnmounted(() => {
                                         </div>
                                     </div>
                                     <a 
-                                        href="https://share.google/IgZW59hpme9ZLvxkb" 
+                                        href="https://maps.app.goo.gl/STtPpz4G6G2DfnKC7" 
                                         target="_blank" 
                                         rel="noopener noreferrer"
                                         class="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition shadow-md shadow-emerald-600/30 cursor-pointer"
@@ -536,7 +536,7 @@ onUnmounted(() => {
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                         </svg>
-                                        <span>Koordinat Mako Kodaeral V</span>
+                                        <span>Buka Maps</span>
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                                         </svg>
