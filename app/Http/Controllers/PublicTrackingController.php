@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ScSubmission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -19,6 +20,16 @@ class PublicTrackingController extends Controller
         $submission = null;
         $allSubmissions = collect();
         $notFound = false;
+
+        if (!Schema::hasTable('sc_submissions')) {
+            return Inertia::render('Public/TrackingSc', [
+                'submission' => null,
+                'all_submissions' => $allSubmissions,
+                'searched_identifier' => $identifier,
+                'not_found' => !empty($identifier),
+                'stages' => array_values(ScSubmission::STAGES),
+            ]);
+        }
 
         if (!empty($identifier)) {
             $cleanNumber = str_replace([' ', '-', '.', '/'], '', $identifier);

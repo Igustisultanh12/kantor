@@ -7,6 +7,7 @@ use App\Models\ScSubmissionLog;
 use App\Models\Skhpp;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -18,13 +19,38 @@ class ScSubmissionController extends Controller
      */
     public function index(Request $request)
     {
-        // Bersihkan pratinjau yang telah melewati batas 2x24 jam (48 jam)
-        $withPreviews = ScSubmission::whereNotNull('file_sc_preview')->get();
-        foreach ($withPreviews as $subItem) {
-            $subItem->checkAndPurgeExpiredPreview();
+        if (!Schema::hasTable('sc_submissions')) {
+            return Inertia::render('ScSubmission/Index', [
+                'submissions' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15),
+                'stats' => [
+                    'total' => 0,
+                    'in_progress' => 0,
+                    'at_denintel' => 0,
+                    'at_sintel' => 0,
+                    'completed' => 0,
+                ],
+                'filters' => $request->only(['search', 'stage', 'status']),
+                'stages' => array_values(ScSubmission::STAGES),
+            ]);
         }
 
-        $query = ScSubmission::with(['logs', 'creator', 'skhpp'])->orderBy('id', 'desc');
+        // Bersihkan pratinjau yang telah melewati batas 2x24 jam (48 jam) jika kolom tersedia
+        if (Schema::hasColumn('sc_submissions', 'file_sc_preview')) {
+            $withPreviews = ScSubmission::whereNotNull('file_sc_preview')->get();
+            foreach ($withPreviews as $subItem) {
+                $subItem->checkAndPurgeExpiredPreview();
+            }
+        }
+
+        $relations = ['creator'];
+        if (Schema::hasTable('sc_submission_logs')) {
+            $relations[] = 'logs';
+        }
+        if (Schema::hasColumn('sc_submissions', 'skhpp_id')) {
+            $relations[] = 'skhpp';
+        }
+
+        $query = ScSubmission::with($relations)->orderBy('id', 'desc');
 
         if ($request->filled('search')) {
             $search = trim($request->search);
@@ -34,16 +60,18 @@ class ScSubmissionController extends Controller
                   ->orWhere('identifier_number', 'like', "%{$search}%")
                   ->orWhereRaw("REPLACE(REPLACE(REPLACE(identifier_number, ' ', ''), '-', ''), '.', '') LIKE ?", ["%{$cleanSearch}%"])
                   ->orWhere('tracking_code', 'like', "%{$search}%")
-                  ->orWhere('kesatuan', 'like', "%{$search}%")
-                  ->orWhere('nomor_sc', 'like', "%{$search}%");
+                  ->orWhere('kesatuan', 'like', "%{$search}%");
+                if (Schema::hasColumn('sc_submissions', 'nomor_sc')) {
+                    $q->orWhere('nomor_sc', 'like', "%{$search}%");
+                }
             });
         }
 
-        if ($request->filled('stage') && $request->stage !== 'all') {
+        if ($request->filled('stage') && $request->stage !== 'all' && Schema::hasColumn('sc_submissions', 'current_stage')) {
             $query->where('current_stage', (int)$request->stage);
         }
 
-        if ($request->filled('status') && $request->status !== 'all') {
+        if ($request->filled('status') && $request->status !== 'all' && Schema::hasColumn('sc_submissions', 'status')) {
             $query->where('status', $request->status);
         }
 
@@ -51,10 +79,10 @@ class ScSubmissionController extends Controller
 
         $stats = [
             'total' => ScSubmission::count(),
-            'in_progress' => ScSubmission::where('current_stage', '<', 10)->where('status', '!=', 'ditolak')->count(),
-            'at_denintel' => ScSubmission::where('current_stage', '<=', 5)->where('status', '!=', 'ditolak')->count(),
-            'at_sintel' => ScSubmission::whereBetween('current_stage', [6, 9])->where('status', '!=', 'ditolak')->count(),
-            'completed' => ScSubmission::where('current_stage', 10)->orWhere('status', 'selesai')->count(),
+            'in_progress' => Schema::hasColumn('sc_submissions', 'current_stage') ? ScSubmission::where('current_stage', '<', 10)->where('status', '!=', 'ditolak')->count() : 0,
+            'at_denintel' => Schema::hasColumn('sc_submissions', 'current_stage') ? ScSubmission::where('current_stage', '<=', 5)->where('status', '!=', 'ditolak')->count() : 0,
+            'at_sintel' => Schema::hasColumn('sc_submissions', 'current_stage') ? ScSubmission::whereBetween('current_stage', [6, 9])->where('status', '!=', 'ditolak')->count() : 0,
+            'completed' => Schema::hasColumn('sc_submissions', 'current_stage') ? ScSubmission::where('current_stage', 10)->orWhere('status', 'selesai')->count() : 0,
         ];
 
         return Inertia::render('ScSubmission/Index', [
