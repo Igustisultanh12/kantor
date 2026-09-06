@@ -1343,3 +1343,22 @@ const formatDateTime = (dateStr) => {
         </Teleport>
     </AuthenticatedLayout>
 </template>
+
+<style>
+@media print {
+  /* DOKUMEN 100% BLANK KOSONG SAAT PRINT */
+  html, body {
+    background: #ffffff !important;
+    color: transparent !important;
+    height: 100% !important;
+    width: 100% !important;
+    overflow: hidden !important;
+  }
+  
+  body * {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+}
+</style>

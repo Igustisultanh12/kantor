@@ -1,8 +1,12 @@
 <script setup>
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, shallowRef, markRaw, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 import Swal from 'sweetalert2';
+import * as pdfjsLib from 'pdfjs-dist';
+
+const PDF_JS_VERSION = '3.11.174';
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.worker.min.js`;
 
 const props = defineProps({
     submission: Object,
@@ -60,10 +64,14 @@ const formatDate = (dateStr) => {
     }) + ' WIB';
 };
 
-// Modal Petinjau Hasil SC Berproteksi Tinggi & Token Rahasia
+// Modal Petinjau Hasil SC Berproteksi Tinggi (Canvas HTML5, Zero Plugin, Anti-Print & Anti-Screenshot)
 const isPreviewModalOpen = ref(false);
 const isLoadingPreview = ref(false);
-const previewPdfUrl = ref('');
+const isRenderingPdf = ref(false);
+const isPrivacyBlank = ref(false);
+const isPrinting = ref(false);
+const pdfDoc = shallowRef(null);
+const totalPages = ref(0);
 
 const openPreviewModal = async () => {
     if (!activeSubmission.value?.is_sc_preview_available) return;
@@ -75,9 +83,8 @@ const openPreviewModal = async () => {
         });
 
         if (response.data && response.data.stream_url) {
-            // Tautan rahasia dengan token heksadesimal 64 karakter (kedaluwarsa 15 menit)
-            previewPdfUrl.value = response.data.stream_url + '#toolbar=0&navpanes=0&scrollbar=1&statusbar=0&messages=0&view=FitH';
             isPreviewModalOpen.value = true;
+            await loadAndRenderPdf(response.data.stream_url);
         } else {
             Swal.fire({
                 title: 'Gagal',
@@ -99,35 +106,118 @@ const openPreviewModal = async () => {
     }
 };
 
+const loadAndRenderPdf = async (streamUrl) => {
+    isRenderingPdf.value = true;
+    try {
+        const response = await fetch(streamUrl);
+        if (!response.ok) {
+            throw new Error('Gagal mengunduh berkas petinjau dari server.');
+        }
+        const buffer = await response.arrayBuffer();
+        const loadingTask = pdfjsLib.getDocument({
+            data: buffer,
+            cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/cmaps/`,
+            cMapPacked: true,
+            disableFontFace: false,
+        });
+
+        const pdf = await loadingTask.promise;
+        pdfDoc.value = markRaw(pdf);
+        totalPages.value = pdf.numPages;
+
+        await nextTick();
+        await renderAllPages();
+    } catch (err) {
+        console.error('Error rendering PDF:', err);
+        Swal.fire({
+            title: 'Gagal Memuat Dokumen',
+            text: 'Dokumen petinjau tidak dapat diproses atau telah kedaluwarsa.',
+            icon: 'error',
+            confirmButtonColor: '#2563eb',
+        });
+        closePreviewModal();
+    } finally {
+        isRenderingPdf.value = false;
+    }
+};
+
+const renderAllPages = async () => {
+    if (!pdfDoc.value) return;
+
+    for (let pageNum = 1; pageNum <= totalPages.value; pageNum++) {
+        const page = await pdfDoc.value.getPage(pageNum);
+        const canvas = document.getElementById(`pdf-page-canvas-${pageNum}`);
+        if (!canvas) continue;
+
+        const container = document.getElementById('pdf-canvas-container');
+        const availableWidth = container ? Math.min(container.clientWidth - 48, 850) : 750;
+        const baseViewport = page.getViewport({ scale: 1 });
+        const scale = (availableWidth > 320 ? availableWidth : 320) / baseViewport.width;
+        
+        const outputScale = window.devicePixelRatio || 1;
+        const viewport = page.getViewport({ scale: scale });
+
+        canvas.width = Math.floor(viewport.width * outputScale);
+        canvas.height = Math.floor(viewport.height * outputScale);
+        canvas.style.width = Math.floor(viewport.width) + 'px';
+        canvas.style.height = Math.floor(viewport.height) + 'px';
+
+        const ctx = canvas.getContext('2d', { alpha: false });
+        ctx.setTransform(outputScale, 0, 0, outputScale, 0, 0);
+
+        const renderContext = {
+            canvasContext: ctx,
+            viewport: viewport,
+            intent: 'display',
+        };
+
+        await page.render(renderContext).promise;
+    }
+};
+
 const closePreviewModal = () => {
     isPreviewModalOpen.value = false;
-    previewPdfUrl.value = ''; // Segera bersihkan URL rahasia dari memori browser
+    pdfDoc.value = null;
+    totalPages.value = 0;
+    isPrivacyBlank.value = false;
+    isPrinting.value = false;
 };
 
 const warnAntiDownload = () => {
     Swal.fire({
         title: 'Peringatan Kedinasan',
-        text: 'Fitur unduh dan simpan dinonaktifkan untuk dokumen petinjau resmi ber-watermark.',
+        text: 'Fitur unduh dan cetak dinonaktifkan untuk dokumen petinjau resmi ber-watermark.',
         icon: 'warning',
         confirmButtonColor: '#2563eb',
         confirmButtonText: 'Dimengerti',
     });
 };
 
-// Pengamanan Anti-Download Ketat: blokir shortcut Ctrl+S, Ctrl+P, Ctrl+U, Ctrl+C, F12
+// Pengamanan Anti-Download & Anti-Print Ketat: blokir shortcut Ctrl+S, Ctrl+P, Ctrl+U, Ctrl+C, F12, PrintScreen
 const handleKeydown = (e) => {
     if (!isPreviewModalOpen.value) return;
     if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.key === 'p' || e.key === 'P' || e.key === 'u' || e.key === 'U' || e.key === 'c' || e.key === 'C')) {
         e.preventDefault();
+        e.stopPropagation();
+        isPrivacyBlank.value = true;
+        setTimeout(() => { isPrivacyBlank.value = false; }, 1500);
         warnAntiDownload();
     }
     if (e.key === 'F12') {
         e.preventDefault();
     }
-    if (e.key === 'PrintScreen') {
+    if (e.key === 'PrintScreen' || e.keyCode === 44) {
+        e.preventDefault();
+        isPrivacyBlank.value = true;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText('');
+        }
+        setTimeout(() => {
+            isPrivacyBlank.value = false;
+        }, 1500);
         Swal.fire({
             title: 'Peringatan Kedinasan',
-            text: 'Fitur tangkapan layar dibatasi untuk berkas petinjau intelijen.',
+            text: 'Tangkapan layar dibatasi untuk berkas intelijen. Dokumen disamarkan (blank).',
             icon: 'warning',
             confirmButtonColor: '#2563eb',
             confirmButtonText: 'Dimengerti',
@@ -135,12 +225,56 @@ const handleKeydown = (e) => {
     }
 };
 
+const handleWindowBlur = () => {
+    if (isPreviewModalOpen.value) {
+        isPrivacyBlank.value = true;
+    }
+};
+
+const handleWindowFocus = () => {
+    if (isPreviewModalOpen.value && !isPrinting.value) {
+        isPrivacyBlank.value = false;
+    }
+};
+
+const handleVisibilityChange = () => {
+    if (document.hidden && isPreviewModalOpen.value) {
+        isPrivacyBlank.value = true;
+    } else if (isPreviewModalOpen.value && !isPrinting.value) {
+        setTimeout(() => {
+            isPrivacyBlank.value = false;
+        }, 300);
+    }
+};
+
+const handleBeforePrint = () => {
+    if (isPreviewModalOpen.value) {
+        isPrinting.value = true;
+        isPrivacyBlank.value = true;
+    }
+};
+
+const handleAfterPrint = () => {
+    isPrinting.value = false;
+    isPrivacyBlank.value = false;
+};
+
 onMounted(() => {
     window.addEventListener('keydown', handleKeydown);
+    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('focus', handleWindowFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeprint', handleBeforePrint);
+    window.addEventListener('afterprint', handleAfterPrint);
 });
 
 onUnmounted(() => {
     window.removeEventListener('keydown', handleKeydown);
+    window.removeEventListener('blur', handleWindowBlur);
+    window.removeEventListener('focus', handleWindowFocus);
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+    window.removeEventListener('beforeprint', handleBeforePrint);
+    window.removeEventListener('afterprint', handleAfterPrint);
 });
 </script>
 
@@ -649,29 +783,58 @@ onUnmounted(() => {
                         <span class="font-mono text-[10px] text-amber-400/80 uppercase">STATUS: PETINJAU SEMENTARA</span>
                     </div>
 
-                    <!-- PDF Viewer Container With Built-in Physical Watermark & Anti-Download Shield -->
-                    <div class="flex-1 relative bg-slate-950 overflow-hidden" @contextmenu.prevent>
+                    <!-- PDF Canvas Container With Physical Watermark, Anti-Print, Anti-Screenshot -->
+                    <div class="flex-1 relative bg-slate-950 overflow-hidden flex flex-col" @contextmenu.prevent>
                         
-                        <!-- Embedded PDF Viewer -->
-                        <iframe 
-                            v-if="previewPdfUrl"
-                            :src="previewPdfUrl"
-                            class="w-full h-full border-0 select-none bg-slate-900"
-                            title="Petinjau Berkas SC Resmi"
-                        ></iframe>
-
-                        <!-- Transparent Shield across top bar of iframe to block browser PDF menu/download clicks -->
+                        <!-- Canvas-Based PDF Viewer (Zero Browser PDF Plugin) -->
                         <div 
-                            class="absolute top-0 inset-x-0 h-12 z-20 cursor-default bg-transparent"
-                            @click.stop="warnAntiDownload"
+                            id="pdf-canvas-container" 
+                            class="flex-1 w-full overflow-y-auto p-4 sm:p-8 flex flex-col items-center space-y-6 relative select-none"
                             @contextmenu.prevent
-                        ></div>
+                            @dragstart.prevent
+                        >
+                            <!-- Spinner Loading PDF -->
+                            <div v-if="isRenderingPdf" class="my-auto flex flex-col items-center gap-3 py-16">
+                                <div class="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                                <span class="text-xs font-bold text-slate-400">Memuat berkas petinjau resmi...</span>
+                            </div>
+
+                            <!-- Rendered Canvas Pages -->
+                            <div 
+                                v-for="pageNum in totalPages" 
+                                :key="pageNum" 
+                                class="relative shadow-2xl rounded-xl overflow-hidden bg-white max-w-full print:hidden"
+                            >
+                                <canvas :id="'pdf-page-canvas-' + pageNum" class="block max-w-full h-auto"></canvas>
+                                <!-- Transparent Shield on top of each page canvas to block mouse drag / tap-and-hold -->
+                                <div class="absolute inset-0 z-10 cursor-default bg-transparent" @contextmenu.prevent></div>
+                            </div>
+
+                            <!-- PRIVACY BLANK SHIELD (Active on Screenshot attempt, Snipping Tool, or Window Blur) -->
+                            <div 
+                                v-if="isPrivacyBlank || isPrinting" 
+                                class="absolute inset-0 z-50 bg-white flex flex-col items-center justify-center p-6 text-center select-none"
+                            >
+                                <div class="w-16 h-16 rounded-3xl bg-slate-100 text-slate-400 border border-slate-200 flex items-center justify-center mb-4 shadow-sm">
+                                    <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                                    </svg>
+                                </div>
+                                <h4 class="text-base font-black text-slate-800 uppercase tracking-wider">
+                                    DOKUMEN RAHASIA KEDINASAN (BLANK)
+                                </h4>
+                                <p class="text-xs text-slate-500 mt-1 max-w-sm font-medium">
+                                    Tampilan dokumen disamarkan secara otomatis (blank) saat terdeteksi aktivitas tangkapan layar, pencetakan, atau jendela peramban kehilangan fokus.
+                                </p>
+                            </div>
+
+                        </div>
 
                         <!-- Security Watermark Banner at Bottom -->
-                        <div class="absolute bottom-4 inset-x-0 z-20 pointer-events-none flex justify-center px-4">
-                            <div class="bg-red-950/90 border border-red-600/80 text-red-200 px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest shadow-2xl backdrop-blur-md flex items-center gap-2">
+                        <div class="p-3 bg-slate-950/95 border-t border-slate-800 flex justify-center pointer-events-none select-none z-20">
+                            <div class="bg-red-950/90 border border-red-600/80 text-red-200 px-5 py-1.5 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-widest shadow-2xl backdrop-blur-md flex items-center gap-2">
                                 <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-                                <span>DOKUMEN PETINJAU RESMI KEDINASAN - DILARANG MENYALIN / MENGUNDUH - OTOMATIS TERHAPUS DALAM 2X24 JAM</span>
+                                <span>DOKUMEN PETINJAU RESMI KEDINASAN - DILARANG MENYALIN / MENGUNDUH / MENCETAK - OTOMATIS TERHAPUS DALAM 2X24 JAM</span>
                             </div>
                         </div>
 
@@ -689,3 +852,22 @@ onUnmounted(() => {
 
     </div>
 </template>
+
+<style>
+@media print {
+  /* DOKUMEN 100% BLANK KOSONG SAAT PRINT */
+  html, body {
+    background: #ffffff !important;
+    color: transparent !important;
+    height: 100% !important;
+    width: 100% !important;
+    overflow: hidden !important;
+  }
+  
+  body * {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+}
+</style>
