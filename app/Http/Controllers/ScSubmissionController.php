@@ -422,8 +422,14 @@ class ScSubmissionController extends Controller
         if ($submission->file_skhpp && Storage::disk('public')->exists($submission->file_skhpp)) {
             Storage::disk('public')->delete($submission->file_skhpp);
         }
-        if ($submission->file_sc_preview && Storage::disk('public')->exists($submission->file_sc_preview)) {
-            Storage::disk('public')->delete($submission->file_sc_preview);
+        if ($submission->file_sc_preview) {
+            if (Storage::disk('public')->exists($submission->file_sc_preview)) {
+                Storage::disk('public')->delete($submission->file_sc_preview);
+            }
+            $wmPath = 'sc_documents/wm_' . basename($submission->file_sc_preview);
+            if (Storage::disk('public')->exists($wmPath)) {
+                Storage::disk('public')->delete($wmPath);
+            }
         }
 
         $submission->delete();
