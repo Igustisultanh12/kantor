@@ -376,6 +376,10 @@ onMounted(() => {
     window.addEventListener('focus', handleWindowFocus);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     document.addEventListener('mouseleave', handleMouseLeave);
+    window.addEventListener('mouseup', stopHolding);
+    window.addEventListener('pointerup', stopHolding);
+    window.addEventListener('touchend', stopHoldingTouch);
+    window.addEventListener('touchcancel', stopHoldingTouch);
     window.addEventListener('beforeprint', handleBeforePrint);
     window.addEventListener('afterprint', handleAfterPrint);
     window.addEventListener('resize', handleResize);
@@ -387,6 +391,10 @@ onUnmounted(() => {
     window.removeEventListener('focus', handleWindowFocus);
     document.removeEventListener('visibilitychange', handleVisibilityChange);
     document.removeEventListener('mouseleave', handleMouseLeave);
+    window.removeEventListener('mouseup', stopHolding);
+    window.removeEventListener('pointerup', stopHolding);
+    window.removeEventListener('touchend', stopHoldingTouch);
+    window.removeEventListener('touchcancel', stopHoldingTouch);
     window.removeEventListener('beforeprint', handleBeforePrint);
     window.removeEventListener('afterprint', handleAfterPrint);
     window.removeEventListener('resize', handleResize);
