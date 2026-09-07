@@ -80,6 +80,7 @@ const syncSkhpp = () => {
 // Modal Tambah Pengajuan Baru
 const isCreateModalOpen = ref(false);
 const isSubmittingCreate = ref(false);
+const createFileInputRef = ref(null);
 const createForm = ref({
     nama: '',
     pangkat_korps: '',
@@ -98,7 +99,7 @@ const createForm = ref({
     file_skhpp: null,
 });
 
-const openCreateModal = () => {
+const resetCreateForm = () => {
     createForm.value = {
         nama: '',
         pangkat_korps: '',
@@ -116,7 +117,20 @@ const openCreateModal = () => {
         nomor_sc: '',
         file_skhpp: null,
     };
+    if (createFileInputRef.value) {
+        createFileInputRef.value.value = '';
+    }
+    isSubmittingCreate.value = false;
+};
+
+const openCreateModal = () => {
+    resetCreateForm();
     isCreateModalOpen.value = true;
+};
+
+const closeCreateModal = () => {
+    isCreateModalOpen.value = false;
+    resetCreateForm();
 };
 
 const handleCreateFileSkhpp = (e) => {
@@ -124,13 +138,14 @@ const handleCreateFileSkhpp = (e) => {
 };
 
 const submitCreate = () => {
+    if (isSubmittingCreate.value) return;
     isSubmittingCreate.value = true;
+
     router.post(route('sc-submissions.store'), createForm.value, {
         preserveScroll: true,
         onSuccess: () => {
             isCreateModalOpen.value = false;
             resetCreateForm();
-            isSubmittingCreate.value = false;
             Swal.fire({
                 title: 'Berhasil Didaftarkan',
                 text: 'Pengajuan Security Clearance baru berhasil dicatat ke sistem.',
@@ -139,13 +154,15 @@ const submitCreate = () => {
             });
         },
         onError: (err) => {
-            isSubmittingCreate.value = false;
             Swal.fire({
                 title: 'Gagal Mendaftarkan',
                 text: Object.values(err)[0] || 'Gagal mendaftarkan berkas pengajuan.',
                 icon: 'error',
                 confirmButtonColor: '#dc2626',
             });
+        },
+        onFinish: () => {
+            isSubmittingCreate.value = false;
         }
     });
 };
@@ -166,6 +183,7 @@ const stageForm = ref({
 
 const openUpdateStageModal = (sub) => {
     activeSubmissionForStage.value = sub;
+    isSubmittingStage.value = false;
     stageForm.value = {
         stage: sub.current_stage,
         notes: '',
@@ -196,14 +214,13 @@ const advanceToNextStage = () => {
 };
 
 const submitUpdateStage = () => {
-    if (!activeSubmissionForStage.value) return;
+    if (!activeSubmissionForStage.value || isSubmittingStage.value) return;
     isSubmittingStage.value = true;
 
     router.post(route('sc-submissions.update-stage', activeSubmissionForStage.value.id), stageForm.value, {
         preserveScroll: true,
         onSuccess: () => {
             isUpdateStageModalOpen.value = false;
-            isSubmittingStage.value = false;
             Swal.fire({
                 title: 'Tahapan Diperbarui',
                 text: 'Perubahan tahapan berkas SC berhasil disimpan.',
@@ -212,13 +229,15 @@ const submitUpdateStage = () => {
             });
         },
         onError: (err) => {
-            isSubmittingStage.value = false;
             Swal.fire({
                 title: 'Gagal Memperbarui Tahapan',
                 text: Object.values(err)[0] || 'Terjadi kesalahan saat memperbarui tahapan.',
                 icon: 'error',
                 confirmButtonColor: '#dc2626',
             });
+        },
+        onFinish: () => {
+            isSubmittingStage.value = false;
         }
     });
 };
@@ -288,6 +307,7 @@ const isSubmittingEdit = ref(false);
 const editForm = ref({});
 
 const openEditModal = (sub) => {
+    isSubmittingEdit.value = false;
     editForm.value = {
         id: sub.id,
         nama: sub.nama,
@@ -307,12 +327,13 @@ const openEditModal = (sub) => {
 };
 
 const submitEdit = () => {
+    if (isSubmittingEdit.value) return;
     isSubmittingEdit.value = true;
+
     router.put(route('sc-submissions.update', editForm.value.id), editForm.value, {
         preserveScroll: true,
         onSuccess: () => {
             isEditModalOpen.value = false;
-            isSubmittingEdit.value = false;
             Swal.fire({
                 title: 'Perubahan Disimpan',
                 text: 'Data pemohon SC berhasil diperbarui.',
@@ -321,13 +342,15 @@ const submitEdit = () => {
             });
         },
         onError: (err) => {
-            isSubmittingEdit.value = false;
             Swal.fire({
                 title: 'Gagal Mengubah Data',
                 text: Object.values(err)[0] || 'Terjadi kesalahan saat menyimpan perubahan.',
                 icon: 'error',
                 confirmButtonColor: '#dc2626',
             });
+        },
+        onFinish: () => {
+            isSubmittingEdit.value = false;
         }
     });
 };
@@ -759,7 +782,7 @@ const formatDateTime = (dateStr) => {
                                 <h3 class="text-base font-extrabold text-slate-900">Pendaftaran Pengajuan SC</h3>
                             </div>
                         </div>
-                        <button @click="isCreateModalOpen = false" class="w-8 h-8 rounded-xl bg-slate-200/70 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-black transition cursor-pointer">
+                        <button @click="closeCreateModal" class="w-8 h-8 rounded-xl bg-slate-200/70 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-black transition cursor-pointer">
                             &times;
                         </button>
                     </div>
@@ -876,6 +899,7 @@ const formatDateTime = (dateStr) => {
                             <div class="space-y-1 sm:col-span-2">
                                 <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Unggah PDF SKHPP Tanda Tangan Basah (Opsional)</label>
                                 <input 
+                                    ref="createFileInputRef"
                                     type="file" 
                                     accept="application/pdf"
                                     @change="handleCreateFileSkhpp"
@@ -899,7 +923,7 @@ const formatDateTime = (dateStr) => {
                         <div class="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
                             <button 
                                 type="button" 
-                                @click="isCreateModalOpen = false" 
+                                @click="closeCreateModal" 
                                 class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 font-extrabold text-xs uppercase tracking-wider transition cursor-pointer"
                             >
                                 Batal
