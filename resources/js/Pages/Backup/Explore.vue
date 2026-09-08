@@ -31,6 +31,7 @@ const searchQuery = ref(props.searchQuery || '');
 const contextMenu = ref({ show: false, x: 0, y: 0, item: null });
 const previewUrl = ref(null);
 const previewType = ref(null);
+const activePreviewItem = ref(null);
 
 // --- STATE PROGRES TRANSMISI UPLOAD ---
 const uploadProgress = ref(0);
@@ -269,7 +270,8 @@ const showProperties = (item) => {
 
 const openPreview = (item) => {
     if (item.is_folder) return; 
-    const ext = item.file_type.toLowerCase();
+    activePreviewItem.value = item;
+    const ext = (item.file_type || '').toLowerCase();
     const officeExts = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'];
 
     if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
@@ -288,6 +290,460 @@ const openPreview = (item) => {
 
 const closePreview = () => {
     previewUrl.value = null;
+    activePreviewItem.value = null;
+};
+
+// =========================================================================
+// --- FITUR SPREADSHEET EDITOR EXCEL (.XLSX, .XLS, .CSV) ---
+// =========================================================================
+const isExcel = (item) => {
+    if (!item || item.is_folder) return false;
+    const ext = (item.file_type || '').toLowerCase();
+    const name = (item.file_name || '').toLowerCase();
+    return ['xlsx', 'xls', 'csv'].includes(ext) || /\.(xlsx|xls|csv)$/i.test(name);
+};
+
+const isExcelEditorOpen = ref(false);
+const isExcelLoading = ref(false);
+const isExcelSaving = ref(false);
+const editingExcelItem = ref(null);
+const currentWorkbook = ref(null);
+const excelSheetNames = ref([]);
+const activeSheetName = ref('');
+const excelGrid = ref([]);
+const selectedCell = ref({ row: 0, col: 0 });
+const activeFormulaValue = ref('');
+const isExcelDirty = ref(false);
+const excelSearchQuery = ref('');
+
+const loadSheetJs = () => {
+    return new Promise((resolve, reject) => {
+        if (window.XLSX) return resolve(window.XLSX);
+        const existing = document.getElementById('sheetjs-script');
+        if (existing) {
+            existing.addEventListener('load', () => resolve(window.XLSX));
+            existing.addEventListener('error', reject);
+            return;
+        }
+        const script = document.createElement('script');
+        script.id = 'sheetjs-script';
+        script.src = '/js/xlsx.full.min.js';
+        script.onload = () => resolve(window.XLSX);
+        script.onerror = () => {
+            const cdn = document.createElement('script');
+            cdn.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+            cdn.onload = () => resolve(window.XLSX);
+            cdn.onerror = reject;
+            document.head.appendChild(cdn);
+        };
+        document.head.appendChild(script);
+    });
+};
+
+const getColumnLabel = (index) => {
+    let label = '';
+    let num = index;
+    while (num >= 0) {
+        label = String.fromCharCode((num % 26) + 65) + label;
+        num = Math.floor(num / 26) - 1;
+    }
+    return label;
+};
+
+const selectedCellCoordinate = computed(() => {
+    if (!excelGrid.value || excelGrid.value.length === 0) return 'A1';
+    const col = getColumnLabel(selectedCell.value.col);
+    const row = selectedCell.value.row + 1;
+    return `${col}${row}`;
+});
+
+const loadWorksheetData = (sheetName) => {
+    if (!currentWorkbook.value) return;
+    const XLSX = window.XLSX;
+    const ws = currentWorkbook.value.Sheets[sheetName] || {};
+    const rawData = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+    const minRows = Math.max(rawData.length + 8, 30);
+    let maxColLen = 0;
+    for (let r = 0; r < rawData.length; r++) {
+        if (rawData[r] && rawData[r].length > maxColLen) {
+            maxColLen = rawData[r].length;
+        }
+    }
+    const minCols = Math.max(maxColLen + 4, 12);
+
+    const grid = [];
+    for (let r = 0; r < minRows; r++) {
+        const row = [];
+        const srcRow = rawData[r] || [];
+        for (let c = 0; c < minCols; c++) {
+            row.push(srcRow[c] !== undefined && srcRow[c] !== null ? String(srcRow[c]) : '');
+        }
+        grid.push(row);
+    }
+
+    excelGrid.value = grid;
+    selectedCell.value = { row: 0, col: 0 };
+    activeFormulaValue.value = grid[0] && grid[0][0] !== undefined ? grid[0][0] : '';
+};
+
+const saveCurrentGridToWorkbook = () => {
+    if (!currentWorkbook.value || !activeSheetName.value) return;
+    const XLSX = window.XLSX;
+
+    let lastRow = -1;
+    for (let r = excelGrid.value.length - 1; r >= 0; r--) {
+        if (excelGrid.value[r].some(val => val !== '' && val !== null && val !== undefined)) {
+            lastRow = r;
+            break;
+        }
+    }
+
+    const rowsToExport = lastRow >= 0 ? excelGrid.value.slice(0, lastRow + 1) : [[]];
+
+    const aoa = rowsToExport.map(row => row.map(cell => {
+        if (cell === null || cell === undefined) return '';
+        const strVal = String(cell).trim();
+        if (strVal.startsWith('=')) {
+            return { f: strVal.substring(1) };
+        }
+        if (strVal !== '' && !isNaN(strVal) && !isNaN(parseFloat(strVal))) {
+            return Number(strVal);
+        }
+        return cell;
+    }));
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    currentWorkbook.value.Sheets[activeSheetName.value] = ws;
+};
+
+const openExcelEditor = async (item) => {
+    if (!isExcel(item)) return;
+    editingExcelItem.value = item;
+    isExcelEditorOpen.value = true;
+    isExcelLoading.value = true;
+    isExcelDirty.value = false;
+
+    try {
+        const XLSX = await loadSheetJs();
+        const res = await axios.get(route('backup.download', item.id), {
+            responseType: 'arraybuffer'
+        });
+
+        const wb = XLSX.read(new Uint8Array(res.data), {
+            type: 'array',
+            cellDates: true,
+            cellFormula: true,
+        });
+
+        currentWorkbook.value = wb;
+        excelSheetNames.value = wb.SheetNames && wb.SheetNames.length > 0 ? [...wb.SheetNames] : ['Sheet1'];
+        activeSheetName.value = excelSheetNames.value[0];
+        loadWorksheetData(activeSheetName.value);
+    } catch (err) {
+        console.error('Gagal membuka berkas Excel:', err);
+        Swal.fire({
+            title: 'Gagal Memuat Excel',
+            text: 'Tidak dapat membuka berkas Excel: ' + (err.response?.data?.message || err.message || 'Format berkas tidak valid'),
+            icon: 'error'
+        });
+        isExcelEditorOpen.value = false;
+        editingExcelItem.value = null;
+    } finally {
+        isExcelLoading.value = false;
+    }
+};
+
+const selectSheet = (name) => {
+    if (name === activeSheetName.value) return;
+    saveCurrentGridToWorkbook();
+    activeSheetName.value = name;
+    loadWorksheetData(name);
+};
+
+const onCellSelect = (r, c) => {
+    selectedCell.value = { row: r, col: c };
+    activeFormulaValue.value = excelGrid.value[r]?.[c] ?? '';
+};
+
+const onCellChange = (r, c, val) => {
+    if (excelGrid.value[r] !== undefined) {
+        excelGrid.value[r][c] = val;
+        if (selectedCell.value.row === r && selectedCell.value.col === c) {
+            activeFormulaValue.value = val;
+        }
+        isExcelDirty.value = true;
+    }
+};
+
+const onFormulaChange = () => {
+    const { row, col } = selectedCell.value;
+    if (excelGrid.value[row] !== undefined) {
+        excelGrid.value[row][col] = activeFormulaValue.value;
+        isExcelDirty.value = true;
+    }
+};
+
+const navigateCell = (r, c, event) => {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        const nextR = Math.min(r + 1, excelGrid.value.length - 1);
+        onCellSelect(nextR, c);
+        const nextEl = document.getElementById(`cell-${nextR}-${c}`);
+        if (nextEl) nextEl.focus();
+    } else if (event.key === 'Tab') {
+        event.preventDefault();
+        const nextC = Math.min(c + 1, (excelGrid.value[0]?.length || 1) - 1);
+        onCellSelect(r, nextC);
+        const nextEl = document.getElementById(`cell-${r}-${nextC}`);
+        if (nextEl) nextEl.focus();
+    }
+};
+
+const addRowBelow = () => {
+    const colCount = excelGrid.value[0]?.length || 10;
+    const insertIdx = selectedCell.value.row + 1;
+    excelGrid.value.splice(insertIdx, 0, new Array(colCount).fill(''));
+    selectedCell.value.row = insertIdx;
+    isExcelDirty.value = true;
+};
+
+const deleteCurrentRow = () => {
+    if (excelGrid.value.length <= 1) {
+        return Swal.fire('Peringatan', 'Minimal harus terdapat 1 baris dalam lembar kerja.', 'warning');
+    }
+    excelGrid.value.splice(selectedCell.value.row, 1);
+    if (selectedCell.value.row >= excelGrid.value.length) {
+        selectedCell.value.row = excelGrid.value.length - 1;
+    }
+    activeFormulaValue.value = excelGrid.value[selectedCell.value.row]?.[selectedCell.value.col] || '';
+    isExcelDirty.value = true;
+};
+
+const addColumnRight = () => {
+    const insertIdx = selectedCell.value.col + 1;
+    excelGrid.value.forEach(row => row.splice(insertIdx, 0, ''));
+    selectedCell.value.col = insertIdx;
+    isExcelDirty.value = true;
+};
+
+const deleteCurrentColumn = () => {
+    const colCount = excelGrid.value[0]?.length || 0;
+    if (colCount <= 1) {
+        return Swal.fire('Peringatan', 'Minimal harus terdapat 1 kolom dalam lembar kerja.', 'warning');
+    }
+    const targetCol = selectedCell.value.col;
+    excelGrid.value.forEach(row => row.splice(targetCol, 1));
+    if (selectedCell.value.col >= (excelGrid.value[0]?.length || 1)) {
+        selectedCell.value.col = (excelGrid.value[0]?.length || 1) - 1;
+    }
+    activeFormulaValue.value = excelGrid.value[selectedCell.value.row]?.[selectedCell.value.col] || '';
+    isExcelDirty.value = true;
+};
+
+const addNewSheetPrompt = () => {
+    Swal.fire({
+        title: 'Tambah Lembar Baru (Sheet)',
+        input: 'text',
+        inputLabel: 'Nama Lembar Baru',
+        inputValue: `Sheet${excelSheetNames.value.length + 1}`,
+        showCancelButton: true,
+        confirmButtonText: 'Buat Lembar',
+        confirmButtonColor: '#059669',
+        preConfirm: (name) => {
+            if (!name) return Swal.showValidationMessage('Nama lembar kerja wajib diisi!');
+            if (excelSheetNames.value.includes(name)) return Swal.showValidationMessage('Nama lembar sudah digunakan!');
+            return name;
+        }
+    }).then((res) => {
+        if (res.isConfirmed && res.value) {
+            saveCurrentGridToWorkbook();
+            const name = res.value;
+            const XLSX = window.XLSX;
+            const ws = XLSX.utils.aoa_to_sheet([[]]);
+            XLSX.utils.book_append_sheet(currentWorkbook.value, ws, name);
+            excelSheetNames.value.push(name);
+            selectSheet(name);
+            isExcelDirty.value = true;
+        }
+    });
+};
+
+const renameSheetPrompt = (sheetName) => {
+    Swal.fire({
+        title: 'Ubah Nama Lembar',
+        input: 'text',
+        inputValue: sheetName,
+        showCancelButton: true,
+        confirmButtonText: 'Simpan Nama',
+        confirmButtonColor: '#059669',
+        preConfirm: (newName) => {
+            if (!newName) return Swal.showValidationMessage('Nama lembar kerja tidak boleh kosong!');
+            if (newName !== sheetName && excelSheetNames.value.includes(newName)) return Swal.showValidationMessage('Nama lembar sudah digunakan!');
+            return newName;
+        }
+    }).then((res) => {
+        if (res.isConfirmed && res.value && res.value !== sheetName) {
+            const newName = res.value;
+            saveCurrentGridToWorkbook();
+            const idx = excelSheetNames.value.indexOf(sheetName);
+            if (idx !== -1) {
+                excelSheetNames.value[idx] = newName;
+                currentWorkbook.value.SheetNames[idx] = newName;
+                currentWorkbook.value.Sheets[newName] = currentWorkbook.value.Sheets[sheetName];
+                delete currentWorkbook.value.Sheets[sheetName];
+                activeSheetName.value = newName;
+                isExcelDirty.value = true;
+            }
+        }
+    });
+};
+
+const deleteSheetPrompt = (sheetName) => {
+    if (excelSheetNames.value.length <= 1) {
+        return Swal.fire('Perhatian', 'Dokumen harus memiliki minimal 1 lembar kerja.', 'warning');
+    }
+    Swal.fire({
+        title: 'Hapus Lembar?',
+        text: `Seluruh data pada lembar "${sheetName}" akan dihapus permanen.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Ya, Hapus Lembar'
+    }).then((res) => {
+        if (res.isConfirmed) {
+            const idx = excelSheetNames.value.indexOf(sheetName);
+            if (idx !== -1) {
+                delete currentWorkbook.value.Sheets[sheetName];
+                currentWorkbook.value.SheetNames.splice(idx, 1);
+                excelSheetNames.value.splice(idx, 1);
+                const nextSheet = excelSheetNames.value[Math.max(0, idx - 1)];
+                activeSheetName.value = nextSheet;
+                loadWorksheetData(nextSheet);
+                isExcelDirty.value = true;
+            }
+        }
+    });
+};
+
+const saveExcelChanges = async () => {
+    if (!editingExcelItem.value || !currentWorkbook.value) return;
+    isExcelSaving.value = true;
+    try {
+        saveCurrentGridToWorkbook();
+        const XLSX = window.XLSX;
+        const base64 = XLSX.write(currentWorkbook.value, { bookType: 'xlsx', type: 'base64' });
+
+        const res = await axios.post(route('backup.save-excel', editingExcelItem.value.id), {
+            base64_content: base64
+        });
+
+        if (res.data.status === 'success') {
+            isExcelDirty.value = false;
+            editingExcelItem.value.file_size = res.data.file_size;
+            editingExcelItem.value.size_human = res.data.size_human;
+            editingExcelItem.value.date_human = res.data.date_human;
+
+            const inList = props.contents.find(c => c.id === editingExcelItem.value.id);
+            if (inList) {
+                inList.file_size = res.data.file_size;
+                inList.size_human = res.data.size_human;
+                inList.date_human = res.data.date_human;
+            }
+
+            if (props.pc) {
+                props.pc.usage_human = res.data.pc_usage_human;
+                props.pc.usage_percentage = res.data.pc_usage_percentage;
+            }
+
+            Swal.fire({
+                title: 'Tersimpan!',
+                text: 'Perubahan pada berkas Excel berhasil disimpan ke penyimpanan cadangan.',
+                icon: 'success',
+                confirmButtonColor: '#059669'
+            });
+        }
+    } catch (err) {
+        console.error('Gagal menyimpan Excel:', err);
+        Swal.fire('Gagal Menyimpan', err.response?.data?.message || err.message || 'Terjadi kesalahan saat menyimpan.', 'error');
+    } finally {
+        isExcelSaving.value = false;
+    }
+};
+
+const downloadCurrentExcel = () => {
+    if (!currentWorkbook.value || !editingExcelItem.value) return;
+    saveCurrentGridToWorkbook();
+    const XLSX = window.XLSX;
+    XLSX.writeFile(currentWorkbook.value, editingExcelItem.value.file_name);
+};
+
+const closeExcelEditor = () => {
+    if (isExcelDirty.value) {
+        Swal.fire({
+            title: 'Perubahan Belum Disimpan',
+            text: 'Ada perubahan yang belum Anda simpan ke server. Apakah Anda yakin ingin keluar?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#059669',
+            confirmButtonText: 'Keluar Tanpa Menyimpan',
+            cancelButtonText: 'Lanjutkan Mengedit'
+        }).then((res) => {
+            if (res.isConfirmed) {
+                isExcelEditorOpen.value = false;
+                editingExcelItem.value = null;
+                currentWorkbook.value = null;
+            }
+        });
+    } else {
+        isExcelEditorOpen.value = false;
+        editingExcelItem.value = null;
+        currentWorkbook.value = null;
+    }
+};
+
+const createNewExcelPrompt = () => {
+    Swal.fire({
+        title: 'Buat Berkas Excel Baru',
+        input: 'text',
+        inputLabel: 'Nama Berkas Spreadsheet',
+        inputValue: 'DOKUMEN_BARU',
+        placeholder: 'contoh: DATA_INVENTARIS_2026',
+        showCancelButton: true,
+        confirmButtonColor: '#059669',
+        confirmButtonText: 'Buat Berkas',
+        preConfirm: (name) => {
+            if (!name) return Swal.showValidationMessage('Nama berkas wajib diisi!');
+            return name;
+        }
+    }).then(async (result) => {
+        if (result.isConfirmed && result.value) {
+            try {
+                const XLSX = await loadSheetJs();
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.aoa_to_sheet([
+                    ['NO', 'KOLOM A', 'KOLOM B', 'KOLOM C', 'KETERANGAN'],
+                    [1, '', '', '', '']
+                ]);
+                XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+                const base64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+
+                router.post(route('backup.create-excel'), {
+                    pc_id: props.pc.id,
+                    parent_id: props.currentFolderId,
+                    file_name: result.value,
+                    base64_content: base64
+                }, {
+                    onSuccess: () => {
+                        Swal.fire('Berhasil!', 'Berkas Excel baru berhasil ditambahkan ke folder.', 'success');
+                    }
+                });
+            } catch (e) {
+                Swal.fire('Gagal', 'Terjadi kesalahan: ' + e.message, 'error');
+            }
+        }
+    });
 };
 
 // --- PROTOKOL DETEKSI PERANGKAT SELULER (HP) ---
@@ -369,9 +825,12 @@ onUnmounted(() => {
 
                 <div class="bg-white p-4 rounded-lg shadow space-y-4">
                     <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div class="flex gap-2">
-                            <button @click="createFolder" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-xs font-black uppercase flex items-center gap-2 transition shadow">
-                                <span> Folder Baru</span>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <button @click="createFolder" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-2 transition shadow-xs cursor-pointer">
+                                <span>📁 Folder Baru</span>
+                            </button>
+                            <button @click="createNewExcelPrompt" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-2 transition shadow-xs cursor-pointer">
+                                <span>📊 Excel Baru</span>
                             </button>
                         </div>
                         
@@ -446,12 +905,15 @@ onUnmounted(() => {
                         </thead>
                         <tbody class="text-sm">
                             <tr v-for="item in filteredContents" :key="item.id" 
-                                @dblclick="item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: item.id })) : openPreview(item)"
-                                @contextmenu.stop="openContextMenu($event, item)"class="border-b hover:bg-blue-50 cursor-pointer transition select-none group">
+                                @dblclick="item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: item.id })) : (isExcel(item) ? openExcelEditor(item) : openPreview(item))"
+                                @contextmenu.stop="openContextMenu($event, item)"
+                                class="border-b hover:bg-blue-50 cursor-pointer transition select-none group"
+                            >
                                 <td class="p-4">
                                     <div class="flex items-center gap-3">
-                                        <span v-if="item.is_folder" class="text-2xl"></span>
-                                        <span v-else class="text-2xl"></span>
+                                        <span v-if="item.is_folder" class="text-2xl">📁</span>
+                                        <span v-else-if="isExcel(item)" class="text-2xl">📊</span>
+                                        <span v-else class="text-2xl">📄</span>
                                         <div>
                                             <p class="font-black text-gray-800 uppercase tracking-tighter">{{ item.file_name }}</p>
                                             <p class="text-[10px] text-gray-400 font-bold uppercase">{{ item.is_folder ? 'Folder Strategis' : item.file_type }}</p>
@@ -465,14 +927,39 @@ onUnmounted(() => {
                                     {{ item.date_human }}
                                 </td>
                                 <td class="p-4 text-right">
-                                    <div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition">
-                                        <button v-if="!item.is_folder && (item.file_type?.toLowerCase() === 'zip' || item.file_name?.toLowerCase().endsWith('.zip'))" 
-                                                @click="handleExtract(item)"class="bg-indigo-100 text-indigo-700 p-2 rounded-lg hover:bg-indigo-200"title="Ekstrak Paket ZIP">
-                                            
+                                    <div class="flex justify-end items-center gap-2 opacity-0 group-hover:opacity-100 transition">
+                                        <!-- Tombol Edit Excel Khusus Berkas Spreadsheet -->
+                                        <button v-if="isExcel(item)" 
+                                                @click.stop="openExcelEditor(item)" 
+                                                class="bg-emerald-100 text-emerald-700 hover:bg-emerald-600 hover:text-white p-2 rounded-lg transition shadow-xs flex items-center justify-center cursor-pointer" 
+                                                title="Edit Berkas Excel (Spreadsheet)">
+                                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-2h2v2zm0-4H7v-2h2v2zm0-4H7V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z"/>
+                                            </svg>
                                         </button>
-                                        <button v-if="!item.is_folder" @click="openPreview(item)" class="bg-blue-100 text-blue-700 p-2 rounded-lg hover:bg-blue-200" title="Preview"></button>
-                                        <a v-if="!item.is_folder" :href="route('backup.download', item.id)" class="bg-green-100 text-green-700 p-2 rounded-lg hover:bg-green-200" title="Download"></a>
-                                        <button @click="deleteItem(item)" class="bg-red-100 text-red-700 p-2 rounded-lg hover:bg-red-200" title="Hapus"></button>
+                                        <button v-if="!item.is_folder && (item.file_type?.toLowerCase() === 'zip' || item.file_name?.toLowerCase().endsWith('.zip'))" 
+                                                @click.stop="handleExtract(item)" 
+                                                class="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 p-2 rounded-lg transition" 
+                                                title="Ekstrak Paket ZIP">
+                                            📦
+                                        </button>
+                                        <button v-if="!item.is_folder" 
+                                                @click.stop="openPreview(item)" 
+                                                class="bg-blue-100 text-blue-700 hover:bg-blue-200 p-2 rounded-lg transition" 
+                                                title="Preview">
+                                            👁️
+                                        </button>
+                                        <a v-if="!item.is_folder" 
+                                           :href="route('backup.download', item.id)" 
+                                           class="bg-green-100 text-green-700 hover:bg-green-200 p-2 rounded-lg transition" 
+                                           title="Download">
+                                            ⬇️
+                                        </a>
+                                        <button @click.stop="deleteItem(item)" 
+                                                class="bg-red-100 text-red-700 hover:bg-red-200 p-2 rounded-lg transition" 
+                                                title="Hapus">
+                                            🗑️
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -501,38 +988,59 @@ onUnmounted(() => {
         </div>
 
         <div v-if="contextMenu.show" 
-             :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }"class="fixed z-[100] bg-white border border-slate-200 shadow-2xl rounded-xl w-52 py-2 text-[11px] font-black text-gray-700 uppercase tracking-tighter">
+             :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }" class="fixed z-[100] bg-white border border-slate-200 shadow-2xl rounded-xl w-56 py-2 text-[11px] font-black text-gray-700 uppercase tracking-tighter">
             
-            <div @click="contextMenu.item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: contextMenu.item.id })) : openPreview(contextMenu.item)"class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
-                <span></span> BUKA ITEM
+            <div @click="contextMenu.item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: contextMenu.item.id })) : (isExcel(contextMenu.item) ? openExcelEditor(contextMenu.item) : openPreview(contextMenu.item))" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
+                <span>👁️</span> BUKA ITEM
+            </div>
+
+            <!-- OPSI EDIT EXCEL PADA KLIK KANAN -->
+            <div v-if="isExcel(contextMenu.item)"
+                 @click="openExcelEditor(contextMenu.item)"
+                 class="px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white cursor-pointer flex items-center gap-3 transition font-black">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-2h2v2zm0-4H7v-2h2v2zm0-4H7V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z"/>
+                </svg>
+                <span>EDIT FILE EXCEL</span>
             </div>
             
             <div v-if="!contextMenu.item.is_folder && (contextMenu.item.file_type?.toLowerCase() === 'zip' || contextMenu.item.file_name?.toLowerCase().endsWith('.zip'))"
-                 @click="handleExtract(contextMenu.item)"class="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white cursor-pointer flex items-center gap-3 transition font-black">
-                <span></span> EKSTRAK BERKAS (ZIP)
+                 @click="handleExtract(contextMenu.item)" class="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white cursor-pointer flex items-center gap-3 transition font-black">
+                <span>📦</span> EKSTRAK BERKAS (ZIP)
             </div>
             
             <div class="border-t my-1 border-slate-100"></div>
-            <div @click="handleRename(contextMenu.item)"class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
-                <span></span> UBAH NAMA
+            <div @click="handleRename(contextMenu.item)" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
+                <span>✏️</span> UBAH NAMA
             </div>
-            <div @click="showProperties(contextMenu.item)"class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
-                <span></span> PROPERTIES
+            <div @click="showProperties(contextMenu.item)" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
+                <span>ℹ️</span> PROPERTIES
             </div>
             <div class="border-t my-1 border-slate-100"></div>
-            <div @click="deleteItem(contextMenu.item)"class="px-4 py-2 hover:bg-red-600 hover:text-white cursor-pointer flex items-center gap-3 transition text-red-600">
-                <span></span> Hapus
+            <div @click="deleteItem(contextMenu.item)" class="px-4 py-2 hover:bg-red-600 hover:text-white cursor-pointer flex items-center gap-3 transition text-red-600">
+                <span>🗑️</span> HAPUS
             </div>
         </div>
 
+        <!-- MODAL PREVIEW DOKUMEN -->
         <div v-if="previewUrl" class="fixed inset-0 z-[250] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
             <div class="bg-white w-full max-w-6xl h-[90vh] rounded-[2rem] flex flex-col relative overflow-hidden shadow-2xl border-t-8 border-blue-600">
                 <div class="p-5 border-b flex justify-between items-center bg-slate-50">
                     <div class="flex items-center gap-3">
-                        <span class="text-xl"></span>
+                        <span class="text-xl">📄</span>
                         <h3 class="font-black text-sm uppercase tracking-tighter">Preview Dokumen Strategis</h3>
                     </div>
-                    <button @click="closePreview" class="bg-red-500 text-white px-6 py-2 rounded-xl font-black text-xs hover:bg-red-600 transition shadow-lg">TUTUP</button>
+                    <div class="flex items-center gap-2">
+                        <button v-if="activePreviewItem && isExcel(activePreviewItem)" 
+                                @click="const itm = activePreviewItem; closePreview(); openExcelEditor(itm);" 
+                                class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-black text-xs transition shadow-sm flex items-center gap-2 cursor-pointer">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-2h2v2zm0-4H7v-2h2v2zm0-4H7V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z"/>
+                            </svg>
+                            <span>Edit Excel Ini</span>
+                        </button>
+                        <button @click="closePreview" class="bg-red-500 text-white px-6 py-2 rounded-xl font-black text-xs hover:bg-red-600 transition shadow-lg cursor-pointer">TUTUP</button>
+                    </div>
                 </div>
                 
                 <div class="flex-1 overflow-auto p-0 bg-slate-200 flex justify-center items-center">
@@ -540,6 +1048,252 @@ onUnmounted(() => {
                     
                     <iframe v-if="previewType === 'pdf' || previewType === 'office'" :src="previewUrl" class="w-full h-full border-none"></iframe>
                 </div>
+            </div>
+        </div>
+
+        <!-- MODAL EDITOR EXCEL SPREADSHEET (FULL INTERACTIVE) -->
+        <div v-if="isExcelEditorOpen" class="fixed inset-0 z-[260] flex items-center justify-center bg-slate-950/85 p-2 sm:p-4 backdrop-blur-md animate-in fade-in duration-200">
+            <div class="bg-white w-full max-w-[96vw] h-[94vh] rounded-2xl sm:rounded-3xl flex flex-col relative overflow-hidden shadow-2xl border border-slate-200">
+                
+                <!-- 1. Header Toolbar -->
+                <div class="px-5 py-3.5 border-b border-slate-200 bg-slate-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black shadow-md shadow-emerald-600/30 shrink-0">
+                            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-2h2v2zm0-4H7v-2h2v2zm0-4H7V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <h3 class="font-extrabold text-sm sm:text-base text-slate-900 tracking-tight">
+                                    {{ editingExcelItem?.file_name }}
+                                </h3>
+                                <span v-if="isExcelDirty" class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-black uppercase tracking-wider animate-pulse">
+                                    * Belum Disimpan
+                                </span>
+                                <span v-else class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider">
+                                    Tersimpan di Backup
+                                </span>
+                            </div>
+                            <p class="text-[11px] text-slate-500 font-semibold flex items-center gap-2">
+                                <span>Lembar: <b class="text-emerald-700 font-mono">{{ activeSheetName }}</b></span>
+                                <span>•</span>
+                                <span>Ukuran: {{ editingExcelItem?.size_human }}</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto justify-end flex-wrap">
+                        <button 
+                            type="button" 
+                            @click="addRowBelow" 
+                            class="px-2.5 py-1.5 bg-slate-200/80 hover:bg-slate-300 text-slate-700 rounded-lg text-[11px] font-extrabold uppercase tracking-wider transition cursor-pointer flex items-center gap-1"
+                            title="Sisipkan baris baru di bawah sel terpilih"
+                        >
+                            <span>+ Baris</span>
+                        </button>
+                        <button 
+                            type="button" 
+                            @click="addColumnRight" 
+                            class="px-2.5 py-1.5 bg-slate-200/80 hover:bg-slate-300 text-slate-700 rounded-lg text-[11px] font-extrabold uppercase tracking-wider transition cursor-pointer flex items-center gap-1"
+                            title="Sisipkan kolom baru di kanan sel terpilih"
+                        >
+                            <span>+ Kolom</span>
+                        </button>
+                        <button 
+                            type="button" 
+                            @click="deleteCurrentRow" 
+                            class="px-2 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-extrabold uppercase tracking-wider transition cursor-pointer flex items-center gap-1"
+                            title="Hapus baris saat ini"
+                        >
+                            <span>- Baris</span>
+                        </button>
+                        <button 
+                            type="button" 
+                            @click="deleteCurrentColumn" 
+                            class="px-2 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-extrabold uppercase tracking-wider transition cursor-pointer flex items-center gap-1"
+                            title="Hapus kolom saat ini"
+                        >
+                            <span>- Kolom</span>
+                        </button>
+
+                        <div class="h-6 w-px bg-slate-300 mx-1 hidden sm:block"></div>
+
+                        <button 
+                            type="button" 
+                            @click="downloadCurrentExcel" 
+                            class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-black uppercase tracking-wider transition cursor-pointer flex items-center gap-1 border border-slate-300"
+                            title="Unduh salinan berkas Excel ke komputer"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            <span>Unduh</span>
+                        </button>
+
+                        <button 
+                            type="button" 
+                            @click="saveExcelChanges" 
+                            :disabled="isExcelSaving || isExcelLoading"
+                            class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition shadow-md shadow-emerald-600/30 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                        >
+                            <span v-if="isExcelSaving" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                            <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span>{{ isExcelSaving ? 'Menyimpan...' : 'Simpan ke Backup' }}</span>
+                        </button>
+
+                        <button 
+                            type="button" 
+                            @click="closeExcelEditor" 
+                            class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-wider transition cursor-pointer"
+                        >
+                            ✕ Tutup
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. Formula & Coordinate Bar -->
+                <div class="px-5 py-2 bg-slate-100 border-b border-slate-200 flex items-center gap-3 text-xs">
+                    <!-- Coordinate box -->
+                    <div class="px-2.5 py-1 bg-white rounded-lg border border-slate-300 font-mono font-black text-emerald-800 shadow-2xs min-w-[55px] text-center">
+                        {{ selectedCellCoordinate }}
+                    </div>
+
+                    <!-- Fx symbol -->
+                    <div class="font-mono font-bold text-slate-400 italic text-sm">
+                        fx
+                    </div>
+
+                    <!-- Active Cell Input -->
+                    <div class="flex-1">
+                        <input 
+                            type="text" 
+                            v-model="activeFormulaValue" 
+                            @input="onFormulaChange"
+                            placeholder="Ketik data sel atau formula (contoh: =SUM(A1:A10) atau teks)..."
+                            class="w-full bg-white border border-slate-300 rounded-lg px-3 py-1 text-xs font-mono font-medium focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        />
+                    </div>
+
+                    <!-- Search within spreadsheet -->
+                    <div class="relative w-48 hidden md:block">
+                        <input 
+                            type="text" 
+                            v-model="excelSearchQuery"
+                            placeholder="Cari teks di tabel..."
+                            class="w-full bg-white border border-slate-300 rounded-lg pl-7 pr-2 py-1 text-[11px] font-medium focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        />
+                        <span class="absolute left-2 top-1.5 text-slate-400 text-xs">🔍</span>
+                    </div>
+                </div>
+
+                <!-- 3. Spreadsheet Grid Scroll Area -->
+                <div class="flex-1 overflow-auto bg-slate-200 relative select-none">
+                    <!-- Loading state -->
+                    <div v-if="isExcelLoading" class="absolute inset-0 z-30 bg-white/90 flex flex-col items-center justify-center gap-3">
+                        <div class="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+                        <p class="font-extrabold text-xs uppercase tracking-wider text-slate-700">Mendekripsi & Membuka Berkas Spreadsheet...</p>
+                    </div>
+
+                    <!-- Grid Table -->
+                    <table v-else class="border-collapse table-fixed bg-white">
+                        <thead>
+                            <tr class="sticky top-0 z-20 bg-slate-100 shadow-2xs">
+                                <!-- Top-left corner -->
+                                <th class="sticky left-0 z-30 w-12 min-w-[48px] bg-slate-200 border border-slate-300 p-1 text-[10px] font-black text-slate-500 text-center select-none">
+                                    #
+                                </th>
+                                <!-- Column Headers (A, B, C, ...) -->
+                                <th 
+                                    v-for="(col, cIdx) in (excelGrid[0] || [])" 
+                                    :key="'col-' + cIdx"
+                                    :class="selectedCell.col === cIdx ? 'bg-emerald-100 text-emerald-800 border-b-2 border-b-emerald-600' : 'bg-slate-100 text-slate-600'"
+                                    class="w-32 min-w-[120px] max-w-[200px] border border-slate-300 px-2 py-1 text-xs font-black text-center select-none transition-colors"
+                                >
+                                    {{ getColumnLabel(cIdx) }}
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(row, rIdx) in excelGrid" :key="'row-' + rIdx" class="hover:bg-slate-50/50">
+                                <!-- Row Header (1, 2, 3, ...) -->
+                                <th 
+                                    :class="selectedCell.row === rIdx ? 'bg-emerald-100 text-emerald-800 border-r-2 border-r-emerald-600' : 'bg-slate-100 text-slate-500'"
+                                    class="sticky left-0 z-10 w-12 min-w-[48px] border border-slate-300 p-1 text-[10px] font-black text-center font-mono select-none transition-colors"
+                                >
+                                    {{ rIdx + 1 }}
+                                </th>
+                                <!-- Cell Data -->
+                                <td 
+                                    v-for="(cellVal, cIdx) in row" 
+                                    :key="'cell-' + rIdx + '-' + cIdx"
+                                    @click="onCellSelect(rIdx, cIdx)"
+                                    :class="[
+                                        selectedCell.row === rIdx && selectedCell.col === cIdx ? 'ring-2 ring-emerald-500 bg-emerald-50/40 z-10' : '',
+                                        excelSearchQuery && String(cellVal).toLowerCase().includes(excelSearchQuery.toLowerCase()) ? 'bg-yellow-100' : ''
+                                    ]"
+                                    class="border border-slate-200 p-0 relative transition-all"
+                                >
+                                    <input 
+                                        :id="`cell-${rIdx}-${cIdx}`"
+                                        type="text" 
+                                        v-model="excelGrid[rIdx][cIdx]"
+                                        @focus="onCellSelect(rIdx, cIdx)"
+                                        @input="onCellChange(rIdx, cIdx, $event.target.value)"
+                                        @keydown="navigateCell(rIdx, cIdx, $event)"
+                                        class="w-full h-8 px-2 py-1 text-xs font-medium text-slate-800 bg-transparent border-none focus:outline-none focus:ring-0 truncate"
+                                    />
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 4. Bottom Sheet Tabs Footer -->
+                <div class="px-4 py-2 bg-slate-100 border-t border-slate-200 flex items-center justify-between gap-3 text-xs overflow-x-auto">
+                    <div class="flex items-center gap-1.5 overflow-x-auto py-0.5">
+                        <button 
+                            v-for="sName in excelSheetNames" 
+                            :key="sName"
+                            @click="selectSheet(sName)"
+                            :class="activeSheetName === sName ? 'bg-white text-emerald-700 font-extrabold shadow-xs border-b-2 border-b-emerald-600' : 'bg-slate-200/70 text-slate-600 hover:bg-slate-200 font-bold'"
+                            class="px-3.5 py-1.5 rounded-lg border border-slate-300 text-xs transition cursor-pointer flex items-center gap-2 group whitespace-nowrap"
+                        >
+                            <span>📊 {{ sName }}</span>
+                            <span 
+                                v-if="excelSheetNames.length > 1" 
+                                @click.stop="deleteSheetPrompt(sName)"
+                                class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-600 font-black ml-1 text-xs transition"
+                                title="Hapus Lembar Ini"
+                            >
+                                &times;
+                            </span>
+                            <span 
+                                @click.stop="renameSheetPrompt(sName)"
+                                class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-emerald-700 font-black text-[10px] transition"
+                                title="Ubah Nama Lembar"
+                            >
+                                ✏️
+                            </span>
+                        </button>
+
+                        <button 
+                            type="button" 
+                            @click="addNewSheetPrompt" 
+                            class="px-2.5 py-1.5 bg-slate-200 hover:bg-emerald-100 hover:text-emerald-700 text-slate-600 rounded-lg text-xs font-black transition cursor-pointer flex items-center gap-1"
+                            title="Tambah Lembar Kerja Baru"
+                        >
+                            <span>+ Sheet Baru</span>
+                        </button>
+                    </div>
+
+                    <div class="text-[10px] text-slate-400 font-semibold hidden md:block whitespace-nowrap">
+                        Gunakan <kbd class="px-1.5 py-0.5 bg-white rounded border text-slate-600 font-mono">Enter</kbd> untuk pindah ke bawah, <kbd class="px-1.5 py-0.5 bg-white rounded border text-slate-600 font-mono">Tab</kbd> ke kanan.
+                    </div>
+                </div>
+
             </div>
         </div>
 

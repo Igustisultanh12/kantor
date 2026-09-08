@@ -558,6 +558,115 @@ class BackupController extends Controller
         return back()->with('success', 'Otoritas akses dan seluruh berkas PC berhasil dihapus secara permanen.');
     }
 
+    /**
+     * FITUR: SIMPAN PERUBAHAN ISI BERKAS EXCEL (.XLSX / .XLS / .CSV)
+     */
+    public function saveExcel(Request $request, $id)
+    {
+        $request->validate([
+            'base64_content' => 'required|string',
+        ]);
+
+        try {
+            $backup = Backup::findOrFail($id);
+
+            if ($backup->is_folder) {
+                return response()->json(['status' => 'error', 'message' => 'Folder tidak dapat diedit sebagai spreadsheet.'], 400);
+            }
+
+            $decoded = base64_decode($request->base64_content);
+            if ($decoded === false) {
+                return response()->json(['status' => 'error', 'message' => 'Format berkas biner tidak valid.'], 400);
+            }
+
+            $pc = Pc::findOrFail($backup->pc_id);
+            $oldSize = (int)$backup->file_size;
+            $newSize = strlen($decoded);
+            $sizeDiff = $newSize - $oldSize;
+
+            if ($sizeDiff > 0 && ($pc->current_usage + $sizeDiff) > $pc->max_quota) {
+                return response()->json(['status' => 'error', 'message' => 'Penyimpanan penuh! Kuota pangkalan PC terlampaui.'], 400);
+            }
+
+            // Simpan langsung menimpa berkas lama di public storage disk
+            Storage::disk('public')->put($backup->file_path, $decoded);
+
+            // Update metadata
+            $backup->update([
+                'file_size' => $newSize,
+                'file_type' => pathinfo($backup->file_name, PATHINFO_EXTENSION) ?: 'xlsx',
+                'updated_at' => now(),
+            ]);
+
+            if ($sizeDiff !== 0) {
+                $pc->increment('current_usage', $sizeDiff);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Perubahan berkas Excel berhasil disimpan ke penyimpanan cadangan.',
+                'file_size' => $newSize,
+                'size_human' => $this->formatBytes($newSize),
+                'date_human' => Carbon::parse($backup->updated_at)->format('d M Y H:i'),
+                'pc_usage_human' => $this->formatBytes($pc->current_usage),
+                'pc_usage_percentage' => $pc->max_quota > 0 ? round(($pc->current_usage / $pc->max_quota) * 100, 2) : 0,
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Gagal menyimpan berkas Excel backup ID {$id}: " . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => 'Gagal menyimpan perubahan berkas: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * FITUR: BUAT BERKAS SPREADSHEET EXCEL BARU LANGSUNG DI FOLDER
+     */
+    public function createExcel(Request $request)
+    {
+        $request->validate([
+            'pc_id' => 'required|exists:pcs,id',
+            'file_name' => 'required|string|max:100',
+            'parent_id' => 'nullable',
+            'base64_content' => 'required|string'
+        ]);
+
+        try {
+            $pc = Pc::findOrFail($request->pc_id);
+            $decoded = base64_decode($request->base64_content);
+            if ($decoded === false) {
+                return back()->with('error', 'Format data spreadsheet tidak valid.');
+            }
+
+            $fileSize = strlen($decoded);
+            if (($pc->current_usage + $fileSize) > $pc->max_quota) {
+                return back()->with('error', 'Penyimpanan penuh! Kapasitas pangkalan PC terlampaui.');
+            }
+
+            $fileName = trim($request->file_name);
+            if (!str_ends_with(strtolower($fileName), '.xlsx')) {
+                $fileName .= '.xlsx';
+            }
+
+            $path = 'backups/' . $pc->id . '/' . time() . '_' . $fileName;
+            Storage::disk('public')->put($path, $decoded);
+
+            Backup::create([
+                'pc_id' => $pc->id,
+                'parent_id' => $request->parent_id,
+                'file_name' => $fileName,
+                'file_path' => $path,
+                'file_size' => $fileSize,
+                'is_folder' => false,
+                'file_type' => 'xlsx',
+            ]);
+
+            $pc->increment('current_usage', $fileSize);
+            return back()->with('success', 'Berkas Excel baru berhasil dibuat dan disimpan.');
+        } catch (\Exception $e) {
+            Log::error("Gagal membuat berkas Excel baru: " . $e->getMessage());
+            return back()->with('error', 'Gagal membuat berkas Excel: ' . $e->getMessage());
+        }
+    }
+
     private function formatPcData($pc) {
         $pc->usage_human = $this->formatBytes($pc->current_usage);
         $pc->quota_human = $this->formatBytes($pc->max_quota);

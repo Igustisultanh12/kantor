@@ -141,8 +141,11 @@ Route::middleware(['auth', 'office.only'])->group(function () {
     // PENAMBAHAN RADAR PROGRESS & CANCEL (KHUSUS EXTRAK BESAR SURAT MAKO)
     Route::post('/pc-backup/start-extract/{id}', [BackupController::class, 'startExtract'])->name('backup.start-extract');
     Route::get('/pc-backup/extract-progress', [BackupController::class, 'getExtractProgress'])->name('backup.extract-progress');
-    Route::post('/pc-backup/cancel-extract', [BackupController::class, 'cancelExtract'])->name('backup.cancel-extract');
     Route::get('/pc-backup/view-office/{id}', [BackupController::class, 'viewOffice'])->name('backup.view-office');
+
+    // --- FITUR EDITOR & PEMBUATAN EXCEL / SPREADSHEET (BACKUP) ---
+    Route::post('/pc-backup/save-excel/{id}', [BackupController::class, 'saveExcel'])->name('backup.save-excel');
+    Route::post('/pc-backup/create-excel', [BackupController::class, 'createExcel'])->name('backup.create-excel');
 });
 
 // --- AKSES TERPROTEKSI (AUTH) ---
