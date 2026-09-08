@@ -137,6 +137,14 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('profile.edit')->with('info', 'Otoritas Keamanan: Ini adalah login pertama Anda. Mohon perbarui password default Anda segera.');
         }
 
+        if ($user->role !== 'admin') {
+            $r = strtolower(preg_replace('/[\s_-]+/', '', $user->role ?? ''));
+            $j = strtolower($user->jabatan ?? '');
+            if ($r === 'anggotasintel' || str_contains($j, 'anggota sintel')) {
+                return redirect()->route('sc-submissions.index');
+            }
+        }
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 

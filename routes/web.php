@@ -68,6 +68,14 @@ Route::get('/tracking-sc/{tracking_code}/preview-pdf', [PublicTrackingController
 // --- AKSES DASHBOARD UTAMA ---
 Route::get('/dashboard', function () {
     $user = auth()->user();
+    if ($user && $user->role !== 'admin') {
+        $r = strtolower(preg_replace('/[\s_-]+/', '', $user->role ?? ''));
+        $j = strtolower($user->jabatan ?? '');
+        if ($r === 'anggotasintel' || str_contains($j, 'anggota sintel')) {
+            return redirect()->route('sc-submissions.index');
+        }
+    }
+
     $recentVisitors = VisitorLog::latest()->take(5)->get()->map(function($log) {
         $log->type = 'LOGIN'; 
         return $log;

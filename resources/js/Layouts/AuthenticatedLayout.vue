@@ -194,6 +194,13 @@ const canAccessTechnicalCash = computed(() => {
     return isAdmin.value || isDanUnitTeknis.value || Boolean(user.value.can_access_technical_cash) || user.value.name === 'I Gusti Sultan H.A, A.Md.Kom';
 });
 
+const isAnggotaSintel = computed(() => {
+    if (isAdmin.value) return false;
+    const r = (user.value?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+    const j = (user.value?.jabatan || '').toLowerCase();
+    return r === 'anggotasintel' || j.includes('anggota sintel');
+});
+
 const isMobileMenuOpen = ref(false);
 
 const isMobile = ref(false);
@@ -243,7 +250,7 @@ onUnmounted(() => {
                 <div>
                     <!-- Mobile Drawer Header -->
                     <div class="pt-6 pb-4 px-6 flex items-center justify-between border-b border-slate-100">
-                        <Link :href="route('dashboard')" @click="isMobileMenuOpen = false" class="flex items-center gap-3">
+                        <Link :href="isAnggotaSintel ? route('sc-submissions.index') : route('dashboard')" @click="isMobileMenuOpen = false" class="flex items-center gap-3">
                             <img v-if="appLogo" :src="appLogo" alt="Logo" class="w-8 h-8 object-contain select-none shrink-0" />
                             <div v-else class="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-extrabold text-base shadow-sm shrink-0"> S
                             </div>
@@ -259,7 +266,7 @@ onUnmounted(() => {
                     <!-- Mobile Sidebar Navigation Links -->
                     <nav class="px-4 py-4 space-y-5">
                         <!-- UTAMA -->
-                        <div class="space-y-1">
+                        <div v-if="!isAnggotaSintel" class="space-y-1">
                             <p class="px-4 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Utama</p>
                             <Link 
                                 :href="route('dashboard')" 
@@ -271,10 +278,13 @@ onUnmounted(() => {
                             </Link>
                         </div>
 
-                        <!-- SURAT & NASKAH -->
+                        <!-- SURAT & NASKAH / LAYANAN SINTEL -->
                         <div class="space-y-1">
-                            <p class="px-4 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Surat & Naskah</p>
+                            <p class="px-4 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">
+                                {{ isAnggotaSintel ? 'Menu Anggota Sintel' : 'Surat & Naskah' }}
+                            </p>
                             <Link 
+                                v-if="!isAnggotaSintel"
                                 :href="route('letter-logs.index')" 
                                 @click="isMobileMenuOpen = false"
                                 :class="route().current('letter-logs.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
@@ -284,6 +294,7 @@ onUnmounted(() => {
                             </Link>
 
                             <Link 
+                                v-if="!isAnggotaSintel"
                                 :href="route('letters.index')" 
                                 @click="isMobileMenuOpen = false"
                                 :class="route().current('letters.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
@@ -293,6 +304,7 @@ onUnmounted(() => {
                             </Link>
 
                             <Link 
+                                v-if="!isAnggotaSintel"
                                 :href="route('skhpp.index')" 
                                 @click="isMobileMenuOpen = false"
                                 :class="route().current('skhpp.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
@@ -310,7 +322,7 @@ onUnmounted(() => {
                                 <svg class="w-4 h-4 text-cyan-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
                                 </svg>
-                                <span>Tracking Pengajuan SC</span>
+                                <span>{{ isAnggotaSintel ? 'Tracking Penerbitan SC' : 'Tracking Pengajuan SC' }}</span>
                             </Link>
 
                             <Link 
@@ -319,10 +331,11 @@ onUnmounted(() => {
                                 :class="route().current('sp-jaga.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
                             >
                                 <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-                                <span>SP Jaga Siaga</span>
+                                <span>{{ isAnggotaSintel ? 'SP Jaga' : 'SP Jaga Siaga' }}</span>
                             </Link>
 
                             <Link 
+                                v-if="!isAnggotaSintel"
                                 :href="route('categories.index')" 
                                 @click="isMobileMenuOpen = false"
                                 :class="route().current('categories.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
@@ -333,7 +346,7 @@ onUnmounted(() => {
                         </div>
 
                         <!-- VALIDASI & TTE -->
-                        <div class="space-y-1">
+                        <div v-if="!isAnggotaSintel" class="space-y-1">
                             <p class="px-4 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Validasi & TTE</p>
                             
                             <Link 
@@ -347,7 +360,7 @@ onUnmounted(() => {
                         </div>
 
                         <!-- LOGISTIK & FINANSIAL -->
-                        <div class="space-y-1">
+                        <div v-if="!isAnggotaSintel" class="space-y-1">
                             <p class="px-4 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Logistik & Keuangan</p>
                             <Link 
                                 :href="route('simpan-pinjam.index')" 
@@ -434,7 +447,7 @@ onUnmounted(() => {
                         </div>
 
                         <!-- PENGAMANAN -->
-                        <div class="space-y-1">
+                        <div v-if="!isAnggotaSintel" class="space-y-1">
                             <p class="px-4 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Pengamanan</p>
                             
                             <Link 
@@ -457,7 +470,7 @@ onUnmounted(() => {
                         </div>
 
                         <!-- SISTEM -->
-                        <div class="space-y-1 pb-6">
+                        <div v-if="!isAnggotaSintel" class="space-y-1 pb-6">
                             <p class="px-4 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Sistem</p>
                             
                             <Link 
@@ -519,7 +532,7 @@ onUnmounted(() => {
             <div>
                 <!-- Brand Header & Logo -->
                 <div class="pt-8 pb-6 px-7 flex flex-col select-none border-b border-slate-100">
-                    <Link :href="route('dashboard')" class="flex items-center gap-3">
+                    <Link :href="isAnggotaSintel ? route('sc-submissions.index') : route('dashboard')" class="flex items-center gap-3">
                         <img v-if="appLogo" :src="appLogo" alt="Logo" class="w-8 h-8 object-contain select-none shrink-0" />
                         <div v-else class="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-extrabold text-base shadow-sm shrink-0"> S
                         </div>
@@ -535,7 +548,7 @@ onUnmounted(() => {
                 <nav class="px-4 py-3 space-y-5">
                     
                     <!-- UTAMA -->
-                    <div class="space-y-1">
+                    <div v-if="!isAnggotaSintel" class="space-y-1">
                         <p class="px-5 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Utama</p>
                         <Link 
                             :href="route('dashboard')" 
@@ -546,11 +559,14 @@ onUnmounted(() => {
                         </Link>
                     </div>
 
-                    <!-- ADMINISTRASI SURAT -->
+                    <!-- ADMINISTRASI SURAT / LAYANAN SINTEL -->
                     <div class="space-y-1">
-                        <p class="px-5 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Surat & Naskah</p>
+                        <p class="px-5 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">
+                            {{ isAnggotaSintel ? 'Menu Anggota Sintel' : 'Surat & Naskah' }}
+                        </p>
                         
                         <Link 
+                            v-if="!isAnggotaSintel"
                             :href="route('letter-logs.index')" 
                             :class="route().current('letter-logs.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
                         >
@@ -559,6 +575,7 @@ onUnmounted(() => {
                         </Link>
 
                         <Link 
+                            v-if="!isAnggotaSintel"
                             :href="route('letters.index')" 
                             :class="route().current('letters.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
                         >
@@ -567,6 +584,7 @@ onUnmounted(() => {
                         </Link>
 
                         <Link 
+                            v-if="!isAnggotaSintel"
                             :href="route('skhpp.index')" 
                             :class="route().current('skhpp.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
                         >
@@ -580,9 +598,9 @@ onUnmounted(() => {
                             class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
                         >
                             <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-cyan-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
                             </svg>
-                            <span>Tracking Pengajuan SC</span>
+                            <span>{{ isAnggotaSintel ? 'Tracking Penerbitan SC' : 'Tracking Pengajuan SC' }}</span>
                         </Link>
 
                         <Link 
@@ -590,10 +608,11 @@ onUnmounted(() => {
                             :class="route().current('sp-jaga.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
                         >
                             <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-                            <span>SP Jaga Siaga</span>
+                            <span>{{ isAnggotaSintel ? 'SP Jaga' : 'SP Jaga Siaga' }}</span>
                         </Link>
 
                         <Link 
+                            v-if="!isAnggotaSintel"
                             :href="route('categories.index')" 
                             :class="route().current('categories.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
                         >
@@ -603,7 +622,7 @@ onUnmounted(() => {
                     </div>
 
                     <!-- VALIDASI & TTE -->
-                    <div class="space-y-1">
+                    <div v-if="!isAnggotaSintel" class="space-y-1">
                         <p class="px-5 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Validasi & TTE</p>
                         
                         <Link 
@@ -616,7 +635,7 @@ onUnmounted(() => {
                     </div>
 
                     <!-- LOGISTIK & FINANSIAL -->
-                    <div class="space-y-1">
+                    <div v-if="!isAnggotaSintel" class="space-y-1">
                         <p class="px-5 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Logistik & Keuangan</p>
                         
                         <Link 
@@ -695,7 +714,7 @@ onUnmounted(() => {
                     </div>
 
                     <!-- SEKTOR PENGAMANAN -->
-                    <div class="space-y-1">
+                    <div v-if="!isAnggotaSintel" class="space-y-1">
                         <p class="px-5 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Pengamanan</p>
                         
                         <Link 
@@ -716,7 +735,7 @@ onUnmounted(() => {
                     </div>
 
                     <!-- PENGATURAN & AKSES -->
-                    <div class="space-y-1 pb-6">
+                    <div v-if="!isAnggotaSintel" class="space-y-1 pb-6">
                         <p class="px-5 text-[10px] font-extrabold text-[#94A3B8] uppercase tracking-widest mb-2">Sistem</p>
                         
                         <Link 
@@ -732,7 +751,7 @@ onUnmounted(() => {
                             :href="route('visitor-logs.index')" 
                             :class="route().current('visitor-logs.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
                         >
-                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
                             <span>Log Pengunjung & Audit</span>
                         </Link>
 
@@ -793,7 +812,7 @@ onUnmounted(() => {
                         <svg class="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition absolute left-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
-                        <span class="truncate">Cari menu, nomor surat, personel, SKHPP, pinjaman...</span>
+                        <span class="truncate">{{ isAnggotaSintel ? 'Cari berkas SC, SP Jaga...' : 'Cari menu, nomor surat, personel, SKHPP, pinjaman...' }}</span>
                         <span class="hidden md:inline-block absolute right-3 bg-white border border-slate-200 rounded-lg px-2 py-0.5 text-[9px] font-mono text-slate-500 font-bold shadow-xs">Ctrl K</span>
                     </button>
 

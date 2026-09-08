@@ -17,6 +17,36 @@ class GlobalSearchController extends Controller
     public function search(Request $request)
     {
         $query = trim($request->input('q', ''));
+        $user = auth()->user();
+
+        $isAnggotaSintel = false;
+        if ($user && $user->role !== 'admin') {
+            $r = strtolower(preg_replace('/[\s_-]+/', '', $user->role ?? ''));
+            $j = strtolower($user->jabatan ?? '');
+            $isAnggotaSintel = ($r === 'anggotasintel' || str_contains($j, 'anggota sintel'));
+        }
+
+        if ($isAnggotaSintel) {
+            $sintelNav = [
+                ['title' => 'Tracking Penerbitan SC', 'description' => 'Monitoring alur berkas dan status penerbitan Security Clearance (SC)', 'url' => route('sc-submissions.index')],
+                ['title' => 'Surat Perintah (SP) Jaga Siaga', 'description' => 'Daftar penugasan dan surat perintah jaga siaga Sintel', 'url' => route('sp-jaga.index')],
+            ];
+
+            if (strlen($query) >= 2) {
+                $sintelNav = collect($sintelNav)->filter(function ($item) use ($query) {
+                    return str_contains(strtolower($item['title']), strtolower($query))
+                        || str_contains(strtolower($item['description']), strtolower($query));
+                })->values()->all();
+            }
+
+            return response()->json([
+                'navigation' => $sintelNav,
+                'personnel' => [],
+                'letters' => [],
+                'skhpp' => [],
+                'loans' => [],
+            ]);
+        }
 
         if (strlen($query) < 2) {
             return response()->json([

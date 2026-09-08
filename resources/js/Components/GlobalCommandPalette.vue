@@ -1,6 +1,14 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
+
+const page = usePage();
+const currentUser = computed(() => page.props.auth?.user || {});
+const isAnggotaSintel = computed(() => {
+    const role = (currentUser.value?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+    const jab = (currentUser.value?.jabatan || '').toLowerCase();
+    return role === 'anggotasintel' || jab.includes('anggota sintel');
+});
 
 const isOpen = ref(false);
 const searchQuery = ref('');
@@ -146,7 +154,7 @@ defineExpose({
                     ref="searchInput"
                     type="text" 
                     v-model="searchQuery"
-                    placeholder="Ketik pencarian cepat (nama personel, nomor surat, SKHPP, pinjaman)..."
+                    :placeholder="isAnggotaSintel ? 'Ketik pencarian cepat berkas SC, SP Jaga...' : 'Ketik pencarian cepat (nama personel, nomor surat, SKHPP, pinjaman)...'"
                     class="w-full bg-transparent border-none text-sm font-bold text-slate-900 placeholder-slate-400 focus:outline-hidden focus:ring-0"
                 />
                 <div v-if="isLoading" class="shrink-0 text-slate-400">
