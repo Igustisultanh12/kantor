@@ -109,7 +109,7 @@ class ScSubmissionController extends Controller
         $validated = $request->validate([
             'nama' => 'required|string|max:255',
             'pangkat_korps' => 'nullable|string|max:100',
-            'identifier_type' => 'required|in:nrp,nip,nik',
+            'identifier_type' => 'required|in:nrp,nip,nik,nim',
             'identifier_number' => 'required|string|max:50',
             'kesatuan' => 'nullable|string|max:255',
             'jabatan' => 'nullable|string|max:255',
@@ -363,6 +363,36 @@ class ScSubmissionController extends Controller
             ]);
         }
 
+        // Kirim Notifikasi WhatsApp ke Pemohon saat Tahapan Diperbarui
+        $targetPhone = $submission->phone;
+        if (empty($targetPhone)) {
+            $personel = User::where('nrp', $submission->identifier_number)->first();
+            $targetPhone = $personel?->phone;
+        }
+
+        if (!empty($targetPhone)) {
+            try {
+                $pangkatNama = trim(($submission->pangkat_korps ? $submission->pangkat_korps . ' ' : '') . $submission->nama);
+                $identitasLabel = strtoupper($submission->identifier_type ?? 'NRP');
+                $trackingUrl = route('tracking-sc.index');
+
+                $waMessage = "*UPDATE TAHAPAN SECURITY CLEARANCE (SC)*\n" .
+                             "*DENINTEL KODAERAL V*\n\n" .
+                             "Halo *{$pangkatNama}*,\n\n" .
+                             "Status telah di update, silahkan check di link menggunakan NRP,NIP,NIK atau NIM anda.\n\n" .
+                             "- *Tahap Baru:* Tahap {$newStage}: {$stageInfo['title']}\n" .
+                             "- *Status:* " . strtoupper($status) . "\n" .
+                             (!empty($validated['notes']) ? "- *Catatan Petugas:* {$validated['notes']}\n" : "") .
+                             "- *Tautan Pengecekan:* {$trackingUrl}\n\n" .
+                             "*(Masukkan {$identitasLabel}: {$submission->identifier_number} pada formulir pelacakan)*\n\n" .
+                             "Demikian pemberitahuan ini disampaikan. Terima kasih.";
+
+                WhatsappService::sendMessage($targetPhone, $waMessage);
+            } catch (\Throwable $e) {
+                Log::warning("Gagal mengirim notifikasi WA update tahapan SC: " . $e->getMessage());
+            }
+        }
+
         return redirect()->back()->with('success', "Lapor! Berkas {$submission->nama} berhasil diperbarui ke Tahap {$newStage}: {$stageInfo['title']}.");
     }
 
@@ -376,7 +406,7 @@ class ScSubmissionController extends Controller
         $validated = $request->validate([
             'nama' => 'required|string|max:255',
             'pangkat_korps' => 'nullable|string|max:100',
-            'identifier_type' => 'required|in:nrp,nip,nik',
+            'identifier_type' => 'required|in:nrp,nip,nik,nim',
             'identifier_number' => 'required|string|max:50',
             'kesatuan' => 'nullable|string|max:255',
             'jabatan' => 'nullable|string|max:255',

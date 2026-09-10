@@ -517,7 +517,7 @@ const formatDateTime = (dateStr) => {
                             type="text" 
                             v-model="searchQuery"
                             @keyup.enter="handleFilter"
-                            placeholder="Cari Nama, NRP/NIP/NIK, Kode Tracking, Kesatuan..." 
+                            placeholder="Cari Nama, NRP/NIP/NIK/NIM, Kode Tracking, Kesatuan..." 
                             class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500"
                         />
                         <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
@@ -822,12 +822,13 @@ const formatDateTime = (dateStr) => {
                                     <option value="nrp">NRP (Militer)</option>
                                     <option value="nip">NIP (PNS/ASN)</option>
                                     <option value="nik">NIK (KTP)</option>
+                                    <option value="nim">NIM (Mahasiswa / Siswa Magang)</option>
                                 </select>
                             </div>
 
                             <!-- Nomor Identitas -->
                             <div class="space-y-1 sm:col-span-2">
-                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Nomor NRP / NIP / NIK (Kunci Pelacakan) *</label>
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Nomor NRP / NIP / NIK / NIM (Kunci Pelacakan) *</label>
                                 <input 
                                     type="text" 
                                     v-model="createForm.identifier_number" 
@@ -1275,7 +1276,7 @@ const formatDateTime = (dateStr) => {
                             />
                         </div>
 
-                        <div class="grid grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div class="space-y-1">
                                 <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Pangkat & Korps</label>
                                 <input 
@@ -1283,6 +1284,19 @@ const formatDateTime = (dateStr) => {
                                     v-model="editForm.pangkat_korps" 
                                     class="w-full text-xs font-bold p-3 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white"
                                 />
+                            </div>
+
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Jenis Identitas *</label>
+                                <select 
+                                    v-model="editForm.identifier_type"
+                                    class="w-full text-xs font-bold p-3 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white"
+                                >
+                                    <option value="nrp">NRP (Militer)</option>
+                                    <option value="nip">NIP (PNS/ASN)</option>
+                                    <option value="nik">NIK (KTP)</option>
+                                    <option value="nim">NIM (Mahasiswa / Siswa Magang)</option>
+                                </select>
                             </div>
 
                             <div class="space-y-1">
