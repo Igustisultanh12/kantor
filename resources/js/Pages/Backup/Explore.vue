@@ -133,16 +133,46 @@ const toggleDeactivateShare = async () => {
 };
 
 // --- FORMULIR TAKTIS ---
-const uploadForm = useForm({
-    pc_id: props.pc.id,
-    file: null,
-    parent_id: props.currentFolderId 
-});
-
 const folderForm = useForm({
     pc_id: props.pc.id,
     folder_name: '',
     parent_id: props.currentFolderId
+});
+
+// --- HELPER FORMAT UKURAN BERKAS ---
+const formatFileSize = (bytes) => {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+// --- STATE SISTEM ANTREAN UNGGAH BULK (RAMAH SERVER & TANPA BATAS) ---
+const uploadQueue = ref([]);
+const isQueueActive = ref(false);
+const isQueueOpen = ref(false);
+const isQueueMinimized = ref(false);
+const currentUploadSpeed = ref('');
+const currentUploadProgress = ref(0);
+const isDraggingOver = ref(false);
+let dragCounter = 0;
+let uploadAbortController = null;
+
+const totalQueueFiles = computed(() => uploadQueue.value.length);
+const completedQueueFiles = computed(() => uploadQueue.value.filter(item => item.status === 'completed').length);
+const failedQueueFiles = computed(() => uploadQueue.value.filter(item => item.status === 'error').length);
+const pendingQueueFiles = computed(() => uploadQueue.value.filter(item => item.status === 'pending').length);
+
+const overallProgressPercent = computed(() => {
+    if (uploadQueue.value.length === 0) return 0;
+    const totalSize = uploadQueue.value.reduce((acc, item) => acc + (item.size || 1), 0);
+    const uploadedSize = uploadQueue.value.reduce((acc, item) => {
+        if (item.status === 'completed') return acc + (item.size || 1);
+        if (item.status === 'uploading') return acc + ((item.size || 1) * (item.progress / 100));
+        return acc;
+    }, 0);
+    return Math.min(100, Math.round((uploadedSize / totalSize) * 100));
 });
 
 // --- STATE RADAR & MENU ---
@@ -151,12 +181,6 @@ const contextMenu = ref({ show: false, x: 0, y: 0, item: null });
 const previewUrl = ref(null);
 const previewType = ref(null);
 const activePreviewItem = ref(null);
-
-// --- STATE PROGRES TRANSMISI UPLOAD ---
-const uploadProgress = ref(0);
-const uploadSpeed = ref('');
-const isUploading = ref(false);
-let startTime = 0;
 
 // --- STATE RADAR EKSTRAKSI ---
 const isExtracting = ref(false);
@@ -195,45 +219,225 @@ const filteredContents = computed(() => {
     );
 });
 
-// --- LOGIKA FILE & FOLDER ---
-const handleFileUpload = (event) => {
-    uploadForm.file = event.target.files[0];
+// --- LOGIKA FILE & ANTREAN UNGGAH BULK (RAMAH SISTEM) ---
+const triggerFileInput = () => {
+    const input = document.getElementById('file-input');
+    if (input) input.click();
 };
 
-const submitUpload = () => {
-    if(!uploadForm.file) return Swal.fire('Error', 'Pilih berkas terlebih dahulu!', 'error');
-    
-    isUploading.value = true;
-    uploadProgress.value = 0;
-    startTime = Date.now();
+const enqueueFiles = (fileList) => {
+    if (!fileList || fileList.length === 0) return;
 
-    uploadForm.post(route('backup.store'), {
-        forceFormData: true,
-        onProgress: (progress) => {
-            uploadProgress.value = progress.percentage;
-            const duration = (Date.now() - startTime) / 1000; 
-            if (duration > 0) {
-                const bps = progress.loaded / duration; 
-                if (bps > 1024 * 1024) {
-                    uploadSpeed.value = (bps / (1024 * 1024)).toFixed(2) + ' MB/s';
-                } else {
-                    uploadSpeed.value = (bps / 1024).toFixed(2) + ' KB/s';
+    const newItems = [];
+    for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        newItems.push({
+            id: 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+            file: file,
+            name: file.name,
+            size: file.size,
+            size_formatted: formatFileSize(file.size),
+            status: 'pending',
+            progress: 0,
+            error: null,
+        });
+    }
+
+    uploadQueue.value.push(...newItems);
+    isQueueOpen.value = true;
+    isQueueMinimized.value = false;
+
+    if (!isQueueActive.value) {
+        processUploadQueue();
+    }
+};
+
+const handleFileInputChange = (event) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+        enqueueFiles(files);
+    }
+    event.target.value = '';
+};
+
+// --- LOGIKA DRAG AND DROP (GLOBAL PER AREA EXPLORER) ---
+const handleDragEnter = (e) => {
+    dragCounter++;
+    if (e.dataTransfer?.types?.includes('Files')) {
+        isDraggingOver.value = true;
+    }
+};
+
+const handleDragLeave = (e) => {
+    dragCounter--;
+    if (dragCounter <= 0) {
+        isDraggingOver.value = false;
+        dragCounter = 0;
+    }
+};
+
+const handleDragOver = (e) => {
+    e.preventDefault();
+    if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = 'copy';
+    }
+};
+
+const handleDrop = (e) => {
+    e.preventDefault();
+    isDraggingOver.value = false;
+    dragCounter = 0;
+    if (e.dataTransfer?.files?.length > 0) {
+        enqueueFiles(e.dataTransfer.files);
+    }
+};
+
+// --- MOTOR PEMROSES ANTREAN UNGGAH (SEKUANSIAL 1 PER 1: RINGAN & ANTI SERVER OVERLOAD) ---
+const processUploadQueue = async () => {
+    if (isQueueActive.value) return;
+    isQueueActive.value = true;
+
+    let anySuccess = false;
+
+    while (true) {
+        const nextItem = uploadQueue.value.find(item => item.status === 'pending');
+        if (!nextItem) break;
+
+        nextItem.status = 'uploading';
+        nextItem.progress = 0;
+        currentUploadProgress.value = 0;
+        currentUploadSpeed.value = 'Menyiapkan transmisi...';
+
+        uploadAbortController = new AbortController();
+        const startTime = Date.now();
+
+        const formData = new FormData();
+        formData.append('pc_id', props.pc.id);
+        formData.append('file', nextItem.file);
+        if (props.currentFolderId) {
+            formData.append('parent_id', props.currentFolderId);
+        }
+
+        try {
+            const res = await axios.post(route('backup.store'), formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    'Accept': 'application/json',
+                },
+                signal: uploadAbortController.signal,
+                onUploadProgress: (progressEvent) => {
+                    if (progressEvent.total) {
+                        const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                        nextItem.progress = percent;
+                        currentUploadProgress.value = percent;
+
+                        const now = Date.now();
+                        const elapsedSec = (now - startTime) / 1000;
+                        if (elapsedSec > 0.3) {
+                            const bytesPerSec = progressEvent.loaded / elapsedSec;
+                            if (bytesPerSec > 1024 * 1024) {
+                                currentUploadSpeed.value = (bytesPerSec / (1024 * 1024)).toFixed(2) + ' MB/s';
+                            } else {
+                                currentUploadSpeed.value = (bytesPerSec / 1024).toFixed(1) + ' KB/s';
+                            }
+                        }
+                    }
                 }
+            });
+
+            if (res.data?.status === 'success') {
+                nextItem.status = 'completed';
+                nextItem.progress = 100;
+                anySuccess = true;
+            } else {
+                nextItem.status = 'error';
+                nextItem.error = res.data?.message || 'Gagal menyimpan berkas.';
             }
-        },
-        onSuccess: () => {
-            isUploading.value = false;
-            uploadProgress.value = 0;
-            uploadForm.reset('file');
-            document.getElementById('file-input').value = "";
-            Swal.fire('Berhasil!', 'Berkas berhasil di unggah.', 'success');
-        },
-        onError: (err) => {
-            isUploading.value = false;
-            uploadProgress.value = 0;
-            Swal.fire('Gagal', Object.values(err)[0], 'error');
+        } catch (err) {
+            if (axios.isCancel(err) || err.name === 'CanceledError' || err.name === 'AbortError') {
+                nextItem.status = 'cancelled';
+                nextItem.error = 'Dibatalkan pengguna';
+            } else {
+                nextItem.status = 'error';
+                nextItem.error = err.response?.data?.message || err.message || 'Koneksi terputus.';
+            }
+        } finally {
+            uploadAbortController = null;
+        }
+
+        // Jeda 50ms antar berkas agar garbage collection dan memory buffer server sangat santai
+        await new Promise(r => setTimeout(r, 50));
+    }
+
+    isQueueActive.value = false;
+    currentUploadSpeed.value = '';
+
+    if (anySuccess) {
+        // Muat ulang isi folder & status storage tanpa reload halaman browser penuh
+        router.reload({
+            only: ['contents', 'pc'],
+            preserveScroll: true,
+            preserveState: true,
+        });
+
+        const completedCount = completedQueueFiles.value;
+        const failedCount = failedQueueFiles.value;
+
+        if (failedCount === 0) {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: `${completedCount} berkas berhasil diunggah!`,
+                showConfirmButton: false,
+                timer: 3000,
+            });
+        } else {
+            Swal.fire({
+                title: 'Sebagian Berkas Selesai',
+                text: `${completedCount} berhasil, ${failedCount} berkas terkendala. Silakan tinjau antrean.`,
+                icon: 'warning',
+                confirmButtonColor: '#2563eb',
+            });
+        }
+    }
+};
+
+const cancelSingleUpload = (item) => {
+    if (item.status === 'uploading' && uploadAbortController) {
+        uploadAbortController.abort();
+    } else if (item.status === 'pending') {
+        item.status = 'cancelled';
+        item.error = 'Dibatalkan';
+    }
+};
+
+const cancelAllUploads = () => {
+    if (uploadAbortController) {
+        uploadAbortController.abort();
+    }
+    uploadQueue.value.forEach(item => {
+        if (item.status === 'pending') {
+            item.status = 'cancelled';
+            item.error = 'Dibatalkan';
         }
     });
+};
+
+const clearFinishedQueue = () => {
+    uploadQueue.value = uploadQueue.value.filter(item => item.status === 'uploading' || item.status === 'pending');
+    if (uploadQueue.value.length === 0) {
+        isQueueOpen.value = false;
+    }
+};
+
+const closeUploadDrawer = () => {
+    if (isQueueActive.value) {
+        isQueueMinimized.value = true;
+    } else {
+        isQueueOpen.value = false;
+        uploadQueue.value = [];
+    }
 };
 
 // --- LOGIKA EKSTRAKSI CERDAS ---
@@ -898,7 +1102,12 @@ onUnmounted(() => {
     <Head :title="'Explorer - ' + pc.pc_name" />
 
     <AuthenticatedLayout>
-        <div class="space-y-6 font-sans" @contextmenu.prevent="">
+        <div class="space-y-6 font-sans relative" 
+             @contextmenu.prevent=""
+             @dragenter.prevent="handleDragEnter"
+             @dragover.prevent="handleDragOver"
+             @dragleave.prevent="handleDragLeave"
+             @drop.prevent="handleDrop">
             
             <!-- Page Header Card -->
             <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -962,21 +1171,36 @@ onUnmounted(() => {
                             </button>
                         </div>
                         
-                        <div class="flex items-center gap-2 bg-slate-100 p-2 rounded-xl border border-slate-200">
-                            <input id="file-input" type="file" @change="handleFileUpload" :disabled="isUploading" class="text-[10px] font-bold" />
-                            <button @click="submitUpload" :disabled="uploadForm.processing || isUploading" class="bg-blue-700 hover:bg-blue-800 text-white px-5 py-2 rounded-lg text-xs font-black uppercase transition flex items-center gap-2">
-                                {{ isUploading ? 'MENGIRIM...' : ' Unggah Berkas' }}
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <!-- Hidden Multi-file input (Dukungan Bulk Tanpa Batas) -->
+                            <input 
+                                id="file-input" 
+                                type="file" 
+                                multiple 
+                                @change="handleFileInputChange" 
+                                class="hidden" 
+                            />
+                            
+                            <!-- Tombol Unggah Berkas Bulk -->
+                            <button 
+                                type="button"
+                                @click="triggerFileInput" 
+                                class="bg-blue-700 hover:bg-blue-800 text-white px-5 py-2 rounded-xl text-xs font-black uppercase transition flex items-center gap-2 shadow-xs cursor-pointer active:scale-95"
+                                title="Pilih satu atau banyak berkas sekaligus tanpa batas (bisa drag & drop langsung)">
+                                <span>📤</span>
+                                <span>Unggah Berkas (Bulk)</span>
                             </button>
-                        </div>
-                    </div>
 
-                    <div v-if="isUploading" class="bg-blue-50 p-4 rounded-xl border border-blue-200 animate-pulse">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-blue-600 font-black text-xs uppercase italic"> Progres : {{ uploadProgress }}%</span>
-                            <span class="text-blue-800 font-mono text-[10px] font-bold">Speed: {{ uploadSpeed }}</span>
-                        </div>
-                        <div class="w-full bg-blue-200 rounded-full h-3 overflow-hidden shadow-inner">
-                            <div class="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out" :style="{ width: uploadProgress + '%' }"></div>
+                            <!-- Indikator Drawer Antrean Aktif / Diminimalkan -->
+                            <button 
+                                v-if="isQueueOpen && isQueueMinimized" 
+                                type="button" 
+                                @click="isQueueMinimized = false" 
+                                class="px-3.5 py-2 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-black uppercase flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                                title="Buka kembali panel pemantau antrean unggah">
+                                <span class="w-2 h-2 rounded-full bg-indigo-600 animate-ping"></span>
+                                <span>{{ completedQueueFiles }}/{{ totalQueueFiles }} Berkas</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1597,6 +1821,165 @@ onUnmounted(() => {
                             </button>
                         </div>
                     </div>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- DRAG AND DROP OVERLAY (VISUAL FEEDBACK KETIKA MENGGESER BERKAS) -->
+        <Teleport to="body">
+            <div v-if="isDraggingOver" 
+                 class="fixed inset-0 z-[350] bg-blue-900/60 backdrop-blur-xs border-8 border-dashed border-white/80 flex flex-col items-center justify-center p-6 pointer-events-none animate-fade-in">
+                <div class="bg-white p-8 sm:p-10 rounded-3xl shadow-2xl flex flex-col items-center gap-4 text-center max-w-md border-t-8 border-blue-600 animate-bounce">
+                    <span class="text-6xl">📥</span>
+                    <div>
+                        <h3 class="text-xl font-black uppercase tracking-tight text-slate-900">Lepaskan Berkas Di Sini</h3>
+                        <p class="text-xs font-bold text-slate-500 mt-1">
+                            Bisa melepaskan banyak berkas sekaligus tanpa batas. Sistem akan mengunggah secara berurutan dan sangat enteng bagi server.
+                        </p>
+                    </div>
+                    <span class="px-3.5 py-1.5 bg-blue-50 text-blue-700 rounded-full text-[11px] font-black uppercase tracking-wider">
+                        Tujuan: {{ currentFolderId ? (breadcrumbs?.[breadcrumbs.length - 1]?.name || 'Folder Aktif') : pc.pc_name }}
+                    </span>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- FLOATING BULK UPLOAD DOCK (GOOGLE DRIVE STYLE - RINGAN KE SERVER) -->
+        <Teleport to="body">
+            <div v-if="isQueueOpen" class="fixed bottom-5 right-5 z-[280] w-full max-w-sm sm:max-w-md transition-all duration-300">
+                
+                <!-- MINIMIZED VIEW (SLIM FLOATING PILL) -->
+                <div v-if="isQueueMinimized" 
+                     @click="isQueueMinimized = false"
+                     class="bg-slate-900/95 backdrop-blur-md text-white p-3.5 rounded-2xl shadow-2xl border border-slate-700 flex items-center justify-between cursor-pointer hover:bg-slate-800 transition group">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-sm font-bold shadow-xs shrink-0" :class="{ 'animate-pulse': isQueueActive }">
+                            📤
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-xs font-black uppercase truncate">
+                                {{ isQueueActive ? `Mengunggah (${completedQueueFiles}/${totalQueueFiles})` : `Selesai (${completedQueueFiles}/${totalQueueFiles})` }}
+                            </p>
+                            <p class="text-[10px] text-slate-300 font-mono">
+                                {{ isQueueActive ? `${overallProgressPercent}% • ${currentUploadSpeed || 'Memproses'}` : 'Klik untuk melihat rincian' }}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="text-[11px] font-black text-blue-400 group-hover:text-blue-300 uppercase">Buka ↗</span>
+                        <button @click.stop="closeUploadDrawer" class="text-slate-400 hover:text-white text-lg font-bold leading-none p-1 transition" title="Tutup">
+                            &times;
+                        </button>
+                    </div>
+                </div>
+
+                <!-- EXPANDED VIEW (FULL UPLOAD MANAGEMENT CARD) -->
+                <div v-else class="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[75vh] animate-fade-in">
+                    
+                    <!-- Header -->
+                    <div class="p-4 bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 text-white flex items-center justify-between">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <span class="text-lg">📤</span>
+                            <div class="min-w-0">
+                                <h4 class="text-xs font-black uppercase tracking-tight truncate">
+                                    {{ isQueueActive ? 'Proses Unggah Berkas' : (failedQueueFiles > 0 ? 'Unggah Berkas Selesai (Ada Kendala)' : 'Seluruh Berkas Selesai Diunggah') }}
+                                </h4>
+                                <p class="text-[10px] text-blue-200 font-bold">
+                                    {{ completedQueueFiles }} dari {{ totalQueueFiles }} selesai
+                                    <span v-if="currentUploadSpeed && isQueueActive" class="font-mono text-emerald-300 ml-1.5 font-normal">({{ currentUploadSpeed }})</span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <button @click="isQueueMinimized = true" class="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center font-bold text-xs transition cursor-pointer" title="Minimalkan ke pojok">
+                                _
+                            </button>
+                            <button @click="closeUploadDrawer" class="w-7 h-7 rounded-lg bg-white/10 hover:bg-rose-600 text-white flex items-center justify-center font-bold text-sm transition cursor-pointer" title="Tutup">
+                                &times;
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Overall Progress Bar -->
+                    <div class="w-full bg-slate-100 h-2 overflow-hidden">
+                        <div 
+                            class="h-2 transition-all duration-300 ease-out"
+                            :class="failedQueueFiles > 0 && !isQueueActive ? 'bg-amber-500' : 'bg-gradient-to-r from-blue-600 to-emerald-500'"
+                            :style="{ width: overallProgressPercent + '%' }"
+                        ></div>
+                    </div>
+
+                    <!-- File List (Scrollable) -->
+                    <div class="p-3 overflow-y-auto divide-y divide-slate-100 flex-1 min-h-[140px] max-h-[300px]">
+                        <div v-for="item in uploadQueue" :key="item.id" class="py-2.5 px-2 flex items-center justify-between gap-3 text-xs hover:bg-slate-50 rounded-xl transition">
+                            
+                            <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                                <span class="text-base shrink-0">
+                                    {{ item.status === 'completed' ? '✅' : (item.status === 'error' ? '❌' : (item.status === 'uploading' ? '🚀' : '⏳')) }}
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    <p class="font-black text-slate-800 truncate uppercase tracking-tight">{{ item.name }}</p>
+                                    <div class="flex items-center gap-2 text-[10px] text-slate-400 font-semibold">
+                                        <span>{{ item.size_formatted }}</span>
+                                        <span v-if="item.status === 'uploading'" class="text-blue-600 font-black">{{ item.progress }}%</span>
+                                        <span v-else-if="item.status === 'completed'" class="text-emerald-600 font-bold">Tersimpan</span>
+                                        <span v-else-if="item.status === 'error'" class="text-rose-600 font-bold truncate" :title="item.error">{{ item.error }}</span>
+                                        <span v-else-if="item.status === 'cancelled'" class="text-slate-400 italic">Dibatalkan</span>
+                                        <span v-else class="text-slate-400">Menunggu giliran...</span>
+                                    </div>
+
+                                    <!-- Individual progress bar if currently uploading -->
+                                    <div v-if="item.status === 'uploading'" class="w-full bg-slate-200 rounded-full h-1 mt-1 overflow-hidden">
+                                        <div class="bg-blue-600 h-1 rounded-full transition-all duration-150" :style="{ width: item.progress + '%' }"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Single Cancel Button -->
+                            <div class="flex items-center gap-1 pl-1 shrink-0">
+                                <button 
+                                    v-if="item.status === 'pending' || item.status === 'uploading'"
+                                    @click="cancelSingleUpload(item)"
+                                    class="w-6 h-6 rounded-md hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center font-bold text-xs transition cursor-pointer"
+                                    title="Batalkan berkas ini">
+                                    &times;
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer Controls -->
+                    <div class="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs gap-2">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            {{ isQueueActive ? 'Transmisi 1 per 1 (Ramah Server)' : 'Semua Antrean Selesai' }}
+                        </span>
+
+                        <div class="flex items-center gap-2">
+                            <button 
+                                v-if="isQueueActive"
+                                type="button"
+                                @click="cancelAllUploads"
+                                class="px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-[10px] font-black uppercase transition cursor-pointer">
+                                Batalkan Semua
+                            </button>
+                            <button 
+                                v-if="!isQueueActive && completedQueueFiles > 0"
+                                type="button"
+                                @click="clearFinishedQueue"
+                                class="px-3 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-[10px] font-black uppercase transition cursor-pointer">
+                                Bersihkan
+                            </button>
+                            <button 
+                                v-if="!isQueueActive"
+                                type="button"
+                                @click="closeUploadDrawer"
+                                class="px-3.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-black uppercase transition cursor-pointer">
+                                Selesai
+                            </button>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </Teleport>

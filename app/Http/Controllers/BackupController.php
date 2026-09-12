@@ -470,7 +470,7 @@ class BackupController extends Controller
     }
 
     /**
-     * UPLOAD BERKAS KE STORAGE (MAX 20MB)
+     * UPLOAD BERKAS KE STORAGE (MAX 20GB, RESPON DUKUNG JSON & INERTIA)
      */
     public function store(Request $request)
     {
@@ -484,15 +484,21 @@ class BackupController extends Controller
         $fileSize = $request->file('file')->getSize();
 
         if (($pc->current_usage + $fileSize) > $pc->max_quota) {
-            return back()->with('error', 'Penyimpanan Penuh! Kapasitas 200GB terlampaui.');
+            $msg = 'Penyimpanan Penuh! Kapasitas ' . $this->formatBytes($pc->max_quota) . ' terlampaui.';
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['status' => 'error', 'message' => $msg], 422);
+            }
+            return back()->with('error', $msg);
         }
 
-        $path = $request->file('file')->storeAs('backups/' . $pc->id, time() . '_' . $request->file('file')->getClientOriginalName(), 'public');
+        $uniquePrefix = time() . '_' . substr(uniqid(), -6);
+        $cleanFileName = $request->file('file')->getClientOriginalName();
+        $path = $request->file('file')->storeAs('backups/' . $pc->id, $uniquePrefix . '_' . $cleanFileName, 'public');
 
-        Backup::create([
+        $backup = Backup::create([
             'pc_id' => $pc->id,
             'parent_id' => $request->parent_id, 
-            'file_name' => $request->file('file')->getClientOriginalName(),
+            'file_name' => $cleanFileName,
             'file_path' => $path,
             'file_size' => $fileSize,
             'is_folder' => false,
@@ -500,7 +506,26 @@ class BackupController extends Controller
         ]);
 
         $pc->increment('current_usage', $fileSize);
-        return back()->with('success', 'Berkas berhasil diamankan .');
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Berkas ' . $cleanFileName . ' berhasil diamankan.',
+                'item' => [
+                    'id' => $backup->id,
+                    'file_name' => $backup->file_name,
+                    'file_size' => $backup->file_size,
+                    'size_human' => $this->formatBytes($backup->file_size),
+                    'date_human' => Carbon::now()->format('d M Y H:i'),
+                ],
+                'pc' => [
+                    'current_usage' => $pc->current_usage,
+                    'usage_percentage' => round(($pc->current_usage / $pc->max_quota) * 100, 2),
+                ]
+            ]);
+        }
+
+        return back()->with('success', 'Berkas berhasil diamankan.');
     }
 
     public function download($id)
