@@ -4,6 +4,7 @@ import { Head, useForm, Link, router } from '@inertiajs/vue3';
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'; 
 import Swal from 'sweetalert2';
 import axios from 'axios'; 
+import SecureThumbnail from '@/Components/SecureThumbnail.vue'; 
 
 const props = defineProps({
     pc: Object,
@@ -1972,14 +1973,15 @@ onUnmounted(() => {
                                     <td class="p-4">
                                         <div class="flex items-center gap-3">
                                             <div class="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200">
-                                                <img v-if="(isImage(item) || isArw(item)) && item.preview_url && !thumbnailErrors[item.id]"
-                                                     :src="item.thumbnail_url || item.preview_url" 
-                                                     :alt="item.file_name"
-                                                     loading="lazy"
-                                                     @error="thumbnailErrors[item.id] = true"
-                                                     @contextmenu.prevent=""
-                                                     draggable="false"
-                                                     class="w-full h-full object-cover object-center pointer-events-none" />
+                                                <SecureThumbnail 
+                                                    v-if="(isImage(item) || isArw(item)) && item.preview_url"
+                                                    :src="item.thumbnail_url || item.preview_url" 
+                                                    :alt="item.file_name"
+                                                    :is-arw="isArw(item)"
+                                                    aspect-class="w-full h-full"
+                                                    container-class="border-0 rounded-xl"
+                                                    :show-lock="false"
+                                                />
                                                 <svg v-else-if="item.is_folder" class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
                                                 <svg v-else-if="isExcel(item)" class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                                 <svg v-else-if="isPdf(item)" class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
@@ -2098,20 +2100,15 @@ onUnmounted(() => {
                             <!-- Area Ikon / Thumbnail Tengah Besar -->
                             <div class="h-32 w-full bg-slate-100 rounded-xl flex items-center justify-center relative overflow-hidden group-hover:shadow-inner transition mb-3">
                                 <!-- 1. Preview Gambar / Sony RAW Nyata -->
-                                <template v-if="(isImage(item) || isArw(item)) && item.preview_url && !thumbnailErrors[item.id]">
-                                    <img :src="item.thumbnail_url || item.preview_url" 
-                                         :alt="item.file_name"
-                                         loading="lazy"
-                                         @error="thumbnailErrors[item.id] = true"
-                                         @contextmenu.prevent=""
-                                         draggable="false"
-                                         class="w-full h-full object-cover object-center rounded-xl transition duration-300 group-hover:scale-105 pointer-events-none" />
-                                    
-                                    <!-- Badge Sony RAW jika ARW -->
-                                    <span v-if="isArw(item)" class="absolute bottom-2 right-2 px-1.5 py-0.5 text-[8px] bg-amber-600/90 backdrop-blur-xs text-white rounded font-black uppercase tracking-wider shadow-xs">
-                                        RAW
-                                    </span>
-                                </template>
+                                <SecureThumbnail 
+                                    v-if="(isImage(item) || isArw(item)) && item.preview_url"
+                                    :src="item.thumbnail_url || item.preview_url" 
+                                    :alt="item.file_name"
+                                    :is-arw="isArw(item)"
+                                    aspect-class="w-full h-full"
+                                    container-class="border-0 rounded-xl"
+                                    :show-lock="false"
+                                />
 
                                 <!-- 2. Ikon Vektor Bersih (Non-Emoji) untuk Folder & Tipe Berkas Lain -->
                                 <template v-else-if="item.is_folder">
@@ -2210,16 +2207,15 @@ onUnmounted(() => {
 
                             <!-- Area Ikon / Thumbnail Sedang -->
                             <div class="w-full h-16 bg-slate-100 rounded-lg flex items-center justify-center relative overflow-hidden mb-1.5">
-                                <template v-if="(isImage(item) || isArw(item)) && item.preview_url && !thumbnailErrors[item.id]">
-                                    <img :src="item.thumbnail_url || item.preview_url" 
-                                         :alt="item.file_name"
-                                         loading="lazy"
-                                         @error="thumbnailErrors[item.id] = true"
-                                         @contextmenu.prevent=""
-                                         draggable="false"
-                                         class="w-full h-full object-cover object-center rounded-lg pointer-events-none" />
-                                    <span v-if="isArw(item)" class="absolute bottom-1 right-1 px-1 text-[7px] bg-amber-600 text-white rounded font-black">RAW</span>
-                                </template>
+                                <SecureThumbnail 
+                                    v-if="(isImage(item) || isArw(item)) && item.preview_url"
+                                    :src="item.thumbnail_url || item.preview_url" 
+                                    :alt="item.file_name"
+                                    :is-arw="isArw(item)"
+                                    aspect-class="w-full h-full"
+                                    container-class="border-0 rounded-lg"
+                                    :show-lock="false"
+                                />
                                 <template v-else-if="item.is_folder">
                                     <svg class="w-7 h-7 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
                                 </template>
@@ -2266,14 +2262,15 @@ onUnmounted(() => {
                                    class="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer shrink-0" />
 
                             <div class="w-7 h-7 rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200">
-                                <img v-if="(isImage(item) || isArw(item)) && item.preview_url && !thumbnailErrors[item.id]"
-                                     :src="item.thumbnail_url || item.preview_url" 
-                                     :alt="item.file_name"
-                                     loading="lazy"
-                                     @error="thumbnailErrors[item.id] = true"
-                                     @contextmenu.prevent=""
-                                     draggable="false"
-                                     class="w-full h-full object-cover object-center pointer-events-none" />
+                                <SecureThumbnail 
+                                    v-if="(isImage(item) || isArw(item)) && item.preview_url"
+                                    :src="item.thumbnail_url || item.preview_url" 
+                                    :alt="item.file_name"
+                                    :is-arw="isArw(item)"
+                                    aspect-class="w-full h-full"
+                                    container-class="border-0 rounded-lg"
+                                    :show-lock="false"
+                                />
                                 <svg v-else-if="item.is_folder" class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
                                 <svg v-else-if="isExcel(item)" class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                 <svg v-else-if="isPdf(item)" class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>

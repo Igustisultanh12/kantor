@@ -3,6 +3,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import axios from 'axios';
 import Swal from 'sweetalert2';
+import SecureThumbnail from '@/Components/SecureThumbnail.vue';
 
 const props = defineProps({
     needsPin: {
@@ -589,30 +590,14 @@ const exitAndLock = () => {
                                 </div>
 
                                 <!-- Gambar / Foto Sony RAW (Real Thumbnail Preview) -->
-                                <div 
-                                    v-else-if="(isImage(item.file_name) || isArw(item.file_name)) && !thumbnailErrors[item.id]"
+                                <SecureThumbnail 
+                                    v-else-if="isImage(item.file_name) || isArw(item.file_name)"
+                                    :src="item.thumbnail_url || item.preview_url" 
+                                    :alt="item.file_name"
+                                    :is-arw="isArw(item.file_name)"
+                                    aspect-class="aspect-4/3 sm:aspect-square"
                                     @click="openPreview(item)"
-                                    class="relative w-full aspect-4/3 sm:aspect-square bg-slate-900/5 rounded-xl overflow-hidden flex items-center justify-center border border-slate-200/80 group-hover:border-indigo-400 transition shadow-2xs">
-                                    <img 
-                                        :src="item.thumbnail_url || item.preview_url" 
-                                        :alt="item.file_name"
-                                        loading="lazy"
-                                        @error="thumbnailErrors[item.id] = true"
-                                        @contextmenu.prevent=""
-                                        draggable="false"
-                                        class="w-full h-full object-cover select-none pointer-events-none transition-transform duration-300 group-hover:scale-105"
-                                    />
-                                    <!-- Badge RAW jika ARW -->
-                                    <span v-if="isArw(item.file_name)" class="absolute top-1.5 left-1.5 px-1.5 py-0.5 text-[8px] sm:text-[9px] bg-amber-500 text-white rounded font-black uppercase shadow-xs">
-                                        RAW
-                                    </span>
-                                    <!-- Ikon Gembok Minimalis -->
-                                    <span class="absolute top-1.5 right-1.5 p-1 bg-black/40 backdrop-blur-xs rounded-full text-white/90">
-                                        <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
-                                        </svg>
-                                    </span>
-                                </div>
+                                />
 
                                 <!-- PDF Document -->
                                 <div v-else-if="isPdf(item.file_name)" class="w-full aspect-4/3 sm:aspect-square bg-rose-50/80 rounded-xl flex flex-col items-center justify-center border border-rose-100/80 group-hover:bg-rose-100/70 transition relative">
@@ -717,23 +702,15 @@ const exitAndLock = () => {
                                     </svg>
                                 </div>
 
-                                <div 
-                                    v-else-if="(isImage(item.file_name) || isArw(item.file_name)) && !thumbnailErrors[item.id]"
+                                <SecureThumbnail 
+                                    v-else-if="isImage(item.file_name) || isArw(item.file_name)"
+                                    :src="item.thumbnail_url || item.preview_url" 
+                                    :alt="item.file_name"
+                                    :is-arw="isArw(item.file_name)"
+                                    aspect-class="aspect-square"
+                                    :show-lock="false"
                                     @click="openPreview(item)"
-                                    class="relative w-full aspect-square bg-slate-900/5 rounded-lg overflow-hidden flex items-center justify-center border border-slate-200/80 group-hover:border-indigo-400 transition">
-                                    <img 
-                                        :src="item.thumbnail_url || item.preview_url" 
-                                        :alt="item.file_name"
-                                        loading="lazy"
-                                        @error="thumbnailErrors[item.id] = true"
-                                        @contextmenu.prevent=""
-                                        draggable="false"
-                                        class="w-full h-full object-cover select-none pointer-events-none transition-transform duration-300 group-hover:scale-105"
-                                    />
-                                    <span v-if="isArw(item.file_name)" class="absolute top-1 left-1 px-1 py-0.2 text-[8px] bg-amber-500 text-white rounded font-black uppercase shadow-xs">
-                                        RAW
-                                    </span>
-                                </div>
+                                />
 
                                 <div v-else-if="isPdf(item.file_name)" class="w-full aspect-square bg-rose-50 rounded-lg flex items-center justify-center border border-rose-100">
                                     <svg class="w-8 h-8 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -820,15 +797,13 @@ const exitAndLock = () => {
                                 <div class="flex items-center gap-3 min-w-0 flex-1">
                                     <!-- Mini Thumbnail atau SVG Icon -->
                                     <div class="w-12 h-12 rounded-xl overflow-hidden shrink-0 flex items-center justify-center border border-slate-200/80 bg-slate-100">
-                                        <img 
-                                            v-if="(isImage(item.file_name) || isArw(item.file_name)) && !thumbnailErrors[item.id]"
+                                        <SecureThumbnail 
+                                            v-if="isImage(item.file_name) || isArw(item.file_name)"
                                             :src="item.thumbnail_url || item.preview_url" 
                                             :alt="item.file_name"
-                                            loading="lazy"
-                                            @error="thumbnailErrors[item.id] = true"
-                                            @contextmenu.prevent=""
-                                            draggable="false"
-                                            class="w-full h-full object-cover select-none pointer-events-none"
+                                            :is-arw="isArw(item.file_name)"
+                                            aspect-class="w-full h-full"
+                                            :show-lock="false"
                                         />
                                         <svg v-else-if="item.is_folder" class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
@@ -930,15 +905,13 @@ const exitAndLock = () => {
                                             <div class="flex items-center gap-3">
                                                 <!-- Thumbnail / SVG Icon -->
                                                 <div class="w-9 h-9 rounded-lg overflow-hidden shrink-0 flex items-center justify-center border border-slate-200/80 bg-slate-100">
-                                                    <img 
-                                                        v-if="(isImage(item.file_name) || isArw(item.file_name)) && !thumbnailErrors[item.id]"
+                                                    <SecureThumbnail 
+                                                        v-if="isImage(item.file_name) || isArw(item.file_name)"
                                                         :src="item.thumbnail_url || item.preview_url" 
                                                         :alt="item.file_name"
-                                                        loading="lazy"
-                                                        @error="thumbnailErrors[item.id] = true"
-                                                        @contextmenu.prevent=""
-                                                        draggable="false"
-                                                        class="w-full h-full object-cover select-none pointer-events-none"
+                                                        :is-arw="isArw(item.file_name)"
+                                                        aspect-class="w-full h-full"
+                                                        :show-lock="false"
                                                     />
                                                     <div v-else-if="item.is_folder" class="w-full h-full bg-indigo-50 flex items-center justify-center text-indigo-600">
                                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
