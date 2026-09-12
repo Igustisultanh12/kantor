@@ -45,8 +45,21 @@ class ArwService
             return $cachedJpgPath;
         }
 
-        // Jalankan pipeline konversi multi-tier
-        $success = self::executeConversionPipeline($fullArwPath, $cachedJpgPath);
+        // Jalankan pipeline konversi multi-tier (dengan penanganan otomatis jika berkas terenkripsi)
+        $tempArw = null;
+        $pipelineSourcePath = $fullArwPath;
+        if (FileSecurityService::isEncrypted($fullArwPath)) {
+            $tempArw = FileSecurityService::createDecryptedTempFile($fullArwPath);
+            if ($tempArw) {
+                $pipelineSourcePath = $tempArw;
+            }
+        }
+
+        $success = self::executeConversionPipeline($pipelineSourcePath, $cachedJpgPath);
+
+        if ($tempArw && file_exists($tempArw)) {
+            @unlink($tempArw);
+        }
 
         if ($success && file_exists($cachedJpgPath) && filesize($cachedJpgPath) > 10000) {
             return $cachedJpgPath;
@@ -115,7 +128,7 @@ class ArwService
             @mkdir($destDir, 0777, true);
         }
 
-        if (!copy($convertedJpgPath, $destFullPath)) {
+        if (!FileSecurityService::encryptAndStoreFile($convertedJpgPath, $destFullPath)) {
             return null;
         }
 

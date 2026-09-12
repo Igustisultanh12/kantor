@@ -618,8 +618,8 @@ const promptConvertArw = (item) => {
         confirmButtonColor: '#2563eb',
         denyButtonColor: '#059669',
         cancelButtonColor: '#64748b',
-        confirmButtonText: '💾 Simpan JPG di Folder',
-        denyButtonText: '⬇️ Unduh Langsung JPG',
+        confirmButtonText: 'Simpan JPG di Folder',
+        denyButtonText: 'Unduh Langsung JPG',
         cancelButtonText: 'Batal',
     }).then(async (result) => {
         if (result.isConfirmed) {
@@ -1348,8 +1348,12 @@ onUnmounted(() => {
                                         <div>
                                             <div class="flex items-center gap-2 flex-wrap">
                                                 <p class="font-black text-gray-800 uppercase tracking-tighter">{{ item.file_name }}</p>
-                                                <span v-if="isArw(item)" class="px-2 py-0.5 text-[9px] bg-amber-100 text-amber-800 rounded-full font-bold uppercase border border-amber-300 flex items-center gap-1">
-                                                    <span>📷</span> Sony RAW
+                                                <!-- Ikon Gembok Minimalis -->
+                                                <svg v-if="!item.is_folder" class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="currentColor" viewBox="0 0 20 20" title="Akses Terproteksi">
+                                                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                                                </svg>
+                                                <span v-if="isArw(item)" class="px-2 py-0.5 text-[9px] bg-amber-100 text-amber-800 rounded-full font-bold uppercase border border-amber-300">
+                                                    Sony RAW
                                                 </span>
                                                 <span v-if="item.is_folder && item.share_info?.is_active" class="px-2 py-0.5 text-[9px] bg-emerald-100 text-emerald-700 rounded-full font-bold uppercase border border-emerald-300 flex items-center gap-1">
                                                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -1373,14 +1377,19 @@ onUnmounted(() => {
                                                 @click.stop="openShareModal(item)" 
                                                 class="bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white p-2 rounded-lg transition shadow-xs flex items-center justify-center cursor-pointer" 
                                                 :title="item.share_info?.is_active ? 'Kelola Tautan Berbagi (Aktif)' : 'Bagikan Folder (Buat Tautan)'">
-                                            🔗
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                                            </svg>
                                         </button>
                                         <!-- Tombol Konversi ARW ke JPG HD -->
                                         <button v-if="isArw(item)" 
                                                 @click.stop="promptConvertArw(item)" 
-                                                class="bg-amber-100 text-amber-800 hover:bg-amber-600 hover:text-white p-2 rounded-lg transition shadow-xs flex items-center justify-center cursor-pointer font-bold" 
+                                                class="bg-amber-100 text-amber-800 hover:bg-amber-600 hover:text-white px-2.5 py-1.5 rounded-lg transition shadow-xs flex items-center justify-center cursor-pointer font-bold text-xs gap-1" 
                                                 title="Konversi Sony RAW (.ARW) ke Format JPG HD">
-                                            🔄
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                            </svg>
+                                            <span>JPG</span>
                                         </button>
                                         <!-- Tombol Edit Excel Khusus Berkas Spreadsheet -->
                                         <button v-if="isExcel(item)" 
@@ -1393,26 +1402,35 @@ onUnmounted(() => {
                                         </button>
                                         <button v-if="!item.is_folder && (item.file_type?.toLowerCase() === 'zip' || item.file_name?.toLowerCase().endsWith('.zip'))" 
                                                 @click.stop="handleExtract(item)" 
-                                                class="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 p-2 rounded-lg transition" 
+                                                class="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 p-2 rounded-lg transition cursor-pointer" 
                                                 title="Ekstrak Paket ZIP">
-                                            📦
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                                            </svg>
                                         </button>
                                         <button v-if="!item.is_folder" 
                                                 @click.stop="openPreview(item)" 
-                                                class="bg-blue-100 text-blue-700 hover:bg-blue-200 p-2 rounded-lg transition" 
+                                                class="bg-blue-100 text-blue-700 hover:bg-blue-200 p-2 rounded-lg transition cursor-pointer" 
                                                 :title="isArw(item) ? 'Lihat Pratinjau Sony RAW' : 'Preview'">
-                                            👁️
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
                                         </button>
                                         <a v-if="!item.is_folder" 
                                            :href="route('backup.download', item.id)" 
-                                           class="bg-green-100 text-green-700 hover:bg-green-200 p-2 rounded-lg transition" 
+                                           class="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 p-2 rounded-lg transition cursor-pointer flex items-center justify-center" 
                                            title="Download">
-                                            ⬇️
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                            </svg>
                                         </a>
                                         <button @click.stop="deleteItem(item)" 
-                                                class="bg-red-100 text-red-700 hover:bg-red-200 p-2 rounded-lg transition" 
+                                                class="bg-rose-100 text-rose-700 hover:bg-rose-200 p-2 rounded-lg transition cursor-pointer flex items-center justify-center" 
                                                 title="Hapus">
-                                            🗑️
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
                                         </button>
                                     </div>
                                 </td>
@@ -1498,7 +1516,15 @@ onUnmounted(() => {
                  :class="previewType === 'arw' ? 'border-amber-500' : 'border-blue-600'">
                 <div class="p-5 border-b flex justify-between items-center bg-slate-50">
                     <div class="flex items-center gap-3 min-w-0">
-                        <span class="text-xl">{{ previewType === 'arw' ? '📷' : '📄' }}</span>
+                        <div class="w-8 h-8 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center shrink-0">
+                            <svg v-if="previewType === 'arw'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            </svg>
+                            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        </div>
                         <div class="min-w-0">
                             <div class="flex items-center gap-2">
                                 <h3 class="font-black text-sm uppercase tracking-tighter truncate">{{ activePreviewItem?.file_name }}</h3>
@@ -1516,28 +1542,32 @@ onUnmounted(() => {
                         <template v-if="activePreviewItem && isArw(activePreviewItem)">
                             <button @click="convertArw(activePreviewItem, true)" 
                                     :disabled="isConvertingArw"
-                                    class="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-2 rounded-xl font-black text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                    class="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                                     title="Konversi dan simpan berkas JPG baru di folder">
-                                <span>💾</span>
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                                </svg>
                                 <span>{{ isConvertingArw ? 'Mengonversi...' : 'Simpan JPG di Folder' }}</span>
                             </button>
                             <a :href="route('backup.download-arw-jpg', activePreviewItem.id)" 
-                               class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl font-black text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+                               class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer"
                                title="Unduh langsung sebagai JPG kualitas tinggi">
-                                <span>⬇️</span>
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
                                 <span>Unduh JPG HD</span>
                             </a>
                         </template>
 
                         <button v-if="activePreviewItem && isExcel(activePreviewItem)" 
                                 @click="const itm = activePreviewItem; closePreview(); openExcelEditor(itm);" 
-                                class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-black text-xs transition shadow-sm flex items-center gap-2 cursor-pointer">
+                                class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold text-xs transition shadow-sm flex items-center gap-2 cursor-pointer">
                             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-2h2v2zm0-4H7v-2h2v2zm0-4H7V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z"/>
                             </svg>
-                            <span>Edit Excel Ini</span>
+                            <span>Edit Excel</span>
                         </button>
-                        <button @click="closePreview" class="bg-red-500 text-white px-5 py-2 rounded-xl font-black text-xs hover:bg-red-600 transition shadow-lg cursor-pointer">TUTUP</button>
+                        <button @click="closePreview" class="bg-slate-700 text-white px-4 py-2 rounded-xl font-bold text-xs hover:bg-slate-800 transition shadow-sm cursor-pointer">Tutup</button>
                     </div>
                 </div>
                 
@@ -1551,7 +1581,7 @@ onUnmounted(() => {
 
                     <!-- Badge Keterangan Kualitas untuk ARW di pojok bawah -->
                     <div v-if="previewType === 'arw'" class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md text-amber-300 text-[11px] font-bold px-4 py-1.5 rounded-full border border-amber-500/40 flex items-center gap-2 shadow-xl">
-                        <span>📷 Pratinjau Sony Alpha RAW Resolusi Tinggi</span>
+                        <span>Pratinjau Sony Alpha RAW Resolusi Tinggi</span>
                     </div>
                 </div>
             </div>

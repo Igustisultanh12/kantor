@@ -6,6 +6,7 @@ use App\Models\Pc;
 use App\Models\Backup;
 use App\Models\BackupShare;
 use App\Services\ArwService;
+use App\Services\FileSecurityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -144,6 +145,12 @@ class BackupShareController extends Controller
                 'shareName' => $share->share_name,
                 'folderName' => $share->folder?->file_name ?: $share->pc->pc_name,
                 'pcName' => $share->pc->pc_name,
+                'currentUser' => Auth::user() ? [
+                    'id' => Auth::id(),
+                    'name' => Auth::user()->name,
+                    'pangkat' => Auth::user()->pangkat ?? 'Personel',
+                    'nrp' => Auth::user()->nrp ?? Auth::user()->nip ?? null,
+                ] : null,
             ]);
         }
 
@@ -189,6 +196,7 @@ class BackupShareController extends Controller
             $itemArray['is_arw'] = $isArw;
             $itemArray['preview_url'] = !$item->is_folder ? route('backup.shared.preview', ['token' => $token, 'fileId' => $item->id]) : null;
             $itemArray['download_jpg_url'] = $isArw ? route('backup.shared.download-arw-jpg', ['token' => $token, 'fileId' => $item->id]) : null;
+            $itemArray['is_secured'] = true;
             return $itemArray;
         });
 
@@ -232,6 +240,12 @@ class BackupShareController extends Controller
             'shareRootFolderId' => $share->backup_id,
             'breadcrumbs' => $breadcrumbs,
             'searchQuery' => $search,
+            'currentUser' => Auth::user() ? [
+                'id' => Auth::id(),
+                'name' => Auth::user()->name,
+                'pangkat' => Auth::user()->pangkat ?? 'Personel',
+                'nrp' => Auth::user()->nrp ?? Auth::user()->nip ?? null,
+            ] : null,
         ]);
     }
 
@@ -277,6 +291,12 @@ class BackupShareController extends Controller
 
         // Catat keberhasilan verifikasi ke dalam session
         session()->put('verified_backup_share_' . $share->id, true);
+
+        // Catat log audit personel yang mengakses
+        $user = Auth::user();
+        if ($user) {
+            Log::info("Personel {$user->name} (" . ($user->nrp ?? $user->id) . ") berhasil memverifikasi PIN folder share ID {$share->id}");
+        }
 
         // Perbarui statistik akses
         $share->increment('access_count');
@@ -330,13 +350,7 @@ class BackupShareController extends Controller
         }
 
         $mimeType = @mime_content_type($fullPath) ?: 'application/octet-stream';
-        $fileSize = @filesize($fullPath) ?: 0;
-
-        return response()->download($fullPath, $file->file_name, [
-            'Content-Type' => $mimeType,
-            'Content-Length' => $fileSize,
-            'Cache-Control' => 'no-cache, must-revalidate'
-        ]);
+        return FileSecurityService::streamDecryptedDownload($fullPath, $file->file_name, $mimeType);
     }
 
     /**
@@ -367,8 +381,7 @@ class BackupShareController extends Controller
             return ArwService::previewResponse($fullPath, $file->file_name);
         }
 
-        $mimeType = @mime_content_type($fullPath) ?: 'application/octet-stream';
-        return response()->file($fullPath, ['Content-Type' => $mimeType]);
+        return FileSecurityService::streamDecryptedInline($fullPath, $file->file_name);
     }
 
     /**
@@ -433,14 +446,29 @@ class BackupShareController extends Controller
         $zipTempPath = storage_path('app/public/temp_' . $zipFileName);
 
         $zip = new ZipArchive();
+        $createdTempFiles = [];
+
         if ($zip->open($zipTempPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
             foreach ($files as $file) {
                 $fullPath = storage_path('app/public/' . $file->file_path);
                 if (file_exists($fullPath)) {
-                    $zip->addFile($fullPath, $file->file_name);
+                    if (FileSecurityService::isEncrypted($fullPath)) {
+                        $tmp = FileSecurityService::createDecryptedTempFile($fullPath);
+                        if ($tmp) {
+                            $createdTempFiles[] = $tmp;
+                            $zip->addFile($tmp, $file->file_name);
+                        }
+                    } else {
+                        $zip->addFile($fullPath, $file->file_name);
+                    }
                 }
             }
             $zip->close();
+
+            // Bersihkan file sementara yang dibuat untuk zip
+            foreach ($createdTempFiles as $tmp) {
+                @unlink($tmp);
+            }
 
             if (file_exists($zipTempPath)) {
                 return response()->download($zipTempPath, $zipFileName)->deleteFileAfterSend(true);

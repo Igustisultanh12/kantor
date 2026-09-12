@@ -9,6 +9,7 @@ use App\Models\OfficeNetwork;
 use App\Models\User;
 use App\Models\BackupShare;
 use App\Services\ArwService;
+use App\Services\FileSecurityService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
@@ -188,9 +189,10 @@ class BackupController extends Controller
                 $item->preview_url = route('backup.preview-arw', $item->id);
                 $item->download_jpg_url = route('backup.download-arw-jpg', $item->id);
             } else {
-                $item->preview_url = !$item->is_folder ? asset('storage/' . $item->file_path) : null;
+                $item->preview_url = !$item->is_folder ? route('backup.preview-file', $item->id) : null;
                 $item->download_jpg_url = null;
             }
+            $item->is_secured = true;
             return $item;
         });
 
@@ -285,6 +287,29 @@ class BackupController extends Controller
         }
 
         return abort(404, "Gagal mengonversi dokumen.");
+    }
+
+    /**
+     * PRATINJAU DOKUMEN / MEDIA TEROTENTIKASI (STREAMING DEKRIPSI ON-THE-FLY)
+     */
+    public function previewFile($id)
+    {
+        $backup = Backup::findOrFail($id);
+
+        if ($backup->is_folder) {
+            abort(400, 'Folder tidak dapat dipratinjau.');
+        }
+
+        $fullPath = storage_path('app/public/' . $backup->file_path);
+        if (!file_exists($fullPath)) {
+            abort(404, 'Berkas fisik tidak ditemukan di server.');
+        }
+
+        if (ArwService::isArw($backup->file_type ?: $backup->file_name)) {
+            return ArwService::previewResponse($fullPath, $backup->file_name);
+        }
+
+        return FileSecurityService::streamDecryptedInline($fullPath, $backup->file_name);
     }
 
     /**
@@ -571,13 +596,17 @@ class BackupController extends Controller
 
         $uniquePrefix = time() . '_' . substr(uniqid(), -6);
         $cleanFileName = $request->file('file')->getClientOriginalName();
-        $path = $request->file('file')->storeAs('backups/' . $pc->id, $uniquePrefix . '_' . $cleanFileName, 'public');
+        $relativeSubPath = 'backups/' . $pc->id . '/' . $uniquePrefix . '_' . $cleanFileName;
+        $destFullPath = storage_path('app/public/' . $relativeSubPath);
+
+        // Enkripsi berkas fisik pada level penyimpanan disk secara streaming aman
+        FileSecurityService::encryptAndStoreFile($request->file('file')->getRealPath(), $destFullPath);
 
         $backup = Backup::create([
             'pc_id' => $pc->id,
             'parent_id' => $request->parent_id, 
             'file_name' => $cleanFileName,
-            'file_path' => $path,
+            'file_path' => $relativeSubPath,
             'file_size' => $fileSize,
             'is_folder' => false,
             'file_type' => $request->file('file')->getClientOriginalExtension(),
@@ -623,13 +652,7 @@ class BackupController extends Controller
             }
 
             $mimeType = @mime_content_type($fullPath) ?: 'application/octet-stream';
-            $fileSize = @filesize($fullPath) ?: 0;
-
-            return response()->download($fullPath, $backup->file_name, [
-                'Content-Type' => $mimeType,
-                'Content-Length' => $fileSize,
-                'Cache-Control' => 'no-cache, must-revalidate'
-            ]);
+            return FileSecurityService::streamDecryptedDownload($fullPath, $backup->file_name, $mimeType);
         } catch (\Exception $e) {
             Log::error("Gagal unduh berkas backup ID {$id}: " . $e->getMessage());
             return back()->with('error', 'Gagal mengunduh berkas: ' . $e->getMessage());
