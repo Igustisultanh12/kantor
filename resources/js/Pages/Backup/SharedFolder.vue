@@ -106,17 +106,32 @@ const goToBreadcrumb = (crumbId) => {
     });
 };
 
+const thumbnailErrors = ref({});
+const viewMode = ref(typeof window !== 'undefined' ? (localStorage.getItem('sinden_shared_view_mode') || 'large') : 'large');
+
+const setViewMode = (mode) => {
+    viewMode.value = mode;
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('sinden_shared_view_mode', mode);
+    }
+};
+
 const isArw = (filename) => {
     return filename?.toLowerCase().endsWith('.arw');
 };
 
 const isImage = (filename) => {
     const ext = filename?.split('.').pop()?.toLowerCase();
-    return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(ext);
+    return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp'].includes(ext);
 };
 
 const isPdf = (filename) => {
     return filename?.toLowerCase().endsWith('.pdf');
+};
+
+const isExcel = (filename) => {
+    const ext = filename?.split('.').pop()?.toLowerCase();
+    return ['xlsx', 'xls', 'csv'].includes(ext);
 };
 
 // --- STATE ZOOM, ROTATE, PAN & SECURE BLOB PREVIEW ---
@@ -470,16 +485,52 @@ const exitAndLock = () => {
                         />
                     </div>
 
-                    <!-- Action: Download Zip Folder -->
-                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <!-- Actions: View Modes & Download Zip Folder -->
+                    <div class="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+                        <!-- View Mode Switcher -->
+                        <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shrink-0">
+                            <button 
+                                @click="setViewMode('large')" 
+                                :class="viewMode === 'large' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-800 font-medium'"
+                                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer"
+                                title="Tampilan Ikon Besar (Pratinjau Foto)">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                                </svg>
+                                <span>Besar</span>
+                            </button>
+                            <button 
+                                @click="setViewMode('medium')" 
+                                :class="viewMode === 'medium' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-800 font-medium'"
+                                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer"
+                                title="Tampilan Ikon Sedang">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                                </svg>
+                                <span>Sedang</span>
+                            </button>
+                            <button 
+                                @click="setViewMode('list')" 
+                                :class="viewMode === 'list' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-800 font-medium'"
+                                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer"
+                                title="Tampilan Daftar">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                                </svg>
+                                <span>Daftar</span>
+                            </button>
+                        </div>
+
+                        <!-- Action: Download Zip Folder -->
                         <a 
                             :href="route('backup.shared.download-zip', { token: shareToken, folder_id: currentFolderId })" 
-                            class="w-full sm:w-auto px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold uppercase flex items-center justify-center gap-2 transition shadow-xs cursor-pointer"
+                            class="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold uppercase flex items-center justify-center gap-2 transition shadow-xs cursor-pointer shrink-0"
                             title="Unduh seluruh berkas di folder ini sebagai arsip .ZIP">
                             <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
-                            <span>Unduh Folder (.ZIP)</span>
+                            <span class="hidden sm:inline">Unduh ZIP</span>
+                            <span class="sm:hidden">ZIP</span>
                         </a>
                     </div>
                 </div>
@@ -508,67 +559,227 @@ const exitAndLock = () => {
                 <!-- FILE LIST CONTAINER -->
                 <div class="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden flex-1 flex flex-col min-h-[380px]">
                     
-                    <!-- 1. TAMPILAN KHUSUS SMARTPHONE / LAYAR HP (< sm) -->
-                    <div class="block sm:hidden divide-y divide-slate-100 flex-1">
+                    <!-- EMPTY STATE (JIKA TIDAK ADA BERKAS / PENCARIAN NIHIL) -->
+                    <div v-if="filteredContents.length === 0" class="p-16 text-center text-slate-400 flex-1 flex flex-col items-center justify-center">
+                        <svg class="w-12 h-12 mx-auto opacity-30 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                        </svg>
+                        <p class="text-xs font-bold uppercase tracking-wider text-slate-600">
+                            {{ localSearch ? 'Tidak ada berkas yang sesuai dengan pencarian' : 'Folder ini masih kosong' }}
+                        </p>
+                    </div>
+
+                    <!-- 1. TAMPILAN IKON BESAR DENGAN PRATINJAU FOTO REAL (LARGE VIEW) -->
+                    <div v-else-if="viewMode === 'large'" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 p-3.5 sm:p-5 flex-1">
                         <div 
                             v-for="item in filteredContents" 
-                            :key="'m-' + item.id"
-                            @click="item.is_folder ? openFolder(item) : openPreview(item)"
-                            class="p-3.5 hover:bg-slate-50 active:bg-slate-100 transition flex items-center justify-between gap-3 cursor-pointer">
+                            :key="'large-' + item.id"
+                            @click="item.is_folder ? openFolder(item) : null"
+                            @dblclick="item.is_folder ? openFolder(item) : openPreview(item)"
+                            class="group bg-white hover:bg-slate-50/50 rounded-2xl border border-slate-200/90 hover:border-indigo-400 hover:shadow-md transition-all duration-200 flex flex-col p-2.5 sm:p-3 relative cursor-pointer select-none">
                             
-                            <div class="flex items-center gap-3 min-w-0 flex-1">
-                                <!-- Minimalist Icon -->
-                                <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                                    :class="item.is_folder ? 'bg-indigo-50 text-indigo-700' : (isArw(item.file_name) ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-700')">
-                                    <svg v-if="item.is_folder" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                            <!-- Thumbnail / Ikon -->
+                            <div class="w-full">
+                                <!-- Folder -->
+                                <div v-if="item.is_folder" class="w-full aspect-4/3 sm:aspect-square bg-indigo-50/80 rounded-xl flex flex-col items-center justify-center border border-indigo-100/80 group-hover:bg-indigo-100/70 transition relative">
+                                    <svg class="w-12 h-12 sm:w-14 sm:h-14 text-indigo-600 drop-shadow-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                                     </svg>
-                                    <svg v-else-if="isArw(item.file_name)" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                    <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
+                                    <span class="text-[9px] sm:text-[10px] font-black text-indigo-700 uppercase mt-1">Folder</span>
                                 </div>
 
-                                <div class="min-w-0 flex-1">
-                                    <div class="flex items-center gap-1.5 flex-wrap">
-                                        <p class="font-bold text-xs text-slate-900 truncate uppercase">
-                                            {{ item.file_name }}
-                                        </p>
-                                        <!-- Ikon Gembok Minimalis -->
-                                        <svg class="w-3 h-3 text-slate-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <!-- Gambar / Foto Sony RAW (Real Thumbnail Preview) -->
+                                <div 
+                                    v-else-if="(isImage(item.file_name) || isArw(item.file_name)) && !thumbnailErrors[item.id]"
+                                    @click="openPreview(item)"
+                                    class="relative w-full aspect-4/3 sm:aspect-square bg-slate-900/5 rounded-xl overflow-hidden flex items-center justify-center border border-slate-200/80 group-hover:border-indigo-400 transition shadow-2xs">
+                                    <img 
+                                        :src="item.preview_url" 
+                                        :alt="item.file_name"
+                                        loading="lazy"
+                                        @error="thumbnailErrors[item.id] = true"
+                                        @contextmenu.prevent=""
+                                        draggable="false"
+                                        class="w-full h-full object-cover select-none pointer-events-none transition-transform duration-300 group-hover:scale-105"
+                                    />
+                                    <!-- Badge RAW jika ARW -->
+                                    <span v-if="isArw(item.file_name)" class="absolute top-1.5 left-1.5 px-1.5 py-0.5 text-[8px] sm:text-[9px] bg-amber-500 text-white rounded font-black uppercase shadow-xs">
+                                        RAW
+                                    </span>
+                                    <!-- Ikon Gembok Minimalis -->
+                                    <span class="absolute top-1.5 right-1.5 p-1 bg-black/40 backdrop-blur-xs rounded-full text-white/90">
+                                        <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
                                         </svg>
-                                        <span v-if="isArw(item.file_name)" class="px-1.5 py-0.2 text-[8px] bg-amber-100 text-amber-800 rounded font-bold uppercase">
-                                            RAW
-                                        </span>
-                                    </div>
-                                    <div class="flex items-center gap-2 text-[10px] text-slate-400 font-semibold mt-0.5">
-                                        <span>{{ item.size_human }}</span>
-                                        <span>&bull;</span>
-                                        <span>{{ item.date_human }}</span>
-                                    </div>
+                                    </span>
+                                </div>
+
+                                <!-- PDF Document -->
+                                <div v-else-if="isPdf(item.file_name)" class="w-full aspect-4/3 sm:aspect-square bg-rose-50/80 rounded-xl flex flex-col items-center justify-center border border-rose-100/80 group-hover:bg-rose-100/70 transition relative">
+                                    <svg class="w-10 h-10 sm:w-12 sm:h-12 text-rose-500 drop-shadow-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 3v5a1 1 0 001 1h5" />
+                                    </svg>
+                                    <span class="text-[9px] sm:text-[10px] font-black text-rose-600 uppercase mt-1">PDF</span>
+                                </div>
+
+                                <!-- Excel Document -->
+                                <div v-else-if="isExcel(item.file_name)" class="w-full aspect-4/3 sm:aspect-square bg-emerald-50/80 rounded-xl flex flex-col items-center justify-center border border-emerald-100/80 group-hover:bg-emerald-100/70 transition relative">
+                                    <svg class="w-10 h-10 sm:w-12 sm:h-12 text-emerald-600 drop-shadow-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <span class="text-[9px] sm:text-[10px] font-black text-emerald-700 uppercase mt-1">EXCEL</span>
+                                </div>
+
+                                <!-- Berkas Lainnya / Fallback -->
+                                <div v-else class="w-full aspect-4/3 sm:aspect-square bg-slate-100 rounded-xl flex flex-col items-center justify-center border border-slate-200/80 group-hover:bg-slate-200/60 transition relative">
+                                    <svg class="w-10 h-10 sm:w-12 sm:h-12 text-slate-500 drop-shadow-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <span class="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase mt-1">
+                                        {{ item.file_name.split('.').pop()?.substring(0, 4) || 'FILE' }}
+                                    </span>
                                 </div>
                             </div>
 
-                            <!-- Opsi Tindakan Cepat di HP -->
-                            <div class="flex items-center gap-1.5 shrink-0" @click.stop>
-                                <button 
-                                    v-if="item.is_folder" 
-                                    @click="openFolder(item)" 
-                                    class="p-2 bg-indigo-50 text-indigo-700 rounded-xl">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                            <!-- Meta Info -->
+                            <div class="mt-2 min-w-0 flex-1 flex flex-col justify-between">
+                                <div>
+                                    <p class="font-bold text-xs text-slate-800 group-hover:text-indigo-600 transition truncate uppercase" :title="item.file_name">
+                                        {{ item.file_name }}
+                                    </p>
+                                    <div class="flex items-center justify-between text-[10px] text-slate-400 font-semibold mt-1">
+                                        <span>{{ item.size_human }}</span>
+                                        <span class="truncate max-w-[85px]">{{ item.date_human }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Tombol Aksi Cepat -->
+                                <div class="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between gap-1" @click.stop>
+                                    <template v-if="item.is_folder">
+                                        <button 
+                                            @click="openFolder(item)" 
+                                            class="w-full py-1.5 bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer">
+                                            <span>Buka</span>
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                            </svg>
+                                        </button>
+                                    </template>
+                                    <template v-else>
+                                        <button 
+                                            @click="openPreview(item)" 
+                                            class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition cursor-pointer flex-1 flex items-center justify-center gap-1 text-[11px] font-bold"
+                                            title="Lihat Pratinjau">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            <span class="text-[10px]">Lihat</span>
+                                        </button>
+                                        <a 
+                                            v-if="isArw(item.file_name) && item.download_jpg_url" 
+                                            :href="item.download_jpg_url" 
+                                            class="px-2 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition cursor-pointer flex items-center justify-center text-[10px] font-bold uppercase gap-0.5 shrink-0"
+                                            title="Unduh format JPG HD">
+                                            <span>JPG</span>
+                                        </a>
+                                        <a 
+                                            v-if="item.download_url" 
+                                            :href="item.download_url" 
+                                            class="p-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg transition cursor-pointer flex items-center justify-center shrink-0"
+                                            :title="isArw(item.file_name) ? 'Unduh Berkas Sony RAW (.ARW)' : 'Unduh Berkas'">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                            </svg>
+                                        </a>
+                                    </template>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- 2. TAMPILAN IKON SEDANG (MEDIUM VIEW) -->
+                    <div v-else-if="viewMode === 'medium'" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2.5 sm:gap-3 p-3 sm:p-4 flex-1">
+                        <div 
+                            v-for="item in filteredContents" 
+                            :key="'medium-' + item.id"
+                            @click="item.is_folder ? openFolder(item) : null"
+                            @dblclick="item.is_folder ? openFolder(item) : openPreview(item)"
+                            class="group bg-white hover:bg-slate-50/50 rounded-xl border border-slate-200/90 hover:border-indigo-400 hover:shadow-xs transition flex flex-col p-2 relative cursor-pointer select-none">
+                            
+                            <!-- Thumbnail / Ikon Sedang -->
+                            <div class="w-full">
+                                <div v-if="item.is_folder" class="w-full aspect-square bg-indigo-50 rounded-lg flex items-center justify-center border border-indigo-100 group-hover:bg-indigo-100/70 transition">
+                                    <svg class="w-10 h-10 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                                     </svg>
-                                </button>
+                                </div>
+
+                                <div 
+                                    v-else-if="(isImage(item.file_name) || isArw(item.file_name)) && !thumbnailErrors[item.id]"
+                                    @click="openPreview(item)"
+                                    class="relative w-full aspect-square bg-slate-900/5 rounded-lg overflow-hidden flex items-center justify-center border border-slate-200/80 group-hover:border-indigo-400 transition">
+                                    <img 
+                                        :src="item.preview_url" 
+                                        :alt="item.file_name"
+                                        loading="lazy"
+                                        @error="thumbnailErrors[item.id] = true"
+                                        @contextmenu.prevent=""
+                                        draggable="false"
+                                        class="w-full h-full object-cover select-none pointer-events-none transition-transform duration-300 group-hover:scale-105"
+                                    />
+                                    <span v-if="isArw(item.file_name)" class="absolute top-1 left-1 px-1 py-0.2 text-[8px] bg-amber-500 text-white rounded font-black uppercase shadow-xs">
+                                        RAW
+                                    </span>
+                                </div>
+
+                                <div v-else-if="isPdf(item.file_name)" class="w-full aspect-square bg-rose-50 rounded-lg flex items-center justify-center border border-rose-100">
+                                    <svg class="w-8 h-8 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 3v5a1 1 0 001 1h5" />
+                                    </svg>
+                                </div>
+
+                                <div v-else-if="isExcel(item.file_name)" class="w-full aspect-square bg-emerald-50 rounded-lg flex items-center justify-center border border-emerald-100">
+                                    <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                </div>
+
+                                <div v-else class="w-full aspect-square bg-slate-100 rounded-lg flex items-center justify-center border border-slate-200">
+                                    <svg class="w-8 h-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <!-- Info Sedang -->
+                            <div class="mt-1.5 min-w-0">
+                                <p class="font-bold text-[11px] text-slate-800 group-hover:text-indigo-600 transition truncate uppercase" :title="item.file_name">
+                                    {{ item.file_name }}
+                                </p>
+                                <p class="text-[9px] text-slate-400 font-semibold">
+                                    {{ item.size_human }}
+                                </p>
+                            </div>
+
+                            <!-- Mini Actions -->
+                            <div class="mt-1.5 pt-1.5 border-t border-slate-100 flex items-center justify-between gap-1" @click.stop>
+                                <template v-if="item.is_folder">
+                                    <button 
+                                        @click="openFolder(item)" 
+                                        class="w-full py-1 bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 rounded text-[10px] font-bold transition flex items-center justify-center gap-0.5 cursor-pointer">
+                                        <span>Buka</span>
+                                    </button>
+                                </template>
                                 <template v-else>
                                     <button 
                                         @click="openPreview(item)" 
-                                        class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl"
+                                        class="p-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition cursor-pointer flex-1 flex items-center justify-center"
                                         title="Pratinjau">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                         </svg>
@@ -576,16 +787,16 @@ const exitAndLock = () => {
                                     <a 
                                         v-if="isArw(item.file_name) && item.download_jpg_url" 
                                         :href="item.download_jpg_url" 
-                                        class="px-2 py-1.5 bg-amber-500 text-white rounded-xl text-[10px] font-bold"
-                                        title="Unduh JPG HD">
+                                        class="px-1.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded transition cursor-pointer text-[9px] font-black uppercase"
+                                        title="Unduh JPG">
                                         JPG
                                     </a>
                                     <a 
                                         v-if="item.download_url" 
                                         :href="item.download_url" 
-                                        class="p-2 bg-slate-900 text-white rounded-xl"
-                                        title="Unduh Berkas">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        class="p-1 bg-slate-900 hover:bg-slate-800 text-white rounded transition cursor-pointer"
+                                        :title="isArw(item.file_name) ? 'Unduh RAW' : 'Unduh'">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                         </svg>
                                     </a>
@@ -593,152 +804,251 @@ const exitAndLock = () => {
                             </div>
 
                         </div>
-
-                        <!-- Empty State HP -->
-                        <div v-if="filteredContents.length === 0" class="p-12 text-center text-slate-400">
-                            <svg class="w-10 h-10 mx-auto opacity-30 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                            </svg>
-                            <p class="text-xs font-bold uppercase">
-                                {{ localSearch ? 'Tidak ada berkas yang sesuai' : 'Folder ini kosong' }}
-                            </p>
-                        </div>
                     </div>
 
-                    <!-- 2. TAMPILAN TABEL DESKTOP & TABLET (>= sm) -->
-                    <div class="hidden sm:block overflow-x-auto flex-1">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-slate-50 border-b border-slate-200 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                                    <th class="p-4">Nama Berkas</th>
-                                    <th class="p-4 text-center">Ukuran</th>
-                                    <th class="p-4">Tanggal Modifikasi</th>
-                                    <th class="p-4 text-right">Opsi Akses</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100 text-xs font-medium">
-                                <tr 
-                                    v-for="item in filteredContents" 
-                                    :key="item.id"
-                                    @dblclick="item.is_folder ? openFolder(item) : openPreview(item)"
-                                    class="hover:bg-slate-50 transition cursor-pointer select-none group">
-                                    
-                                    <!-- Nama Item -->
-                                    <td class="p-4">
-                                        <div class="flex items-center gap-3">
-                                            <!-- SVG Vector Icon per Tipe -->
-                                            <div class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                                                :class="item.is_folder ? 'bg-indigo-50 text-indigo-700' : (isArw(item.file_name) ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600')">
-                                                <svg v-if="item.is_folder" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                                                </svg>
-                                                <svg v-else-if="isArw(item.file_name)" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                </svg>
-                                                <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                </svg>
-                                            </div>
+                    <!-- 3. TAMPILAN DAFTAR / TABLE (LIST VIEW) -->
+                    <div v-else-if="viewMode === 'list'" class="flex-1 flex flex-col">
+                        
+                        <!-- 3A. LIST TAMPILAN KHUSUS HP (< sm) -->
+                        <div class="block sm:hidden divide-y divide-slate-100 flex-1">
+                            <div 
+                                v-for="item in filteredContents" 
+                                :key="'list-m-' + item.id"
+                                @click="item.is_folder ? openFolder(item) : openPreview(item)"
+                                class="p-3 hover:bg-slate-50 active:bg-slate-100 transition flex items-center justify-between gap-3 cursor-pointer">
+                                
+                                <div class="flex items-center gap-3 min-w-0 flex-1">
+                                    <!-- Mini Thumbnail atau SVG Icon -->
+                                    <div class="w-12 h-12 rounded-xl overflow-hidden shrink-0 flex items-center justify-center border border-slate-200/80 bg-slate-100">
+                                        <img 
+                                            v-if="(isImage(item.file_name) || isArw(item.file_name)) && !thumbnailErrors[item.id]"
+                                            :src="item.preview_url" 
+                                            :alt="item.file_name"
+                                            loading="lazy"
+                                            @error="thumbnailErrors[item.id] = true"
+                                            @contextmenu.prevent=""
+                                            draggable="false"
+                                            class="w-full h-full object-cover select-none pointer-events-none"
+                                        />
+                                        <svg v-else-if="item.is_folder" class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                                        </svg>
+                                        <svg v-else-if="isPdf(item.file_name)" class="w-6 h-6 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 3v5a1 1 0 001 1h5" />
+                                        </svg>
+                                        <svg v-else-if="isExcel(item.file_name)" class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <svg v-else class="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                    </div>
 
-                                            <div>
-                                                <div class="flex items-center gap-2 flex-wrap">
-                                                    <p class="font-bold text-slate-800 uppercase tracking-tight group-hover:text-indigo-700 transition">
-                                                        {{ item.file_name }}
-                                                    </p>
-                                                    <!-- Ikon Gembok Minimalis -->
-                                                    <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
-                                                    </svg>
-                                                    <span v-if="isArw(item.file_name)" class="px-2 py-0.5 text-[9px] bg-amber-100 text-amber-800 rounded font-bold uppercase border border-amber-300">
-                                                        Sony RAW
-                                                    </span>
-                                                </div>
-                                                <p class="text-[10px] text-slate-400 font-bold uppercase">
-                                                    {{ item.is_folder ? 'Folder' : (isArw(item.file_name) ? 'Foto Sony RAW' : (item.file_type || 'Berkas')) }}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </td>
-
-                                    <!-- Ukuran -->
-                                    <td class="p-4 text-center font-mono font-bold text-slate-500 text-xs">
-                                        {{ item.size_human }}
-                                    </td>
-
-                                    <!-- Tanggal Modifikasi -->
-                                    <td class="p-4 text-slate-500 font-semibold text-xs">
-                                        {{ item.date_human }}
-                                    </td>
-
-                                    <!-- Opsi Akses -->
-                                    <td class="p-4 text-right">
-                                        <div class="flex items-center justify-end gap-2">
-                                            <!-- Buka Folder -->
-                                            <button 
-                                                v-if="item.is_folder" 
-                                                @click.stop="openFolder(item)" 
-                                                class="px-3 py-1.5 bg-slate-100 hover:bg-slate-900 hover:text-white text-slate-700 rounded-xl text-xs font-bold uppercase transition cursor-pointer flex items-center gap-1">
-                                                <span>Buka</span>
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                                                </svg>
-                                            </button>
-
-                                            <!-- Pratinjau Dokumen -->
-                                            <button 
-                                                v-if="!item.is_folder" 
-                                                @click.stop="openPreview(item)" 
-                                                class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition cursor-pointer"
-                                                :title="isArw(item.file_name) ? 'Lihat Pratinjau Foto Sony RAW' : 'Lihat Pratinjau Berkas'">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                </svg>
-                                            </button>
-
-                                            <!-- Unduh Sebagai JPG HD Khusus Berkas Sony RAW -->
-                                            <a 
-                                                v-if="!item.is_folder && isArw(item.file_name) && item.download_jpg_url" 
-                                                :href="item.download_jpg_url" 
-                                                class="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl transition cursor-pointer inline-flex items-center justify-center font-bold text-[10px] uppercase gap-1"
-                                                title="Unduh Berkas Sony RAW Ini Sebagai Format JPG HD">
-                                                <span>JPG</span>
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                                </svg>
-                                            </a>
-
-                                            <!-- Unduh Berkas Asli -->
-                                            <a 
-                                                v-if="!item.is_folder && item.download_url" 
-                                                :href="item.download_url" 
-                                                class="p-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl transition cursor-pointer inline-flex items-center justify-center"
-                                                :title="isArw(item.file_name) ? 'Unduh Berkas Asli (.ARW)' : 'Unduh Berkas Ini'">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                                </svg>
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-
-                                <!-- Empty State Desktop -->
-                                <tr v-if="filteredContents.length === 0">
-                                    <td colspan="4" class="p-16 text-center">
-                                        <div class="flex flex-col items-center opacity-40 space-y-2">
-                                            <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                                            </svg>
-                                            <p class="font-bold uppercase tracking-wider text-xs text-slate-600">
-                                                {{ localSearch ? 'Tidak ada berkas yang sesuai dengan pencarian' : 'Folder ini masih kosong' }}
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <p class="font-bold text-xs text-slate-900 truncate uppercase">
+                                                {{ item.file_name }}
                                             </p>
+                                            <svg class="w-3 h-3 text-slate-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                                            </svg>
+                                            <span v-if="isArw(item.file_name)" class="px-1.5 py-0.2 text-[8px] bg-amber-100 text-amber-800 rounded font-bold uppercase">
+                                                RAW
+                                            </span>
                                         </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                                        <div class="flex items-center gap-2 text-[10px] text-slate-400 font-semibold mt-0.5">
+                                            <span>{{ item.size_human }}</span>
+                                            <span>&bull;</span>
+                                            <span>{{ item.date_human }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Opsi Tindakan Cepat di HP -->
+                                <div class="flex items-center gap-1.5 shrink-0" @click.stop>
+                                    <button 
+                                        v-if="item.is_folder" 
+                                        @click="openFolder(item)" 
+                                        class="p-2 bg-indigo-50 text-indigo-700 rounded-xl">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </button>
+                                    <template v-else>
+                                        <button 
+                                            @click="openPreview(item)" 
+                                            class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl"
+                                            title="Pratinjau">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        </button>
+                                        <a 
+                                            v-if="isArw(item.file_name) && item.download_jpg_url" 
+                                            :href="item.download_jpg_url" 
+                                            class="px-2 py-1.5 bg-amber-500 text-white rounded-xl text-[10px] font-bold"
+                                            title="Unduh JPG HD">
+                                            JPG
+                                        </a>
+                                        <a 
+                                            v-if="item.download_url" 
+                                            :href="item.download_url" 
+                                            class="p-2 bg-slate-900 text-white rounded-xl"
+                                            title="Unduh Berkas">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                            </svg>
+                                        </a>
+                                    </template>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <!-- 3B. TAMPILAN TABEL DESKTOP & TABLET (>= sm) -->
+                        <div class="hidden sm:block overflow-x-auto flex-1">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 border-b border-slate-200 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                        <th class="p-4">Nama Berkas</th>
+                                        <th class="p-4 text-center">Ukuran</th>
+                                        <th class="p-4">Tanggal Modifikasi</th>
+                                        <th class="p-4 text-right">Opsi Akses</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-xs font-medium">
+                                    <tr 
+                                        v-for="item in filteredContents" 
+                                        :key="'table-' + item.id"
+                                        @dblclick="item.is_folder ? openFolder(item) : openPreview(item)"
+                                        class="hover:bg-slate-50 transition cursor-pointer select-none group">
+                                        
+                                        <!-- Nama Item & Thumbnail -->
+                                        <td class="p-4">
+                                            <div class="flex items-center gap-3">
+                                                <!-- Thumbnail / SVG Icon -->
+                                                <div class="w-9 h-9 rounded-lg overflow-hidden shrink-0 flex items-center justify-center border border-slate-200/80 bg-slate-100">
+                                                    <img 
+                                                        v-if="(isImage(item.file_name) || isArw(item.file_name)) && !thumbnailErrors[item.id]"
+                                                        :src="item.preview_url" 
+                                                        :alt="item.file_name"
+                                                        loading="lazy"
+                                                        @error="thumbnailErrors[item.id] = true"
+                                                        @contextmenu.prevent=""
+                                                        draggable="false"
+                                                        class="w-full h-full object-cover select-none pointer-events-none"
+                                                    />
+                                                    <div v-else-if="item.is_folder" class="w-full h-full bg-indigo-50 flex items-center justify-center text-indigo-600">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                                                        </svg>
+                                                    </div>
+                                                    <div v-else-if="isPdf(item.file_name)" class="w-full h-full bg-rose-50 flex items-center justify-center text-rose-500">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 3v5a1 1 0 001 1h5" />
+                                                        </svg>
+                                                    </div>
+                                                    <div v-else-if="isExcel(item.file_name)" class="w-full h-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                        </svg>
+                                                    </div>
+                                                    <div v-else class="w-full h-full bg-slate-100 flex items-center justify-center text-slate-500">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                        </svg>
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <div class="flex items-center gap-2 flex-wrap">
+                                                        <p class="font-bold text-slate-800 uppercase tracking-tight group-hover:text-indigo-700 transition">
+                                                            {{ item.file_name }}
+                                                        </p>
+                                                        <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                                                        </svg>
+                                                        <span v-if="isArw(item.file_name)" class="px-2 py-0.5 text-[9px] bg-amber-100 text-amber-800 rounded font-bold uppercase border border-amber-300">
+                                                            Sony RAW
+                                                        </span>
+                                                    </div>
+                                                    <p class="text-[10px] text-slate-400 font-bold uppercase">
+                                                        {{ item.is_folder ? 'Folder' : (isArw(item.file_name) ? 'Foto Sony RAW' : (item.file_type || 'Berkas')) }}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        <!-- Ukuran -->
+                                        <td class="p-4 text-center font-mono font-bold text-slate-500 text-xs">
+                                            {{ item.size_human }}
+                                        </td>
+
+                                        <!-- Tanggal Modifikasi -->
+                                        <td class="p-4 text-slate-500 font-semibold text-xs">
+                                            {{ item.date_human }}
+                                        </td>
+
+                                        <!-- Opsi Akses -->
+                                        <td class="p-4 text-right">
+                                            <div class="flex items-center justify-end gap-2">
+                                                <!-- Buka Folder -->
+                                                <button 
+                                                    v-if="item.is_folder" 
+                                                    @click.stop="openFolder(item)" 
+                                                    class="px-3 py-1.5 bg-slate-100 hover:bg-slate-900 hover:text-white text-slate-700 rounded-xl text-xs font-bold uppercase transition cursor-pointer flex items-center gap-1">
+                                                    <span>Buka</span>
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                                    </svg>
+                                                </button>
+
+                                                <!-- Pratinjau Dokumen / Gambar -->
+                                                <button 
+                                                    v-if="!item.is_folder" 
+                                                    @click.stop="openPreview(item)" 
+                                                    class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition cursor-pointer"
+                                                    :title="isArw(item.file_name) ? 'Lihat Pratinjau Foto Sony RAW' : 'Lihat Pratinjau Berkas'">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                </button>
+
+                                                <!-- Unduh Sebagai JPG HD Khusus Berkas Sony RAW -->
+                                                <a 
+                                                    v-if="!item.is_folder && isArw(item.file_name) && item.download_jpg_url" 
+                                                    :href="item.download_jpg_url" 
+                                                    class="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl transition cursor-pointer inline-flex items-center justify-center font-bold text-[10px] uppercase gap-1"
+                                                    title="Unduh Berkas Sony RAW Ini Sebagai Format JPG HD">
+                                                    <span>JPG</span>
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                    </svg>
+                                                </a>
+
+                                                <!-- Unduh Berkas Asli -->
+                                                <a 
+                                                    v-if="!item.is_folder && item.download_url" 
+                                                    :href="item.download_url" 
+                                                    class="p-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl transition cursor-pointer inline-flex items-center justify-center"
+                                                    :title="isArw(item.file_name) ? 'Unduh Berkas Asli (.ARW)' : 'Unduh Berkas Ini'">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                    </svg>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
                     </div>
+
 
                     <!-- Footer Info Bar -->
                     <div class="p-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center text-[11px] font-bold text-slate-500 gap-2">

@@ -1090,12 +1090,29 @@ const showProperties = (item) => {
 
 // =========================================================================
 // --- FITUR SONY RAW (.ARW) PREVIEW & CONVERT KE JPG HD ---
-// =========================================================================
+const thumbnailErrors = ref({});
+
 const isArw = (item) => {
     if (!item || item.is_folder) return false;
-    const ext = (item.file_type || '').toLowerCase();
+    const ext = (item.file_type || '').toLowerCase().replace(/^\./, '');
     const name = (item.file_name || '').toLowerCase();
     return ext === 'arw' || name.endsWith('.arw') || item.is_arw === true;
+};
+
+const isImage = (item) => {
+    if (!item || item.is_folder) return false;
+    const ext = (item.file_type || '').toLowerCase().replace(/^\./, '');
+    const name = (item.file_name || '').toLowerCase();
+    const nameExt = name.split('.').pop() || '';
+    const imageExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg'];
+    return imageExtensions.includes(ext) || imageExtensions.includes(nameExt);
+};
+
+const isPdf = (item) => {
+    if (!item || item.is_folder) return false;
+    const ext = (item.file_type || '').toLowerCase().replace(/^\./, '');
+    const name = (item.file_name || '').toLowerCase();
+    return ext === 'pdf' || name.endsWith('.pdf');
 };
 
 const isConvertingArw = ref(false);
@@ -1954,10 +1971,21 @@ onUnmounted(() => {
                                     </td>
                                     <td class="p-4">
                                         <div class="flex items-center gap-3">
-                                            <span v-if="item.is_folder" class="text-2xl">📁</span>
-                                            <span v-else-if="isExcel(item)" class="text-2xl">📊</span>
-                                            <span v-else-if="isArw(item)" class="text-2xl" title="Foto Sony Alpha RAW (.ARW)">📷</span>
-                                            <span v-else class="text-2xl">📄</span>
+                                            <div class="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200">
+                                                <img v-if="(isImage(item) || isArw(item)) && item.preview_url && !thumbnailErrors[item.id]"
+                                                     :src="item.preview_url" 
+                                                     :alt="item.file_name"
+                                                     loading="lazy"
+                                                     @error="thumbnailErrors[item.id] = true"
+                                                     @contextmenu.prevent=""
+                                                     draggable="false"
+                                                     class="w-full h-full object-cover object-center pointer-events-none" />
+                                                <svg v-else-if="item.is_folder" class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                                                <svg v-else-if="isExcel(item)" class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                                <svg v-else-if="isPdf(item)" class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                                                <svg v-else-if="isArw(item)" class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                <svg v-else class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                            </div>
                                             <div>
                                                 <div class="flex items-center gap-2 flex-wrap">
                                                     <p class="font-black text-gray-800 uppercase tracking-tighter">{{ item.file_name }}</p>
@@ -2067,22 +2095,76 @@ onUnmounted(() => {
                                 </svg>
                             </div>
 
-                            <!-- Area Ikon Tengah Besar -->
-                            <div class="h-28 w-full bg-slate-50 rounded-xl flex items-center justify-center relative overflow-hidden group-hover:bg-blue-50/60 transition mb-3">
-                                <span v-if="item.is_folder" class="text-6xl">📁</span>
-                                <span v-else-if="isExcel(item)" class="text-5xl">📊</span>
-                                <span v-else-if="isArw(item)" class="text-5xl" title="Sony RAW">📷</span>
-                                <span v-else-if="item.file_type === 'pdf'" class="text-5xl">📕</span>
-                                <span v-else-if="item.file_type === 'zip'" class="text-5xl">📦</span>
-                                <span v-else class="text-5xl">📄</span>
+                            <!-- Area Ikon / Thumbnail Tengah Besar -->
+                            <div class="h-32 w-full bg-slate-100 rounded-xl flex items-center justify-center relative overflow-hidden group-hover:shadow-inner transition mb-3">
+                                <!-- 1. Preview Gambar / Sony RAW Nyata -->
+                                <template v-if="(isImage(item) || isArw(item)) && item.preview_url && !thumbnailErrors[item.id]">
+                                    <img :src="item.preview_url" 
+                                         :alt="item.file_name"
+                                         loading="lazy"
+                                         @error="thumbnailErrors[item.id] = true"
+                                         @contextmenu.prevent=""
+                                         draggable="false"
+                                         class="w-full h-full object-cover object-center rounded-xl transition duration-300 group-hover:scale-105 pointer-events-none" />
+                                    
+                                    <!-- Badge Sony RAW jika ARW -->
+                                    <span v-if="isArw(item)" class="absolute bottom-2 right-2 px-1.5 py-0.5 text-[8px] bg-amber-600/90 backdrop-blur-xs text-white rounded font-black uppercase tracking-wider shadow-xs">
+                                        RAW
+                                    </span>
+                                </template>
 
-                                <!-- Badge ARW / Link Aktif -->
-                                <span v-if="isArw(item)" class="absolute bottom-2 right-2 px-1.5 py-0.5 text-[8px] bg-amber-500 text-white rounded font-bold uppercase shadow-2xs">
-                                    RAW
-                                </span>
-                                <span v-if="item.is_folder && item.share_info?.is_active" class="absolute bottom-2 right-2 px-1.5 py-0.5 text-[8px] bg-emerald-600 text-white rounded font-bold uppercase shadow-2xs">
-                                    LINK
-                                </span>
+                                <!-- 2. Ikon Vektor Bersih (Non-Emoji) untuk Folder & Tipe Berkas Lain -->
+                                <template v-else-if="item.is_folder">
+                                    <div class="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-xs group-hover:scale-110 transition duration-200">
+                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                                        </svg>
+                                    </div>
+                                    <span v-if="item.share_info?.is_active" class="absolute bottom-2 right-2 px-1.5 py-0.5 text-[8px] bg-emerald-600 text-white rounded font-black uppercase shadow-xs">
+                                        LINK
+                                    </span>
+                                </template>
+                                
+                                <template v-else-if="isExcel(item)">
+                                    <div class="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-xs group-hover:scale-110 transition duration-200">
+                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                    </div>
+                                    <span class="absolute bottom-2 right-2 px-1.5 py-0.5 text-[8px] bg-emerald-700 text-white rounded font-black uppercase shadow-xs">
+                                        XLSX
+                                    </span>
+                                </template>
+
+                                <template v-else-if="isPdf(item)">
+                                    <div class="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shadow-xs group-hover:scale-110 transition duration-200">
+                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                    </div>
+                                    <span class="absolute bottom-2 right-2 px-1.5 py-0.5 text-[8px] bg-rose-700 text-white rounded font-black uppercase shadow-xs">
+                                        PDF
+                                    </span>
+                                </template>
+
+                                <template v-else-if="item.file_type === 'zip' || (item.file_name || '').endsWith('.zip')">
+                                    <div class="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 shadow-xs group-hover:scale-110 transition duration-200">
+                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                                        </svg>
+                                    </div>
+                                    <span class="absolute bottom-2 right-2 px-1.5 py-0.5 text-[8px] bg-amber-700 text-white rounded font-black uppercase shadow-xs">
+                                        ZIP
+                                    </span>
+                                </template>
+
+                                <template v-else>
+                                    <div class="w-14 h-14 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 shadow-xs group-hover:scale-110 transition duration-200">
+                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                    </div>
+                                </template>
                             </div>
 
                             <!-- Teks Judul & Metadata -->
@@ -2126,13 +2208,33 @@ onUnmounted(() => {
                                 </svg>
                             </div>
 
-                            <div class="my-auto">
-                                <span v-if="item.is_folder" class="text-4xl">📁</span>
-                                <span v-else-if="isExcel(item)" class="text-4xl">📊</span>
-                                <span v-else-if="isArw(item)" class="text-4xl">📷</span>
-                                <span v-else-if="item.file_type === 'pdf'" class="text-4xl">📕</span>
-                                <span v-else-if="item.file_type === 'zip'" class="text-4xl">📦</span>
-                                <span v-else class="text-4xl">📄</span>
+                            <!-- Area Ikon / Thumbnail Sedang -->
+                            <div class="w-full h-16 bg-slate-100 rounded-lg flex items-center justify-center relative overflow-hidden mb-1.5">
+                                <template v-if="(isImage(item) || isArw(item)) && item.preview_url && !thumbnailErrors[item.id]">
+                                    <img :src="item.preview_url" 
+                                         :alt="item.file_name"
+                                         loading="lazy"
+                                         @error="thumbnailErrors[item.id] = true"
+                                         @contextmenu.prevent=""
+                                         draggable="false"
+                                         class="w-full h-full object-cover object-center rounded-lg pointer-events-none" />
+                                    <span v-if="isArw(item)" class="absolute bottom-1 right-1 px-1 text-[7px] bg-amber-600 text-white rounded font-black">RAW</span>
+                                </template>
+                                <template v-else-if="item.is_folder">
+                                    <svg class="w-7 h-7 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                                </template>
+                                <template v-else-if="isExcel(item)">
+                                    <svg class="w-7 h-7 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                </template>
+                                <template v-else-if="isPdf(item)">
+                                    <svg class="w-7 h-7 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                                </template>
+                                <template v-else-if="item.file_type === 'zip' || (item.file_name || '').endsWith('.zip')">
+                                    <svg class="w-7 h-7 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                                </template>
+                                <template v-else>
+                                    <svg class="w-7 h-7 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                </template>
                             </div>
 
                             <p class="font-bold text-[11px] text-slate-800 uppercase tracking-tight truncate w-full" :title="item.file_name">
@@ -2163,10 +2265,20 @@ onUnmounted(() => {
                                    @click.stop="toggleSelectItem(item, $event)" 
                                    class="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer shrink-0" />
 
-                            <span v-if="item.is_folder" class="text-xl shrink-0">📁</span>
-                            <span v-else-if="isExcel(item)" class="text-xl shrink-0">📊</span>
-                            <span v-else-if="isArw(item)" class="text-xl shrink-0">📷</span>
-                            <span v-else class="text-xl shrink-0">📄</span>
+                            <div class="w-7 h-7 rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200">
+                                <img v-if="(isImage(item) || isArw(item)) && item.preview_url && !thumbnailErrors[item.id]"
+                                     :src="item.preview_url" 
+                                     :alt="item.file_name"
+                                     loading="lazy"
+                                     @error="thumbnailErrors[item.id] = true"
+                                     @contextmenu.prevent=""
+                                     draggable="false"
+                                     class="w-full h-full object-cover object-center pointer-events-none" />
+                                <svg v-else-if="item.is_folder" class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                                <svg v-else-if="isExcel(item)" class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                <svg v-else-if="isPdf(item)" class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                                <svg v-else class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                            </div>
 
                             <div class="min-w-0 flex-1">
                                 <p class="font-bold text-xs text-slate-800 uppercase tracking-tight truncate" :title="item.file_name">
