@@ -297,7 +297,18 @@ const cancelClipboard = () => {
 const executePaste = async (overrideTargetFolderId = null) => {
     if (!clipboard.value.mode || !clipboard.value.items || clipboard.value.items.length === 0) return;
     const ids = clipboard.value.items.map(i => i.id);
-    const targetFolderId = overrideTargetFolderId !== null ? overrideTargetFolderId : props.currentFolderId;
+
+    // Filter agar DOM Event (@click="executePaste") tidak dianggap sebagai ID folder
+    let resolvedTargetId = null;
+    if (typeof overrideTargetFolderId === 'number' && !isNaN(overrideTargetFolderId)) {
+        resolvedTargetId = overrideTargetFolderId;
+    } else if (typeof overrideTargetFolderId === 'string' && overrideTargetFolderId.trim() !== '' && !isNaN(Number(overrideTargetFolderId))) {
+        resolvedTargetId = parseInt(overrideTargetFolderId, 10);
+    } else if (props.currentFolderId && !isNaN(Number(props.currentFolderId))) {
+        resolvedTargetId = parseInt(props.currentFolderId, 10);
+    }
+
+    const targetFolderId = resolvedTargetId || null;
 
     if (clipboard.value.mode === 'cut') {
         try {
@@ -1748,7 +1759,7 @@ onUnmounted(() => {
                         </span>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
-                        <button @click="executePaste" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-black text-xs uppercase tracking-wider transition flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-95">
+                        <button @click="executePaste()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-black text-xs uppercase tracking-wider transition flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-95">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                             <span>Tempel di Sini</span>
                         </button>

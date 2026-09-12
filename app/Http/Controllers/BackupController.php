@@ -954,7 +954,7 @@ class BackupController extends Controller
             'pc_id' => 'required|exists:pcs,id',
             'ids' => 'required|array|min:1',
             'ids.*' => 'integer|exists:backups,id',
-            'target_folder_id' => 'nullable|integer'
+            'target_folder_id' => 'nullable'
         ]);
 
         $pc = Pc::findOrFail($request->pc_id);
@@ -963,7 +963,8 @@ class BackupController extends Controller
             abort(403, 'Anda tidak memiliki otoritas atas pangkalan PC ini.');
         }
 
-        $targetFolderId = $request->target_folder_id;
+        $rawTarget = $request->input('target_folder_id');
+        $targetFolderId = (!empty($rawTarget) && is_numeric($rawTarget)) ? (int) $rawTarget : null;
         if ($targetFolderId) {
             $targetFolder = Backup::where('id', $targetFolderId)->where('pc_id', $pc->id)->firstOrFail();
             if (!$targetFolder->is_folder) {
@@ -1001,7 +1002,7 @@ class BackupController extends Controller
             'pc_id' => 'required|exists:pcs,id',
             'ids' => 'required|array|min:1',
             'ids.*' => 'integer|exists:backups,id',
-            'target_folder_id' => 'nullable|integer'
+            'target_folder_id' => 'nullable'
         ]);
 
         $pc = Pc::findOrFail($request->pc_id);
@@ -1010,7 +1011,8 @@ class BackupController extends Controller
             abort(403, 'Anda tidak memiliki otoritas atas pangkalan PC ini.');
         }
 
-        $targetFolderId = $request->target_folder_id;
+        $rawTarget = $request->input('target_folder_id');
+        $targetFolderId = (!empty($rawTarget) && is_numeric($rawTarget)) ? (int) $rawTarget : null;
         if ($targetFolderId) {
             $targetFolder = Backup::where('id', $targetFolderId)->where('pc_id', $pc->id)->firstOrFail();
             if (!$targetFolder->is_folder) {
