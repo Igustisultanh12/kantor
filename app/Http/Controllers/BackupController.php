@@ -300,7 +300,7 @@ class BackupController extends Controller
             abort(400, 'Folder tidak dapat dipratinjau.');
         }
 
-        $fullPath = storage_path('app/public/' . $backup->file_path);
+        $fullPath = FileSecurityService::verifySafeStoragePath($backup->file_path);
         if (!file_exists($fullPath)) {
             abort(404, 'Berkas fisik tidak ditemukan di server.');
         }
@@ -318,7 +318,7 @@ class BackupController extends Controller
     public function previewArw($id)
     {
         $backup = Backup::findOrFail($id);
-        $fullPath = storage_path('app/public/' . $backup->file_path);
+        $fullPath = FileSecurityService::verifySafeStoragePath($backup->file_path);
 
         if (!file_exists($fullPath)) {
             abort(404, 'Berkas fisik Sony RAW tidak ditemukan di server penyimpanan.');
@@ -584,7 +584,9 @@ class BackupController extends Controller
         ]);
 
         $pc = Pc::findOrFail($request->pc_id);
-        $fileSize = $request->file('file')->getSize();
+        $uploadedFile = $request->file('file');
+        $fileSize = $uploadedFile->getSize();
+        $cleanFileName = $uploadedFile->getClientOriginalName();
 
         if (($pc->current_usage + $fileSize) > $pc->max_quota) {
             $msg = 'Penyimpanan Penuh! Kapasitas ' . $this->formatBytes($pc->max_quota) . ' terlampaui.';
@@ -594,13 +596,24 @@ class BackupController extends Controller
             return back()->with('error', $msg);
         }
 
+        // VALIDASI KEAMANAN TINGKAT TINGGI: Anti-Malware, Magic Bytes, Double Extension, Anti-Polyglot
+        try {
+            $remainingQuota = $pc->max_quota - $pc->current_usage;
+            FileSecurityService::validateFileSafety($uploadedFile->getRealPath(), $cleanFileName, $remainingQuota);
+        } catch (\Exception $e) {
+            Log::warning("Penyusupan berkas diblokir pada PC ID {$pc->id}: " . $e->getMessage());
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['status' => 'error', 'message' => $e->getMessage()], 422);
+            }
+            return back()->with('error', $e->getMessage());
+        }
+
         $uniquePrefix = time() . '_' . substr(uniqid(), -6);
-        $cleanFileName = $request->file('file')->getClientOriginalName();
         $relativeSubPath = 'backups/' . $pc->id . '/' . $uniquePrefix . '_' . $cleanFileName;
-        $destFullPath = storage_path('app/public/' . $relativeSubPath);
+        $destFullPath = FileSecurityService::verifySafeStoragePath($relativeSubPath);
 
         // Enkripsi berkas fisik pada level penyimpanan disk secara streaming aman
-        FileSecurityService::encryptAndStoreFile($request->file('file')->getRealPath(), $destFullPath);
+        FileSecurityService::encryptAndStoreFile($uploadedFile->getRealPath(), $destFullPath, $remainingQuota);
 
         $backup = Backup::create([
             'pc_id' => $pc->id,
@@ -609,7 +622,7 @@ class BackupController extends Controller
             'file_path' => $relativeSubPath,
             'file_size' => $fileSize,
             'is_folder' => false,
-            'file_type' => $request->file('file')->getClientOriginalExtension(),
+            'file_type' => $uploadedFile->getClientOriginalExtension(),
         ]);
 
         $pc->increment('current_usage', $fileSize);
@@ -644,7 +657,7 @@ class BackupController extends Controller
                 return back()->with('error', 'Folder tidak bisa diunduh langsung.');
             }
 
-            $fullPath = storage_path('app/public/' . $backup->file_path);
+            $fullPath = FileSecurityService::verifySafeStoragePath($backup->file_path);
 
             if (!file_exists($fullPath)) {
                 Log::warning("File backup ID {$id} tidak ditemukan di path: {$fullPath}");

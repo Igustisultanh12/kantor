@@ -16,6 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         
+        // 0. RADAR KEAMANAN TINGKAT TINGGI (HTTP REQUEST SMUGGLING, STREAM DoS, INJEKSI HEADER)
+        $middleware->prepend(\App\Http\Middleware\SecurityFirewallMiddleware::class);
+
         // 1. SOLUSI UTAMA TUNNELING & SSL
         // Menjaga agar aset (CSS/JS) tetap HTTPS meski di balik Cloudflare/Proxy
         $middleware->trustProxies(at: '*');

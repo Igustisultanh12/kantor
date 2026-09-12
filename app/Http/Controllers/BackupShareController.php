@@ -343,7 +343,7 @@ class BackupShareController extends Controller
             abort(403, 'Akses ditolak: Berkas berada di luar cakupan folder yang dibagikan.');
         }
 
-        $fullPath = storage_path('app/public/' . $file->file_path);
+        $fullPath = FileSecurityService::verifySafeStoragePath($file->file_path);
         if (!file_exists($fullPath)) {
             Log::warning("Shared file download not found: {$fullPath}");
             abort(404, 'Berkas fisik tidak ditemukan di server penyimpanan.');
@@ -371,7 +371,7 @@ class BackupShareController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
-        $fullPath = storage_path('app/public/' . $file->file_path);
+        $fullPath = FileSecurityService::verifySafeStoragePath($file->file_path);
         if (!file_exists($fullPath)) {
             abort(404, 'Berkas fisik tidak ditemukan.');
         }
@@ -405,6 +405,8 @@ class BackupShareController extends Controller
         if (!ArwService::isArw($file->file_type ?: $file->file_name)) {
             abort(400, 'Berkas bukan format Sony RAW (.ARW).');
         }
+
+        FileSecurityService::verifySafeStoragePath($file->file_path);
 
         return ArwService::downloadConvertedJpg($file);
     }
@@ -450,7 +452,7 @@ class BackupShareController extends Controller
 
         if ($zip->open($zipTempPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
             foreach ($files as $file) {
-                $fullPath = storage_path('app/public/' . $file->file_path);
+                $fullPath = FileSecurityService::verifySafeStoragePath($file->file_path);
                 if (file_exists($fullPath)) {
                     if (FileSecurityService::isEncrypted($fullPath)) {
                         $tmp = FileSecurityService::createDecryptedTempFile($fullPath);
