@@ -455,4 +455,46 @@ class FileSecurityService
 
         return $tempPath;
     }
+
+    /**
+     * Baca isi berkas terdekripsi ke dalam memori secara aman
+     */
+    public static function getDecryptedContents(string $fullPath, int $maxBytes = 35 * 1024 * 1024): ?string
+    {
+        if (!file_exists($fullPath)) return null;
+
+        if (!self::isEncrypted($fullPath)) {
+            return @file_get_contents($fullPath);
+        }
+
+        $in = @fopen($fullPath, 'rb');
+        if (!$in) return null;
+
+        fseek($in, self::HEADER_LEN);
+        $key = self::getKey();
+
+        $buffer = '';
+        $total = 0;
+
+        while (!feof($in)) {
+            $iv = fread($in, 16);
+            if (strlen($iv) < 16) break;
+
+            $lenBytes = fread($in, 4);
+            if (strlen($lenBytes) < 4) break;
+
+            $encLen = unpack('N', $lenBytes)[1];
+            $encData = fread($in, $encLen);
+
+            $plain = openssl_decrypt($encData, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv);
+            if ($plain !== false) {
+                $buffer .= $plain;
+                $total += strlen($plain);
+                if ($total > $maxBytes) break;
+            }
+        }
+
+        fclose($in);
+        return $buffer;
+    }
 }

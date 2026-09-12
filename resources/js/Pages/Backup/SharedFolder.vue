@@ -594,7 +594,7 @@ const exitAndLock = () => {
                                     @click="openPreview(item)"
                                     class="relative w-full aspect-4/3 sm:aspect-square bg-slate-900/5 rounded-xl overflow-hidden flex items-center justify-center border border-slate-200/80 group-hover:border-indigo-400 transition shadow-2xs">
                                     <img 
-                                        :src="item.preview_url" 
+                                        :src="item.thumbnail_url || item.preview_url" 
                                         :alt="item.file_name"
                                         loading="lazy"
                                         @error="thumbnailErrors[item.id] = true"
@@ -722,7 +722,7 @@ const exitAndLock = () => {
                                     @click="openPreview(item)"
                                     class="relative w-full aspect-square bg-slate-900/5 rounded-lg overflow-hidden flex items-center justify-center border border-slate-200/80 group-hover:border-indigo-400 transition">
                                     <img 
-                                        :src="item.preview_url" 
+                                        :src="item.thumbnail_url || item.preview_url" 
                                         :alt="item.file_name"
                                         loading="lazy"
                                         @error="thumbnailErrors[item.id] = true"
@@ -822,7 +822,7 @@ const exitAndLock = () => {
                                     <div class="w-12 h-12 rounded-xl overflow-hidden shrink-0 flex items-center justify-center border border-slate-200/80 bg-slate-100">
                                         <img 
                                             v-if="(isImage(item.file_name) || isArw(item.file_name)) && !thumbnailErrors[item.id]"
-                                            :src="item.preview_url" 
+                                            :src="item.thumbnail_url || item.preview_url" 
                                             :alt="item.file_name"
                                             loading="lazy"
                                             @error="thumbnailErrors[item.id] = true"
@@ -932,7 +932,7 @@ const exitAndLock = () => {
                                                 <div class="w-9 h-9 rounded-lg overflow-hidden shrink-0 flex items-center justify-center border border-slate-200/80 bg-slate-100">
                                                     <img 
                                                         v-if="(isImage(item.file_name) || isArw(item.file_name)) && !thumbnailErrors[item.id]"
-                                                        :src="item.preview_url" 
+                                                        :src="item.thumbnail_url || item.preview_url" 
                                                         :alt="item.file_name"
                                                         loading="lazy"
                                                         @error="thumbnailErrors[item.id] = true"

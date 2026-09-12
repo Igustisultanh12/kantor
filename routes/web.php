@@ -188,11 +188,13 @@ Route::middleware('auth')->group(function () {
     Route::post('/shared-folder/{token}/exit', [BackupShareController::class, 'exitShare'])->name('backup.shared.exit');
     Route::get('/shared-folder/{token}/download/{fileId}', [BackupShareController::class, 'downloadFile'])->name('backup.shared.download');
     Route::get('/shared-folder/{token}/preview/{fileId}', [BackupShareController::class, 'previewFile'])->name('backup.shared.preview');
+    Route::get('/shared-folder/{token}/thumb/{fileId}', [BackupShareController::class, 'thumbnail'])->name('backup.shared.thumbnail');
     Route::get('/shared-folder/{token}/download-zip', [BackupShareController::class, 'downloadFolderZip'])->name('backup.shared.download-zip');
     Route::get('/shared-folder/{token}/download-arw-jpg/{fileId}', [BackupShareController::class, 'downloadArwJpg'])->name('backup.shared.download-arw-jpg');
 
     // PRATINJAU DOKUMEN & MEDIA TEROTENTIKASI (STREAMING DEKRIPSI ON-THE-FLY)
     Route::get('/pc-backup/preview-file/{id}', [BackupController::class, 'previewFile'])->name('backup.preview-file');
+    Route::get('/pc-backup/thumbnail/{id}', [BackupController::class, 'thumbnail'])->name('backup.thumbnail');
 
     // Fitur GPS Lokasi Personel
     Route::post('/update-location', [LocationController::class, 'update'])->name('location.update');

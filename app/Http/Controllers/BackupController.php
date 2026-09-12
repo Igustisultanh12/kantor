@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\BackupShare;
 use App\Services\ArwService;
 use App\Services\FileSecurityService;
+use App\Services\ThumbnailService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
@@ -186,12 +187,16 @@ class BackupController extends Controller
             
             $item->date_human = Carbon::parse($item->created_at)->format('d M Y H:i');
             $isArw = ArwService::isArw($item->file_type ?: $item->file_name);
+            $ext = strtolower(pathinfo($item->file_name, PATHINFO_EXTENSION));
+            $isImg = !$item->is_folder && in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg']);
             $item->is_arw = $isArw;
             if ($isArw) {
                 $item->preview_url = route('backup.preview-arw', $item->id);
+                $item->thumbnail_url = route('backup.thumbnail', $item->id);
                 $item->download_jpg_url = route('backup.download-arw-jpg', $item->id);
             } else {
                 $item->preview_url = !$item->is_folder ? route('backup.preview-file', $item->id) : null;
+                $item->thumbnail_url = $isImg ? route('backup.thumbnail', $item->id) : null;
                 $item->download_jpg_url = null;
             }
             $item->is_secured = true;
@@ -350,6 +355,36 @@ class BackupController extends Controller
         }
 
         return ArwService::previewResponse($fullPath, $backup->file_name);
+    }
+
+    /**
+     * THUMBNAIL TERKOMPRESI RINGAN & CEPAT (DISK CACHED)
+     */
+    public function thumbnail(Request $request, $id)
+    {
+        if ($request->header('Sec-Fetch-Dest') === 'document' || $request->header('Sec-Fetch-Mode') === 'navigate') {
+            abort(403, 'Akses Ditolak.');
+        }
+
+        $backup = Backup::findOrFail($id);
+
+        $user = Auth::user();
+        $pc = Pc::findOrFail($backup->pc_id);
+        if ($pc->user_id !== $user->id && $user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
+            abort(403, 'Akses Ditolak.');
+        }
+
+        if ($backup->is_folder) {
+            abort(400, 'Folder tidak memiliki thumbnail.');
+        }
+
+        $fullPath = FileSecurityService::verifySafeStoragePath($backup->file_path);
+        if (!file_exists($fullPath)) {
+            abort(404, 'Berkas fisik tidak ditemukan.');
+        }
+
+        $isArw = ArwService::isArw($backup->file_type ?: $backup->file_name);
+        return ThumbnailService::getThumbnailResponse($fullPath, $backup->file_name, $isArw);
     }
 
     /**

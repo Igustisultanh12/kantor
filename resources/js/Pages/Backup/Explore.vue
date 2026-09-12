@@ -1973,7 +1973,7 @@ onUnmounted(() => {
                                         <div class="flex items-center gap-3">
                                             <div class="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200">
                                                 <img v-if="(isImage(item) || isArw(item)) && item.preview_url && !thumbnailErrors[item.id]"
-                                                     :src="item.preview_url" 
+                                                     :src="item.thumbnail_url || item.preview_url" 
                                                      :alt="item.file_name"
                                                      loading="lazy"
                                                      @error="thumbnailErrors[item.id] = true"
@@ -2099,7 +2099,7 @@ onUnmounted(() => {
                             <div class="h-32 w-full bg-slate-100 rounded-xl flex items-center justify-center relative overflow-hidden group-hover:shadow-inner transition mb-3">
                                 <!-- 1. Preview Gambar / Sony RAW Nyata -->
                                 <template v-if="(isImage(item) || isArw(item)) && item.preview_url && !thumbnailErrors[item.id]">
-                                    <img :src="item.preview_url" 
+                                    <img :src="item.thumbnail_url || item.preview_url" 
                                          :alt="item.file_name"
                                          loading="lazy"
                                          @error="thumbnailErrors[item.id] = true"
@@ -2211,7 +2211,7 @@ onUnmounted(() => {
                             <!-- Area Ikon / Thumbnail Sedang -->
                             <div class="w-full h-16 bg-slate-100 rounded-lg flex items-center justify-center relative overflow-hidden mb-1.5">
                                 <template v-if="(isImage(item) || isArw(item)) && item.preview_url && !thumbnailErrors[item.id]">
-                                    <img :src="item.preview_url" 
+                                    <img :src="item.thumbnail_url || item.preview_url" 
                                          :alt="item.file_name"
                                          loading="lazy"
                                          @error="thumbnailErrors[item.id] = true"
@@ -2267,7 +2267,7 @@ onUnmounted(() => {
 
                             <div class="w-7 h-7 rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200">
                                 <img v-if="(isImage(item) || isArw(item)) && item.preview_url && !thumbnailErrors[item.id]"
-                                     :src="item.preview_url" 
+                                     :src="item.thumbnail_url || item.preview_url" 
                                      :alt="item.file_name"
                                      loading="lazy"
                                      @error="thumbnailErrors[item.id] = true"
