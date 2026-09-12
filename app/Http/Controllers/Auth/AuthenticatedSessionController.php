@@ -145,13 +145,17 @@ class AuthenticatedSessionController extends Controller
             session(['warning_wa' => 'Nomor WhatsApp belum terdaftar. Notifikasi sistem tidak akan terkirim.']);
         }
 
-        if ($user->must_change_password) {
-            return redirect()->route('profile.edit')->with('info', 'Otoritas Keamanan: Ini adalah login pertama Anda. Mohon perbarui password default Anda segera.');
-        }
-
-        // PRIORITAS UTAMA PENGALIHAN: Jika personel mengakses tautan khusus (seperti Folder Berbagi / Shared Folder)
-        if (!empty($targetRedirect)) {
+        // PRIORITAS 1: Jika personel mengakses tautan khusus (seperti Folder Berbagi / Shared Folder)
+        if (!empty($targetRedirect) && is_string($targetRedirect)) {
             session()->forget('url.intended');
+
+            if (str_contains($targetRedirect, '%')) {
+                $decoded = rawurldecode($targetRedirect);
+                if (str_starts_with($decoded, 'http') || str_starts_with($decoded, '/')) {
+                    $targetRedirect = $decoded;
+                }
+            }
+
             $parsedPath = parse_url($targetRedirect, PHP_URL_PATH);
             if ($parsedPath && !in_array($parsedPath, ['/login', '/logout', '/register', '/password/reset'])) {
                 $appHost = parse_url(config('app.url'), PHP_URL_HOST);
@@ -160,6 +164,11 @@ class AuthenticatedSessionController extends Controller
                     return redirect()->to($targetRedirect);
                 }
             }
+        }
+
+        // PRIORITAS 2: Wajib ganti password pada login biasa jika flag aktif
+        if ($user->must_change_password) {
+            return redirect()->route('profile.edit')->with('info', 'Otoritas Keamanan: Ini adalah login pertama Anda. Mohon perbarui password default Anda segera.');
         }
 
         if ($user->role !== 'admin') {
@@ -258,12 +267,16 @@ class AuthenticatedSessionController extends Controller
             'ip_address' => $request->ip(),
         ]);
 
-        if ($user->must_change_password) {
-            return redirect()->route('profile.edit')->with('info', 'Otoritas Keamanan: Ini adalah login pertama Anda. Mohon perbarui password default Anda segera.');
-        }
-
+        // PRIORITAS 1: Target redirect khusus (Shared folder dll)
         $targetRedirect = session()->pull('url.intended');
-        if (!empty($targetRedirect)) {
+        if (!empty($targetRedirect) && is_string($targetRedirect)) {
+            if (str_contains($targetRedirect, '%')) {
+                $decoded = rawurldecode($targetRedirect);
+                if (str_starts_with($decoded, 'http') || str_starts_with($decoded, '/')) {
+                    $targetRedirect = $decoded;
+                }
+            }
+
             $parsedPath = parse_url($targetRedirect, PHP_URL_PATH);
             if ($parsedPath && !in_array($parsedPath, ['/login', '/logout', '/register', '/password/reset'])) {
                 $appHost = parse_url(config('app.url'), PHP_URL_HOST);
@@ -272,6 +285,11 @@ class AuthenticatedSessionController extends Controller
                     return redirect()->to($targetRedirect);
                 }
             }
+        }
+
+        // PRIORITAS 2: Wajib ganti password pada login biasa jika flag aktif
+        if ($user->must_change_password) {
+            return redirect()->route('profile.edit')->with('info', 'Otoritas Keamanan: Ini adalah login pertama Anda. Mohon perbarui password default Anda segera.');
         }
 
         if ($user->role !== 'admin') {

@@ -95,7 +95,14 @@ class MFAController extends Controller
             session(['mfa_verified' => true]);
 
             $targetRedirect = session()->pull('url.intended');
-            if (!empty($targetRedirect)) {
+            if (!empty($targetRedirect) && is_string($targetRedirect)) {
+                if (str_contains($targetRedirect, '%')) {
+                    $decoded = rawurldecode($targetRedirect);
+                    if (str_starts_with($decoded, 'http') || str_starts_with($decoded, '/')) {
+                        $targetRedirect = $decoded;
+                    }
+                }
+
                 $parsedPath = parse_url($targetRedirect, PHP_URL_PATH);
                 if ($parsedPath && !in_array($parsedPath, ['/login', '/logout', '/register', '/password/reset'])) {
                     $appHost = parse_url(config('app.url'), PHP_URL_HOST);
