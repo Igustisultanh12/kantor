@@ -1166,7 +1166,17 @@ class BackupController extends Controller
             return $newFolder;
         } else {
             $origPath = storage_path('app/public/' . $item->file_path);
-            if (!file_exists($origPath)) return null;
+            if (!file_exists($origPath)) {
+                if (file_exists(storage_path('app/' . $item->file_path))) {
+                    $origPath = storage_path('app/' . $item->file_path);
+                } else if (file_exists($item->file_path)) {
+                    $origPath = $item->file_path;
+                }
+            }
+            if (!file_exists($origPath)) {
+                \Log::warning("Gagal menyalin berkas: Berkas fisik tidak ditemukan untuk Backup ID {$item->id} ({$item->file_path})");
+                return null;
+            }
 
             $ext = pathinfo($item->file_name, PATHINFO_EXTENSION);
             $newName = ($item->parent_id == $targetFolderId) ? 'Salinan ' . $item->file_name : $item->file_name;

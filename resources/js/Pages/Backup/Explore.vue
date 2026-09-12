@@ -223,12 +223,35 @@ const clearSelection = () => {
     selectedItemIds.value = [];
 };
 
-// --- STATE PAPAN KLIP (COPY & CUT / MOVE) ---
-const clipboard = ref({
-    mode: null, // 'copy' | 'cut'
-    items: [],
-    sourcePcId: props.pc.id
-});
+// --- STATE PAPAN KLIP (COPY & CUT / MOVE) DENGAN PERSISTENSI SESSION ---
+const loadClipboard = () => {
+    try {
+        const stored = sessionStorage.getItem('sinden_explore_clipboard');
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed && Array.isArray(parsed.items) && parsed.items.length > 0) {
+                return parsed;
+            }
+        }
+    } catch (e) {}
+    return {
+        mode: null, // 'copy' | 'cut'
+        items: [],
+        sourcePcId: props.pc?.id || null
+    };
+};
+
+const clipboard = ref(loadClipboard());
+
+watch(clipboard, (val) => {
+    try {
+        if (val && Array.isArray(val.items) && val.items.length > 0) {
+            sessionStorage.setItem('sinden_explore_clipboard', JSON.stringify(val));
+        } else {
+            sessionStorage.removeItem('sinden_explore_clipboard');
+        }
+    } catch (e) {}
+}, { deep: true });
 
 const copySelectedItems = () => {
     if (selectedCount.value === 0) return;
@@ -266,12 +289,15 @@ const cutSelectedItems = () => {
 
 const cancelClipboard = () => {
     clipboard.value = { mode: null, items: [], sourcePcId: null };
+    try {
+        sessionStorage.removeItem('sinden_explore_clipboard');
+    } catch (e) {}
 };
 
-const executePaste = async () => {
-    if (!clipboard.value.mode || clipboard.value.items.length === 0) return;
+const executePaste = async (overrideTargetFolderId = null) => {
+    if (!clipboard.value.mode || !clipboard.value.items || clipboard.value.items.length === 0) return;
     const ids = clipboard.value.items.map(i => i.id);
-    const targetFolderId = props.currentFolderId;
+    const targetFolderId = overrideTargetFolderId !== null ? overrideTargetFolderId : props.currentFolderId;
 
     if (clipboard.value.mode === 'cut') {
         try {
@@ -334,8 +360,10 @@ const handleItemDragStart = (e, item) => {
         draggedItems.value = selectedItems.value;
     }
 
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('application/x-sinden-items', JSON.stringify(draggedItems.value.map(i => i.id)));
+    e.dataTransfer.effectAllowed = 'copyMove';
+    const payload = JSON.stringify(draggedItems.value.map(i => i.id));
+    e.dataTransfer.setData('application/x-sinden-items', payload);
+    e.dataTransfer.setData('text/plain', payload);
 };
 
 const handleItemDragEnd = () => {
@@ -344,47 +372,46 @@ const handleItemDragEnd = () => {
 };
 
 const handleFolderDragOver = (e, targetFolder) => {
-    if (!e.dataTransfer.types.includes('application/x-sinden-items')) return;
-    if (draggedItems.value.some(i => i.id === targetFolder.id)) return;
+    // Pastikan ada item yang sedang ditarik secara internal
+    if (draggedItems.value.length === 0) {
+        const types = Array.from(e.dataTransfer?.types || []).map(t => t.toLowerCase());
+        if (!types.includes('application/x-sinden-items') && !types.includes('text/plain')) {
+            return;
+        }
+    }
+
+    // Jangan izinkan menjatuhkan ke item itu sendiri
+    if (targetFolder?.id && draggedItems.value.some(i => i.id === targetFolder.id)) {
+        return;
+    }
 
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    dragTargetFolderId.value = targetFolder.id;
+    e.dataTransfer.dropEffect = e.ctrlKey ? 'copy' : 'move';
+    dragTargetFolderId.value = targetFolder?.id || null;
 };
 
 const handleFolderDragLeave = (e, targetFolder) => {
-    if (dragTargetFolderId.value === targetFolder.id) {
+    if (e.currentTarget && e.relatedTarget && e.currentTarget.contains(e.relatedTarget)) {
+        return;
+    }
+    if (dragTargetFolderId.value === (targetFolder?.id || null)) {
         dragTargetFolderId.value = null;
     }
 };
 
-const handleFolderDrop = async (e, targetFolder) => {
-    if (!e.dataTransfer.types.includes('application/x-sinden-items')) return;
-    e.preventDefault();
-    dragTargetFolderId.value = null;
-
-    let ids = [];
-    try {
-        ids = JSON.parse(e.dataTransfer.getData('application/x-sinden-items'));
-    } catch {
-        ids = draggedItems.value.map(i => i.id);
-    }
-
-    if (!ids || ids.length === 0) return;
-    if (targetFolder.id && ids.includes(targetFolder.id)) return;
-
+const executeMove = async (ids, targetFolderId, targetFolderName = 'tujuan') => {
     try {
         const res = await axios.post(route('backup.bulk-move'), {
             pc_id: props.pc.id,
             ids: ids,
-            target_folder_id: targetFolder.id || null
+            target_folder_id: targetFolderId || null
         });
         if (res.data.status === 'success') {
             Swal.fire({
                 toast: true,
                 position: 'top-end',
                 icon: 'success',
-                title: `${ids.length} item berhasil dipindahkan ke '${targetFolder.file_name || 'HOME'}'`,
+                title: `${ids.length} item berhasil dipindahkan ke '${targetFolderName}'`,
                 showConfirmButton: false,
                 timer: 2500
             });
@@ -395,6 +422,82 @@ const handleFolderDrop = async (e, targetFolder) => {
     } catch (err) {
         Swal.fire('Gagal Memindahkan', err.response?.data?.message || err.message, 'error');
     }
+};
+
+const executeCopy = async (ids, targetFolderId, targetFolderName = 'tujuan') => {
+    try {
+        const res = await axios.post(route('backup.bulk-copy'), {
+            pc_id: props.pc.id,
+            ids: ids,
+            target_folder_id: targetFolderId || null
+        });
+        if (res.data.status === 'success') {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: `${ids.length} item berhasil disalin ke '${targetFolderName}'`,
+                showConfirmButton: false,
+                timer: 2500
+            });
+            clearSelection();
+            draggedItems.value = [];
+            router.reload({ only: ['contents', 'pc'], preserveScroll: true });
+        }
+    } catch (err) {
+        Swal.fire('Gagal Menyalin', err.response?.data?.message || err.message, 'error');
+    }
+};
+
+const handleFolderDrop = async (e, targetFolder) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragTargetFolderId.value = null;
+
+    let ids = [];
+    try {
+        const raw = e.dataTransfer.getData('application/x-sinden-items') || e.dataTransfer.getData('text/plain');
+        if (raw) ids = JSON.parse(raw);
+    } catch {
+        ids = draggedItems.value.map(i => i.id);
+    }
+
+    if (!ids || ids.length === 0) {
+        ids = draggedItems.value.map(i => i.id);
+    }
+
+    if (!ids || ids.length === 0) return;
+    if (targetFolder?.id && ids.includes(targetFolder.id)) return;
+
+    const targetFolderName = targetFolder?.file_name || targetFolder?.name || 'Beranda / HOME';
+    const targetFolderId = targetFolder?.id || null;
+
+    // Jika pengguna menekan Ctrl saat drag: langsung Salin (Copy)
+    if (e.ctrlKey) {
+        await executeCopy(ids, targetFolderId, targetFolderName);
+        return;
+    }
+
+    // Tanya konfirmasi pengguna: Pindahkan atau Salin?
+    Swal.fire({
+        title: 'Item Dijatuhkan',
+        html: `Apakah Anda ingin <b>Memindahkan</b> atau <b>Menyalin (Duplikasi)</b> ${ids.length} item ke folder <b>${targetFolderName}</b>?`,
+        icon: 'question',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: 'Pindahkan (Move)',
+        denyButtonText: 'Salin (Duplikasi)',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#2563eb',
+        denyButtonColor: '#059669',
+        cancelButtonColor: '#64748b'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            await executeMove(ids, targetFolderId, targetFolderName);
+        } else if (result.isDenied) {
+            await executeCopy(ids, targetFolderId, targetFolderName);
+        }
+    });
 };
 
 // --- LOGIKA BULK DELETE & BULK DOWNLOAD ZIP ---
@@ -922,11 +1025,22 @@ const deleteItem = (item) => {
 
 const openContextMenu = (e, item) => {
     e.preventDefault();
+    e.stopPropagation();
     contextMenu.value = {
         show: true,
-        x: e.clientX,
-        y: e.clientY,
+        x: Math.min(e.clientX, window.innerWidth - 270),
+        y: Math.min(e.clientY, window.innerHeight - 380),
         item: item
+    };
+};
+
+const openBackgroundContextMenu = (e) => {
+    e.preventDefault();
+    contextMenu.value = {
+        show: true,
+        x: Math.min(e.clientX, window.innerWidth - 270),
+        y: Math.min(e.clientY, window.innerHeight - 320),
+        item: null // null menandakan area kosong folder
     };
 };
 
@@ -1784,7 +1898,8 @@ onUnmounted(() => {
                 </div>
 
                 <!-- WADAH UTAMA KONTEN DENGAN MULTI-VIEW (LARGE ICONS, MEDIUM ICONS, SMALL ICONS, LIST) -->
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-slate-200 min-h-[440px] relative">
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-slate-200 min-h-[440px] relative"
+                     @contextmenu.prevent="openBackgroundContextMenu($event)">
                     
                     <!-- 1. TAMPILAN DAFTAR RINCIAN (LIST DETAILS VIEW) -->
                     <div v-if="viewMode === 'list'" class="overflow-x-auto">
@@ -2112,77 +2227,126 @@ onUnmounted(() => {
         </div>
 
         <div v-if="contextMenu.show" 
-             :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }" class="fixed z-[200] bg-white border border-slate-200 shadow-2xl rounded-2xl w-64 py-2 text-[11px] font-black text-gray-700 uppercase tracking-tighter">
+             :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }" 
+             class="fixed z-[200] bg-white border border-slate-200 shadow-2xl rounded-2xl w-64 py-2 text-[11px] font-black text-gray-700 uppercase tracking-tighter select-none">
             
-            <div @click="contextMenu.item?.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: contextMenu.item.id })) : (isExcel(contextMenu.item) ? openExcelEditor(contextMenu.item) : openPreview(contextMenu.item))" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
-                <span>👁️</span> BUKA ITEM
-            </div>
+            <!-- 1. JIKA KLIK KANAN PADA ITEM SPESIFIK -->
+            <template v-if="contextMenu.item">
+                <div @click="contextMenu.item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: contextMenu.item.id })) : (isExcel(contextMenu.item) ? openExcelEditor(contextMenu.item) : openPreview(contextMenu.item))" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
+                    <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                    <span>BUKA ITEM</span>
+                </div>
 
-            <!-- OPSI MULTI-SELEKSI & PAPAN KLIP (POTONG / SALIN / TEMPEL) -->
-            <div class="border-t my-1 border-slate-100"></div>
-            
-            <!-- Jika Ada Item di Clipboard: Opsi Tempel -->
-            <div v-if="clipboard.items.length > 0"
-                 @click="executePaste" 
-                 class="px-4 py-2 bg-amber-50 text-amber-900 hover:bg-amber-600 hover:text-white cursor-pointer flex items-center gap-3 transition font-black">
-                <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-                <span>TEMPEL {{ clipboard.items.length }} ITEM DI SINI</span>
-            </div>
+                <div class="border-t my-1 border-slate-100"></div>
 
-            <div @click="contextMenu.item ? (selectedItemIds.includes(contextMenu.item.id) ? cutSelectedItems() : (selectedItemIds = [contextMenu.item.id], cutSelectedItems())) : null" 
-                 class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
-                <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879a3 3 0 11-4.242-4.242 3 3 0 014.242 0M7 7l2.879 2.879" /></svg>
-                <span>POTONG (PINDAHKAN)</span>
-            </div>
+                <!-- Jika Item ini Adalah Folder dan Ada Item di Clipboard: Opsi Tempel ke Dalam Folder Ini -->
+                <div v-if="contextMenu.item.is_folder && clipboard.items.length > 0"
+                     @click="executePaste(contextMenu.item.id)" 
+                     class="px-4 py-2 bg-emerald-50 text-emerald-900 hover:bg-emerald-600 hover:text-white cursor-pointer flex items-center gap-3 transition font-black">
+                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                    <span>TEMPEL KE DALAM FOLDER INI ({{ clipboard.items.length }})</span>
+                </div>
 
-            <div @click="contextMenu.item ? (selectedItemIds.includes(contextMenu.item.id) ? copySelectedItems() : (selectedItemIds = [contextMenu.item.id], copySelectedItems())) : null" 
-                 class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
-                <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                <span>SALIN (DUPLIKASI)</span>
-            </div>
+                <div @click="selectedItemIds.includes(contextMenu.item.id) ? cutSelectedItems() : (selectedItemIds = [contextMenu.item.id], cutSelectedItems())" 
+                     class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
+                    <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879a3 3 0 11-4.242-4.242 3 3 0 014.242 0M7 7l2.879 2.879" /></svg>
+                    <span>POTONG (PINDAHKAN)</span>
+                </div>
 
-            <!-- OPSI KONVERSI SONY RAW KE JPG PADA KLIK KANAN -->
-            <div v-if="isArw(contextMenu.item)"
-                 @click="promptConvertArw(contextMenu.item)"
-                 class="px-4 py-2 bg-amber-50 text-amber-800 hover:bg-amber-600 hover:text-white cursor-pointer flex items-center gap-3 transition font-black">
-                <span>🔄</span>
-                <span>KONVERSI KE JPG (HD)</span>
-            </div>
+                <div @click="selectedItemIds.includes(contextMenu.item.id) ? copySelectedItems() : (selectedItemIds = [contextMenu.item.id], copySelectedItems())" 
+                     class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
+                    <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                    <span>SALIN (DUPLIKASI)</span>
+                </div>
 
-            <!-- OPSI BAGIKAN LINK UNTUK FOLDER -->
-            <div v-if="contextMenu.item?.is_folder && isAdmin"
-                 @click="openShareModal(contextMenu.item)"
-                 class="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white cursor-pointer flex items-center gap-3 transition font-black">
-                <span>🔗</span>
-                <span>{{ contextMenu.item.share_info?.is_active ? 'KELOLA TAUTAN (AKTIF)' : 'BAGIKAN TAUTAN (PIN)' }}</span>
-            </div>
+                <!-- OPSI KONVERSI SONY RAW KE JPG PADA KLIK KANAN -->
+                <div v-if="isArw(contextMenu.item)"
+                     @click="promptConvertArw(contextMenu.item)"
+                     class="px-4 py-2 bg-amber-50 text-amber-800 hover:bg-amber-600 hover:text-white cursor-pointer flex items-center gap-3 transition font-black">
+                    <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    <span>KONVERSI KE JPG (HD)</span>
+                </div>
 
-            <!-- OPSI EDIT EXCEL PADA KLIK KANAN -->
-            <div v-if="isExcel(contextMenu.item)"
-                 @click="openExcelEditor(contextMenu.item)"
-                 class="px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white cursor-pointer flex items-center gap-3 transition font-black">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-2h2v2zm0-4H7v-2h2v2zm0-4H7V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z"/>
-                </svg>
-                <span>EDIT FILE EXCEL</span>
-            </div>
-            
-            <div v-if="!contextMenu.item?.is_folder && (contextMenu.item?.file_type?.toLowerCase() === 'zip' || contextMenu.item?.file_name?.toLowerCase().endsWith('.zip'))"
-                 @click="handleExtract(contextMenu.item)" class="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white cursor-pointer flex items-center gap-3 transition font-black">
-                <span>📦</span> EKSTRAK BERKAS (ZIP)
-            </div>
-            
-            <div class="border-t my-1 border-slate-100"></div>
-            <div @click="handleRename(contextMenu.item)" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
-                <span>✏️</span> UBAH NAMA
-            </div>
-            <div @click="showProperties(contextMenu.item)" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
-                <span>ℹ️</span> PROPERTIES
-            </div>
-            <div class="border-t my-1 border-slate-100"></div>
-            <div @click="selectedItemIds.length > 1 ? deleteSelectedItems() : deleteItem(contextMenu.item)" class="px-4 py-2 hover:bg-red-600 hover:text-white cursor-pointer flex items-center gap-3 transition text-red-600">
-                <span>🗑️</span> HAPUS
-            </div>
+                <!-- OPSI BAGIKAN LINK UNTUK FOLDER -->
+                <div v-if="contextMenu.item.is_folder && isAdmin"
+                     @click="openShareModal(contextMenu.item)"
+                     class="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white cursor-pointer flex items-center gap-3 transition font-black">
+                    <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                    <span>{{ contextMenu.item.share_info?.is_active ? 'KELOLA TAUTAN (AKTIF)' : 'BAGIKAN TAUTAN (PIN)' }}</span>
+                </div>
+
+                <!-- OPSI EDIT EXCEL PADA KLIK KANAN -->
+                <div v-if="isExcel(contextMenu.item)"
+                     @click="openExcelEditor(contextMenu.item)"
+                     class="px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white cursor-pointer flex items-center gap-3 transition font-black">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-2h2v2zm0-4H7v-2h2v2zm0-4H7V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z"/>
+                    </svg>
+                    <span>EDIT FILE EXCEL</span>
+                </div>
+                
+                <div v-if="!contextMenu.item.is_folder && (contextMenu.item.file_type?.toLowerCase() === 'zip' || contextMenu.item.file_name?.toLowerCase().endsWith('.zip'))"
+                     @click="handleExtract(contextMenu.item)" class="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white cursor-pointer flex items-center gap-3 transition font-black">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                    <span>EKSTRAK BERKAS (ZIP)</span>
+                </div>
+                
+                <div class="border-t my-1 border-slate-100"></div>
+                <div @click="handleRename(contextMenu.item)" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
+                    <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    <span>UBAH NAMA</span>
+                </div>
+                <div @click="showProperties(contextMenu.item)" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
+                    <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <span>PROPERTIES</span>
+                </div>
+                <div class="border-t my-1 border-slate-100"></div>
+                <div @click="selectedItemIds.length > 1 ? deleteSelectedItems() : deleteItem(contextMenu.item)" class="px-4 py-2 hover:bg-red-600 hover:text-white cursor-pointer flex items-center gap-3 transition text-red-600">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    <span>HAPUS</span>
+                </div>
+            </template>
+
+            <!-- 2. JIKA KLIK KANAN PADA AREA KOSONG / BACKGROUND FOLDER -->
+            <template v-else>
+                <!-- JIKA ADA ITEM DI CLIPBOARD: OPSI TEMPEL (PASTE) UTAMA -->
+                <div v-if="clipboard.items.length > 0"
+                     @click="executePaste()" 
+                     class="px-4 py-2.5 bg-amber-500 text-white hover:bg-amber-600 cursor-pointer flex items-center gap-3 transition font-black shadow-xs">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                    <span>TEMPEL {{ clipboard.items.length }} ITEM DI SINI</span>
+                </div>
+
+                <div v-if="clipboard.items.length > 0"
+                     @click="cancelClipboard" 
+                     class="px-4 py-1.5 text-slate-500 hover:bg-slate-100 cursor-pointer flex items-center gap-3 transition text-[10px]">
+                    <span>BATALKAN SALIN / POTONG</span>
+                </div>
+
+                <div v-if="clipboard.items.length > 0" class="border-t my-1 border-slate-100"></div>
+
+                <div @click="createFolder" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
+                    <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>
+                    <span>BUAT FOLDER BARU</span>
+                </div>
+
+                <div @click="triggerFileInput" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
+                    <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                    <span>UNGGAH BERKAS</span>
+                </div>
+
+                <div class="border-t my-1 border-slate-100"></div>
+
+                <div @click="toggleSelectAll" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
+                    <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                    <span>{{ isAllSelected ? 'BATAL PILIH SEMUA' : 'PILIH SEMUA' }}</span>
+                </div>
+
+                <div @click="$inertia.reload({ preserveScroll: true })" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
+                    <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    <span>MUAT ULANG (REFRESH)</span>
+                </div>
+            </template>
         </div>
 
         <!-- MODAL PREVIEW DOKUMEN & FOTO (DILENGKAPI ZOOM IN/OUT, ROTASI & PROTEKSI ANTI-COPY KEAMANAN TINGGI) -->
