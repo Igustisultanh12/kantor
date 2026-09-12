@@ -34,6 +34,7 @@ use App\Http\Controllers\SpJagaController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\PublicTrackingController;
 use App\Http\Controllers\ScSubmissionController;
+use App\Http\Controllers\SystemCheckController;
 use App\Models\User;
 use App\Models\LetterLog;
 use App\Models\Letter;
@@ -364,6 +365,11 @@ Route::middleware('auth')->group(function () {
         Route::match(['delete', 'post'], '/visitor-logs/clear', [VisitorLogController::class, 'clearAll'])->name('visitor-logs.clear');
         Route::delete('/visitor-logs/{id}', [VisitorLogController::class, 'destroy'])->name('visitor-logs.destroy');
         Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
+        
+        // Cek Sistem & Monitoring Server Admin (Speedtest, Disk, CPU, RAM, VRAM)
+        Route::get('/admin/system-check', [SystemCheckController::class, 'index'])->name('system-check.index');
+        Route::get('/admin/system-check/metrics', [SystemCheckController::class, 'getMetrics'])->name('system-check.metrics');
+        Route::post('/admin/system-check/speedtest', [SystemCheckController::class, 'runSpeedtest'])->name('system-check.speedtest');
         
         // Rencana Kegiatan Pengamanan Aktivitas Masyarakat
         Route::get('/community-activities', [CommunityActivityController::class, 'index'])->name('activities.index');
