@@ -7,6 +7,7 @@ use App\Models\Backup;
 use App\Models\AccessRequest; 
 use App\Models\OfficeNetwork;
 use App\Models\User;
+use App\Models\BackupShare;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
@@ -41,6 +42,7 @@ class BackupController extends Controller
                 'total_pcs' => Pc::count(),
                 'total_storage' => $this->formatBytes(Backup::sum('file_size')),
             ] : null,
+            'allUsers' => $isAdmin ? User::select('id', 'name', 'pangkat', 'nrp')->orderBy('name')->get() : [],
             'isAdmin' => $isAdmin
         ]);
     }
@@ -150,13 +152,32 @@ class BackupController extends Controller
                               ->get();
         }
 
-        $contents = $contents->map(function($item) {
+        BackupShare::ensureSchema();
+
+        $folderShares = BackupShare::where('pc_id', $id)
+            ->whereNotNull('backup_id')
+            ->get()
+            ->keyBy('backup_id');
+
+        $contents = $contents->map(function($item) use ($folderShares) {
             if ($item->is_folder) {
                 $totalSize = $this->getFolderSize($item->id);
                 $item->size_human = $totalSize > 0 ? $this->formatBytes($totalSize) : '0 B';
                 $item->file_size = $totalSize;
+
+                $share = $folderShares->get($item->id);
+                $item->share_info = $share ? [
+                    'id' => $share->id,
+                    'is_active' => (bool)$share->is_active,
+                    'share_token' => $share->share_token,
+                    'pin' => $share->pin,
+                    'share_url' => route('backup.shared.view', $share->share_token),
+                    'access_count' => $share->access_count,
+                    'last_accessed_at' => $share->last_accessed_at ? Carbon::parse($share->last_accessed_at)->format('d M Y H:i') : null,
+                ] : null;
             } else {
                 $item->size_human = $this->formatBytes($item->file_size);
+                $item->share_info = null;
             }
             
             $item->date_human = Carbon::parse($item->created_at)->format('d M Y H:i');
@@ -180,12 +201,33 @@ class BackupController extends Controller
             }
         }
 
+        $currentShare = BackupShare::where('pc_id', $id)
+            ->where(function ($q) use ($parentId) {
+                if ($parentId) {
+                    $q->where('backup_id', $parentId);
+                } else {
+                    $q->whereNull('backup_id');
+                }
+            })->first();
+
+        $currentShareInfo = $currentShare ? [
+            'id' => $currentShare->id,
+            'is_active' => (bool)$currentShare->is_active,
+            'share_token' => $currentShare->share_token,
+            'pin' => $currentShare->pin,
+            'share_url' => route('backup.shared.view', $currentShare->share_token),
+            'access_count' => $currentShare->access_count,
+            'last_accessed_at' => $currentShare->last_accessed_at ? Carbon::parse($currentShare->last_accessed_at)->format('d M Y H:i') : null,
+        ] : null;
+
         return Inertia::render('Backup/Explore', [
             'pc' => $this->formatPcData($pc),
             'contents' => $contents,
             'currentFolderId' => $parentId,
             'breadcrumbs' => $breadcrumbs,
-            'searchQuery' => $search
+            'searchQuery' => $search,
+            'currentShare' => $currentShareInfo,
+            'isAdmin' => Auth::user()->role === 'admin' || Auth::user()->name === 'I Gusti Sultan H.A, A.Md.Kom',
         ]);
     }
 
@@ -665,6 +707,61 @@ class BackupController extends Controller
             Log::error("Gagal membuat berkas Excel baru: " . $e->getMessage());
             return back()->with('error', 'Gagal membuat berkas Excel: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * OPERASI KHUSUS ADMIN: BUAT PANGKALAN PC BARU DENGAN KUOTA GB KUSTOM
+     */
+    public function createPc(Request $request)
+    {
+        $user = Auth::user();
+        if ($user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
+            return abort(403, 'Anda tidak memiliki otoritas membuat pangkalan PC.');
+        }
+
+        $validated = $request->validate([
+            'pc_name' => 'required|string|max:100',
+            'user_id' => 'required|exists:users,id',
+            'quota_gb' => 'required|numeric|min:1|max:100000',
+        ]);
+
+        $pool = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        $randomHw = substr(str_shuffle($pool), 0, 8);
+        $maxQuotaBytes = (int)($validated['quota_gb'] * 1073741824);
+
+        $pc = Pc::create([
+            'user_id' => $validated['user_id'],
+            'pc_name' => $validated['pc_name'],
+            'hardware_id' => 'HW-' . $randomHw,
+            'current_usage' => 0,
+            'max_quota' => $maxQuotaBytes,
+        ]);
+
+        return back()->with('success', "Pangkalan Backup '{$pc->pc_name}' dengan kuota {$validated['quota_gb']} GB berhasil dibangun.");
+    }
+
+    /**
+     * OPERASI KHUSUS ADMIN: SESUAIKAN KUOTA GB PANGKALAN PC
+     */
+    public function updateQuota(Request $request, $id)
+    {
+        $user = Auth::user();
+        if ($user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
+            return abort(403, 'Anda tidak memiliki otoritas mengubah kuota pangkalan.');
+        }
+
+        $validated = $request->validate([
+            'quota_gb' => 'required|numeric|min:1|max:100000',
+        ]);
+
+        $pc = Pc::findOrFail($id);
+        $maxQuotaBytes = (int)($validated['quota_gb'] * 1073741824);
+
+        $pc->update([
+            'max_quota' => $maxQuotaBytes,
+        ]);
+
+        return back()->with('success', "Kapasitas kuota '{$pc->pc_name}' berhasil disesuaikan menjadi {$validated['quota_gb']} GB.");
     }
 
     private function formatPcData($pc) {

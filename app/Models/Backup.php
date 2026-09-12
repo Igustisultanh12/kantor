@@ -42,4 +42,12 @@ class Backup extends Model
     {
         return $this->belongsTo(Backup::class, 'parent_id');
     }
+
+    /**
+     * RELASI KE TAUTAN BERBAGI (SHARE)
+     */
+    public function share()
+    {
+        return $this->hasOne(BackupShare::class, 'backup_id');
+    }
 }

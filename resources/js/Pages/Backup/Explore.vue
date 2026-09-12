@@ -10,8 +10,127 @@ const props = defineProps({
     contents: Array,        
     currentFolderId: Number, 
     breadcrumbs: Array,
-    searchQuery: String 
+    searchQuery: String,
+    currentShare: Object,
+    isAdmin: Boolean,
 });
+
+// --- STATE FITUR BAGIKAN LINK (GOOGLE DRIVE STYLE DENGAN PIN) ---
+const isShareModalOpen = ref(false);
+const shareTarget = ref(null); // null jika membagikan folder saat ini / root pangkalan
+const isSavingShare = ref(false);
+const isCopiedLink = ref(false);
+const shareForm = ref({
+    is_active: true,
+    pin: '',
+    share_name: '',
+    share_url: '',
+    access_count: 0,
+    last_accessed_at: null,
+});
+
+const openShareModal = (item = null) => {
+    shareTarget.value = item;
+    const existing = item ? item.share_info : props.currentShare;
+
+    if (existing) {
+        shareForm.value = {
+            is_active: existing.is_active,
+            pin: existing.pin || '',
+            share_name: item ? item.file_name : (props.breadcrumbs?.[props.breadcrumbs.length - 1]?.name || props.pc?.pc_name || 'Folder Berkas'),
+            share_url: existing.share_url,
+            access_count: existing.access_count || 0,
+            last_accessed_at: existing.last_accessed_at || null,
+        };
+    } else {
+        const randomPin = Math.floor(100000 + Math.random() * 900000).toString();
+        shareForm.value = {
+            is_active: true,
+            pin: randomPin,
+            share_name: item ? item.file_name : (props.breadcrumbs?.[props.breadcrumbs.length - 1]?.name || props.pc?.pc_name || 'Folder Berkas'),
+            share_url: '',
+            access_count: 0,
+            last_accessed_at: null,
+        };
+    }
+    isShareModalOpen.value = true;
+};
+
+const generateRandomPin = () => {
+    shareForm.value.pin = Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+const copyShareLink = () => {
+    if (!shareForm.value.share_url) return;
+    navigator.clipboard.writeText(shareForm.value.share_url).then(() => {
+        isCopiedLink.value = true;
+        setTimeout(() => isCopiedLink.value = false, 2500);
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: 'Tautan berhasil disalin!',
+            showConfirmButton: false,
+            timer: 2000,
+        });
+    });
+};
+
+const submitShareSettings = async () => {
+    if (!shareForm.value.pin || shareForm.value.pin.length < 4) {
+        return Swal.fire('Perhatian', 'PIN Keamanan minimal terdiri dari 4 digit!', 'warning');
+    }
+
+    isSavingShare.value = true;
+    try {
+        const res = await axios.post(route('backup.share.save'), {
+            pc_id: props.pc.id,
+            backup_id: shareTarget.value ? shareTarget.value.id : props.currentFolderId,
+            pin: shareForm.value.pin,
+            is_active: shareForm.value.is_active,
+            share_name: shareForm.value.share_name,
+        });
+
+        if (res.data.status === 'success') {
+            const data = res.data;
+            shareForm.value.share_url = data.share_url;
+            
+            const updatedInfo = {
+                id: data.share.id,
+                is_active: Boolean(data.share.is_active),
+                share_token: data.share.share_token,
+                pin: data.share.pin,
+                share_url: data.share_url,
+                access_count: data.share.access_count,
+                last_accessed_at: data.share.last_accessed_at,
+            };
+
+            if (shareTarget.value) {
+                shareTarget.value.share_info = updatedInfo;
+                const inList = props.contents.find(c => c.id === shareTarget.value.id);
+                if (inList) inList.share_info = updatedInfo;
+            } else if (props.currentShare) {
+                Object.assign(props.currentShare, updatedInfo);
+            }
+
+            Swal.fire({
+                title: 'Tersimpan!',
+                text: 'Pengaturan tautan berbagi dan PIN keamanan telah aktif.',
+                icon: 'success',
+                confirmButtonColor: '#2563eb',
+            });
+        }
+    } catch (err) {
+        Swal.fire('Gagal Menyimpan', err.response?.data?.message || err.message || 'Terjadi kesalahan.', 'error');
+    } finally {
+        isSavingShare.value = false;
+    }
+};
+
+const toggleDeactivateShare = async () => {
+    shareForm.value.is_active = false;
+    await submitShareSettings();
+};
 
 // --- FORMULIR TAKTIS ---
 const uploadForm = useForm({
@@ -832,6 +951,15 @@ onUnmounted(() => {
                             <button @click="createNewExcelPrompt" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-2 transition shadow-xs cursor-pointer">
                                 <span>📊 Excel Baru</span>
                             </button>
+                            <!-- Tombol Bagikan Folder Ini / Pangkalan -->
+                            <button @click="openShareModal(null)" 
+                                    :class="currentShare?.is_active ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500 shadow-sm' : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500 shadow-sm'" 
+                                    class="px-4 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-2 transition cursor-pointer border"
+                                    :title="currentFolderId ? 'Bagikan Folder Ini via Tautan' : 'Bagikan Pangkalan Ini via Tautan'">
+                                <span>🔗</span>
+                                <span>{{ currentFolderId ? 'Bagikan Folder Ini' : 'Bagikan Pangkalan' }}</span>
+                                <span v-if="currentShare?.is_active" class="px-1.5 py-0.2 text-[9px] bg-emerald-950 text-emerald-300 rounded-md font-bold uppercase">Aktif</span>
+                            </button>
                         </div>
                         
                         <div class="flex items-center gap-2 bg-slate-100 p-2 rounded-xl border border-slate-200">
@@ -915,7 +1043,13 @@ onUnmounted(() => {
                                         <span v-else-if="isExcel(item)" class="text-2xl">📊</span>
                                         <span v-else class="text-2xl">📄</span>
                                         <div>
-                                            <p class="font-black text-gray-800 uppercase tracking-tighter">{{ item.file_name }}</p>
+                                            <div class="flex items-center gap-2">
+                                                <p class="font-black text-gray-800 uppercase tracking-tighter">{{ item.file_name }}</p>
+                                                <span v-if="item.is_folder && item.share_info?.is_active" class="px-2 py-0.5 text-[9px] bg-emerald-100 text-emerald-700 rounded-full font-bold uppercase border border-emerald-300 flex items-center gap-1">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                    Link Aktif
+                                                </span>
+                                            </div>
                                             <p class="text-[10px] text-gray-400 font-bold uppercase">{{ item.is_folder ? 'Folder Strategis' : item.file_type }}</p>
                                         </div>
                                     </div>
@@ -928,6 +1062,13 @@ onUnmounted(() => {
                                 </td>
                                 <td class="p-4 text-right">
                                     <div class="flex justify-end items-center gap-2 opacity-0 group-hover:opacity-100 transition">
+                                        <!-- Tombol Bagikan Folder (Google Drive Style) -->
+                                        <button v-if="item.is_folder && isAdmin" 
+                                                @click.stop="openShareModal(item)" 
+                                                class="bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white p-2 rounded-lg transition shadow-xs flex items-center justify-center cursor-pointer" 
+                                                :title="item.share_info?.is_active ? 'Kelola Tautan Berbagi (Aktif)' : 'Bagikan Folder (Buat Tautan)'">
+                                            🔗
+                                        </button>
                                         <!-- Tombol Edit Excel Khusus Berkas Spreadsheet -->
                                         <button v-if="isExcel(item)" 
                                                 @click.stop="openExcelEditor(item)" 
@@ -992,6 +1133,14 @@ onUnmounted(() => {
             
             <div @click="contextMenu.item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: contextMenu.item.id })) : (isExcel(contextMenu.item) ? openExcelEditor(contextMenu.item) : openPreview(contextMenu.item))" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
                 <span>👁️</span> BUKA ITEM
+            </div>
+
+            <!-- OPSI BAGIKAN LINK UNTUK FOLDER -->
+            <div v-if="contextMenu.item?.is_folder && isAdmin"
+                 @click="openShareModal(contextMenu.item)"
+                 class="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white cursor-pointer flex items-center gap-3 transition font-black">
+                <span>🔗</span>
+                <span>{{ contextMenu.item.share_info?.is_active ? 'KELOLA TAUTAN (AKTIF)' : 'BAGIKAN TAUTAN (PIN)' }}</span>
             </div>
 
             <!-- OPSI EDIT EXCEL PADA KLIK KANAN -->
@@ -1296,6 +1445,161 @@ onUnmounted(() => {
 
             </div>
         </div>
+
+        <!-- MODAL BAGIKAN FOLDER DENGAN PROTEKSI PIN (GOOGLE DRIVE STYLE) -->
+        <Teleport to="body">
+            <div v-if="isShareModalOpen" class="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 animate-fade-in">
+                <div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
+                    <!-- Modal Header -->
+                    <div class="p-6 bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-900 text-white flex justify-between items-start">
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xl">🔗</span>
+                                <h3 class="text-lg font-black tracking-tight">Bagikan Folder & Akses Personel</h3>
+                            </div>
+                            <p class="text-xs text-blue-100 font-medium">
+                                Bagikan akses folder dengan tautan terproteksi PIN keamanan (Akses Terbatas: Hanya Lihat & Unduh).
+                            </p>
+                        </div>
+                        <button @click="isShareModalOpen = false" class="text-white/70 hover:text-white text-2xl font-bold p-1 leading-none transition">
+                            &times;
+                        </button>
+                    </div>
+
+                    <!-- Modal Body -->
+                    <div class="p-6 space-y-6">
+                        <!-- Info Folder -->
+                        <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                            <span class="text-3xl">📁</span>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[11px] font-black uppercase text-slate-400 tracking-wider">Target Folder</p>
+                                <p class="text-sm font-black text-slate-800 truncate uppercase">{{ shareForm.share_name }}</p>
+                                <p class="text-[10px] text-slate-500 font-bold">Pangkalan: {{ pc.pc_name }}</p>
+                            </div>
+                            <div>
+                                <span v-if="shareForm.is_active" class="px-2.5 py-1 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full text-[10px] font-black uppercase flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping"></span>
+                                    Aktif
+                                </span>
+                                <span v-else class="px-2.5 py-1 bg-rose-100 text-rose-800 border border-rose-300 rounded-full text-[10px] font-black uppercase">
+                                    Nonaktif
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Saklar Status Akses -->
+                        <div class="flex items-center justify-between p-4 bg-indigo-50/60 rounded-2xl border border-indigo-100">
+                            <div>
+                                <h4 class="text-xs font-black uppercase tracking-wide text-indigo-950">Status Akses Tautan</h4>
+                                <p class="text-[11px] text-indigo-700">Jika dinonaktifkan, tautan akan langsung terkunci dan tidak dapat diakses.</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" v-model="shareForm.is_active" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                            </label>
+                        </div>
+
+                        <!-- Input PIN Keamanan -->
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center">
+                                <label class="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1">
+                                    <span>🔒</span> PIN Keamanan Akses
+                                </label>
+                                <button type="button" @click="generateRandomPin" class="text-xs font-black text-indigo-600 hover:text-indigo-800 uppercase flex items-center gap-1 cursor-pointer">
+                                    <span>🎲</span> Acak PIN Baru
+                                </button>
+                            </div>
+                            <div class="relative">
+                                <input 
+                                    v-model="shareForm.pin" 
+                                    type="text" 
+                                    maxlength="12" 
+                                    placeholder="Contoh: 123456" 
+                                    class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-300 focus:border-indigo-600 focus:bg-white rounded-xl text-base font-black tracking-widest text-slate-800 transition"
+                                />
+                            </div>
+                            <p class="text-[11px] text-slate-500 font-medium">
+                                * Personel yang membuka tautan wajib memasukkan PIN ini untuk verifikasi sebelum melihat berkas.
+                            </p>
+                        </div>
+
+                        <!-- Box Salin Link Tautan -->
+                        <div class="space-y-2">
+                            <label class="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1">
+                                <span>🌐</span> Tautan Akses Personel
+                            </label>
+                            <div class="flex items-center gap-2">
+                                <input 
+                                    type="text" 
+                                    readonly 
+                                    :value="shareForm.share_url || 'Simpan PIN terlebih dahulu untuk mengaktifkan tautan...'" 
+                                    class="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-300 rounded-xl text-xs font-mono text-slate-600 select-all cursor-pointer"
+                                    @click="copyShareLink"
+                                />
+                                <button 
+                                    type="button" 
+                                    @click="copyShareLink" 
+                                    :disabled="!shareForm.share_url" 
+                                    :class="isCopiedLink ? 'bg-emerald-600 text-white' : 'bg-slate-800 hover:bg-slate-900 text-white'"
+                                    class="px-4 py-2.5 rounded-xl text-xs font-black uppercase whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
+                                    <span>{{ isCopiedLink ? '✓ Tersalin' : '📋 Salin' }}</span>
+                                </button>
+                                <a 
+                                    v-if="shareForm.share_url" 
+                                    :href="shareForm.share_url" 
+                                    target="_blank" 
+                                    class="px-3 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-black transition"
+                                    title="Buka Pratinjau Tautan">
+                                    ↗
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Statistik Akses -->
+                        <div v-if="shareForm.access_count > 0 || shareForm.last_accessed_at" class="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px]">
+                            <div>
+                                <span class="text-slate-400 font-bold uppercase block text-[10px]">Frekuensi Diakses</span>
+                                <span class="font-black text-slate-700">{{ shareForm.access_count }} Kali</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 font-bold uppercase block text-[10px]">Akses Terakhir</span>
+                                <span class="font-black text-slate-700">{{ shareForm.last_accessed_at || 'Belum pernah' }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal Footer -->
+                    <div class="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap justify-between items-center gap-3">
+                        <button 
+                            v-if="shareForm.share_url && shareForm.is_active" 
+                            type="button" 
+                            @click="toggleDeactivateShare" 
+                            :disabled="isSavingShare"
+                            class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-black uppercase transition cursor-pointer">
+                            Tutup / Nonaktifkan Akses
+                        </button>
+                        <div v-else></div>
+
+                        <div class="flex items-center gap-2">
+                            <button 
+                                type="button" 
+                                @click="isShareModalOpen = false" 
+                                class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-black uppercase transition cursor-pointer">
+                                Tutup
+                            </button>
+                            <button 
+                                type="button" 
+                                @click="submitShareSettings" 
+                                :disabled="isSavingShare"
+                                class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase transition cursor-pointer flex items-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50">
+                                <span v-if="isSavingShare" class="animate-spin text-sm">⏳</span>
+                                <span>{{ isSavingShare ? 'Menyimpan...' : 'Simpan & Terapkan' }}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
 
     </AuthenticatedLayout>
 </template>

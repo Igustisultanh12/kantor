@@ -18,6 +18,7 @@ use App\Http\Controllers\SoldierViolationController;
 use App\Http\Controllers\CommunityActivityController;
 use App\Http\Controllers\StampController;
 use App\Http\Controllers\BackupController; 
+use App\Http\Controllers\BackupShareController;
 use App\Http\Controllers\CashController;
 use App\Http\Controllers\KoperasiController;
 use App\Http\Controllers\PersonnelController;
@@ -154,7 +155,25 @@ Route::middleware(['auth', 'office.only'])->group(function () {
     // --- FITUR EDITOR & PEMBUATAN EXCEL / SPREADSHEET (BACKUP) ---
     Route::post('/pc-backup/save-excel/{id}', [BackupController::class, 'saveExcel'])->name('backup.save-excel');
     Route::post('/pc-backup/create-excel', [BackupController::class, 'createExcel'])->name('backup.create-excel');
+
+    // --- FITUR ADMIN: BUAT PC KUOTA MANDIRI & SESUAIKAN KUOTA ---
+    Route::post('/admin/pc-backup/create-pc', [BackupController::class, 'createPc'])->name('admin.backup.create-pc');
+    Route::post('/admin/pc-backup/update-quota/{id}', [BackupController::class, 'updateQuota'])->name('admin.backup.update-quota');
+
+    // --- FITUR BAGIKAN FOLDER (GOOGLE DRIVE STYLE DENGAN PIN) ---
+    Route::post('/pc-backup/share/save', [BackupShareController::class, 'saveShare'])->name('backup.share.save');
+    Route::delete('/pc-backup/share/{id}', [BackupShareController::class, 'revokeShare'])->name('backup.share.revoke');
 });
+
+// =========================================================================
+// FITUR AKSES TAUTAN BERBAGI FOLDER BACKUP (GOOGLE DRIVE STYLE - PROTEKSI PIN)
+// =========================================================================
+Route::get('/shared-folder/{token}', [BackupShareController::class, 'show'])->name('backup.shared.view');
+Route::post('/shared-folder/{token}/verify-pin', [BackupShareController::class, 'verifyPin'])->name('backup.shared.verify-pin');
+Route::post('/shared-folder/{token}/exit', [BackupShareController::class, 'exitShare'])->name('backup.shared.exit');
+Route::get('/shared-folder/{token}/download/{fileId}', [BackupShareController::class, 'downloadFile'])->name('backup.shared.download');
+Route::get('/shared-folder/{token}/preview/{fileId}', [BackupShareController::class, 'previewFile'])->name('backup.shared.preview');
+Route::get('/shared-folder/{token}/download-zip', [BackupShareController::class, 'downloadFolderZip'])->name('backup.shared.download-zip');
 
 // --- AKSES TERPROTEKSI (AUTH) ---
 Route::middleware('auth')->group(function () {
