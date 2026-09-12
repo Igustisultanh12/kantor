@@ -117,6 +117,8 @@ const isImage = (filename) => {
 
 const isPdf = (filename) => {
     return filename?.toLowerCase().endsWith('.pdf');
+};
+
 // --- STATE ZOOM, ROTATE, PAN & SECURE BLOB PREVIEW ---
 const zoomLevel = ref(1);
 const rotationDegree = ref(0);
