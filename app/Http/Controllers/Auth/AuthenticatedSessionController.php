@@ -13,7 +13,7 @@ use Inertia\Response;
 
 class AuthenticatedSessionController extends Controller
 {
-    public function create(): Response
+    public function create(Request $request): Response
     {
         $rawSettings = \App\Models\Setting::pluck('value', 'key')->toArray();
         $settings = [
@@ -22,10 +22,16 @@ class AuthenticatedSessionController extends Controller
             'login_background' => isset($rawSettings['login_background']) && $rawSettings['login_background'] ? asset('storage/' . $rawSettings['login_background']) : null,
         ];
 
+        $redirect = $request->query('redirect') ?: session('url.intended');
+        if ($redirect) {
+            session()->put('url.intended', $redirect);
+        }
+
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
             'settings' => $settings,
+            'redirect' => $redirect,
         ]);
     }
 
@@ -90,6 +96,11 @@ class AuthenticatedSessionController extends Controller
         $leadershipRoles = ['komandan', 'pasops'];
         $requiresMfa = (in_array(strtolower($user->role), $leadershipRoles) || (bool)$user->mfa_enabled);
 
+        // Ambil target pengalihan awal dari form post, query string, atau session
+        $targetRedirect = $request->input('redirect') 
+            ?: $request->query('redirect') 
+            ?: session('url.intended');
+
         if ($requiresMfa && !empty($user->phone) && !$request->wantsJson() && !$request->expectsJson() && !$request->is('api/*')) {
             $otp = str_pad((string)random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
             $expiresAt = now()->addMinutes(5)->timestamp;
@@ -99,6 +110,7 @@ class AuthenticatedSessionController extends Controller
                 'mfa_otp' => $otp,
                 'mfa_expires_at' => $expiresAt,
                 'mfa_attempts' => 0,
+                'url.intended' => $targetRedirect,
             ]);
 
             Auth::guard('web')->logout();
@@ -135,6 +147,19 @@ class AuthenticatedSessionController extends Controller
 
         if ($user->must_change_password) {
             return redirect()->route('profile.edit')->with('info', 'Otoritas Keamanan: Ini adalah login pertama Anda. Mohon perbarui password default Anda segera.');
+        }
+
+        // PRIORITAS UTAMA PENGALIHAN: Jika personel mengakses tautan khusus (seperti Folder Berbagi / Shared Folder)
+        if (!empty($targetRedirect)) {
+            session()->forget('url.intended');
+            $parsedPath = parse_url($targetRedirect, PHP_URL_PATH);
+            if ($parsedPath && !in_array($parsedPath, ['/login', '/logout', '/register', '/password/reset'])) {
+                $appHost = parse_url(config('app.url'), PHP_URL_HOST);
+                $targetHost = parse_url($targetRedirect, PHP_URL_HOST);
+                if (empty($targetHost) || $targetHost === $appHost || $targetHost === $request->getHost()) {
+                    return redirect()->to($targetRedirect);
+                }
+            }
         }
 
         if ($user->role !== 'admin') {
@@ -235,6 +260,26 @@ class AuthenticatedSessionController extends Controller
 
         if ($user->must_change_password) {
             return redirect()->route('profile.edit')->with('info', 'Otoritas Keamanan: Ini adalah login pertama Anda. Mohon perbarui password default Anda segera.');
+        }
+
+        $targetRedirect = session()->pull('url.intended');
+        if (!empty($targetRedirect)) {
+            $parsedPath = parse_url($targetRedirect, PHP_URL_PATH);
+            if ($parsedPath && !in_array($parsedPath, ['/login', '/logout', '/register', '/password/reset'])) {
+                $appHost = parse_url(config('app.url'), PHP_URL_HOST);
+                $targetHost = parse_url($targetRedirect, PHP_URL_HOST);
+                if (empty($targetHost) || $targetHost === $appHost || $targetHost === $request->getHost()) {
+                    return redirect()->to($targetRedirect);
+                }
+            }
+        }
+
+        if ($user->role !== 'admin') {
+            $r = strtolower(preg_replace('/[\s_-]+/', '', $user->role ?? ''));
+            $j = strtolower($user->jabatan ?? '');
+            if ($r === 'anggotasintel' || str_contains($j, 'anggota sintel')) {
+                return redirect()->route('sc-submissions.index');
+            }
         }
 
         return redirect()->intended(route('dashboard'));

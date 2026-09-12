@@ -113,6 +113,13 @@ class BackupShareController extends Controller
      */
     public function show($token, Request $request)
     {
+        // 1. Otoritas Personel: Wajib login akun terlebih dahulu sebelum akses PIN & berkas
+        if (!Auth::check()) {
+            $targetUrl = $request->fullUrl();
+            session()->put('url.intended', $targetUrl);
+            return redirect()->route('login', ['redirect' => $targetUrl]);
+        }
+
         BackupShare::ensureSchema();
 
         $share = BackupShare::with(['pc', 'folder'])

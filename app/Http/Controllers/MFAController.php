@@ -94,6 +94,18 @@ class MFAController extends Controller
             // Sesi krusial agar middleware CheckMFA meloloskan akses
             session(['mfa_verified' => true]);
 
+            $targetRedirect = session()->pull('url.intended');
+            if (!empty($targetRedirect)) {
+                $parsedPath = parse_url($targetRedirect, PHP_URL_PATH);
+                if ($parsedPath && !in_array($parsedPath, ['/login', '/logout', '/register', '/password/reset'])) {
+                    $appHost = parse_url(config('app.url'), PHP_URL_HOST);
+                    $targetHost = parse_url($targetRedirect, PHP_URL_HOST);
+                    if (empty($targetHost) || $targetHost === $appHost || $targetHost === $request->getHost()) {
+                        return redirect()->to($targetRedirect);
+                    }
+                }
+            }
+
             return redirect()->intended('/dashboard');
         }
 

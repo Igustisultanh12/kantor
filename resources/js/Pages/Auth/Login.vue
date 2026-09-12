@@ -12,9 +12,19 @@ const props = defineProps({
     canResetPassword: { type: Boolean },
     status: { type: String },
     settings: { type: Object },
+    redirect: { type: String, default: null },
 });
 
 const page = usePage();
+
+const targetRedirect = computed(() => {
+    if (props.redirect) return props.redirect;
+    if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('redirect') || null;
+    }
+    return null;
+});
 
 const pageSettings = computed(() => props.settings || page.props.settings || {});
 const appName = computed(() => pageSettings.value.agency_name || pageSettings.value.app_name || 'SINDEN');
@@ -56,6 +66,7 @@ const form = useForm({
     remember: false,
     latitude: null,
     longitude: null,
+    redirect: '',
 });
 
 /**
@@ -127,7 +138,14 @@ const submit = async () => {
     try {
         await lockLocation();
 
-        form.post(route('login'), {
+        const currentRedirect = targetRedirect.value;
+        form.redirect = currentRedirect;
+
+        const postRoute = currentRedirect 
+            ? route('login', { redirect: currentRedirect })
+            : route('login');
+
+        form.post(postRoute, {
             onFinish: () => form.reset('password'),
         });
     } catch (e) {
@@ -183,6 +201,19 @@ const submit = async () => {
                         <h3 class="text-xl font-bold text-white">Masuk Akun</h3>
                         <p class="text-xs mt-1 text-slate-300"> Gunakan akun internal Anda untuk mengakses sistem dashboard SINDEN.
                         </p>
+                    </div>
+
+                    <!-- Indikator Akses Tautan Berbagi Terproteksi -->
+                    <div v-if="targetRedirect && targetRedirect.includes('shared-folder')" class="mb-6 p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/25 flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0 text-blue-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                            </svg>
+                        </div>
+                        <div class="text-xs text-blue-200 leading-relaxed">
+                            <span class="font-semibold block text-white text-xs">Akses Tautan Berbagi Terproteksi</span>
+                            Silakan masuk dengan akun dinas Anda untuk membuka folder.
+                        </div>
                     </div>
 
                     <form @submit.prevent="submit" class="space-y-5">

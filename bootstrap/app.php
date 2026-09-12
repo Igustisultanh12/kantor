@@ -19,6 +19,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // 0. RADAR KEAMANAN TINGKAT TINGGI (HTTP REQUEST SMUGGLING, STREAM DoS, INJEKSI HEADER)
         $middleware->prepend(\App\Http\Middleware\SecurityFirewallMiddleware::class);
 
+        // Pengalihan cerdas tamu belum login: pertahankan URL tujuan di query 'redirect'
+        $middleware->redirectGuestsTo(fn (\Illuminate\Http\Request $request) => route('login', ['redirect' => $request->fullUrl()]));
+
         // 1. SOLUSI UTAMA TUNNELING & SSL
         // Menjaga agar aset (CSS/JS) tetap HTTPS meski di balik Cloudflare/Proxy
         $middleware->trustProxies(at: '*');

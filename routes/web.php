@@ -176,13 +176,14 @@ Route::middleware(['auth', 'office.only'])->group(function () {
     Route::post('/pc-backup/bulk-download-zip', [BackupController::class, 'bulkDownloadZip'])->name('backup.bulk-download-zip');
 });
 
+// =========================================================================
+// FITUR AKSES TAUTAN BERBAGI FOLDER BACKUP (WAJIB LOGIN PERSONEL + PROTEKSI PIN)
+// =========================================================================
+// Gerbang awal akses tautan (menangani redirect ke login dengan query redirect jika belum login)
+Route::get('/shared-folder/{token}', [BackupShareController::class, 'show'])->name('backup.shared.view');
+
 // --- AKSES TERPROTEKSI (AUTH) ---
 Route::middleware('auth')->group(function () {
-    
-    // =========================================================================
-    // FITUR AKSES TAUTAN BERBAGI FOLDER BACKUP (WAJIB LOGIN PERSONEL + PROTEKSI PIN)
-    // =========================================================================
-    Route::get('/shared-folder/{token}', [BackupShareController::class, 'show'])->name('backup.shared.view');
     Route::post('/shared-folder/{token}/verify-pin', [BackupShareController::class, 'verifyPin'])->name('backup.shared.verify-pin');
     Route::post('/shared-folder/{token}/exit', [BackupShareController::class, 'exitShare'])->name('backup.shared.exit');
     Route::get('/shared-folder/{token}/download/{fileId}', [BackupShareController::class, 'downloadFile'])->name('backup.shared.download');
