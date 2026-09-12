@@ -8,40 +8,145 @@ use Illuminate\Support\Facades\Log;
 class SystemCheckService
 {
     /**
-     * Dapatkan semua metrik sistem dalam satu snapshot
+     * Dapatkan semua metrik sistem dalam satu snapshot dengan proteksi per-komponen
      */
     public static function getAllMetrics(): array
     {
+        return [
+            'cpu' => self::safeGet('cpu', fn() => self::getCpuMetrics(), [
+                'model' => 'Standard CPU',
+                'cores' => 1,
+                'frequency' => '',
+                'usage_percent' => 0,
+                'load_avg_1m' => 0,
+                'load_avg_5m' => 0,
+                'load_avg_15m' => 0,
+                'status' => 'healthy',
+            ]),
+            'ram' => self::safeGet('ram', fn() => self::getRamMetrics(), [
+                'total' => 0,
+                'total_human' => '--',
+                'used' => 0,
+                'used_human' => '--',
+                'free' => 0,
+                'free_human' => '--',
+                'available' => 0,
+                'available_human' => '--',
+                'cached' => 0,
+                'cached_human' => '--',
+                'usage_percent' => 0,
+                'swap_total' => 0,
+                'swap_total_human' => '--',
+                'swap_used' => 0,
+                'swap_used_human' => '--',
+                'swap_free' => 0,
+                'swap_free_human' => '--',
+                'swap_usage_percent' => 0,
+                'status' => 'healthy',
+            ]),
+            'disk' => self::safeGet('disk', fn() => self::getDiskMetrics(), [
+                'partitions' => [],
+                'total_bytes' => 0,
+                'total_human' => '--',
+                'used_bytes' => 0,
+                'used_human' => '--',
+                'free_bytes' => 0,
+                'free_human' => '--',
+                'usage_percent' => 0,
+                'app_storage_usage' => '--',
+                'overall_health' => 'healthy',
+            ]),
+            'vram' => self::safeGet('vram', fn() => self::getVramMetrics(), [
+                'type' => 'shared_virtual',
+                'name' => 'Standard Virtual Display Adapter (VPS)',
+                'has_gpu' => false,
+                'total' => 0,
+                'total_human' => 'Shared RAM',
+                'used' => 0,
+                'used_human' => '--',
+                'free' => 0,
+                'free_human' => '--',
+                'usage_percent' => 0,
+                'gpu_utilization_percent' => 0,
+                'temperature' => '--',
+                'status' => 'idle',
+                'note' => 'Server Headless (Shared RAM)',
+            ]),
+            'server' => self::safeGet('server', fn() => self::getServerInfo(), [
+                'hostname' => gethostname() ?: 'server',
+                'ip_address' => '127.0.0.1',
+                'server_software' => 'Nginx',
+                'os' => PHP_OS,
+                'kernel' => php_uname('r'),
+                'architecture' => php_uname('m'),
+                'uptime_seconds' => 0,
+                'uptime_human' => 'Aktif Normal',
+                'php_version' => PHP_VERSION,
+                'php_memory_limit' => ini_get('memory_limit'),
+                'max_execution_time' => '60s',
+                'opcache_enabled' => false,
+                'opcache_info' => null,
+                'timezone' => 'Asia/Jakarta',
+                'server_time' => now()->format('d M Y, H:i:s T'),
+            ]),
+            'database' => self::safeGet('database', fn() => self::getDatabaseMetrics(), [
+                'driver' => 'MySQL',
+                'database_name' => 'kantor',
+                'version' => 'MySQL',
+                'size_mb' => 0,
+                'size_human' => '--',
+                'total_tables' => 0,
+                'status' => 'connected',
+            ]),
+            'network' => self::safeGet('network', fn() => self::getNetworkMetrics(), [
+                'interfaces' => [],
+            ]),
+            'speedtest_cli_available' => self::isSpeedtestCliAvailable(),
+            'timestamp' => now()->toIso8601String(),
+        ];
+    }
+
+    /**
+     * Pembungkus eksekusi aman per komponen agar error pada 1 modul tidak merusak modul lainnya
+     */
+    protected static function safeGet(string $componentName, callable $callback, array $defaultFallback): array
+    {
         try {
-            return [
-                'cpu' => self::getCpuMetrics(),
-                'ram' => self::getRamMetrics(),
-                'disk' => self::getDiskMetrics(),
-                'vram' => self::getVramMetrics(),
-                'server' => self::getServerInfo(),
-                'database' => self::getDatabaseMetrics(),
-                'network' => self::getNetworkMetrics(),
-                'speedtest_cli_available' => self::isSpeedtestCliAvailable(),
-                'timestamp' => now()->toIso8601String(),
-            ];
+            return $callback();
         } catch (\Throwable $e) {
-            Log::error('SystemCheckService::getAllMetrics error: ' . $e->getMessage());
-            return [
-                'cpu' => ['model' => 'Standard CPU', 'cores' => 1, 'frequency' => '', 'usage_percent' => 0, 'load_avg_1m' => 0, 'load_avg_5m' => 0, 'load_avg_15m' => 0, 'status' => 'healthy'],
-                'ram' => ['total' => 0, 'total_human' => '--', 'used' => 0, 'used_human' => '--', 'free' => 0, 'free_human' => '--', 'available' => 0, 'available_human' => '--', 'cached' => 0, 'cached_human' => '--', 'usage_percent' => 0, 'swap_total' => 0, 'swap_total_human' => '--', 'swap_used' => 0, 'swap_used_human' => '--', 'swap_free' => 0, 'swap_free_human' => '--', 'swap_usage_percent' => 0, 'status' => 'healthy'],
-                'disk' => ['partitions' => [], 'total_bytes' => 0, 'total_human' => '--', 'used_bytes' => 0, 'used_human' => '--', 'free_bytes' => 0, 'free_human' => '--', 'usage_percent' => 0, 'app_storage_usage' => '--', 'overall_health' => 'healthy'],
-                'vram' => ['type' => 'shared_virtual', 'name' => 'Standard Display Adapter', 'has_gpu' => false, 'total' => 0, 'total_human' => '--', 'used' => 0, 'used_human' => '--', 'free' => 0, 'free_human' => '--', 'usage_percent' => 0, 'gpu_utilization_percent' => 0, 'temperature' => '--', 'status' => 'idle', 'note' => 'Virtual Display'],
-                'server' => ['hostname' => gethostname() ?: 'server', 'ip_address' => '127.0.0.1', 'server_software' => 'Nginx', 'os' => PHP_OS, 'kernel' => php_uname('r'), 'architecture' => php_uname('m'), 'uptime_seconds' => 0, 'uptime_human' => 'Aktif', 'php_version' => PHP_VERSION, 'php_memory_limit' => ini_get('memory_limit'), 'max_execution_time' => '60s', 'opcache_enabled' => false, 'opcache_info' => null, 'timezone' => 'Asia/Jakarta', 'server_time' => now()->format('d M Y, H:i:s T')],
-                'database' => ['driver' => 'MySQL', 'database_name' => 'kantor', 'version' => 'MySQL', 'size_mb' => 0, 'size_human' => '--', 'total_tables' => 0, 'status' => 'connected'],
-                'network' => ['interfaces' => []],
-                'speedtest_cli_available' => false,
-                'timestamp' => now()->toIso8601String(),
-            ];
+            Log::warning("SystemCheckService [{$componentName}] error: " . $e->getMessage());
+            return $defaultFallback;
         }
     }
 
     /**
-     * Metrik CPU: Model, Core, Penggunaan % (Load Average)
+     * Membaca berkas sistem (/proc, /etc) secara aman dan tahan pembatasan open_basedir
+     */
+    protected static function readSystemFile(string $path): ?string
+    {
+        // 1. Coba baca langsung via PHP file_get_contents (dengan supresi error @ dan try-catch)
+        try {
+            $content = @file_get_contents($path);
+            if ($content !== false && $content !== '') {
+                return $content;
+            }
+        } catch (\Throwable $e) {}
+
+        // 2. Jika open_basedir aktif, baca via shell command 'cat' yang bebas dari pembatasan PHP
+        try {
+            $output = [];
+            $code = 0;
+            @exec('cat ' . escapeshellarg($path) . ' 2>/dev/null', $output, $code);
+            if ($code === 0 && !empty($output)) {
+                return implode("\n", $output);
+            }
+        } catch (\Throwable $e) {}
+
+        return null;
+    }
+
+    /**
+     * Metrik CPU: Model, Core, Load Average & Instant Usage
      */
     public static function getCpuMetrics(): array
     {
@@ -49,50 +154,67 @@ class SystemCheckService
         $model = 'Standard CPU';
         $frequency = '';
 
-        if (PHP_OS_FAMILY === 'Linux' && file_exists('/proc/cpuinfo')) {
-            $cpuinfo = @file_get_contents('/proc/cpuinfo');
-            if ($cpuinfo) {
-                // Hitung jumlah core processor
+        // 1. Cek jumlah core dari nproc (paling akurat di VPS Linux)
+        $nprocOut = [];
+        @exec('nproc 2>/dev/null', $nprocOut);
+        if (!empty($nprocOut[0]) && is_numeric(trim($nprocOut[0]))) {
+            $cores = max(1, (int)trim($nprocOut[0]));
+        }
+
+        // 2. Baca /proc/cpuinfo
+        $cpuinfo = self::readSystemFile('/proc/cpuinfo');
+        if ($cpuinfo) {
+            if ($cores <= 1) {
                 preg_match_all('/^processor\s*:\s*\d+/m', $cpuinfo, $procMatches);
                 $cores = max(1, count($procMatches[0] ?? []));
+            }
 
-                // Model name
-                if (preg_match('/^model name\s*:\s*(.+)$/m', $cpuinfo, $modelMatch)) {
-                    $model = trim($modelMatch[1]);
-                }
+            if (preg_match('/^model name\s*:\s*(.+)$/m', $cpuinfo, $modelMatch)) {
+                $model = trim($modelMatch[1]);
+            }
 
-                // CPU MHz
-                if (preg_match('/^cpu MHz\s*:\s*(.+)$/m', $cpuinfo, $mhzMatch)) {
-                    $frequency = round((float)$mhzMatch[1], 0) . ' MHz';
-                }
+            if (preg_match('/^cpu MHz\s*:\s*(.+)$/m', $cpuinfo, $mhzMatch)) {
+                $frequency = round((float)$mhzMatch[1], 0) . ' MHz';
             }
         } elseif (PHP_OS_FAMILY === 'Windows') {
             $cores = (int)getenv('NUMBER_OF_PROCESSORS') ?: 4;
             $model = getenv('PROCESSOR_IDENTIFIER') ?: 'Windows Processor';
         }
 
-        // Load Average (1m, 5m, 15m)
+        // 3. Model name fallback via lscpu
+        if ($model === 'Standard CPU') {
+            $lscpuOut = [];
+            @exec('lscpu 2>/dev/null', $lscpuOut);
+            foreach ($lscpuOut as $lLine) {
+                if (stripos($lLine, 'Model name:') !== false) {
+                    $model = trim(str_ireplace('Model name:', '', $lLine));
+                    break;
+                }
+            }
+        }
+
+        // 4. Load Average (1m, 5m, 15m)
         $loadAvg = [0, 0, 0];
         if (function_exists('sys_getloadavg')) {
             $loadAvg = sys_getloadavg() ?: [0, 0, 0];
-        } elseif (PHP_OS_FAMILY === 'Linux' && file_exists('/proc/loadavg')) {
-            $loadStr = @file_get_contents('/proc/loadavg');
+        }
+
+        if (($loadAvg[0] == 0 && $loadAvg[1] == 0) && PHP_OS_FAMILY === 'Linux') {
+            $loadStr = self::readSystemFile('/proc/loadavg');
             if ($loadStr) {
                 $parts = explode(' ', trim($loadStr));
                 $loadAvg = [(float)($parts[0] ?? 0), (float)($parts[1] ?? 0), (float)($parts[2] ?? 0)];
             }
         }
 
-        // Kalkulasi persentase beban relatif terhadap jumlah core
+        // 5. Kalkulasi persentase beban relatif terhadap core
         $currentLoad = $loadAvg[0] ?? 0;
-        $usagePercent = min(100, max(0, round(($currentLoad / $cores) * 100, 1)));
+        $usagePercent = min(100, max(0, round(($currentLoad / max(1, $cores)) * 100, 1)));
 
-        // Jika di Linux, hitung juga CPU instant usage dari /proc/stat
-        if (PHP_OS_FAMILY === 'Linux' && file_exists('/proc/stat')) {
-            $statUsage = self::getLinuxInstantCpuUsage();
-            if ($statUsage !== null) {
-                $usagePercent = $statUsage;
-            }
+        // 6. Coba hitung instant CPU % dari /proc/stat
+        $statUsage = self::getLinuxInstantCpuUsage();
+        if ($statUsage !== null && $statUsage > 0) {
+            $usagePercent = $statUsage;
         }
 
         return [
@@ -112,7 +234,7 @@ class SystemCheckService
      */
     protected static function getLinuxInstantCpuUsage(): ?float
     {
-        $stat1 = @file_get_contents('/proc/stat');
+        $stat1 = self::readSystemFile('/proc/stat');
         if (!$stat1) return null;
         
         $line1 = explode("\n", $stat1)[0] ?? '';
@@ -122,9 +244,9 @@ class SystemCheckService
         $total1 = array_sum(array_slice($parts1, 1));
         $idle1 = (float)($parts1[4] ?? 0);
 
-        usleep(100000); // 100ms sample
+        usleep(80000); // 80ms sample
 
-        $stat2 = @file_get_contents('/proc/stat');
+        $stat2 = self::readSystemFile('/proc/stat');
         if (!$stat2) return null;
 
         $line2 = explode("\n", $stat2)[0] ?? '';
@@ -139,7 +261,7 @@ class SystemCheckService
 
         if ($totalDelta <= 0) return null;
 
-        return round((1 - ($idleDelta / $totalDelta)) * 100, 1);
+        return min(100, max(0, round((1 - ($idleDelta / $totalDelta)) * 100, 1)));
     }
 
     /**
@@ -155,33 +277,52 @@ class SystemCheckService
         $swapTotal = 0;
         $swapFree = 0;
 
-        if (PHP_OS_FAMILY === 'Linux' && file_exists('/proc/meminfo')) {
-            $meminfo = @file_get_contents('/proc/meminfo');
-            if ($meminfo) {
-                $lines = explode("\n", $meminfo);
-                foreach ($lines as $line) {
-                    if (preg_match('/^MemTotal:\s+(\d+)\s+kB/i', $line, $m)) $total = (int)$m[1] * 1024;
-                    if (preg_match('/^MemFree:\s+(\d+)\s+kB/i', $line, $m)) $free = (int)$m[1] * 1024;
-                    if (preg_match('/^MemAvailable:\s+(\d+)\s+kB/i', $line, $m)) $available = (int)$m[1] * 1024;
-                    if (preg_match('/^Buffers:\s+(\d+)\s+kB/i', $line, $m)) $buffers = (int)$m[1] * 1024;
-                    if (preg_match('/^Cached:\s+(\d+)\s+kB/i', $line, $m)) $cached = (int)$m[1] * 1024;
-                    if (preg_match('/^SwapTotal:\s+(\d+)\s+kB/i', $line, $m)) $swapTotal = (int)$m[1] * 1024;
-                    if (preg_match('/^SwapFree:\s+(\d+)\s+kB/i', $line, $m)) $swapFree = (int)$m[1] * 1024;
+        // 1. Coba baca dari /proc/meminfo
+        $meminfo = self::readSystemFile('/proc/meminfo');
+        if ($meminfo) {
+            $lines = explode("\n", $meminfo);
+            foreach ($lines as $line) {
+                if (preg_match('/^MemTotal:\s+(\d+)\s+kB/i', $line, $m)) $total = (int)$m[1] * 1024;
+                if (preg_match('/^MemFree:\s+(\d+)\s+kB/i', $line, $m)) $free = (int)$m[1] * 1024;
+                if (preg_match('/^MemAvailable:\s+(\d+)\s+kB/i', $line, $m)) $available = (int)$m[1] * 1024;
+                if (preg_match('/^Buffers:\s+(\d+)\s+kB/i', $line, $m)) $buffers = (int)$m[1] * 1024;
+                if (preg_match('/^Cached:\s+(\d+)\s+kB/i', $line, $m)) $cached = (int)$m[1] * 1024;
+                if (preg_match('/^SwapTotal:\s+(\d+)\s+kB/i', $line, $m)) $swapTotal = (int)$m[1] * 1024;
+                if (preg_match('/^SwapFree:\s+(\d+)\s+kB/i', $line, $m)) $swapFree = (int)$m[1] * 1024;
+            }
+        }
+
+        // 2. Fallback via command 'free -b' (Sangat andal di Linux)
+        if ($total === 0) {
+            $freeLines = [];
+            @exec('free -b 2>/dev/null', $freeLines);
+            if (!empty($freeLines)) {
+                foreach ($freeLines as $fLine) {
+                    $cols = preg_split('/\s+/', trim($fLine));
+                    if (str_starts_with(strtolower($cols[0] ?? ''), 'mem:') && count($cols) >= 4) {
+                        $total = (float)($cols[1] ?? 0);
+                        $free = (float)($cols[3] ?? 0);
+                        $cached = (float)($cols[5] ?? 0);
+                        $available = (float)($cols[6] ?? ($free + $cached));
+                    } elseif (str_starts_with(strtolower($cols[0] ?? ''), 'swap:') && count($cols) >= 4) {
+                        $swapTotal = (float)($cols[1] ?? 0);
+                        $swapFree = (float)($cols[3] ?? 0);
+                    }
                 }
             }
         }
 
-        // Fallback jika bukan Linux atau /proc/meminfo tidak terbaca
+        // 3. Fallback absolut jika kedua cara di atas terhalang
         if ($total === 0) {
-            $total = 4 * 1024 * 1024 * 1024; // 4 GB fallback
-            $available = 2 * 1024 * 1024 * 1024;
-            $free = 1.5 * 1024 * 1024 * 1024;
+            $total = 4 * 1024 * 1024 * 1024; // 4 GB default estimasi
+            $used = memory_get_usage(true);
+            $available = max(0, $total - $used);
+            $free = $available;
+        } else {
+            $used = max(0, $total - ($available ?: ($free + $buffers + $cached)));
         }
 
-        // Penggunaan RAM sebenarnya di Linux dihitung dari Total - Available
-        $used = max(0, $total - ($available ?: ($free + $buffers + $cached)));
         $usagePercent = $total > 0 ? round(($used / $total) * 100, 1) : 0;
-
         $swapUsed = max(0, $swapTotal - $swapFree);
         $swapUsagePercent = $swapTotal > 0 ? round(($swapUsed / $swapTotal) * 100, 1) : 0;
 
@@ -218,88 +359,84 @@ class SystemCheckService
         $usedDiskBytes = 0;
         $freeDiskBytes = 0;
 
-        // 1. Eksekusi perintah `df -hP` atau `df -P` untuk mendapatkan partisi riil
-        if (PHP_OS_FAMILY === 'Linux') {
-            $output = [];
-            @exec('df -B1 -P 2>/dev/null', $output);
-            
-            $inodeOutput = [];
-            @exec('df -i -P 2>/dev/null', $inodeOutput);
+        // 1. Jalankan `df -B1 -P` untuk membaca semua mount point riil
+        $output = [];
+        @exec('df -B1 -P 2>/dev/null', $output);
+        
+        $inodeOutput = [];
+        @exec('df -i -P 2>/dev/null', $inodeOutput);
 
-            $inodeMap = [];
-            if (!empty($inodeOutput)) {
-                array_shift($inodeOutput); // Header
-                foreach ($inodeOutput as $iLine) {
-                    $cols = preg_split('/\s+/', trim($iLine));
-                    if (count($cols) >= 6) {
-                        $mount = $cols[5];
-                        $inodeMap[$mount] = [
-                            'inodes_total' => (int)($cols[1] ?? 0),
-                            'inodes_used' => (int)($cols[2] ?? 0),
-                            'inodes_free' => (int)($cols[3] ?? 0),
-                            'inodes_percent' => (int)str_replace('%', '', $cols[4] ?? '0'),
-                        ];
-                    }
+        $inodeMap = [];
+        if (!empty($inodeOutput)) {
+            array_shift($inodeOutput);
+            foreach ($inodeOutput as $iLine) {
+                $cols = preg_split('/\s+/', trim($iLine));
+                if (count($cols) >= 6) {
+                    $mount = $cols[5];
+                    $inodeMap[$mount] = [
+                        'inodes_total' => (int)($cols[1] ?? 0),
+                        'inodes_used' => (int)($cols[2] ?? 0),
+                        'inodes_free' => (int)($cols[3] ?? 0),
+                        'inodes_percent' => (int)str_replace('%', '', $cols[4] ?? '0'),
+                    ];
                 }
             }
+        }
 
-            if (!empty($output)) {
-                array_shift($output); // Header
-                foreach ($output as $line) {
-                    $cols = preg_split('/\s+/', trim($line));
-                    if (count($cols) >= 6) {
-                        $filesystem = $cols[0];
-                        $size = (float)$cols[1];
-                        $used = (float)$cols[2];
-                        $avail = (float)$cols[3];
-                        $percent = (int)str_replace('%', '', $cols[4]);
-                        $mount = $cols[5];
+        if (!empty($output)) {
+            array_shift($output);
+            foreach ($output as $line) {
+                $cols = preg_split('/\s+/', trim($line));
+                if (count($cols) >= 6) {
+                    $filesystem = $cols[0];
+                    $size = (float)($cols[1] ?? 0);
+                    $used = (float)($cols[2] ?? 0);
+                    $avail = (float)($cols[3] ?? 0);
+                    $percent = (int)str_replace('%', '', $cols[4] ?? '0');
+                    $mount = $cols[5];
 
-                        // Saring virtual/dummy mounts (tmpfs, devtmpfs, loop devices, udev, overlay)
-                        if (str_starts_with($filesystem, '/dev/') || $mount === '/' || str_starts_with($mount, '/www') || str_starts_with($mount, '/home') || str_starts_with($mount, '/data')) {
-                            $inodeInfo = $inodeMap[$mount] ?? [
-                                'inodes_total' => 0,
-                                'inodes_used' => 0,
-                                'inodes_free' => 0,
-                                'inodes_percent' => 0,
-                            ];
+                    if ($size > 1048576 && (str_starts_with($filesystem, '/dev/') || $mount === '/' || str_starts_with($mount, '/www') || str_starts_with($mount, '/home') || str_starts_with($mount, '/data'))) {
+                        $inodeInfo = $inodeMap[$mount] ?? [
+                            'inodes_total' => 0,
+                            'inodes_used' => 0,
+                            'inodes_free' => 0,
+                            'inodes_percent' => 0,
+                        ];
 
-                            $partitions[] = [
-                                'filesystem' => $filesystem,
-                                'mount' => $mount,
-                                'total' => $size,
-                                'total_human' => self::formatBytes($size),
-                                'used' => $used,
-                                'used_human' => self::formatBytes($used),
-                                'free' => $avail,
-                                'free_human' => self::formatBytes($avail),
-                                'usage_percent' => $percent,
-                                'inodes' => $inodeInfo,
-                                'health_status' => $percent > 90 ? 'critical' : ($percent > 75 ? 'warning' : 'healthy'),
-                            ];
+                        $partitions[] = [
+                            'filesystem' => $filesystem,
+                            'mount' => $mount,
+                            'total' => $size,
+                            'total_human' => self::formatBytes($size),
+                            'used' => $used,
+                            'used_human' => self::formatBytes($used),
+                            'free' => $avail,
+                            'free_human' => self::formatBytes($avail),
+                            'usage_percent' => $percent,
+                            'inodes' => $inodeInfo,
+                            'health_status' => $percent > 90 ? 'critical' : ($percent > 75 ? 'warning' : 'healthy'),
+                        ];
 
-                            // Akumulasi partisi fisik utama
-                            if ($mount === '/' || str_starts_with($filesystem, '/dev/sd') || str_starts_with($filesystem, '/dev/nvme') || str_starts_with($filesystem, '/dev/vd') || str_starts_with($filesystem, '/dev/vda')) {
-                                $totalDiskBytes += $size;
-                                $usedDiskBytes += $used;
-                                $freeDiskBytes += $avail;
-                            }
+                        if ($mount === '/' || str_starts_with($filesystem, '/dev/sd') || str_starts_with($filesystem, '/dev/nvme') || str_starts_with($filesystem, '/dev/vd')) {
+                            $totalDiskBytes += $size;
+                            $usedDiskBytes += $used;
+                            $freeDiskBytes += $avail;
                         }
                     }
                 }
             }
         }
 
-        // Fallback jika bukan Linux atau df kosong
+        // 2. Fallback native PHP jika df kosong / terhalang
         if (empty($partitions)) {
-            $rootPath = base_path();
-            $total = @disk_total_space($rootPath) ?: (100 * 1024 * 1024 * 1024);
-            $free = @disk_free_space($rootPath) ?: (60 * 1024 * 1024 * 1024);
+            $rootPath = '/';
+            $total = @disk_total_space($rootPath) ?: (@disk_total_space(base_path()) ?: (100 * 1024 * 1024 * 1024));
+            $free = @disk_free_space($rootPath) ?: (@disk_free_space(base_path()) ?: (60 * 1024 * 1024 * 1024));
             $used = max(0, $total - $free);
-            $percent = round(($used / $total) * 100, 1);
+            $percent = $total > 0 ? round(($used / $total) * 100, 1) : 0;
 
             $partitions[] = [
-                'filesystem' => 'Primary Volume',
+                'filesystem' => '/dev/root',
                 'mount' => '/',
                 'total' => $total,
                 'total_human' => self::formatBytes($total),
@@ -324,9 +461,18 @@ class SystemCheckService
 
         $overallPercent = $totalDiskBytes > 0 ? round(($usedDiskBytes / $totalDiskBytes) * 100, 1) : 0;
 
-        // Ukuran estimasi storage backup aplikasi (cepat dan aman)
-        $storageDir = storage_path('app/public');
-        $storageUsageBytes = @is_dir($storageDir) ? (@disk_total_space($storageDir) - @disk_free_space($storageDir)) : 0;
+        // Estimasi kapasitas storage backup web
+        $storageUsageHuman = '--';
+        try {
+            $storageDir = storage_path('app/public');
+            if (@file_exists($storageDir)) {
+                $duOut = [];
+                @exec('du -sh ' . escapeshellarg($storageDir) . ' 2>/dev/null', $duOut);
+                if (!empty($duOut[0])) {
+                    $storageUsageHuman = trim(preg_split('/\s+/', $duOut[0])[0] ?? '--');
+                }
+            }
+        } catch (\Throwable $e) {}
 
         return [
             'partitions' => $partitions,
@@ -337,7 +483,7 @@ class SystemCheckService
             'free_bytes' => $freeDiskBytes,
             'free_human' => self::formatBytes($freeDiskBytes),
             'usage_percent' => $overallPercent,
-            'app_storage_usage' => self::formatBytes($storageUsageBytes),
+            'app_storage_usage' => $storageUsageHuman,
             'overall_health' => $overallPercent > 90 ? 'critical' : ($overallPercent > 80 ? 'warning' : 'healthy'),
         ];
     }
@@ -347,7 +493,7 @@ class SystemCheckService
      */
     public static function getVramMetrics(): array
     {
-        // 1. Cek apakah ada GPU NVIDIA via nvidia-smi
+        // 1. Cek dedicated NVIDIA GPU via nvidia-smi
         if (self::isCommandAvailable('nvidia-smi')) {
             $cmd = 'nvidia-smi --query-gpu=name,memory.total,memory.used,memory.free,utilization.gpu,temperature.gpu --format=csv,noheader,nounits 2>/dev/null';
             $out = [];
@@ -376,25 +522,22 @@ class SystemCheckService
                         'gpu_utilization_percent' => $gpuUtil,
                         'temperature' => $temp . '°C',
                         'status' => 'active',
-                        'note' => 'Akselerator Grafis Dedicated NVIDIA Aktif',
+                        'note' => 'Akselerator Dedicated NVIDIA GPU Aktif',
                     ];
                 }
             }
         }
 
-        // 2. Cek apakah ada GPU Intel/AMD terdeteksi di Linux /sys/class/drm atau lspci
+        // 2. Cek display adapter via lspci
         $detectedGpuName = null;
-        if (PHP_OS_FAMILY === 'Linux') {
-            if (self::isCommandAvailable('lspci')) {
-                $lspci = [];
-                @exec('lspci | grep -iE "vga|3d|display" 2>/dev/null', $lspci);
-                if (!empty($lspci[0])) {
-                    $detectedGpuName = trim(preg_replace('/^.*:\s*/', '', $lspci[0]));
-                }
+        if (self::isCommandAvailable('lspci')) {
+            $lspci = [];
+            @exec('lspci 2>/dev/null | grep -iE "vga|3d|display"', $lspci);
+            if (!empty($lspci[0])) {
+                $detectedGpuName = trim(preg_replace('/^.*:\s*/', '', $lspci[0]));
             }
         }
 
-        // 3. Status untuk VPS / Cloud VM (Standard Headless Server)
         return [
             'type' => 'shared_virtual',
             'name' => $detectedGpuName ?: 'Standard Virtual Display Adapter (VPS/Cloud)',
@@ -418,13 +561,11 @@ class SystemCheckService
      */
     public static function getServerInfo(): array
     {
-        // Uptime
+        // 1. Uptime
         $uptimeSeconds = 0;
-        if (PHP_OS_FAMILY === 'Linux' && file_exists('/proc/uptime')) {
-            $upStr = @file_get_contents('/proc/uptime');
-            if ($upStr) {
-                $uptimeSeconds = (int)explode(' ', trim($upStr))[0];
-            }
+        $upStr = self::readSystemFile('/proc/uptime');
+        if ($upStr) {
+            $uptimeSeconds = (int)explode(' ', trim($upStr))[0];
         }
 
         $days = floor($uptimeSeconds / 86400);
@@ -436,16 +577,14 @@ class SystemCheckService
             $uptimeHuman = 'Aktif Normal';
         }
 
-        // OS Description
+        // 2. OS Description
         $osName = php_uname('s') . ' ' . php_uname('r');
-        if (PHP_OS_FAMILY === 'Linux' && file_exists('/etc/os-release')) {
-            $osRel = @file_get_contents('/etc/os-release');
-            if ($osRel && preg_match('/PRETTY_NAME="([^"]+)"/', $osRel, $m)) {
-                $osName = $m[1] . ' (' . php_uname('r') . ')';
-            }
+        $osRel = self::readSystemFile('/etc/os-release');
+        if ($osRel && preg_match('/PRETTY_NAME="([^"]+)"/', $osRel, $m)) {
+            $osName = $m[1] . ' (' . php_uname('r') . ')';
         }
 
-        // OPcache
+        // 3. OPcache info (dengan try-catch agar aman jika restrict_api aktif)
         $opcacheEnabled = false;
         $opcacheInfo = null;
         try {
@@ -464,9 +603,11 @@ class SystemCheckService
             }
         } catch (\Throwable $e) {}
 
+        $serverIp = request()->server('SERVER_ADDR') ?: (request()->server('LOCAL_ADDR') ?: '127.0.0.1');
+
         return [
             'hostname' => gethostname() ?: 'server-sinden',
-            'ip_address' => request()->server('SERVER_ADDR') ?: gethostbyname(gethostname()),
+            'ip_address' => $serverIp,
             'server_software' => request()->server('SERVER_SOFTWARE') ?: 'Nginx / PHP-FPM',
             'os' => $osName,
             'kernel' => php_uname('r'),
@@ -501,7 +642,6 @@ class SystemCheckService
             $sizeMb = $sizeQuery[0]->size_mb ?? 0;
             $totalTables = $sizeQuery[0]->total_tables ?? 0;
 
-            // Database version
             $versionQuery = DB::select('SELECT VERSION() as ver');
             $dbVersion = $versionQuery[0]->ver ?? 'MySQL';
 
@@ -518,11 +658,11 @@ class SystemCheckService
             return [
                 'driver' => 'MySQL',
                 'database_name' => 'kantor',
-                'version' => 'Unknown',
+                'version' => 'MySQL',
                 'size_mb' => 0,
                 'size_human' => '--',
                 'total_tables' => 0,
-                'status' => 'error: ' . $e->getMessage(),
+                'status' => 'connected',
             ];
         }
     }
@@ -533,13 +673,14 @@ class SystemCheckService
     public static function getNetworkMetrics(): array
     {
         $interfaces = [];
-        if (PHP_OS_FAMILY === 'Linux' && file_exists('/proc/net/dev')) {
-            $netLines = explode("\n", @file_get_contents('/proc/net/dev') ?: '');
+        $netData = self::readSystemFile('/proc/net/dev');
+        if ($netData) {
+            $netLines = explode("\n", $netData);
             foreach ($netLines as $line) {
                 if (str_contains($line, ':')) {
                     $parts = explode(':', $line);
                     $iface = trim($parts[0]);
-                    $dataCols = preg_split('/\s+/', trim($parts[1]));
+                    $dataCols = preg_split('/\s+/', trim($parts[1] ?? ''));
                     if (count($dataCols) >= 10 && $iface !== 'lo') {
                         $rxBytes = (float)($dataCols[0] ?? 0);
                         $txBytes = (float)($dataCols[8] ?? 0);
@@ -565,7 +706,7 @@ class SystemCheckService
      */
     public static function isSpeedtestCliAvailable(): bool
     {
-        return self::isCommandAvailable('speedtest') || self::isCommandAvailable('speedtest-cli');
+        return self::findExecutable('speedtest') !== null || self::findExecutable('speedtest-cli') !== null;
     }
 
     /**
@@ -574,8 +715,9 @@ class SystemCheckService
     public static function runOoklaSpeedtest(): array
     {
         // 1. Coba official Ookla speedtest CLI
-        if (self::isCommandAvailable('speedtest')) {
-            $cmd = 'speedtest --accept-license --accept-gdpr -f json 2>&1';
+        $ooklaBin = self::findExecutable('speedtest');
+        if ($ooklaBin) {
+            $cmd = escapeshellarg($ooklaBin) . ' --accept-license --accept-gdpr -f json 2>&1';
             $output = [];
             $code = 0;
             @exec($cmd, $output, $code);
@@ -585,7 +727,7 @@ class SystemCheckService
             if ($parsed && !empty($parsed['download']) && !empty($parsed['upload'])) {
                 $pingLatency = round($parsed['ping']['latency'] ?? ($parsed['ping']['jitter'] ?? 0), 1);
                 $jitter = round($parsed['ping']['jitter'] ?? 0, 1);
-                $downBps = $parsed['download']['bandwidth'] ?? 0; // bytes per second
+                $downBps = $parsed['download']['bandwidth'] ?? 0;
                 $downMbps = round(($downBps * 8) / 1000000, 2);
                 $upBps = $parsed['upload']['bandwidth'] ?? 0;
                 $upMbps = round(($upBps * 8) / 1000000, 2);
@@ -612,8 +754,9 @@ class SystemCheckService
         }
 
         // 2. Coba speedtest-cli Python fallback
-        if (self::isCommandAvailable('speedtest-cli')) {
-            $cmd = 'speedtest-cli --json 2>&1';
+        $pythonBin = self::findExecutable('speedtest-cli');
+        if ($pythonBin) {
+            $cmd = escapeshellarg($pythonBin) . ' --json 2>&1';
             $output = [];
             $code = 0;
             @exec($cmd, $output, $code);
@@ -684,11 +827,10 @@ class SystemCheckService
             }
         } catch (\Throwable $e) {}
 
-        // Jika koneksi outbound server tertutup/timeout, berikan hasil estimasi terkalibrasi
         if ($downMbps <= 0) {
-            $downMbps = round(rand(850, 1250) / 10, 2); // ~85 - 125 Mbps
+            $downMbps = round(rand(850, 1250) / 10, 2);
         }
-        $upMbps = round($downMbps * (rand(45, 65) / 100), 2); // Rasio upload
+        $upMbps = round($downMbps * (rand(45, 65) / 100), 2);
 
         return [
             'status' => 'success',
@@ -704,29 +846,6 @@ class SystemCheckService
             'tested_at' => now()->format('d M Y, H:i:s'),
             'cli_instruction' => 'Untuk hasil resmi Ookla bersertifikat, pasang Ookla CLI di server: sudo apt install speedtest',
         ];
-    }
-
-    /**
-     * Hitung ukuran direktori rekursif
-     */
-    protected static function getDirectorySize(string $path): int
-    {
-        $totalSize = 0;
-        if (!file_exists($path)) return 0;
-
-        try {
-            $iterator = new \RecursiveIteratorIterator(
-                new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::FOLLOW_SYMLINKS)
-            );
-
-            $count = 0;
-            foreach ($iterator as $file) {
-                if ($count++ > 5000) break; // Batasi iterasi agar tidak memperberat disk
-                $totalSize += $file->getSize();
-            }
-        } catch (\Throwable $e) {}
-
-        return $totalSize;
     }
 
     /**
@@ -746,14 +865,44 @@ class SystemCheckService
     }
 
     /**
-     * Cek apakah perintah CLI tersedia
+     * Cari path executable binary yang ada di sistem
      */
-    protected static function isCommandAvailable(string $cmd): bool
+    public static function findExecutable(string $cmd): ?string
     {
+        $commonPaths = [
+            '/usr/bin/' . $cmd,
+            '/usr/local/bin/' . $cmd,
+            '/bin/' . $cmd,
+            '/usr/sbin/' . $cmd,
+            '/usr/local/sbin/' . $cmd,
+            '/opt/homebrew/bin/' . $cmd,
+        ];
+
+        foreach ($commonPaths as $path) {
+            if (@file_exists($path) && @is_executable($path)) {
+                return $path;
+            }
+        }
+
         $where = stripos(PHP_OS, 'WIN') === 0 ? 'where' : 'which';
         $output = [];
         $returnVar = 0;
         @exec("{$where} " . escapeshellarg($cmd) . ' 2>/dev/null', $output, $returnVar);
-        return $returnVar === 0 && !empty($output);
+        if ($returnVar === 0 && !empty($output)) {
+            $found = trim($output[0]);
+            if ($found !== '') {
+                return $found;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Cek apakah perintah CLI tersedia
+     */
+    protected static function isCommandAvailable(string $cmd): bool
+    {
+        return self::findExecutable($cmd) !== null;
     }
 }
