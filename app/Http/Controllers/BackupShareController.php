@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Pc;
 use App\Models\Backup;
 use App\Models\BackupShare;
+use App\Services\ArwService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -184,7 +185,10 @@ class BackupShareController extends Controller
             $itemArray['size_human'] = !$item->is_folder ? $this->formatBytes($item->file_size) : '--';
             $itemArray['date_human'] = Carbon::parse($item->updated_at ?: $item->created_at)->format('d M Y H:i');
             $itemArray['download_url'] = !$item->is_folder ? route('backup.shared.download', ['token' => $token, 'fileId' => $item->id]) : null;
+            $isArw = ArwService::isArw($item->file_type ?: $item->file_name);
+            $itemArray['is_arw'] = $isArw;
             $itemArray['preview_url'] = !$item->is_folder ? route('backup.shared.preview', ['token' => $token, 'fileId' => $item->id]) : null;
+            $itemArray['download_jpg_url'] = $isArw ? route('backup.shared.download-arw-jpg', ['token' => $token, 'fileId' => $item->id]) : null;
             return $itemArray;
         });
 
@@ -358,8 +362,38 @@ class BackupShareController extends Controller
             abort(404, 'Berkas fisik tidak ditemukan.');
         }
 
+        // Dukungan khusus format Sony RAW (.ARW) -> Pratinjau sebagai JPG kualitas tinggi
+        if (ArwService::isArw($file->file_type ?: $file->file_name)) {
+            return ArwService::previewResponse($fullPath, $file->file_name);
+        }
+
         $mimeType = @mime_content_type($fullPath) ?: 'application/octet-stream';
         return response()->file($fullPath, ['Content-Type' => $mimeType]);
+    }
+
+    /**
+     * Unduh Berkas Sony RAW (.ARW) Terkonversi sebagai Format JPG HD dalam Shared Folder
+     */
+    public function downloadArwJpg($token, $fileId)
+    {
+        $share = BackupShare::where('share_token', $token)->where('is_active', true)->firstOrFail();
+
+        $sessionKey = 'verified_backup_share_' . $share->id;
+        if (session()->get($sessionKey) !== true) {
+            abort(403, 'Otoritas PIN keamanan belum terverifikasi.');
+        }
+
+        $file = Backup::where('id', $fileId)->where('pc_id', $share->pc_id)->firstOrFail();
+
+        if ($file->is_folder || !$share->isWithinScope($file)) {
+            abort(403, 'Akses ditolak: Berkas berada di luar cakupan.');
+        }
+
+        if (!ArwService::isArw($file->file_type ?: $file->file_name)) {
+            abort(400, 'Berkas bukan format Sony RAW (.ARW).');
+        }
+
+        return ArwService::downloadConvertedJpg($file);
     }
 
     /**

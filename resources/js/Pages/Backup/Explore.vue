@@ -591,6 +591,81 @@ const showProperties = (item) => {
     });
 };
 
+// =========================================================================
+// --- FITUR SONY RAW (.ARW) PREVIEW & CONVERT KE JPG HD ---
+// =========================================================================
+const isArw = (item) => {
+    if (!item || item.is_folder) return false;
+    const ext = (item.file_type || '').toLowerCase();
+    const name = (item.file_name || '').toLowerCase();
+    return ext === 'arw' || name.endsWith('.arw') || item.is_arw === true;
+};
+
+const isConvertingArw = ref(false);
+
+const promptConvertArw = (item) => {
+    Swal.fire({
+        title: 'Konversi Sony RAW (.ARW)',
+        html: `
+            <div class="text-left text-xs text-slate-600 space-y-2">
+                <p>Berkas: <b class="text-slate-900">${item.file_name}</b></p>
+                <p>Pilih opsi konversi ke format JPG berkualitas tinggi:</p>
+            </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonColor: '#2563eb',
+        denyButtonColor: '#059669',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: '💾 Simpan JPG di Folder',
+        denyButtonText: '⬇️ Unduh Langsung JPG',
+        cancelButtonText: 'Batal',
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            await convertArw(item, true);
+        } else if (result.isDenied) {
+            window.location.href = route('backup.download-arw-jpg', item.id);
+        }
+    });
+};
+
+const convertArw = async (item, saveToFolder = true) => {
+    if (!saveToFolder) {
+        window.location.href = route('backup.download-arw-jpg', item.id);
+        return;
+    }
+
+    isConvertingArw.value = true;
+    Swal.fire({
+        title: 'Mengonversi Foto RAW...',
+        text: 'Sedang merender JPG kualitas tinggi dari sensor Sony, mohon tunggu...',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    try {
+        const res = await axios.post(route('backup.convert-arw', item.id));
+        if (res.data?.status === 'success') {
+            Swal.fire({
+                title: 'Konversi Berhasil!',
+                text: res.data.message || 'Berkas JPG berkualitas tinggi berhasil dibuat di folder ini.',
+                icon: 'success',
+                confirmButtonColor: '#2563eb',
+            });
+            router.reload({ only: ['contents', 'pc'], preserveScroll: true });
+        } else {
+            Swal.fire('Gagal', res.data?.message || 'Gagal mengonversi berkas.', 'error');
+        }
+    } catch (err) {
+        Swal.fire('Gagal', err.response?.data?.message || err.message || 'Terjadi kesalahan saat konversi.', 'error');
+    } finally {
+        isConvertingArw.value = false;
+    }
+};
+
 const openPreview = (item) => {
     if (item.is_folder) return; 
     activePreviewItem.value = item;
@@ -600,6 +675,9 @@ const openPreview = (item) => {
     if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
         previewType.value = 'image';
         previewUrl.value = item.preview_url;
+    } else if (isArw(item)) {
+        previewType.value = 'arw';
+        previewUrl.value = item.preview_url || route('backup.preview-arw', item.id);
     } else if (ext === 'pdf') {
         previewType.value = 'pdf';
         previewUrl.value = item.preview_url;
@@ -1265,16 +1343,20 @@ onUnmounted(() => {
                                     <div class="flex items-center gap-3">
                                         <span v-if="item.is_folder" class="text-2xl">📁</span>
                                         <span v-else-if="isExcel(item)" class="text-2xl">📊</span>
+                                        <span v-else-if="isArw(item)" class="text-2xl" title="Foto Sony Alpha RAW (.ARW)">📷</span>
                                         <span v-else class="text-2xl">📄</span>
                                         <div>
-                                            <div class="flex items-center gap-2">
+                                            <div class="flex items-center gap-2 flex-wrap">
                                                 <p class="font-black text-gray-800 uppercase tracking-tighter">{{ item.file_name }}</p>
+                                                <span v-if="isArw(item)" class="px-2 py-0.5 text-[9px] bg-amber-100 text-amber-800 rounded-full font-bold uppercase border border-amber-300 flex items-center gap-1">
+                                                    <span>📷</span> Sony RAW
+                                                </span>
                                                 <span v-if="item.is_folder && item.share_info?.is_active" class="px-2 py-0.5 text-[9px] bg-emerald-100 text-emerald-700 rounded-full font-bold uppercase border border-emerald-300 flex items-center gap-1">
                                                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                                                     Link Aktif
                                                 </span>
                                             </div>
-                                            <p class="text-[10px] text-gray-400 font-bold uppercase">{{ item.is_folder ? 'Folder Strategis' : item.file_type }}</p>
+                                            <p class="text-[10px] text-gray-400 font-bold uppercase">{{ item.is_folder ? 'Folder Strategis' : (isArw(item) ? 'Foto Sony RAW (Bisa Konversi ke JPG)' : item.file_type) }}</p>
                                         </div>
                                     </div>
                                 </td>
@@ -1292,6 +1374,13 @@ onUnmounted(() => {
                                                 class="bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white p-2 rounded-lg transition shadow-xs flex items-center justify-center cursor-pointer" 
                                                 :title="item.share_info?.is_active ? 'Kelola Tautan Berbagi (Aktif)' : 'Bagikan Folder (Buat Tautan)'">
                                             🔗
+                                        </button>
+                                        <!-- Tombol Konversi ARW ke JPG HD -->
+                                        <button v-if="isArw(item)" 
+                                                @click.stop="promptConvertArw(item)" 
+                                                class="bg-amber-100 text-amber-800 hover:bg-amber-600 hover:text-white p-2 rounded-lg transition shadow-xs flex items-center justify-center cursor-pointer font-bold" 
+                                                title="Konversi Sony RAW (.ARW) ke Format JPG HD">
+                                            🔄
                                         </button>
                                         <!-- Tombol Edit Excel Khusus Berkas Spreadsheet -->
                                         <button v-if="isExcel(item)" 
@@ -1311,7 +1400,7 @@ onUnmounted(() => {
                                         <button v-if="!item.is_folder" 
                                                 @click.stop="openPreview(item)" 
                                                 class="bg-blue-100 text-blue-700 hover:bg-blue-200 p-2 rounded-lg transition" 
-                                                title="Preview">
+                                                :title="isArw(item) ? 'Lihat Pratinjau Sony RAW' : 'Preview'">
                                             👁️
                                         </button>
                                         <a v-if="!item.is_folder" 
@@ -1353,10 +1442,18 @@ onUnmounted(() => {
         </div>
 
         <div v-if="contextMenu.show" 
-             :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }" class="fixed z-[100] bg-white border border-slate-200 shadow-2xl rounded-xl w-56 py-2 text-[11px] font-black text-gray-700 uppercase tracking-tighter">
+             :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }" class="fixed z-[100] bg-white border border-slate-200 shadow-2xl rounded-xl w-60 py-2 text-[11px] font-black text-gray-700 uppercase tracking-tighter">
             
             <div @click="contextMenu.item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: contextMenu.item.id })) : (isExcel(contextMenu.item) ? openExcelEditor(contextMenu.item) : openPreview(contextMenu.item))" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
                 <span>👁️</span> BUKA ITEM
+            </div>
+
+            <!-- OPSI KONVERSI SONY RAW KE JPG PADA KLIK KANAN -->
+            <div v-if="isArw(contextMenu.item)"
+                 @click="promptConvertArw(contextMenu.item)"
+                 class="px-4 py-2 bg-amber-50 text-amber-800 hover:bg-amber-600 hover:text-white cursor-pointer flex items-center gap-3 transition font-black">
+                <span>🔄</span>
+                <span>KONVERSI KE JPG (HD)</span>
             </div>
 
             <!-- OPSI BAGIKAN LINK UNTUK FOLDER -->
@@ -1395,15 +1492,43 @@ onUnmounted(() => {
             </div>
         </div>
 
-        <!-- MODAL PREVIEW DOKUMEN -->
-        <div v-if="previewUrl" class="fixed inset-0 z-[250] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-            <div class="bg-white w-full max-w-6xl h-[90vh] rounded-[2rem] flex flex-col relative overflow-hidden shadow-2xl border-t-8 border-blue-600">
+        <!-- MODAL PREVIEW DOKUMEN & FOTO -->
+        <div v-if="previewUrl" class="fixed inset-0 z-[250] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
+            <div class="bg-white w-full max-w-6xl h-[90vh] rounded-[2rem] flex flex-col relative overflow-hidden shadow-2xl border-t-8"
+                 :class="previewType === 'arw' ? 'border-amber-500' : 'border-blue-600'">
                 <div class="p-5 border-b flex justify-between items-center bg-slate-50">
-                    <div class="flex items-center gap-3">
-                        <span class="text-xl">📄</span>
-                        <h3 class="font-black text-sm uppercase tracking-tighter">Preview Dokumen Strategis</h3>
+                    <div class="flex items-center gap-3 min-w-0">
+                        <span class="text-xl">{{ previewType === 'arw' ? '📷' : '📄' }}</span>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-black text-sm uppercase tracking-tighter truncate">{{ activePreviewItem?.file_name }}</h3>
+                                <span v-if="previewType === 'arw'" class="px-2 py-0.5 text-[9px] bg-amber-100 text-amber-800 rounded-full font-bold uppercase border border-amber-300 whitespace-nowrap">
+                                    Sony Alpha RAW (Pratinjau HD)
+                                </span>
+                            </div>
+                            <p class="text-[10px] text-gray-400 font-bold uppercase">
+                                {{ previewType === 'arw' ? 'Pratinjau Sensor Kamera Sony • Kualitas Tinggi' : 'Preview Dokumen Strategis' }}
+                            </p>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <!-- Tombol Khusus ARW di Modal Preview -->
+                        <template v-if="activePreviewItem && isArw(activePreviewItem)">
+                            <button @click="convertArw(activePreviewItem, true)" 
+                                    :disabled="isConvertingArw"
+                                    class="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-2 rounded-xl font-black text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                    title="Konversi dan simpan berkas JPG baru di folder">
+                                <span>💾</span>
+                                <span>{{ isConvertingArw ? 'Mengonversi...' : 'Simpan JPG di Folder' }}</span>
+                            </button>
+                            <a :href="route('backup.download-arw-jpg', activePreviewItem.id)" 
+                               class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl font-black text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+                               title="Unduh langsung sebagai JPG kualitas tinggi">
+                                <span>⬇️</span>
+                                <span>Unduh JPG HD</span>
+                            </a>
+                        </template>
+
                         <button v-if="activePreviewItem && isExcel(activePreviewItem)" 
                                 @click="const itm = activePreviewItem; closePreview(); openExcelEditor(itm);" 
                                 class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-black text-xs transition shadow-sm flex items-center gap-2 cursor-pointer">
@@ -1412,14 +1537,22 @@ onUnmounted(() => {
                             </svg>
                             <span>Edit Excel Ini</span>
                         </button>
-                        <button @click="closePreview" class="bg-red-500 text-white px-6 py-2 rounded-xl font-black text-xs hover:bg-red-600 transition shadow-lg cursor-pointer">TUTUP</button>
+                        <button @click="closePreview" class="bg-red-500 text-white px-5 py-2 rounded-xl font-black text-xs hover:bg-red-600 transition shadow-lg cursor-pointer">TUTUP</button>
                     </div>
                 </div>
                 
-                <div class="flex-1 overflow-auto p-0 bg-slate-200 flex justify-center items-center">
-                    <img v-if="previewType === 'image'" :src="previewUrl" class="max-h-full shadow-2xl rounded-lg" />
+                <div class="flex-1 overflow-auto p-4 bg-slate-950 flex justify-center items-center relative">
+                    <img v-if="previewType === 'image' || previewType === 'arw'" 
+                         :src="previewUrl" 
+                         class="max-h-full max-w-full object-contain shadow-2xl rounded-lg" 
+                         alt="Pratinjau Foto" />
                     
-                    <iframe v-if="previewType === 'pdf' || previewType === 'office'" :src="previewUrl" class="w-full h-full border-none"></iframe>
+                    <iframe v-if="previewType === 'pdf' || previewType === 'office'" :src="previewUrl" class="w-full h-full border-none bg-white rounded-lg"></iframe>
+
+                    <!-- Badge Keterangan Kualitas untuk ARW di pojok bawah -->
+                    <div v-if="previewType === 'arw'" class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md text-amber-300 text-[11px] font-bold px-4 py-1.5 rounded-full border border-amber-500/40 flex items-center gap-2 shadow-xl">
+                        <span>📷 Pratinjau Sony Alpha RAW Resolusi Tinggi</span>
+                    </div>
                 </div>
             </div>
         </div>

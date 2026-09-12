@@ -8,6 +8,7 @@ use App\Models\AccessRequest;
 use App\Models\OfficeNetwork;
 use App\Models\User;
 use App\Models\BackupShare;
+use App\Services\ArwService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
@@ -181,7 +182,15 @@ class BackupController extends Controller
             }
             
             $item->date_human = Carbon::parse($item->created_at)->format('d M Y H:i');
-            $item->preview_url = !$item->is_folder ? asset('storage/' . $item->file_path) : null;
+            $isArw = ArwService::isArw($item->file_type ?: $item->file_name);
+            $item->is_arw = $isArw;
+            if ($isArw) {
+                $item->preview_url = route('backup.preview-arw', $item->id);
+                $item->download_jpg_url = route('backup.download-arw-jpg', $item->id);
+            } else {
+                $item->preview_url = !$item->is_folder ? asset('storage/' . $item->file_path) : null;
+                $item->download_jpg_url = null;
+            }
             return $item;
         });
 
@@ -276,6 +285,75 @@ class BackupController extends Controller
         }
 
         return abort(404, "Gagal mengonversi dokumen.");
+    }
+
+    /**
+     * PRATINJAU FORMAT GAMBAR SONY RAW (.ARW) SEBAGAI JPG HD
+     */
+    public function previewArw($id)
+    {
+        $backup = Backup::findOrFail($id);
+        $fullPath = storage_path('app/public/' . $backup->file_path);
+
+        if (!file_exists($fullPath)) {
+            abort(404, 'Berkas fisik Sony RAW tidak ditemukan di server penyimpanan.');
+        }
+
+        return ArwService::previewResponse($fullPath, $backup->file_name);
+    }
+
+    /**
+     * KONVERSI SONY RAW (.ARW) MENJADI BERKAS .JPG KUALITAS TINGGI DAN SIMPAN DI FOLDER
+     */
+    public function convertArw(Request $request, $id)
+    {
+        try {
+            $backup = Backup::findOrFail($id);
+
+            if (!ArwService::isArw($backup->file_type ?: $backup->file_name)) {
+                return response()->json(['status' => 'error', 'message' => 'Berkas bukan format Sony RAW (.ARW).'], 400);
+            }
+
+            $newBackup = ArwService::convertAndSaveToBackup($backup);
+
+            if (!$newBackup) {
+                return response()->json(['status' => 'error', 'message' => 'Gagal mengonversi berkas Sony RAW (.ARW) ke JPG.'], 500);
+            }
+
+            $newBackup->size_human = $this->formatBytes($newBackup->file_size);
+            $newBackup->date_human = Carbon::parse($newBackup->created_at)->format('d M Y H:i');
+            $newBackup->preview_url = asset('storage/' . $newBackup->file_path);
+
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => "Berkas {$backup->file_name} berhasil dikonversi menjadi {$newBackup->file_name}.",
+                    'item' => $newBackup
+                ]);
+            }
+
+            return back()->with('success', "Berkas berhasil dikonversi menjadi {$newBackup->file_name}.");
+        } catch (\Exception $e) {
+            Log::error("Gagal convert ARW ID {$id}: " . $e->getMessage());
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['status' => 'error', 'message' => $e->getMessage()], 422);
+            }
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * UNDUH LANGSUNG BERKAS SONY RAW (.ARW) SEBAGAI FORMAT .JPG KUALITAS TINGGI
+     */
+    public function downloadArwJpg($id)
+    {
+        $backup = Backup::findOrFail($id);
+
+        if (!ArwService::isArw($backup->file_type ?: $backup->file_name)) {
+            abort(400, 'Berkas bukan format Sony RAW (.ARW).');
+        }
+
+        return ArwService::downloadConvertedJpg($backup);
     }
 
     /**

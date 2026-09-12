@@ -77,6 +77,7 @@ const localSearch = ref(props.searchQuery || '');
 const previewUrl = ref(null);
 const previewTitle = ref('');
 const previewType = ref('');
+const activePreviewItem = ref(null);
 
 const filteredContents = computed(() => {
     if (!localSearch.value.trim()) return props.contents;
@@ -102,6 +103,10 @@ const goToBreadcrumb = (crumbId) => {
     });
 };
 
+const isArw = (filename) => {
+    return filename?.toLowerCase().endsWith('.arw');
+};
+
 const isImage = (filename) => {
     const ext = filename?.split('.').pop()?.toLowerCase();
     return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(ext);
@@ -112,11 +117,14 @@ const isPdf = (filename) => {
 };
 
 const openPreview = (item) => {
+    activePreviewItem.value = item;
     previewTitle.value = item.file_name;
     previewUrl.value = item.preview_url;
 
     if (isImage(item.file_name)) {
         previewType.value = 'image';
+    } else if (isArw(item.file_name)) {
+        previewType.value = 'arw';
     } else if (isPdf(item.file_name)) {
         previewType.value = 'pdf';
     } else {
@@ -128,6 +136,7 @@ const closePreview = () => {
     previewUrl.value = null;
     previewTitle.value = '';
     previewType.value = '';
+    activePreviewItem.value = null;
 };
 
 const exitAndLock = () => {
@@ -370,16 +379,22 @@ const exitAndLock = () => {
                                             <span v-if="item.is_folder" class="text-2xl">📁</span>
                                             <span v-else-if="item.file_type?.toLowerCase() === 'xlsx' || item.file_type?.toLowerCase() === 'xls'" class="text-2xl">📊</span>
                                             <span v-else-if="isPdf(item.file_name)" class="text-2xl">📕</span>
+                                            <span v-else-if="isArw(item.file_name)" class="text-2xl" title="Sony Alpha RAW (.ARW)">📷</span>
                                             <span v-else-if="isImage(item.file_name)" class="text-2xl">🖼️</span>
                                             <span v-else-if="item.file_type?.toLowerCase() === 'zip'" class="text-2xl">📦</span>
                                             <span v-else class="text-2xl">📄</span>
 
                                             <div>
-                                                <p class="font-black text-slate-800 uppercase tracking-tight group-hover:text-indigo-700 transition">
-                                                    {{ item.file_name }}
-                                                </p>
+                                                <div class="flex items-center gap-2 flex-wrap">
+                                                    <p class="font-black text-slate-800 uppercase tracking-tight group-hover:text-indigo-700 transition">
+                                                        {{ item.file_name }}
+                                                    </p>
+                                                    <span v-if="isArw(item.file_name)" class="px-2 py-0.5 text-[9px] bg-amber-100 text-amber-800 rounded-full font-bold uppercase border border-amber-300">
+                                                        Sony RAW
+                                                    </span>
+                                                </div>
                                                 <p class="text-[10px] text-slate-400 font-bold uppercase">
-                                                    {{ item.is_folder ? 'Folder Direktori' : (item.file_type || 'Berkas') }}
+                                                    {{ item.is_folder ? 'Folder Direktori' : (isArw(item.file_name) ? 'Foto Sony RAW' : (item.file_type || 'Berkas')) }}
                                                 </p>
                                             </div>
                                         </div>
@@ -412,16 +427,26 @@ const exitAndLock = () => {
                                                 v-if="!item.is_folder" 
                                                 @click.stop="openPreview(item)" 
                                                 class="p-2 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 rounded-xl transition cursor-pointer"
-                                                title="Lihat Pratinjau Berkas">
+                                                :title="isArw(item.file_name) ? 'Lihat Pratinjau Foto Sony RAW' : 'Lihat Pratinjau Berkas'">
                                                 👁️
                                             </button>
 
-                                            <!-- Unduh Berkas -->
+                                            <!-- Unduh Sebagai JPG HD Khusus Berkas Sony RAW -->
+                                            <a 
+                                                v-if="!item.is_folder && isArw(item.file_name) && item.download_jpg_url" 
+                                                :href="item.download_jpg_url" 
+                                                class="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-600 hover:text-white text-amber-800 rounded-xl transition cursor-pointer inline-flex items-center justify-center font-bold text-[10px] uppercase gap-1"
+                                                title="Unduh Berkas Sony RAW Ini Sebagai Format JPG HD">
+                                                <span>JPG</span>
+                                                <span>⬇️</span>
+                                            </a>
+
+                                            <!-- Unduh Berkas Asli -->
                                             <a 
                                                 v-if="!item.is_folder && item.download_url" 
                                                 :href="item.download_url" 
                                                 class="p-2 bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 rounded-xl transition cursor-pointer inline-flex items-center justify-center"
-                                                title="Unduh Berkas Ini">
+                                                :title="isArw(item.file_name) ? 'Unduh Berkas Asli (.ARW)' : 'Unduh Berkas Ini'">
                                                 ⬇️
                                             </a>
                                         </div>
@@ -465,19 +490,36 @@ const exitAndLock = () => {
 
         <!-- MODAL PRATINJAU DOKUMEN / GAMBAR -->
         <div v-if="previewUrl" class="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
-            <div class="bg-white w-full max-w-5xl h-[88vh] rounded-3xl flex flex-col overflow-hidden shadow-2xl border-t-8 border-indigo-600">
+            <div class="bg-white w-full max-w-5xl h-[88vh] rounded-3xl flex flex-col overflow-hidden shadow-2xl border-t-8"
+                :class="previewType === 'arw' ? 'border-amber-500' : 'border-indigo-600'">
                 
                 <!-- Preview Header -->
                 <div class="p-4 sm:p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
                     <div class="flex items-center gap-3 min-w-0">
-                        <span class="text-2xl">👁️</span>
+                        <span class="text-2xl">{{ previewType === 'arw' ? '📷' : '👁️' }}</span>
                         <div class="min-w-0">
-                            <h3 class="font-black text-sm uppercase tracking-tight truncate text-slate-800">{{ previewTitle }}</h3>
-                            <p class="text-[10px] text-slate-400 font-bold uppercase">Mode Pratinjau Dokumen</p>
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-black text-sm uppercase tracking-tight truncate text-slate-800">{{ previewTitle }}</h3>
+                                <span v-if="previewType === 'arw'" class="px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 uppercase tracking-wider border border-amber-300">
+                                    Sony RAW HD
+                                </span>
+                            </div>
+                            <p class="text-[10px] text-slate-400 font-bold uppercase">
+                                {{ previewType === 'arw' ? 'Pratinjau Foto RAW (Engine BIONZ / ImageMagick HD)' : 'Mode Pratinjau Dokumen' }}
+                            </p>
                         </div>
                     </div>
                     
                     <div class="flex items-center gap-2">
+                        <!-- Unduh JPG HD jika ARW -->
+                        <a 
+                            v-if="previewType === 'arw' && activePreviewItem?.download_jpg_url"
+                            :href="activePreviewItem.download_jpg_url"
+                            class="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black uppercase shadow-xs transition flex items-center gap-1.5"
+                            title="Unduh versi JPG resolusi tinggi">
+                            <span>⬇️ Unduh JPG HD</span>
+                        </a>
+
                         <a 
                             :href="previewUrl" 
                             target="_blank" 
@@ -493,12 +535,13 @@ const exitAndLock = () => {
                 </div>
 
                 <!-- Preview Content -->
-                <div class="flex-1 bg-slate-900 overflow-hidden flex items-center justify-center p-4">
+                <div class="flex-1 bg-slate-900 overflow-hidden flex items-center justify-center p-4 relative">
+                    <!-- ARW or standard image preview -->
                     <img 
-                        v-if="previewType === 'image'" 
+                        v-if="previewType === 'image' || previewType === 'arw'" 
                         :src="previewUrl" 
                         class="max-w-full max-h-full object-contain rounded-lg shadow-lg" 
-                        alt="Preview Gambar"
+                        :alt="previewTitle"
                     />
 
                     <iframe 
@@ -520,6 +563,12 @@ const exitAndLock = () => {
                             class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase rounded-xl transition shadow-md">
                             <span>⬇️ Unduh Berkas Ini</span>
                         </a>
+                    </div>
+
+                    <!-- ARW Floating Badge in bottom corner -->
+                    <div v-if="previewType === 'arw'" class="absolute bottom-6 right-6 bg-slate-950/80 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/10 text-white text-[11px] font-bold flex items-center gap-2 shadow-xl pointer-events-none">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span>Sony RAW Converted Preview (95% HD Quality)</span>
                     </div>
                 </div>
 

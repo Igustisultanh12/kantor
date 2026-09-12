@@ -163,6 +163,11 @@ Route::middleware(['auth', 'office.only'])->group(function () {
     // --- FITUR BAGIKAN FOLDER (GOOGLE DRIVE STYLE DENGAN PIN) ---
     Route::post('/pc-backup/share/save', [BackupShareController::class, 'saveShare'])->name('backup.share.save');
     Route::delete('/pc-backup/share/{id}', [BackupShareController::class, 'revokeShare'])->name('backup.share.revoke');
+
+    // --- FITUR PREVIEW & KONVERSI SONY RAW (.ARW) KE JPG HD ---
+    Route::get('/pc-backup/preview-arw/{id}', [BackupController::class, 'previewArw'])->name('backup.preview-arw');
+    Route::post('/pc-backup/convert-arw/{id}', [BackupController::class, 'convertArw'])->name('backup.convert-arw');
+    Route::get('/pc-backup/download-arw-jpg/{id}', [BackupController::class, 'downloadArwJpg'])->name('backup.download-arw-jpg');
 });
 
 // =========================================================================
@@ -174,6 +179,7 @@ Route::post('/shared-folder/{token}/exit', [BackupShareController::class, 'exitS
 Route::get('/shared-folder/{token}/download/{fileId}', [BackupShareController::class, 'downloadFile'])->name('backup.shared.download');
 Route::get('/shared-folder/{token}/preview/{fileId}', [BackupShareController::class, 'previewFile'])->name('backup.shared.preview');
 Route::get('/shared-folder/{token}/download-zip', [BackupShareController::class, 'downloadFolderZip'])->name('backup.shared.download-zip');
+Route::get('/shared-folder/{token}/download-arw-jpg/{fileId}', [BackupShareController::class, 'downloadArwJpg'])->name('backup.shared.download-arw-jpg');
 
 // --- AKSES TERPROTEKSI (AUTH) ---
 Route::middleware('auth')->group(function () {
