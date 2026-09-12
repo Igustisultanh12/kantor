@@ -358,6 +358,10 @@ class BackupShareController extends Controller
      */
     public function previewFile($token, $fileId)
     {
+        if (request()->header('Sec-Fetch-Dest') === 'document' || request()->header('Sec-Fetch-Mode') === 'navigate') {
+            abort(403, 'Akses Ditolak: Pratinjau berkas hanya diizinkan melalui antarmuka aplikasi internal.');
+        }
+
         $share = BackupShare::where('share_token', $token)->where('is_active', true)->firstOrFail();
 
         $sessionKey = 'verified_backup_share_' . $share->id;

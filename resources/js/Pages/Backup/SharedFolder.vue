@@ -117,29 +117,127 @@ const isImage = (filename) => {
 
 const isPdf = (filename) => {
     return filename?.toLowerCase().endsWith('.pdf');
+// --- STATE ZOOM, ROTATE, PAN & SECURE BLOB PREVIEW ---
+const zoomLevel = ref(1);
+const rotationDegree = ref(0);
+const panPosition = ref({ x: 0, y: 0 });
+const isPanning = ref(false);
+const panStart = ref({ x: 0, y: 0 });
+const isImageLoading = ref(false);
+
+const resetZoomAndRotate = () => {
+    zoomLevel.value = 1;
+    rotationDegree.value = 0;
+    panPosition.value = { x: 0, y: 0 };
+    isPanning.value = false;
 };
 
-const openPreview = (item) => {
+const zoomIn = () => {
+    zoomLevel.value = Math.min(5, +(zoomLevel.value + 0.25).toFixed(2));
+};
+
+const zoomOut = () => {
+    zoomLevel.value = Math.max(0.25, +(zoomLevel.value - 0.25).toFixed(2));
+    if (zoomLevel.value <= 1) {
+        panPosition.value = { x: 0, y: 0 };
+    }
+};
+
+const rotateRight = () => {
+    rotationDegree.value = (rotationDegree.value + 90) % 360;
+};
+
+const rotateLeft = () => {
+    rotationDegree.value = (rotationDegree.value - 90 + 360) % 360;
+};
+
+const handleWheelZoom = (e) => {
+    if (previewType.value !== 'image' && previewType.value !== 'arw') return;
+    if (e.deltaY < 0) {
+        zoomIn();
+    } else {
+        zoomOut();
+    }
+};
+
+const startPan = (e) => {
+    if (zoomLevel.value <= 1) return;
+    isPanning.value = true;
+    panStart.value = {
+        x: e.clientX - panPosition.value.x,
+        y: e.clientY - panPosition.value.y
+    };
+};
+
+const onPan = (e) => {
+    if (!isPanning.value) return;
+    panPosition.value = {
+        x: e.clientX - panStart.value.x,
+        y: e.clientY - panStart.value.y
+    };
+};
+
+const endPan = () => {
+    isPanning.value = false;
+};
+
+const fetchSecureBlob = async (url) => {
+    if (previewUrl.value && previewUrl.value.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl.value);
+    }
+    previewUrl.value = null;
+    isImageLoading.value = true;
+
+    try {
+        const response = await axios.get(url, {
+            responseType: 'blob',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        const blobUrl = URL.createObjectURL(response.data);
+        previewUrl.value = blobUrl;
+    } catch (err) {
+        Swal.fire({
+            title: 'Gagal Memuat Pratinjau',
+            text: err.response?.data?.message || 'Tidak dapat memuat berkas gambar secara aman.',
+            icon: 'error'
+        });
+        closePreview();
+    } finally {
+        isImageLoading.value = false;
+    }
+};
+
+const openPreview = async (item) => {
     activePreviewItem.value = item;
     previewTitle.value = item.file_name;
-    previewUrl.value = item.preview_url;
+    resetZoomAndRotate();
 
     if (isImage(item.file_name)) {
         previewType.value = 'image';
+        await fetchSecureBlob(item.preview_url);
     } else if (isArw(item.file_name)) {
         previewType.value = 'arw';
+        await fetchSecureBlob(item.preview_url);
     } else if (isPdf(item.file_name)) {
         previewType.value = 'pdf';
+        previewUrl.value = item.preview_url;
     } else {
         previewType.value = 'other';
+        previewUrl.value = item.preview_url;
     }
 };
 
 const closePreview = () => {
+    if (previewUrl.value && previewUrl.value.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl.value);
+    }
     previewUrl.value = null;
     previewTitle.value = '';
     previewType.value = '';
     activePreviewItem.value = null;
+    resetZoomAndRotate();
 };
 
 const exitAndLock = () => {
@@ -663,11 +761,11 @@ const exitAndLock = () => {
         </footer>
 
         <!-- MODAL PRATINJAU DOKUMEN / GAMBAR (OPTIMAL DI HP & DESKTOP) -->
-        <div v-if="previewUrl" class="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 backdrop-blur-xs p-0 sm:p-4 animate-fade-in">
+        <div v-if="previewUrl || isImageLoading" class="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 backdrop-blur-xs p-0 sm:p-4 animate-fade-in">
             <div class="bg-white w-full h-full sm:h-[88vh] sm:max-w-5xl sm:rounded-3xl flex flex-col overflow-hidden shadow-2xl">
                 
                 <!-- Preview Header -->
-                <div class="p-3 sm:p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 gap-2">
+                <div class="p-3 sm:p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 gap-2 flex-wrap">
                     <div class="flex items-center gap-2 sm:gap-3 min-w-0">
                         <div class="w-8 h-8 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center shrink-0">
                             <svg v-if="previewType === 'arw'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -692,6 +790,44 @@ const exitAndLock = () => {
                                 {{ previewType === 'arw' ? 'Pratinjau Foto RAW Resolusi Tinggi' : 'Mode Pratinjau Dokumen' }}
                             </p>
                         </div>
+                    </div>
+
+                    <!-- Toolbar Zoom & Rotasi Gambar -->
+                    <div v-if="previewType === 'image' || previewType === 'arw'" class="flex items-center gap-1 bg-slate-200/80 p-1 rounded-xl shadow-2xs">
+                        <button @click="zoomOut" 
+                                type="button"
+                                class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-bold flex items-center justify-center shadow-xs transition cursor-pointer" 
+                                title="Perkecil (-)">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" /></svg>
+                        </button>
+                        <span class="text-[10px] sm:text-xs font-mono font-bold px-1 sm:px-1.5 text-slate-700 select-none min-w-8 text-center">
+                            {{ Math.round(zoomLevel * 100) }}%
+                        </span>
+                        <button @click="zoomIn" 
+                                type="button"
+                                class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-bold flex items-center justify-center shadow-xs transition cursor-pointer" 
+                                title="Perbesar (+)">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                        </button>
+                        <div class="h-4 w-px bg-slate-300 mx-0.5"></div>
+                        <button @click="rotateLeft" 
+                                type="button"
+                                class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-bold flex items-center justify-center shadow-xs transition cursor-pointer" 
+                                title="Putar Kiri (-90°)">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a5 5 0 015 5v2m0 0l-3-3m3 3l3-3M3 10l3 3m-3-3l3-3" /></svg>
+                        </button>
+                        <button @click="rotateRight" 
+                                type="button"
+                                class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-bold flex items-center justify-center shadow-xs transition cursor-pointer" 
+                                title="Putar Kanan (+90°)">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10H11a5 5 0 00-5 5v2m0 0l3-3m-3 3l-3-3m17-4l-3 3m3-3l-3-3" /></svg>
+                        </button>
+                        <button @click="resetZoomAndRotate" 
+                                type="button"
+                                class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-bold flex items-center justify-center shadow-xs transition cursor-pointer" 
+                                title="Reset Posisi & Rotasi">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        </button>
                     </div>
                     
                     <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -718,13 +854,34 @@ const exitAndLock = () => {
                     </div>
                 </div>
 
-                <!-- Preview Content -->
-                <div class="flex-1 bg-slate-900 overflow-hidden flex items-center justify-center p-2 sm:p-4 relative">
+                <!-- Preview Content (Anti-Copy & Anti-New-Tab) -->
+                <div class="flex-1 bg-slate-950 overflow-hidden flex items-center justify-center p-2 sm:p-4 relative select-none"
+                     @contextmenu.prevent=""
+                     @wheel.prevent="handleWheelZoom"
+                     @mousedown="startPan"
+                     @mousemove="onPan"
+                     @mouseup="endPan"
+                     @mouseleave="endPan"
+                     :style="{ cursor: zoomLevel > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default' }">
+                    
+                    <!-- Loading Spinner Saat Dekripsi Blob -->
+                    <div v-if="isImageLoading" class="flex flex-col items-center gap-3 text-slate-300">
+                        <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                        <p class="text-xs font-bold uppercase tracking-wider">Mendekripsi Data Gambar...</p>
+                    </div>
+
                     <!-- ARW or standard image preview -->
                     <img 
-                        v-if="previewType === 'image' || previewType === 'arw'" 
+                        v-else-if="(previewType === 'image' || previewType === 'arw') && previewUrl" 
                         :src="previewUrl" 
-                        class="max-w-full max-h-full object-contain rounded-md sm:rounded-lg shadow-lg" 
+                        draggable="false"
+                        @dragstart.prevent=""
+                        @contextmenu.prevent=""
+                        class="max-w-full max-h-full object-contain rounded-md sm:rounded-lg shadow-2xl pointer-events-auto" 
+                        :style="{
+                            transform: `translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoomLevel}) rotate(${rotationDegree}deg)`,
+                            transition: isPanning ? 'none' : 'transform 0.15s cubic-bezier(0.4, 0, 0.2, 1)'
+                        }"
                         :alt="previewTitle"
                     />
 
@@ -734,7 +891,7 @@ const exitAndLock = () => {
                         class="w-full h-full rounded-md sm:rounded-lg border-0 bg-white shadow-lg"
                     ></iframe>
 
-                    <div v-else class="text-center text-white space-y-4 max-w-sm p-6 bg-slate-800 rounded-2xl mx-4">
+                    <div v-else-if="!isImageLoading" class="text-center text-white space-y-4 max-w-sm p-6 bg-slate-800 rounded-2xl mx-4">
                         <svg class="w-12 h-12 mx-auto text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>

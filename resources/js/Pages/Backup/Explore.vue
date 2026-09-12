@@ -182,6 +182,378 @@ const previewUrl = ref(null);
 const previewType = ref(null);
 const activePreviewItem = ref(null);
 
+// --- STATE TAMPILAN VIEW MODES (LARGE, MEDIUM, SMALL, LIST) ---
+const viewMode = ref(localStorage.getItem('sinden_explore_view_mode') || 'list');
+const setViewMode = (mode) => {
+    viewMode.value = mode;
+    localStorage.setItem('sinden_explore_view_mode', mode);
+};
+
+// --- STATE MULTI-SELEKSI BERKAS & FOLDER ---
+const selectedItemIds = ref([]);
+
+const selectedCount = computed(() => selectedItemIds.value.length);
+const selectedItems = computed(() => {
+    return props.contents.filter(c => selectedItemIds.value.includes(c.id));
+});
+
+const isAllSelected = computed(() => {
+    return filteredContents.value && filteredContents.value.length > 0 && filteredContents.value.every(item => selectedItemIds.value.includes(item.id));
+});
+
+const toggleSelectAll = () => {
+    if (isAllSelected.value) {
+        selectedItemIds.value = [];
+    } else {
+        selectedItemIds.value = filteredContents.value.map(item => item.id);
+    }
+};
+
+const toggleSelectItem = (item, event) => {
+    if (event) event.stopPropagation();
+    const idx = selectedItemIds.value.indexOf(item.id);
+    if (idx > -1) {
+        selectedItemIds.value.splice(idx, 1);
+    } else {
+        selectedItemIds.value.push(item.id);
+    }
+};
+
+const clearSelection = () => {
+    selectedItemIds.value = [];
+};
+
+// --- STATE PAPAN KLIP (COPY & CUT / MOVE) ---
+const clipboard = ref({
+    mode: null, // 'copy' | 'cut'
+    items: [],
+    sourcePcId: props.pc.id
+});
+
+const copySelectedItems = () => {
+    if (selectedCount.value === 0) return;
+    clipboard.value = {
+        mode: 'copy',
+        items: [...selectedItems.value],
+        sourcePcId: props.pc.id
+    };
+    Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'info',
+        title: `${selectedCount.value} item disalin. Masuk ke folder tujuan lalu klik 'Tempel'.`,
+        showConfirmButton: false,
+        timer: 3000
+    });
+};
+
+const cutSelectedItems = () => {
+    if (selectedCount.value === 0) return;
+    clipboard.value = {
+        mode: 'cut',
+        items: [...selectedItems.value],
+        sourcePcId: props.pc.id
+    };
+    Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'info',
+        title: `${selectedCount.value} item dipotong. Masuk ke folder tujuan lalu klik 'Tempel'.`,
+        showConfirmButton: false,
+        timer: 3000
+    });
+};
+
+const cancelClipboard = () => {
+    clipboard.value = { mode: null, items: [], sourcePcId: null };
+};
+
+const executePaste = async () => {
+    if (!clipboard.value.mode || clipboard.value.items.length === 0) return;
+    const ids = clipboard.value.items.map(i => i.id);
+    const targetFolderId = props.currentFolderId;
+
+    if (clipboard.value.mode === 'cut') {
+        try {
+            const res = await axios.post(route('backup.bulk-move'), {
+                pc_id: props.pc.id,
+                ids: ids,
+                target_folder_id: targetFolderId
+            });
+            if (res.data.status === 'success') {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: res.data.message,
+                    showConfirmButton: false,
+                    timer: 2500
+                });
+                cancelClipboard();
+                clearSelection();
+                router.reload({ only: ['contents', 'pc'], preserveScroll: true });
+            }
+        } catch (err) {
+            Swal.fire('Gagal Memindahkan', err.response?.data?.message || err.message, 'error');
+        }
+    } else if (clipboard.value.mode === 'copy') {
+        try {
+            const res = await axios.post(route('backup.bulk-copy'), {
+                pc_id: props.pc.id,
+                ids: ids,
+                target_folder_id: targetFolderId
+            });
+            if (res.data.status === 'success') {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: res.data.message,
+                    showConfirmButton: false,
+                    timer: 2500
+                });
+                cancelClipboard();
+                clearSelection();
+                router.reload({ only: ['contents', 'pc'], preserveScroll: true });
+            }
+        } catch (err) {
+            Swal.fire('Gagal Menyalin', err.response?.data?.message || err.message, 'error');
+        }
+    }
+};
+
+// --- LOGIKA DRAG AND DROP ANTAR-ITEM / FOLDER SINDEN ---
+const draggedItems = ref([]);
+const dragTargetFolderId = ref(null);
+
+const handleItemDragStart = (e, item) => {
+    if (!selectedItemIds.value.includes(item.id)) {
+        selectedItemIds.value = [item.id];
+        draggedItems.value = [item];
+    } else {
+        draggedItems.value = selectedItems.value;
+    }
+
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('application/x-sinden-items', JSON.stringify(draggedItems.value.map(i => i.id)));
+};
+
+const handleItemDragEnd = () => {
+    draggedItems.value = [];
+    dragTargetFolderId.value = null;
+};
+
+const handleFolderDragOver = (e, targetFolder) => {
+    if (!e.dataTransfer.types.includes('application/x-sinden-items')) return;
+    if (draggedItems.value.some(i => i.id === targetFolder.id)) return;
+
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    dragTargetFolderId.value = targetFolder.id;
+};
+
+const handleFolderDragLeave = (e, targetFolder) => {
+    if (dragTargetFolderId.value === targetFolder.id) {
+        dragTargetFolderId.value = null;
+    }
+};
+
+const handleFolderDrop = async (e, targetFolder) => {
+    if (!e.dataTransfer.types.includes('application/x-sinden-items')) return;
+    e.preventDefault();
+    dragTargetFolderId.value = null;
+
+    let ids = [];
+    try {
+        ids = JSON.parse(e.dataTransfer.getData('application/x-sinden-items'));
+    } catch {
+        ids = draggedItems.value.map(i => i.id);
+    }
+
+    if (!ids || ids.length === 0) return;
+    if (targetFolder.id && ids.includes(targetFolder.id)) return;
+
+    try {
+        const res = await axios.post(route('backup.bulk-move'), {
+            pc_id: props.pc.id,
+            ids: ids,
+            target_folder_id: targetFolder.id || null
+        });
+        if (res.data.status === 'success') {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: `${ids.length} item berhasil dipindahkan ke '${targetFolder.file_name || 'HOME'}'`,
+                showConfirmButton: false,
+                timer: 2500
+            });
+            clearSelection();
+            draggedItems.value = [];
+            router.reload({ only: ['contents', 'pc'], preserveScroll: true });
+        }
+    } catch (err) {
+        Swal.fire('Gagal Memindahkan', err.response?.data?.message || err.message, 'error');
+    }
+};
+
+// --- LOGIKA BULK DELETE & BULK DOWNLOAD ZIP ---
+const deleteSelectedItems = () => {
+    if (selectedCount.value === 0) return;
+    Swal.fire({
+        title: `Hapus ${selectedCount.value} Item Terpilih?`,
+        text: 'Seluruh berkas fisik dan folder terpilih akan dihapus secara permanen dari server penyimpanan.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Hapus Semua Terpilih',
+        cancelButtonText: 'Batal'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            try {
+                const res = await axios.post(route('backup.bulk-delete'), {
+                    pc_id: props.pc.id,
+                    ids: selectedItemIds.value
+                });
+                if (res.data.status === 'success') {
+                    Swal.fire('Berhasil Dihapus', res.data.message, 'success');
+                    clearSelection();
+                    router.reload({ only: ['contents', 'pc'], preserveScroll: true });
+                }
+            } catch (err) {
+                Swal.fire('Gagal Menghapus', err.response?.data?.message || err.message, 'error');
+            }
+        }
+    });
+};
+
+const downloadSelectedZip = () => {
+    if (selectedCount.value === 0) return;
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = route('backup.bulk-download-zip');
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    if (csrfToken) {
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = '_token';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+    }
+
+    const pcInput = document.createElement('input');
+    pcInput.type = 'hidden';
+    pcInput.name = 'pc_id';
+    pcInput.value = props.pc.id;
+    form.appendChild(pcInput);
+
+    selectedItemIds.value.forEach(id => {
+        const idInput = document.createElement('input');
+        idInput.type = 'hidden';
+        idInput.name = 'ids[]';
+        idInput.value = id;
+        form.appendChild(idInput);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+};
+
+// --- STATE ZOOM, ROTATE, PAN & SECURE BLOB PREVIEW ---
+const zoomLevel = ref(1);
+const rotationDegree = ref(0);
+const panPosition = ref({ x: 0, y: 0 });
+const isPanning = ref(false);
+const panStart = ref({ x: 0, y: 0 });
+const isImageLoading = ref(false);
+
+const resetZoomAndRotate = () => {
+    zoomLevel.value = 1;
+    rotationDegree.value = 0;
+    panPosition.value = { x: 0, y: 0 };
+    isPanning.value = false;
+};
+
+const zoomIn = () => {
+    zoomLevel.value = Math.min(5, +(zoomLevel.value + 0.25).toFixed(2));
+};
+
+const zoomOut = () => {
+    zoomLevel.value = Math.max(0.25, +(zoomLevel.value - 0.25).toFixed(2));
+    if (zoomLevel.value <= 1) {
+        panPosition.value = { x: 0, y: 0 };
+    }
+};
+
+const rotateRight = () => {
+    rotationDegree.value = (rotationDegree.value + 90) % 360;
+};
+
+const rotateLeft = () => {
+    rotationDegree.value = (rotationDegree.value - 90 + 360) % 360;
+};
+
+const handleWheelZoom = (e) => {
+    if (previewType.value !== 'image' && previewType.value !== 'arw') return;
+    if (e.deltaY < 0) {
+        zoomIn();
+    } else {
+        zoomOut();
+    }
+};
+
+const startPan = (e) => {
+    if (zoomLevel.value <= 1) return;
+    isPanning.value = true;
+    panStart.value = {
+        x: e.clientX - panPosition.value.x,
+        y: e.clientY - panPosition.value.y
+    };
+};
+
+const onPan = (e) => {
+    if (!isPanning.value) return;
+    panPosition.value = {
+        x: e.clientX - panStart.value.x,
+        y: e.clientY - panStart.value.y
+    };
+};
+
+const endPan = () => {
+    isPanning.value = false;
+};
+
+const fetchSecureBlob = async (url) => {
+    if (previewUrl.value && previewUrl.value.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl.value);
+    }
+    previewUrl.value = null;
+    isImageLoading.value = true;
+
+    try {
+        const response = await axios.get(url, {
+            responseType: 'blob',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        const blobUrl = URL.createObjectURL(response.data);
+        previewUrl.value = blobUrl;
+    } catch (err) {
+        Swal.fire({
+            title: 'Gagal Memuat Pratinjau',
+            text: err.response?.data?.message || 'Tidak dapat memuat berkas gambar secara aman.',
+            icon: 'error'
+        });
+        closePreview();
+    } finally {
+        isImageLoading.value = false;
+    }
+};
+
 // --- STATE RADAR EKSTRAKSI ---
 const isExtracting = ref(false);
 const extractProgress = ref(0);
@@ -666,18 +1038,21 @@ const convertArw = async (item, saveToFolder = true) => {
     }
 };
 
-const openPreview = (item) => {
+const openPreview = async (item) => {
     if (item.is_folder) return; 
     activePreviewItem.value = item;
+    resetZoomAndRotate();
+
     const ext = (item.file_type || '').toLowerCase();
     const officeExts = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'];
 
     if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
         previewType.value = 'image';
-        previewUrl.value = item.preview_url;
+        await fetchSecureBlob(item.preview_url);
     } else if (isArw(item)) {
         previewType.value = 'arw';
-        previewUrl.value = item.preview_url || route('backup.preview-arw', item.id);
+        const url = item.preview_url || route('backup.preview-arw', item.id);
+        await fetchSecureBlob(url);
     } else if (ext === 'pdf') {
         previewType.value = 'pdf';
         previewUrl.value = item.preview_url;
@@ -690,8 +1065,12 @@ const openPreview = (item) => {
 };
 
 const closePreview = () => {
+    if (previewUrl.value && previewUrl.value.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl.value);
+    }
     previewUrl.value = null;
     activePreviewItem.value = null;
+    resetZoomAndRotate();
 };
 
 // =========================================================================
@@ -1217,39 +1596,120 @@ onUnmounted(() => {
                     <span></span> Menampilkan hasil pencarian di seluruh Folder...
                 </div>
 
+                <!-- Navigasi Breadcrumbs (Mendukung Dropzone Pemindahan Berkas) -->
                 <nav class="flex bg-slate-50 px-5 py-3 rounded-2xl border border-slate-200">
-                    <ol class="flex items-center space-x-2 text-[10px] font-extrabold uppercase tracking-wider">
+                    <ol class="flex items-center space-x-2 text-[10px] font-extrabold uppercase tracking-wider flex-wrap">
                         <li>
-                            <Link :href="route('backup.explore', { id: pc.id })" class="text-blue-600 hover:underline">HOME</Link>
+                            <Link :href="route('backup.explore', { id: pc.id })" 
+                                  @dragover.prevent="currentFolderId ? handleFolderDragOver($event, { id: null, file_name: 'HOME' }) : null"
+                                  @dragleave="handleFolderDragLeave($event, { id: null, file_name: 'HOME' })"
+                                  @drop.prevent="currentFolderId ? handleFolderDrop($event, { id: null, file_name: 'HOME' }) : null"
+                                  :class="dragTargetFolderId === null && currentFolderId ? 'bg-blue-200 text-blue-900 ring-2 ring-blue-500 rounded px-1.5 py-0.5' : 'text-blue-600 hover:underline'">
+                                HOME
+                            </Link>
                         </li>
                         <li v-for="crumb in breadcrumbs" :key="crumb.id" class="flex items-center space-x-2">
                             <span class="text-gray-400">/</span>
-                            <Link :href="route('backup.explore', { id: pc.id, folder: crumb.id })" class="text-blue-600 hover:underline">{{ crumb.name }}</Link>
+                            <Link :href="route('backup.explore', { id: pc.id, folder: crumb.id })" 
+                                  @dragover.prevent="crumb.id !== currentFolderId ? handleFolderDragOver($event, crumb) : null"
+                                  @dragleave="handleFolderDragLeave($event, crumb)"
+                                  @drop.prevent="crumb.id !== currentFolderId ? handleFolderDrop($event, crumb) : null"
+                                  :class="dragTargetFolderId === crumb.id ? 'bg-blue-200 text-blue-900 ring-2 ring-blue-500 rounded px-1.5 py-0.5' : 'text-blue-600 hover:underline'">
+                                {{ crumb.name }}
+                            </Link>
                         </li>
                     </ol>
                 </nav>
 
-                <div class="bg-white p-4 rounded-lg shadow space-y-4">
-                    <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <!-- Banner Papan Klip (Salin / Potong) yang Sedang Aktif -->
+                <div v-if="clipboard.items.length > 0" class="p-3 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs animate-in fade-in">
+                    <div class="flex items-center gap-2.5 text-amber-900 font-medium">
+                        <span class="w-7 h-7 rounded-xl bg-amber-200/80 text-amber-800 flex items-center justify-center font-bold text-xs shrink-0">
+                            {{ clipboard.items.length }}
+                        </span>
+                        <span>
+                            <b>{{ clipboard.items.length }} item</b> disiapkan untuk 
+                            <span class="font-bold uppercase text-amber-800 underline">{{ clipboard.mode === 'copy' ? 'disalin' : 'dipindahkan' }}</span>.
+                            Buka folder tujuan lalu klik tombol <b>Tempel</b>.
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button @click="executePaste" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-black text-xs uppercase tracking-wider transition flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-95">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                            <span>Tempel di Sini</span>
+                        </button>
+                        <button @click="cancelClipboard" class="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold text-xs transition cursor-pointer">
+                            Batal
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl shadow space-y-4 border border-slate-200">
+                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                        <!-- Grup Tombol Aksi Kiri -->
                         <div class="flex items-center gap-2 flex-wrap">
-                            <button @click="createFolder" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-2 transition shadow-xs cursor-pointer">
+                            <button @click="createFolder" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3.5 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-1.5 transition shadow-xs cursor-pointer">
                                 <span>📁 Folder Baru</span>
                             </button>
-                            <button @click="createNewExcelPrompt" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-2 transition shadow-xs cursor-pointer">
+                            <button @click="createNewExcelPrompt" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-1.5 transition shadow-xs cursor-pointer">
                                 <span>📊 Excel Baru</span>
                             </button>
                             <!-- Tombol Bagikan Folder Ini / Pangkalan -->
                             <button @click="openShareModal(null)" 
                                     :class="currentShare?.is_active ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500 shadow-sm' : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500 shadow-sm'" 
-                                    class="px-4 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-2 transition cursor-pointer border"
+                                    class="px-3.5 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-1.5 transition cursor-pointer border"
                                     :title="currentFolderId ? 'Bagikan Folder Ini via Tautan' : 'Bagikan Pangkalan Ini via Tautan'">
                                 <span>🔗</span>
                                 <span>{{ currentFolderId ? 'Bagikan Folder Ini' : 'Bagikan Pangkalan' }}</span>
                                 <span v-if="currentShare?.is_active" class="px-1.5 py-0.2 text-[9px] bg-emerald-950 text-emerald-300 rounded-md font-bold uppercase">Aktif</span>
                             </button>
+
+                            <!-- Tombol Toggle Pilih Semua -->
+                            <button @click="toggleSelectAll" 
+                                    class="px-3 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-1.5 transition cursor-pointer border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700">
+                                <svg class="w-4 h-4" :class="isAllSelected ? 'text-blue-600' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <span>{{ isAllSelected ? 'Batal Pilih Semua' : 'Pilih Semua' }}</span>
+                            </button>
                         </div>
                         
-                        <div class="flex items-center gap-2 flex-wrap">
+                        <!-- Grup Kontrol Kanan: Pilihan Tampilan & Upload -->
+                        <div class="flex items-center gap-2.5 flex-wrap w-full lg:w-auto justify-between lg:justify-end">
+                            <!-- PILIHAN TAMPILAN VIEW MODES (LARGE ICONS, MEDIUM ICONS, SMALL ICONS, LIST) -->
+                            <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-2xs">
+                                <button type="button"
+                                        @click="setViewMode('large')" 
+                                        :class="viewMode === 'large' ? 'bg-white shadow-xs text-blue-700 font-black' : 'text-slate-500 hover:text-slate-800 font-semibold'" 
+                                        class="px-2.5 py-1.5 rounded-lg text-xs flex items-center gap-1 transition cursor-pointer" 
+                                        title="Ikon Besar (Large Icons)">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                                    <span class="hidden sm:inline text-[11px]">Besar</span>
+                                </button>
+                                <button type="button"
+                                        @click="setViewMode('medium')" 
+                                        :class="viewMode === 'medium' ? 'bg-white shadow-xs text-blue-700 font-black' : 'text-slate-500 hover:text-slate-800 font-semibold'" 
+                                        class="px-2.5 py-1.5 rounded-lg text-xs flex items-center gap-1 transition cursor-pointer" 
+                                        title="Ikon Sedang (Medium Icons)">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+                                    <span class="hidden sm:inline text-[11px]">Sedang</span>
+                                </button>
+                                <button type="button"
+                                        @click="setViewMode('small')" 
+                                        :class="viewMode === 'small' ? 'bg-white shadow-xs text-blue-700 font-black' : 'text-slate-500 hover:text-slate-800 font-semibold'" 
+                                        class="px-2.5 py-1.5 rounded-lg text-xs flex items-center gap-1 transition cursor-pointer" 
+                                        title="Ikon Kecil (Small Icons)">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" /></svg>
+                                    <span class="hidden sm:inline text-[11px]">Kecil</span>
+                                </button>
+                                <button type="button"
+                                        @click="setViewMode('list')" 
+                                        :class="viewMode === 'list' ? 'bg-white shadow-xs text-blue-700 font-black' : 'text-slate-500 hover:text-slate-800 font-semibold'" 
+                                        class="px-2.5 py-1.5 rounded-lg text-xs flex items-center gap-1 transition cursor-pointer" 
+                                        title="Daftar Rincian (List Details)">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" /></svg>
+                                    <span class="hidden sm:inline text-[11px]">Daftar</span>
+                                </button>
+                            </div>
+
                             <!-- Hidden Multi-file input (Dukungan Bulk Tanpa Batas) -->
                             <input 
                                 id="file-input" 
@@ -1263,7 +1723,7 @@ onUnmounted(() => {
                             <button 
                                 type="button"
                                 @click="triggerFileInput" 
-                                class="bg-blue-700 hover:bg-blue-800 text-white px-5 py-2 rounded-xl text-xs font-black uppercase transition flex items-center gap-2 shadow-xs cursor-pointer active:scale-95"
+                                class="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-xl text-xs font-black uppercase transition flex items-center gap-2 shadow-xs cursor-pointer active:scale-95"
                                 title="Pilih satu atau banyak berkas sekaligus tanpa batas (bisa drag & drop langsung)">
                                 <span>📤</span>
                                 <span>Unggah Berkas (Bulk)</span>
@@ -1323,128 +1783,320 @@ onUnmounted(() => {
                     </div>
                 </div>
 
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-xl border border-gray-200 min-h-[400px]">
-                    <table class="w-full text-left">
-                        <thead>
-                            <tr class="bg-gray-50 text-[10px] uppercase font-black text-gray-500 border-b">
-                                <th class="p-4">Nama Item</th>
-                                <th class="p-4 text-center">Ukuran</th>
-                                <th class="p-4">Tgl Modifikasi</th>
-                                <th class="p-4 text-right">Otoritas</th>
-                            </tr>
-                        </thead>
-                        <tbody class="text-sm">
-                            <tr v-for="item in filteredContents" :key="item.id" 
-                                @dblclick="item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: item.id })) : (isExcel(item) ? openExcelEditor(item) : openPreview(item))"
-                                @contextmenu.stop="openContextMenu($event, item)"
-                                class="border-b hover:bg-blue-50 cursor-pointer transition select-none group"
-                            >
-                                <td class="p-4">
-                                    <div class="flex items-center gap-3">
-                                        <span v-if="item.is_folder" class="text-2xl">📁</span>
-                                        <span v-else-if="isExcel(item)" class="text-2xl">📊</span>
-                                        <span v-else-if="isArw(item)" class="text-2xl" title="Foto Sony Alpha RAW (.ARW)">📷</span>
-                                        <span v-else class="text-2xl">📄</span>
-                                        <div>
-                                            <div class="flex items-center gap-2 flex-wrap">
-                                                <p class="font-black text-gray-800 uppercase tracking-tighter">{{ item.file_name }}</p>
-                                                <!-- Ikon Gembok Minimalis -->
-                                                <svg v-if="!item.is_folder" class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="currentColor" viewBox="0 0 20 20" title="Akses Terproteksi">
-                                                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
-                                                </svg>
-                                                <span v-if="isArw(item)" class="px-2 py-0.5 text-[9px] bg-amber-100 text-amber-800 rounded-full font-bold uppercase border border-amber-300">
-                                                    Sony RAW
-                                                </span>
-                                                <span v-if="item.is_folder && item.share_info?.is_active" class="px-2 py-0.5 text-[9px] bg-emerald-100 text-emerald-700 rounded-full font-bold uppercase border border-emerald-300 flex items-center gap-1">
-                                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                                    Link Aktif
-                                                </span>
+                <!-- WADAH UTAMA KONTEN DENGAN MULTI-VIEW (LARGE ICONS, MEDIUM ICONS, SMALL ICONS, LIST) -->
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-2xl border border-slate-200 min-h-[440px] relative">
+                    
+                    <!-- 1. TAMPILAN DAFTAR RINCIAN (LIST DETAILS VIEW) -->
+                    <div v-if="viewMode === 'list'" class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="bg-slate-50 text-[10px] uppercase font-black text-slate-500 border-b border-slate-200">
+                                    <th class="p-4 w-12 text-center">
+                                        <input type="checkbox" 
+                                               :checked="isAllSelected" 
+                                               @change="toggleSelectAll" 
+                                               class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                               title="Pilih / Batal Pilih Semua" />
+                                    </th>
+                                    <th class="p-4">Nama Item</th>
+                                    <th class="p-4 text-center">Ukuran</th>
+                                    <th class="p-4">Tgl Modifikasi</th>
+                                    <th class="p-4 text-right">Otoritas</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm">
+                                <tr v-for="item in filteredContents" :key="item.id" 
+                                    draggable="true"
+                                    @dragstart="handleItemDragStart($event, item)"
+                                    @dragend="handleItemDragEnd"
+                                    @dragover.prevent="item.is_folder ? handleFolderDragOver($event, item) : null"
+                                    @dragleave="item.is_folder ? handleFolderDragLeave($event, item) : null"
+                                    @drop.prevent="item.is_folder ? handleFolderDrop($event, item) : null"
+                                    @dblclick="item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: item.id })) : (isExcel(item) ? openExcelEditor(item) : openPreview(item))"
+                                    @contextmenu.stop="openContextMenu($event, item)"
+                                    :class="[
+                                        selectedItemIds.includes(item.id) ? 'bg-blue-50/80 border-l-4 border-l-blue-600' : 'hover:bg-slate-50/80',
+                                        dragTargetFolderId === item.id ? 'bg-blue-100 ring-2 ring-blue-500 border-2 border-dashed border-blue-500' : 'border-b border-slate-100'
+                                    ]"
+                                    class="cursor-pointer transition select-none group"
+                                >
+                                    <td class="p-4 text-center" @click.stop="">
+                                        <input type="checkbox" 
+                                               :checked="selectedItemIds.includes(item.id)" 
+                                               @click.stop="toggleSelectItem(item, $event)" 
+                                               class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
+                                    </td>
+                                    <td class="p-4">
+                                        <div class="flex items-center gap-3">
+                                            <span v-if="item.is_folder" class="text-2xl">📁</span>
+                                            <span v-else-if="isExcel(item)" class="text-2xl">📊</span>
+                                            <span v-else-if="isArw(item)" class="text-2xl" title="Foto Sony Alpha RAW (.ARW)">📷</span>
+                                            <span v-else class="text-2xl">📄</span>
+                                            <div>
+                                                <div class="flex items-center gap-2 flex-wrap">
+                                                    <p class="font-black text-gray-800 uppercase tracking-tighter">{{ item.file_name }}</p>
+                                                    <!-- Ikon Gembok Minimalis -->
+                                                    <svg v-if="!item.is_folder" class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="currentColor" viewBox="0 0 20 20" title="Akses Terproteksi">
+                                                        <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                                                    </svg>
+                                                    <span v-if="isArw(item)" class="px-2 py-0.5 text-[9px] bg-amber-100 text-amber-800 rounded-full font-bold uppercase border border-amber-300">
+                                                        Sony RAW
+                                                    </span>
+                                                    <span v-if="item.is_folder && item.share_info?.is_active" class="px-2 py-0.5 text-[9px] bg-emerald-100 text-emerald-700 rounded-full font-bold uppercase border border-emerald-300 flex items-center gap-1">
+                                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                        Link Aktif
+                                                    </span>
+                                                </div>
+                                                <p class="text-[10px] text-gray-400 font-bold uppercase">{{ item.is_folder ? 'Folder Strategis' : (isArw(item) ? 'Foto Sony RAW (Bisa Konversi ke JPG)' : item.file_type) }}</p>
                                             </div>
-                                            <p class="text-[10px] text-gray-400 font-bold uppercase">{{ item.is_folder ? 'Folder Strategis' : (isArw(item) ? 'Foto Sony RAW (Bisa Konversi ke JPG)' : item.file_type) }}</p>
                                         </div>
-                                    </div>
-                                </td>
-                                <td class="p-4 text-center font-mono text-xs font-bold text-gray-500">
-                                    {{ item.is_folder ? '--' : item.size_human }}
-                                </td>
-                                <td class="p-4 text-xs font-bold text-gray-400">
-                                    {{ item.date_human }}
-                                </td>
-                                <td class="p-4 text-right">
-                                    <div class="flex justify-end items-center gap-2 opacity-0 group-hover:opacity-100 transition">
-                                        <!-- Tombol Bagikan Folder (Google Drive Style) -->
-                                        <button v-if="item.is_folder && isAdmin" 
-                                                @click.stop="openShareModal(item)" 
-                                                class="bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white p-2 rounded-lg transition shadow-xs flex items-center justify-center cursor-pointer" 
-                                                :title="item.share_info?.is_active ? 'Kelola Tautan Berbagi (Aktif)' : 'Bagikan Folder (Buat Tautan)'">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                                            </svg>
-                                        </button>
-                                        <!-- Tombol Konversi ARW ke JPG HD -->
-                                        <button v-if="isArw(item)" 
-                                                @click.stop="promptConvertArw(item)" 
-                                                class="bg-amber-100 text-amber-800 hover:bg-amber-600 hover:text-white px-2.5 py-1.5 rounded-lg transition shadow-xs flex items-center justify-center cursor-pointer font-bold text-xs gap-1" 
-                                                title="Konversi Sony RAW (.ARW) ke Format JPG HD">
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                            </svg>
-                                            <span>JPG</span>
-                                        </button>
-                                        <!-- Tombol Edit Excel Khusus Berkas Spreadsheet -->
-                                        <button v-if="isExcel(item)" 
-                                                @click.stop="openExcelEditor(item)" 
-                                                class="bg-emerald-100 text-emerald-700 hover:bg-emerald-600 hover:text-white p-2 rounded-lg transition shadow-xs flex items-center justify-center cursor-pointer" 
-                                                title="Edit Berkas Excel (Spreadsheet)">
-                                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                                                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-2h2v2zm0-4H7v-2h2v2zm0-4H7V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z"/>
-                                            </svg>
-                                        </button>
-                                        <button v-if="!item.is_folder && (item.file_type?.toLowerCase() === 'zip' || item.file_name?.toLowerCase().endsWith('.zip'))" 
-                                                @click.stop="handleExtract(item)" 
-                                                class="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 p-2 rounded-lg transition cursor-pointer" 
-                                                title="Ekstrak Paket ZIP">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                                            </svg>
-                                        </button>
-                                        <button v-if="!item.is_folder" 
-                                                @click.stop="openPreview(item)" 
-                                                class="bg-blue-100 text-blue-700 hover:bg-blue-200 p-2 rounded-lg transition cursor-pointer" 
-                                                :title="isArw(item) ? 'Lihat Pratinjau Sony RAW' : 'Preview'">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                            </svg>
-                                        </button>
-                                        <a v-if="!item.is_folder" 
-                                           :href="route('backup.download', item.id)" 
-                                           class="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 p-2 rounded-lg transition cursor-pointer flex items-center justify-center" 
-                                           title="Download">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                            </svg>
-                                        </a>
-                                        <button @click.stop="deleteItem(item)" 
-                                                class="bg-rose-100 text-rose-700 hover:bg-rose-200 p-2 rounded-lg transition cursor-pointer flex items-center justify-center" 
-                                                title="Hapus">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr v-if="filteredContents.length === 0">
-                                <td colspan="4" class="p-20 text-center">
-                                    <div class="flex flex-col items-center opacity-30">
-                                        <span class="text-6xl mb-4"></span>
-                                        <p class="font-black uppercase italic"> Files tidak ditemukan</p>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                                    </td>
+                                    <td class="p-4 text-center font-mono text-xs font-bold text-gray-500">
+                                        {{ item.is_folder ? '--' : item.size_human }}
+                                    </td>
+                                    <td class="p-4 text-xs font-bold text-gray-400">
+                                        {{ item.date_human }}
+                                    </td>
+                                    <td class="p-4 text-right">
+                                        <div class="flex justify-end items-center gap-2 opacity-0 group-hover:opacity-100 transition">
+                                            <!-- Tombol Bagikan Folder -->
+                                            <button v-if="item.is_folder && isAdmin" 
+                                                    @click.stop="openShareModal(item)" 
+                                                    class="bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white p-2 rounded-lg transition shadow-xs flex items-center justify-center cursor-pointer" 
+                                                    :title="item.share_info?.is_active ? 'Kelola Tautan Berbagi (Aktif)' : 'Bagikan Folder (Buat Tautan)'">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                                            </button>
+                                            <!-- Tombol Konversi ARW ke JPG HD -->
+                                            <button v-if="isArw(item)" 
+                                                    @click.stop="promptConvertArw(item)" 
+                                                    class="bg-amber-100 text-amber-800 hover:bg-amber-600 hover:text-white px-2.5 py-1.5 rounded-lg transition shadow-xs flex items-center justify-center cursor-pointer font-bold text-xs gap-1" 
+                                                    title="Konversi Sony RAW (.ARW) ke Format JPG HD">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                                <span>JPG</span>
+                                            </button>
+                                            <!-- Tombol Edit Excel -->
+                                            <button v-if="isExcel(item)" 
+                                                    @click.stop="openExcelEditor(item)" 
+                                                    class="bg-emerald-100 text-emerald-700 hover:bg-emerald-600 hover:text-white p-2 rounded-lg transition shadow-xs flex items-center justify-center cursor-pointer" 
+                                                    title="Edit Berkas Excel (Spreadsheet)">
+                                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-2h2v2zm0-4H7v-2h2v2zm0-4H7V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z"/></svg>
+                                            </button>
+                                            <button v-if="!item.is_folder && (item.file_type?.toLowerCase() === 'zip' || item.file_name?.toLowerCase().endsWith('.zip'))" 
+                                                    @click.stop="handleExtract(item)" 
+                                                    class="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 p-2 rounded-lg transition cursor-pointer" 
+                                                    title="Ekstrak Paket ZIP">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                                            </button>
+                                            <button v-if="!item.is_folder" 
+                                                    @click.stop="openPreview(item)" 
+                                                    class="bg-blue-100 text-blue-700 hover:bg-blue-200 p-2 rounded-lg transition cursor-pointer" 
+                                                    :title="isArw(item) ? 'Lihat Pratinjau Sony RAW' : 'Preview'">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                            </button>
+                                            <a v-if="!item.is_folder" 
+                                               :href="route('backup.download', item.id)" 
+                                               class="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 p-2 rounded-lg transition cursor-pointer flex items-center justify-center" 
+                                               title="Download">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                            </a>
+                                            <button @click.stop="deleteItem(item)" 
+                                                    class="bg-rose-100 text-rose-700 hover:bg-rose-200 p-2 rounded-lg transition cursor-pointer flex items-center justify-center" 
+                                                    title="Hapus">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 2. TAMPILAN IKON BESAR (LARGE ICONS VIEW) -->
+                    <div v-else-if="viewMode === 'large'" class="p-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                        <div v-for="item in filteredContents" :key="item.id"
+                             draggable="true"
+                             @dragstart="handleItemDragStart($event, item)"
+                             @dragend="handleItemDragEnd"
+                             @dragover.prevent="item.is_folder ? handleFolderDragOver($event, item) : null"
+                             @dragleave="item.is_folder ? handleFolderDragLeave($event, item) : null"
+                             @drop.prevent="item.is_folder ? handleFolderDrop($event, item) : null"
+                             @dblclick="item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: item.id })) : (isExcel(item) ? openExcelEditor(item) : openPreview(item))"
+                             @contextmenu.stop="openContextMenu($event, item)"
+                             :class="[
+                                 selectedItemIds.includes(item.id) ? 'ring-2 ring-blue-600 bg-blue-50/80 shadow-md' : 'bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md',
+                                 dragTargetFolderId === item.id ? 'ring-2 ring-blue-500 bg-blue-100 border-dashed border-2 border-blue-500 scale-[1.03]' : ''
+                             ]"
+                             class="rounded-2xl p-3.5 flex flex-col justify-between transition-all duration-150 cursor-pointer select-none relative group"
+                        >
+                            <!-- Baris Atas Kartu: Checkbox & Gembok -->
+                            <div class="flex justify-between items-center mb-2">
+                                <input type="checkbox" 
+                                       :checked="selectedItemIds.includes(item.id)" 
+                                       @click.stop="toggleSelectItem(item, $event)" 
+                                       :class="selectedItemIds.includes(item.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
+                                       class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer transition" />
+                                
+                                <svg v-if="!item.is_folder" class="w-3.5 h-3.5 text-slate-400 shrink-0 ml-auto" fill="currentColor" viewBox="0 0 20 20" title="Akses Terproteksi">
+                                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+
+                            <!-- Area Ikon Tengah Besar -->
+                            <div class="h-28 w-full bg-slate-50 rounded-xl flex items-center justify-center relative overflow-hidden group-hover:bg-blue-50/60 transition mb-3">
+                                <span v-if="item.is_folder" class="text-6xl">📁</span>
+                                <span v-else-if="isExcel(item)" class="text-5xl">📊</span>
+                                <span v-else-if="isArw(item)" class="text-5xl" title="Sony RAW">📷</span>
+                                <span v-else-if="item.file_type === 'pdf'" class="text-5xl">📕</span>
+                                <span v-else-if="item.file_type === 'zip'" class="text-5xl">📦</span>
+                                <span v-else class="text-5xl">📄</span>
+
+                                <!-- Badge ARW / Link Aktif -->
+                                <span v-if="isArw(item)" class="absolute bottom-2 right-2 px-1.5 py-0.5 text-[8px] bg-amber-500 text-white rounded font-bold uppercase shadow-2xs">
+                                    RAW
+                                </span>
+                                <span v-if="item.is_folder && item.share_info?.is_active" class="absolute bottom-2 right-2 px-1.5 py-0.5 text-[8px] bg-emerald-600 text-white rounded font-bold uppercase shadow-2xs">
+                                    LINK
+                                </span>
+                            </div>
+
+                            <!-- Teks Judul & Metadata -->
+                            <div class="text-center space-y-1">
+                                <h4 class="font-extrabold text-xs text-slate-800 uppercase tracking-tight line-clamp-2 break-words" :title="item.file_name">
+                                    {{ item.file_name }}
+                                </h4>
+                                <p class="text-[10px] font-semibold text-slate-400">
+                                    {{ item.is_folder ? 'Folder' : item.size_human }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. TAMPILAN IKON SEDANG (MEDIUM ICONS VIEW) -->
+                    <div v-else-if="viewMode === 'medium'" class="p-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+                        <div v-for="item in filteredContents" :key="item.id"
+                             draggable="true"
+                             @dragstart="handleItemDragStart($event, item)"
+                             @dragend="handleItemDragEnd"
+                             @dragover.prevent="item.is_folder ? handleFolderDragOver($event, item) : null"
+                             @dragleave="item.is_folder ? handleFolderDragLeave($event, item) : null"
+                             @drop.prevent="item.is_folder ? handleFolderDrop($event, item) : null"
+                             @dblclick="item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: item.id })) : (isExcel(item) ? openExcelEditor(item) : openPreview(item))"
+                             @contextmenu.stop="openContextMenu($event, item)"
+                             :class="[
+                                 selectedItemIds.includes(item.id) ? 'ring-2 ring-blue-600 bg-blue-50/80 shadow-md' : 'bg-white border border-slate-200 hover:border-blue-400 hover:shadow-xs',
+                                 dragTargetFolderId === item.id ? 'ring-2 ring-blue-500 bg-blue-100 border-dashed border-2 border-blue-500 scale-[1.03]' : ''
+                             ]"
+                             class="rounded-xl p-2.5 flex flex-col items-center justify-between text-center transition cursor-pointer select-none relative group h-32"
+                        >
+                            <div class="w-full flex justify-between items-center mb-1">
+                                <input type="checkbox" 
+                                       :checked="selectedItemIds.includes(item.id)" 
+                                       @click.stop="toggleSelectItem(item, $event)" 
+                                       :class="selectedItemIds.includes(item.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
+                                       class="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer transition" />
+                                
+                                <svg v-if="!item.is_folder" class="w-3 h-3 text-slate-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+
+                            <div class="my-auto">
+                                <span v-if="item.is_folder" class="text-4xl">📁</span>
+                                <span v-else-if="isExcel(item)" class="text-4xl">📊</span>
+                                <span v-else-if="isArw(item)" class="text-4xl">📷</span>
+                                <span v-else-if="item.file_type === 'pdf'" class="text-4xl">📕</span>
+                                <span v-else-if="item.file_type === 'zip'" class="text-4xl">📦</span>
+                                <span v-else class="text-4xl">📄</span>
+                            </div>
+
+                            <p class="font-bold text-[11px] text-slate-800 uppercase tracking-tight truncate w-full" :title="item.file_name">
+                                {{ item.file_name }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 4. TAMPILAN IKON KECIL (SMALL ICONS / COMPACT TILES VIEW) -->
+                    <div v-else-if="viewMode === 'small'" class="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
+                        <div v-for="item in filteredContents" :key="item.id"
+                             draggable="true"
+                             @dragstart="handleItemDragStart($event, item)"
+                             @dragend="handleItemDragEnd"
+                             @dragover.prevent="item.is_folder ? handleFolderDragOver($event, item) : null"
+                             @dragleave="item.is_folder ? handleFolderDragLeave($event, item) : null"
+                             @drop.prevent="item.is_folder ? handleFolderDrop($event, item) : null"
+                             @dblclick="item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: item.id })) : (isExcel(item) ? openExcelEditor(item) : openPreview(item))"
+                             @contextmenu.stop="openContextMenu($event, item)"
+                             :class="[
+                                 selectedItemIds.includes(item.id) ? 'ring-2 ring-blue-600 bg-blue-50/80 shadow-xs' : 'bg-white border border-slate-200 hover:border-blue-400 hover:bg-slate-50/70',
+                                 dragTargetFolderId === item.id ? 'ring-2 ring-blue-500 bg-blue-100 border-dashed border-2 border-blue-500 scale-[1.02]' : ''
+                             ]"
+                             class="rounded-xl px-3 py-2 flex items-center gap-2.5 transition cursor-pointer select-none group h-12"
+                        >
+                            <input type="checkbox" 
+                                   :checked="selectedItemIds.includes(item.id)" 
+                                   @click.stop="toggleSelectItem(item, $event)" 
+                                   class="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer shrink-0" />
+
+                            <span v-if="item.is_folder" class="text-xl shrink-0">📁</span>
+                            <span v-else-if="isExcel(item)" class="text-xl shrink-0">📊</span>
+                            <span v-else-if="isArw(item)" class="text-xl shrink-0">📷</span>
+                            <span v-else class="text-xl shrink-0">📄</span>
+
+                            <div class="min-w-0 flex-1">
+                                <p class="font-bold text-xs text-slate-800 uppercase tracking-tight truncate" :title="item.file_name">
+                                    {{ item.file_name }}
+                                </p>
+                            </div>
+
+                            <span class="text-[10px] text-slate-400 font-mono font-semibold shrink-0">
+                                {{ item.is_folder ? '' : item.size_human }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- KONDISI KOSONG (FILES TIDAK DITEMUKAN) -->
+                    <div v-if="filteredContents.length === 0" class="p-20 text-center flex flex-col items-center justify-center opacity-40">
+                        <svg class="w-16 h-16 text-slate-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" /></svg>
+                        <p class="font-black uppercase text-sm tracking-wider">Tidak ada berkas atau folder di sini</p>
+                    </div>
+
+                </div>
+
+                <!-- FLOATING MULTI-SELECT ACTION BAR (PILIH LEBIH DARI SATU) -->
+                <div v-if="selectedCount > 0" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[150] bg-slate-900/95 backdrop-blur-md text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700/80 flex items-center gap-2.5 flex-wrap animate-in fade-in slide-in-from-bottom-5">
+                    <div class="flex items-center gap-2 pr-3 border-r border-slate-700">
+                        <span class="w-6 h-6 rounded-full bg-blue-600 text-xs font-black flex items-center justify-center">{{ selectedCount }}</span>
+                        <span class="text-xs font-bold uppercase tracking-wider hidden sm:inline">Terpilih</span>
+                    </div>
+                    
+                    <!-- Tombol Potong (Cut) -->
+                    <button @click="cutSelectedItems" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95" title="Potong (Pindahkan) item terpilih">
+                        <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879a3 3 0 11-4.242-4.242 3 3 0 014.242 0M7 7l2.879 2.879" /></svg>
+                        <span>Potong</span>
+                    </button>
+                    
+                    <!-- Tombol Salin (Copy) -->
+                    <button @click="copySelectedItems" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95" title="Salin item terpilih">
+                        <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                        <span>Salin</span>
+                    </button>
+
+                    <!-- Tombol Unduh ZIP -->
+                    <button @click="downloadSelectedZip" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95" title="Unduh semua item terpilih sebagai arsip ZIP">
+                        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        <span>Unduh ZIP</span>
+                    </button>
+
+                    <!-- Tombol Hapus -->
+                    <button @click="deleteSelectedItems" class="px-3 py-1.5 rounded-xl bg-rose-600/90 hover:bg-rose-600 text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95" title="Hapus semua item terpilih">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        <span>Hapus</span>
+                    </button>
+
+                    <!-- Batalkan Seleksi -->
+                    <button @click="clearSelection" class="text-slate-400 hover:text-white text-xs font-bold transition ml-1 cursor-pointer">
+                        Batal
+                    </button>
                 </div>
 
                 <div class="bg-white p-4 rounded-xl shadow border-b-4 border-blue-900">
@@ -1460,10 +2112,33 @@ onUnmounted(() => {
         </div>
 
         <div v-if="contextMenu.show" 
-             :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }" class="fixed z-[100] bg-white border border-slate-200 shadow-2xl rounded-xl w-60 py-2 text-[11px] font-black text-gray-700 uppercase tracking-tighter">
+             :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }" class="fixed z-[200] bg-white border border-slate-200 shadow-2xl rounded-2xl w-64 py-2 text-[11px] font-black text-gray-700 uppercase tracking-tighter">
             
-            <div @click="contextMenu.item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: contextMenu.item.id })) : (isExcel(contextMenu.item) ? openExcelEditor(contextMenu.item) : openPreview(contextMenu.item))" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
+            <div @click="contextMenu.item?.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: contextMenu.item.id })) : (isExcel(contextMenu.item) ? openExcelEditor(contextMenu.item) : openPreview(contextMenu.item))" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
                 <span>👁️</span> BUKA ITEM
+            </div>
+
+            <!-- OPSI MULTI-SELEKSI & PAPAN KLIP (POTONG / SALIN / TEMPEL) -->
+            <div class="border-t my-1 border-slate-100"></div>
+            
+            <!-- Jika Ada Item di Clipboard: Opsi Tempel -->
+            <div v-if="clipboard.items.length > 0"
+                 @click="executePaste" 
+                 class="px-4 py-2 bg-amber-50 text-amber-900 hover:bg-amber-600 hover:text-white cursor-pointer flex items-center gap-3 transition font-black">
+                <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                <span>TEMPEL {{ clipboard.items.length }} ITEM DI SINI</span>
+            </div>
+
+            <div @click="contextMenu.item ? (selectedItemIds.includes(contextMenu.item.id) ? cutSelectedItems() : (selectedItemIds = [contextMenu.item.id], cutSelectedItems())) : null" 
+                 class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
+                <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879a3 3 0 11-4.242-4.242 3 3 0 014.242 0M7 7l2.879 2.879" /></svg>
+                <span>POTONG (PINDAHKAN)</span>
+            </div>
+
+            <div @click="contextMenu.item ? (selectedItemIds.includes(contextMenu.item.id) ? copySelectedItems() : (selectedItemIds = [contextMenu.item.id], copySelectedItems())) : null" 
+                 class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
+                <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                <span>SALIN (DUPLIKASI)</span>
             </div>
 
             <!-- OPSI KONVERSI SONY RAW KE JPG PADA KLIK KANAN -->
@@ -1492,7 +2167,7 @@ onUnmounted(() => {
                 <span>EDIT FILE EXCEL</span>
             </div>
             
-            <div v-if="!contextMenu.item.is_folder && (contextMenu.item.file_type?.toLowerCase() === 'zip' || contextMenu.item.file_name?.toLowerCase().endsWith('.zip'))"
+            <div v-if="!contextMenu.item?.is_folder && (contextMenu.item?.file_type?.toLowerCase() === 'zip' || contextMenu.item?.file_name?.toLowerCase().endsWith('.zip'))"
                  @click="handleExtract(contextMenu.item)" class="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white cursor-pointer flex items-center gap-3 transition font-black">
                 <span>📦</span> EKSTRAK BERKAS (ZIP)
             </div>
@@ -1505,16 +2180,20 @@ onUnmounted(() => {
                 <span>ℹ️</span> PROPERTIES
             </div>
             <div class="border-t my-1 border-slate-100"></div>
-            <div @click="deleteItem(contextMenu.item)" class="px-4 py-2 hover:bg-red-600 hover:text-white cursor-pointer flex items-center gap-3 transition text-red-600">
+            <div @click="selectedItemIds.length > 1 ? deleteSelectedItems() : deleteItem(contextMenu.item)" class="px-4 py-2 hover:bg-red-600 hover:text-white cursor-pointer flex items-center gap-3 transition text-red-600">
                 <span>🗑️</span> HAPUS
             </div>
         </div>
 
-        <!-- MODAL PREVIEW DOKUMEN & FOTO -->
-        <div v-if="previewUrl" class="fixed inset-0 z-[250] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
-            <div class="bg-white w-full max-w-6xl h-[90vh] rounded-[2rem] flex flex-col relative overflow-hidden shadow-2xl border-t-8"
+        <!-- MODAL PREVIEW DOKUMEN & FOTO (DILENGKAPI ZOOM IN/OUT, ROTASI & PROTEKSI ANTI-COPY KEAMANAN TINGGI) -->
+        <div v-if="previewUrl || isImageLoading" 
+             @contextmenu.prevent=""
+             class="fixed inset-0 z-[250] flex items-center justify-center bg-black/85 p-2 sm:p-4 backdrop-blur-sm">
+            <div class="bg-white w-full max-w-6xl h-[92vh] rounded-[2rem] flex flex-col relative overflow-hidden shadow-2xl border-t-8"
                  :class="previewType === 'arw' ? 'border-amber-500' : 'border-blue-600'">
-                <div class="p-5 border-b flex justify-between items-center bg-slate-50">
+                
+                <!-- Header Toolbar Modal Preview -->
+                <div class="p-4 sm:p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50 gap-3 flex-wrap">
                     <div class="flex items-center gap-3 min-w-0">
                         <div class="w-8 h-8 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center shrink-0">
                             <svg v-if="previewType === 'arw'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1527,18 +2206,61 @@ onUnmounted(() => {
                         </div>
                         <div class="min-w-0">
                             <div class="flex items-center gap-2">
-                                <h3 class="font-black text-sm uppercase tracking-tighter truncate">{{ activePreviewItem?.file_name }}</h3>
+                                <h3 class="font-black text-xs sm:text-sm uppercase tracking-tighter truncate max-w-xs sm:max-w-md">{{ activePreviewItem?.file_name }}</h3>
                                 <span v-if="previewType === 'arw'" class="px-2 py-0.5 text-[9px] bg-amber-100 text-amber-800 rounded-full font-bold uppercase border border-amber-300 whitespace-nowrap">
-                                    Sony Alpha RAW (Pratinjau HD)
+                                    Sony Alpha RAW (HD)
                                 </span>
                             </div>
-                            <p class="text-[10px] text-gray-400 font-bold uppercase">
-                                {{ previewType === 'arw' ? 'Pratinjau Sensor Kamera Sony • Kualitas Tinggi' : 'Preview Dokumen Strategis' }}
+                            <p class="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase">
+                                {{ previewType === 'arw' ? 'Sensor Sony RAW • Pratinjau Terenkripsi' : 'Pratinjau Dokumen Terproteksi SINDEN' }}
                             </p>
                         </div>
                     </div>
+
+                    <!-- KONTROL ZOOM & ROTASI GAMBAR (KHUSUS PREVIEW GAMBAR & SONY RAW) -->
+                    <div v-if="previewType === 'image' || previewType === 'arw'" 
+                         class="flex items-center gap-1 bg-slate-200/80 p-1 rounded-xl border border-slate-300/80 shadow-2xs">
+                        <button @click="zoomOut" 
+                                type="button"
+                                class="w-8 h-8 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-black flex items-center justify-center shadow-xs transition cursor-pointer" 
+                                title="Perkecil (Zoom Out)">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" /></svg>
+                        </button>
+                        <button @click="resetZoomAndRotate" 
+                                type="button"
+                                class="px-2.5 h-8 rounded-lg bg-white hover:bg-slate-100 text-slate-800 font-black text-xs flex items-center justify-center shadow-xs transition min-w-[55px] cursor-pointer" 
+                                title="Reset Ukuran (100%)">
+                            {{ Math.round(zoomLevel * 100) }}%
+                        </button>
+                        <button @click="zoomIn" 
+                                type="button"
+                                class="w-8 h-8 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-black flex items-center justify-center shadow-xs transition cursor-pointer" 
+                                title="Perbesar (Zoom In)">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                        </button>
+                        <div class="h-4 w-px bg-slate-300 mx-0.5"></div>
+                        <button @click="rotateLeft" 
+                                type="button"
+                                class="w-8 h-8 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-bold flex items-center justify-center shadow-xs transition cursor-pointer" 
+                                title="Putar Kiri (-90°)">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a5 5 0 015 5v2m0 0l-3-3m3 3l3-3M3 10l3 3m-3-3l3-3" /></svg>
+                        </button>
+                        <button @click="rotateRight" 
+                                type="button"
+                                class="w-8 h-8 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-bold flex items-center justify-center shadow-xs transition cursor-pointer" 
+                                title="Putar Kanan (+90°)">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10H11a5 5 0 00-5 5v2m0 0l3-3m-3 3l-3-3m17-4l-3 3m3-3l-3-3" /></svg>
+                        </button>
+                        <button @click="resetZoomAndRotate" 
+                                type="button"
+                                class="w-8 h-8 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-bold flex items-center justify-center shadow-xs transition cursor-pointer" 
+                                title="Reset Posisi & Rotasi">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        </button>
+                    </div>
+
+                    <!-- Tombol Aksi Tambahan & Tutup -->
                     <div class="flex items-center gap-2 flex-wrap">
-                        <!-- Tombol Khusus ARW di Modal Preview -->
                         <template v-if="activePreviewItem && isArw(activePreviewItem)">
                             <button @click="convertArw(activePreviewItem, true)" 
                                     :disabled="isConvertingArw"
@@ -1547,7 +2269,7 @@ onUnmounted(() => {
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
                                 </svg>
-                                <span>{{ isConvertingArw ? 'Mengonversi...' : 'Simpan JPG di Folder' }}</span>
+                                <span>{{ isConvertingArw ? 'Mengonversi...' : 'Simpan JPG' }}</span>
                             </button>
                             <a :href="route('backup.download-arw-jpg', activePreviewItem.id)" 
                                class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer"
@@ -1555,7 +2277,7 @@ onUnmounted(() => {
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                 </svg>
-                                <span>Unduh JPG HD</span>
+                                <span>Unduh JPG</span>
                             </a>
                         </template>
 
@@ -1571,16 +2293,39 @@ onUnmounted(() => {
                     </div>
                 </div>
                 
-                <div class="flex-1 overflow-auto p-4 bg-slate-950 flex justify-center items-center relative">
-                    <img v-if="previewType === 'image' || previewType === 'arw'" 
+                <!-- Wadah Area Gambar / Dokumen (Anti-Copy & Anti-New-Tab) -->
+                <div class="flex-1 overflow-hidden p-4 bg-slate-950 flex justify-center items-center relative select-none"
+                     @contextmenu.prevent=""
+                     @wheel.prevent="handleWheelZoom"
+                     @mousedown="startPan"
+                     @mousemove="onPan"
+                     @mouseup="endPan"
+                     @mouseleave="endPan"
+                     :style="{ cursor: zoomLevel > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default' }">
+                    
+                    <!-- Loading Spinner Saat Pengaliran & Dekripsi Blob -->
+                    <div v-if="isImageLoading" class="flex flex-col items-center gap-3 text-slate-300">
+                        <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                        <p class="text-xs font-bold uppercase tracking-wider">Mendekripsi Data Gambar...</p>
+                    </div>
+
+                    <!-- Gambar Aman (Menggunakan In-Memory Object Blob, Anti-Drag, Anti-Right-Click) -->
+                    <img v-else-if="(previewType === 'image' || previewType === 'arw') && previewUrl" 
                          :src="previewUrl" 
-                         class="max-h-full max-w-full object-contain shadow-2xl rounded-lg" 
-                         alt="Pratinjau Foto" />
+                         draggable="false"
+                         @dragstart.prevent=""
+                         @contextmenu.prevent=""
+                         class="max-h-full max-w-full object-contain shadow-2xl rounded-lg pointer-events-auto"
+                         :style="{
+                             transform: `translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoomLevel}) rotate(${rotationDegree}deg)`,
+                             transition: isPanning ? 'none' : 'transform 0.15s cubic-bezier(0.4, 0, 0.2, 1)'
+                         }" 
+                         alt="Pratinjau Foto SINDEN" />
                     
                     <iframe v-if="previewType === 'pdf' || previewType === 'office'" :src="previewUrl" class="w-full h-full border-none bg-white rounded-lg"></iframe>
 
                     <!-- Badge Keterangan Kualitas untuk ARW di pojok bawah -->
-                    <div v-if="previewType === 'arw'" class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md text-amber-300 text-[11px] font-bold px-4 py-1.5 rounded-full border border-amber-500/40 flex items-center gap-2 shadow-xl">
+                    <div v-if="previewType === 'arw'" class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md text-amber-300 text-[11px] font-bold px-4 py-1.5 rounded-full border border-amber-500/40 flex items-center gap-2 shadow-xl pointer-events-none">
                         <span>Pratinjau Sony Alpha RAW Resolusi Tinggi</span>
                     </div>
                 </div>

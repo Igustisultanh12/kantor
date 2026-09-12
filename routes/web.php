@@ -168,6 +168,12 @@ Route::middleware(['auth', 'office.only'])->group(function () {
     Route::get('/pc-backup/preview-arw/{id}', [BackupController::class, 'previewArw'])->name('backup.preview-arw');
     Route::post('/pc-backup/convert-arw/{id}', [BackupController::class, 'convertArw'])->name('backup.convert-arw');
     Route::get('/pc-backup/download-arw-jpg/{id}', [BackupController::class, 'downloadArwJpg'])->name('backup.download-arw-jpg');
+
+    // --- FITUR MULTI-SELEKSI & BULK ACTIONS (MOVE, COPY, DELETE, ZIP) ---
+    Route::post('/pc-backup/bulk-move', [BackupController::class, 'bulkMove'])->name('backup.bulk-move');
+    Route::post('/pc-backup/bulk-copy', [BackupController::class, 'bulkCopy'])->name('backup.bulk-copy');
+    Route::post('/pc-backup/bulk-delete', [BackupController::class, 'bulkDelete'])->name('backup.bulk-delete');
+    Route::post('/pc-backup/bulk-download-zip', [BackupController::class, 'bulkDownloadZip'])->name('backup.bulk-download-zip');
 });
 
 // --- AKSES TERPROTEKSI (AUTH) ---

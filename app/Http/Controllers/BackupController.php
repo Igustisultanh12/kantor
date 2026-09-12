@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache; 
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use ZipArchive;
 
 class BackupController extends Controller
 {
@@ -291,10 +293,21 @@ class BackupController extends Controller
 
     /**
      * PRATINJAU DOKUMEN / MEDIA TEROTENTIKASI (STREAMING DEKRIPSI ON-THE-FLY)
+     * PROTEKSI: Ditolak jika dibuka langsung di bilah peramban (New Tab / Hotlink)
      */
-    public function previewFile($id)
+    public function previewFile(Request $request, $id)
     {
+        if ($request->header('Sec-Fetch-Dest') === 'document' || $request->header('Sec-Fetch-Mode') === 'navigate') {
+            abort(403, 'Akses Ditolak: Pratinjau berkas hanya diizinkan melalui antarmuka aplikasi internal.');
+        }
+
         $backup = Backup::findOrFail($id);
+
+        $user = Auth::user();
+        $pc = Pc::findOrFail($backup->pc_id);
+        if ($pc->user_id !== $user->id && $user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
+            abort(403, 'Akses Ditolak: Anda tidak memiliki otoritas atas berkas PC ini.');
+        }
 
         if ($backup->is_folder) {
             abort(400, 'Folder tidak dapat dipratinjau.');
@@ -314,10 +327,22 @@ class BackupController extends Controller
 
     /**
      * PRATINJAU FORMAT GAMBAR SONY RAW (.ARW) SEBAGAI JPG HD
+     * PROTEKSI: Ditolak jika dibuka langsung di bilah peramban (New Tab / Hotlink)
      */
-    public function previewArw($id)
+    public function previewArw(Request $request, $id)
     {
+        if ($request->header('Sec-Fetch-Dest') === 'document' || $request->header('Sec-Fetch-Mode') === 'navigate') {
+            abort(403, 'Akses Ditolak: Pratinjau Sony RAW hanya diizinkan melalui antarmuka aplikasi internal.');
+        }
+
         $backup = Backup::findOrFail($id);
+
+        $user = Auth::user();
+        $pc = Pc::findOrFail($backup->pc_id);
+        if ($pc->user_id !== $user->id && $user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
+            abort(403, 'Akses Ditolak: Anda tidak memiliki otoritas atas berkas PC ini.');
+        }
+
         $fullPath = FileSecurityService::verifySafeStoragePath($backup->file_path);
 
         if (!file_exists($fullPath)) {
@@ -914,5 +939,309 @@ class BackupController extends Controller
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];
         for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) $bytes /= 1024;
         return round($bytes, 2) . ' ' . $units[$i];
+    }
+
+    // =========================================================================
+    // FITUR MANAJEMEN BERKAS BULK (MULTI-SELEKSI, CUT/MOVE, COPY, DELETE, ZIP)
+    // =========================================================================
+
+    /**
+     * PINDAHKAN (CUT/MOVE / DRAG & DROP) BANYAK ITEM SEKALIGUS KE FOLDER TUJUAN
+     */
+    public function bulkMove(Request $request)
+    {
+        $request->validate([
+            'pc_id' => 'required|exists:pcs,id',
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:backups,id',
+            'target_folder_id' => 'nullable|integer'
+        ]);
+
+        $pc = Pc::findOrFail($request->pc_id);
+        $user = Auth::user();
+        if ($pc->user_id !== $user->id && $user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
+            abort(403, 'Anda tidak memiliki otoritas atas pangkalan PC ini.');
+        }
+
+        $targetFolderId = $request->target_folder_id;
+        if ($targetFolderId) {
+            $targetFolder = Backup::where('id', $targetFolderId)->where('pc_id', $pc->id)->firstOrFail();
+            if (!$targetFolder->is_folder) {
+                return response()->json(['status' => 'error', 'message' => 'Tujuan pemindahan bukan berupa folder.'], 422);
+            }
+        }
+
+        $ids = $request->ids;
+        // Pencegahan circular loop (folder tidak boleh dipindah ke dirinya sendiri atau anak foldernya)
+        foreach ($ids as $id) {
+            if ($targetFolderId && $id == $targetFolderId) {
+                return response()->json(['status' => 'error', 'message' => 'Tidak dapat memindahkan folder ke dalam dirinya sendiri.'], 422);
+            }
+            if ($targetFolderId && $this->isDescendantOf($targetFolderId, $id)) {
+                return response()->json(['status' => 'error', 'message' => 'Tidak dapat memindahkan folder ke dalam sub-foldernya sendiri.'], 422);
+            }
+        }
+
+        $count = Backup::whereIn('id', $ids)->where('pc_id', $pc->id)->update([
+            'parent_id' => $targetFolderId
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "{$count} item berhasil dipindahkan ke folder tujuan."
+        ]);
+    }
+
+    /**
+     * SALIN (COPY & PASTE) BANYAK ITEM KE FOLDER TUJUAN DENGAN REKURSIVITAS & VALIDASI KUOTA
+     */
+    public function bulkCopy(Request $request)
+    {
+        $request->validate([
+            'pc_id' => 'required|exists:pcs,id',
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:backups,id',
+            'target_folder_id' => 'nullable|integer'
+        ]);
+
+        $pc = Pc::findOrFail($request->pc_id);
+        $user = Auth::user();
+        if ($pc->user_id !== $user->id && $user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
+            abort(403, 'Anda tidak memiliki otoritas atas pangkalan PC ini.');
+        }
+
+        $targetFolderId = $request->target_folder_id;
+        if ($targetFolderId) {
+            $targetFolder = Backup::where('id', $targetFolderId)->where('pc_id', $pc->id)->firstOrFail();
+            if (!$targetFolder->is_folder) {
+                return response()->json(['status' => 'error', 'message' => 'Tujuan penyalinan bukan berupa folder.'], 422);
+            }
+        }
+
+        $items = Backup::whereIn('id', $request->ids)->where('pc_id', $pc->id)->get();
+
+        // Hitung total ukuran yang dibutuhkan
+        $totalBytesNeeded = 0;
+        foreach ($items as $item) {
+            if ($item->is_folder) {
+                $totalBytesNeeded += $this->getFolderSize($item->id);
+            } else {
+                $totalBytesNeeded += $item->file_size;
+            }
+        }
+
+        $remainingQuota = $pc->max_quota - $pc->current_usage;
+        if ($totalBytesNeeded > $remainingQuota) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Sisa kuota pangkalan (' . $this->formatBytes($remainingQuota) . ') tidak mencukupi untuk menduplikasi ' . $this->formatBytes($totalBytesNeeded) . '.'
+            ], 422);
+        }
+
+        $copiedCount = 0;
+        foreach ($items as $item) {
+            $this->duplicateBackupItem($item, $targetFolderId, $pc);
+            $copiedCount++;
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "{$copiedCount} item berhasil disalin ke folder tujuan."
+        ]);
+    }
+
+    /**
+     * HAPUS BANYAK ITEM SEKALIGUS (BULK DELETE)
+     */
+    public function bulkDelete(Request $request)
+    {
+        $request->validate([
+            'pc_id' => 'required|exists:pcs,id',
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:backups,id',
+        ]);
+
+        $pc = Pc::findOrFail($request->pc_id);
+        $user = Auth::user();
+        if ($pc->user_id !== $user->id && $user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
+            abort(403, 'Anda tidak memiliki otoritas atas pangkalan PC ini.');
+        }
+
+        $items = Backup::whereIn('id', $request->ids)->where('pc_id', $pc->id)->get();
+        $deletedCount = 0;
+
+        foreach ($items as $item) {
+            $this->deleteItemRecursively($item, $pc);
+            $deletedCount++;
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "{$deletedCount} item berhasil dihapus secara permanen."
+        ]);
+    }
+
+    /**
+     * UNDUH BANYAK ITEM TERPILIH SEBAGAI PAKET ZIP
+     */
+    public function bulkDownloadZip(Request $request)
+    {
+        $request->validate([
+            'pc_id' => 'required|exists:pcs,id',
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:backups,id',
+        ]);
+
+        $pc = Pc::findOrFail($request->pc_id);
+        $user = Auth::user();
+        if ($pc->user_id !== $user->id && $user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $items = Backup::whereIn('id', $request->ids)->where('pc_id', $pc->id)->get();
+        if ($items->isEmpty()) {
+            return back()->with('error', 'Tidak ada berkas yang dipilih untuk dikompresi.');
+        }
+
+        $zipFileName = 'PAKET_TERPILIH_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $pc->pc_name) . '_' . date('Ymd_His') . '.zip';
+        $zipTempPath = storage_path('app/public/temp_' . $zipFileName);
+
+        $zip = new ZipArchive();
+        $createdTempFiles = [];
+
+        if ($zip->open($zipTempPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
+            foreach ($items as $item) {
+                $this->addBackupToZip($item, $zip, '', $createdTempFiles);
+            }
+            $zip->close();
+
+            foreach ($createdTempFiles as $tmp) {
+                @unlink($tmp);
+            }
+
+            if (file_exists($zipTempPath)) {
+                return response()->download($zipTempPath, $zipFileName)->deleteFileAfterSend(true);
+            }
+        }
+
+        return back()->with('error', 'Gagal memproses pembuatan paket ZIP.');
+    }
+
+    /**
+     * Cek apakah $childId merupakan turunan dari $ancestorId
+     */
+    private function isDescendantOf($childId, $ancestorId)
+    {
+        $currentId = $childId;
+        while ($currentId) {
+            $parent = Backup::where('id', $currentId)->value('parent_id');
+            if (!$parent) return false;
+            if ($parent == $ancestorId) return true;
+            $currentId = $parent;
+        }
+        return false;
+    }
+
+    /**
+     * Duplikasi berkas atau folder secara rekursif
+     */
+    private function duplicateBackupItem($item, $targetFolderId, $pc)
+    {
+        if ($item->is_folder) {
+            $newName = ($item->parent_id == $targetFolderId) ? 'Salinan dari ' . $item->file_name : $item->file_name;
+            $newFolder = Backup::create([
+                'pc_id' => $pc->id,
+                'parent_id' => $targetFolderId,
+                'file_name' => $newName,
+                'is_folder' => true,
+                'file_path' => 'folder',
+                'file_size' => 0,
+                'file_type' => 'folder'
+            ]);
+
+            $children = Backup::where('parent_id', $item->id)->where('pc_id', $pc->id)->get();
+            foreach ($children as $child) {
+                $this->duplicateBackupItem($child, $newFolder->id, $pc);
+            }
+            return $newFolder;
+        } else {
+            $origPath = storage_path('app/public/' . $item->file_path);
+            if (!file_exists($origPath)) return null;
+
+            $ext = pathinfo($item->file_name, PATHINFO_EXTENSION);
+            $newName = ($item->parent_id == $targetFolderId) ? 'Salinan ' . $item->file_name : $item->file_name;
+
+            $newSubPath = 'backups/' . $pc->id . '/' . time() . '_' . Str::random(8) . ($ext ? '.' . $ext : '');
+            $destPath = storage_path('app/public/' . $newSubPath);
+
+            $destDir = dirname($destPath);
+            if (!file_exists($destDir)) {
+                @mkdir($destDir, 0777, true);
+            }
+
+            if (@copy($origPath, $destPath)) {
+                $newFile = Backup::create([
+                    'pc_id' => $pc->id,
+                    'parent_id' => $targetFolderId,
+                    'file_name' => $newName,
+                    'file_path' => $newSubPath,
+                    'file_size' => $item->file_size,
+                    'file_type' => $item->file_type,
+                    'is_folder' => false
+                ]);
+                $pc->increment('current_usage', $item->file_size);
+                return $newFile;
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Hapus berkas atau folder beserta seluruh isinya secara rekursif
+     */
+    private function deleteItemRecursively($item, $pc)
+    {
+        if ($item->is_folder) {
+            $children = Backup::where('parent_id', $item->id)->where('pc_id', $pc->id)->get();
+            foreach ($children as $child) {
+                $this->deleteItemRecursively($child, $pc);
+            }
+        } else {
+            $fullPath = storage_path('app/public/' . $item->file_path);
+            if (file_exists($fullPath)) {
+                @unlink($fullPath);
+            }
+            $pc->decrement('current_usage', $item->file_size);
+        }
+        $item->delete();
+    }
+
+    /**
+     * Tambahkan item ke ZIP secara rekursif
+     */
+    private function addBackupToZip($item, ZipArchive $zip, $zipSubDir, array &$createdTempFiles)
+    {
+        if ($item->is_folder) {
+            $newDir = $zipSubDir ? $zipSubDir . '/' . $item->file_name : $item->file_name;
+            $zip->addEmptyDir($newDir);
+            $children = Backup::where('parent_id', $item->id)->where('pc_id', $item->pc_id)->get();
+            foreach ($children as $child) {
+                $this->addBackupToZip($child, $zip, $newDir, $createdTempFiles);
+            }
+        } else {
+            $fullPath = FileSecurityService::verifySafeStoragePath($item->file_path);
+            if (file_exists($fullPath)) {
+                $entryPath = $zipSubDir ? $zipSubDir . '/' . $item->file_name : $item->file_name;
+                if (FileSecurityService::isEncrypted($fullPath)) {
+                    $tmp = FileSecurityService::createDecryptedTempFile($fullPath);
+                    if ($tmp) {
+                        $createdTempFiles[] = $tmp;
+                        $zip->addFile($tmp, $entryPath);
+                    }
+                } else {
+                    $zip->addFile($fullPath, $entryPath);
+                }
+            }
+        }
     }
 }
