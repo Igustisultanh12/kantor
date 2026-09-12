@@ -1116,6 +1116,17 @@ const isPdf = (item) => {
     return ext === 'pdf' || name.endsWith('.pdf');
 };
 
+const isVideo = (item) => {
+    if (!item || item.is_folder) return false;
+    const ext = (item.file_type || '').toLowerCase().replace(/^\./, '');
+    const name = (item.file_name || '').toLowerCase();
+    const nameExt = name.split('.').pop() || '';
+    const videoExtensions = ['mp4', 'webm', 'ogg', 'mov', 'm4v', 'mkv'];
+    return videoExtensions.includes(ext) || videoExtensions.includes(nameExt);
+};
+
+const videoPlayerRef = ref(null);
+
 const isConvertingArw = ref(false);
 
 const promptConvertArw = (item) => {
@@ -1196,6 +1207,9 @@ const openPreview = async (item) => {
         previewType.value = 'arw';
         const url = item.preview_url || route('backup.preview-arw', item.id);
         await fetchSecureBlob(url);
+    } else if (isVideo(item)) {
+        previewType.value = 'video';
+        previewUrl.value = item.preview_url || route('backup.preview-file', item.id);
     } else if (ext === 'pdf') {
         previewType.value = 'pdf';
         previewUrl.value = item.preview_url;
@@ -1208,10 +1222,18 @@ const openPreview = async (item) => {
 };
 
 const closePreview = () => {
+    if (videoPlayerRef.value) {
+        try {
+            videoPlayerRef.value.pause();
+            videoPlayerRef.value.removeAttribute('src');
+            videoPlayerRef.value.load();
+        } catch (e) {}
+    }
     if (previewUrl.value && previewUrl.value.startsWith('blob:')) {
         URL.revokeObjectURL(previewUrl.value);
     }
     previewUrl.value = null;
+    previewType.value = null;
     activePreviewItem.value = null;
     resetZoomAndRotate();
 };
@@ -1983,6 +2005,7 @@ onUnmounted(() => {
                                                     :show-lock="false"
                                                 />
                                                 <svg v-else-if="item.is_folder" class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                                                <svg v-else-if="isVideo(item)" class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
                                                 <svg v-else-if="isExcel(item)" class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                                 <svg v-else-if="isPdf(item)" class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                                                 <svg v-else-if="isArw(item)" class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -1998,12 +2021,15 @@ onUnmounted(() => {
                                                     <span v-if="isArw(item)" class="px-2 py-0.5 text-[9px] bg-amber-100 text-amber-800 rounded-full font-bold uppercase border border-amber-300">
                                                         Sony RAW
                                                     </span>
+                                                    <span v-else-if="isVideo(item)" class="px-2 py-0.5 text-[9px] bg-indigo-100 text-indigo-800 rounded-full font-bold uppercase border border-indigo-300">
+                                                        VIDEO
+                                                    </span>
                                                     <span v-if="item.is_folder && item.share_info?.is_active" class="px-2 py-0.5 text-[9px] bg-emerald-100 text-emerald-700 rounded-full font-bold uppercase border border-emerald-300 flex items-center gap-1">
                                                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                                                         Link Aktif
                                                     </span>
                                                 </div>
-                                                <p class="text-[10px] text-gray-400 font-bold uppercase">{{ item.is_folder ? 'Folder Strategis' : (isArw(item) ? 'Foto Sony RAW (Bisa Konversi ke JPG)' : item.file_type) }}</p>
+                                                <p class="text-[10px] text-gray-400 font-bold uppercase">{{ item.is_folder ? 'Folder Strategis' : (isArw(item) ? 'Foto Sony RAW (Bisa Konversi ke JPG)' : (isVideo(item) ? 'Video Streaming (Bisa Putar Langsung)' : item.file_type)) }}</p>
                                             </div>
                                         </div>
                                     </td>
@@ -2144,6 +2170,17 @@ onUnmounted(() => {
                                     </span>
                                 </template>
 
+                                <template v-else-if="isVideo(item)">
+                                    <div class="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-xs group-hover:scale-110 transition duration-200">
+                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        </svg>
+                                    </div>
+                                    <span class="absolute bottom-2 right-2 px-1.5 py-0.5 text-[8px] bg-indigo-700 text-white rounded font-black uppercase shadow-xs">
+                                        VIDEO
+                                    </span>
+                                </template>
+
                                 <template v-else-if="item.file_type === 'zip' || (item.file_name || '').endsWith('.zip')">
                                     <div class="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 shadow-xs group-hover:scale-110 transition duration-200">
                                         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2225,6 +2262,9 @@ onUnmounted(() => {
                                 <template v-else-if="isPdf(item)">
                                     <svg class="w-7 h-7 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                                 </template>
+                                <template v-else-if="isVideo(item)">
+                                    <svg class="w-7 h-7 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                </template>
                                 <template v-else-if="item.file_type === 'zip' || (item.file_name || '').endsWith('.zip')">
                                     <svg class="w-7 h-7 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
                                 </template>
@@ -2274,6 +2314,7 @@ onUnmounted(() => {
                                 <svg v-else-if="item.is_folder" class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
                                 <svg v-else-if="isExcel(item)" class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                 <svg v-else-if="isPdf(item)" class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                                <svg v-else-if="isVideo(item)" class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
                                 <svg v-else class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                             </div>
 
@@ -2474,14 +2515,18 @@ onUnmounted(() => {
              @contextmenu.prevent=""
              class="fixed inset-0 z-[250] flex items-center justify-center bg-black/85 p-2 sm:p-4 backdrop-blur-sm">
             <div class="bg-white w-full max-w-6xl h-[92vh] rounded-[2rem] flex flex-col relative overflow-hidden shadow-2xl border-t-8"
-                 :class="previewType === 'arw' ? 'border-amber-500' : 'border-blue-600'">
+                 :class="previewType === 'arw' ? 'border-amber-500' : (previewType === 'video' ? 'border-indigo-600' : 'border-blue-600')">
                 
                 <!-- Header Toolbar Modal Preview -->
                 <div class="p-4 sm:p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50 gap-3 flex-wrap">
                     <div class="flex items-center gap-3 min-w-0">
                         <div class="w-8 h-8 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center shrink-0">
-                            <svg v-if="previewType === 'arw'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg v-if="previewType === 'arw'" class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            </svg>
+                            <svg v-else-if="previewType === 'video'" class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -2494,9 +2539,12 @@ onUnmounted(() => {
                                 <span v-if="previewType === 'arw'" class="px-2 py-0.5 text-[9px] bg-amber-100 text-amber-800 rounded-full font-bold uppercase border border-amber-300 whitespace-nowrap">
                                     Sony Alpha RAW (HD)
                                 </span>
+                                <span v-else-if="previewType === 'video'" class="px-2 py-0.5 text-[9px] bg-indigo-100 text-indigo-800 rounded-full font-bold uppercase border border-indigo-300 whitespace-nowrap">
+                                    Streaming Video (HTTP 206)
+                                </span>
                             </div>
                             <p class="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase">
-                                {{ previewType === 'arw' ? 'Sensor Sony RAW • Pratinjau Terenkripsi' : 'Pratinjau Dokumen Terproteksi SINDEN' }}
+                                {{ previewType === 'arw' ? 'Sensor Sony RAW • Pratinjau Terenkripsi' : (previewType === 'video' ? 'Pemutaran Video Langsung • Hemat Bandwidth & Enteng' : 'Pratinjau Dokumen Terproteksi SINDEN') }}
                             </p>
                         </div>
                     </div>
@@ -2548,7 +2596,7 @@ onUnmounted(() => {
                         <template v-if="activePreviewItem && isArw(activePreviewItem)">
                             <button @click="convertArw(activePreviewItem, true)" 
                                     :disabled="isConvertingArw"
-                                    class="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                    class="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50" 
                                     title="Konversi dan simpan berkas JPG baru di folder">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
@@ -2565,6 +2613,17 @@ onUnmounted(() => {
                             </a>
                         </template>
 
+                        <!-- Unduh Berkas Video Langsung jika diinginkan -->
+                        <a v-if="activePreviewItem && isVideo(activePreviewItem)"
+                           :href="route('backup.download', activePreviewItem.id)"
+                           class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+                           title="Unduh berkas video asli ke perangkat">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            <span>Unduh Video</span>
+                        </a>
+
                         <button v-if="activePreviewItem && isExcel(activePreviewItem)" 
                                 @click="const itm = activePreviewItem; closePreview(); openExcelEditor(itm);" 
                                 class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold text-xs transition shadow-sm flex items-center gap-2 cursor-pointer">
@@ -2577,7 +2636,7 @@ onUnmounted(() => {
                     </div>
                 </div>
                 
-                <!-- Wadah Area Gambar / Dokumen (Anti-Copy & Anti-New-Tab) -->
+                <!-- Wadah Area Gambar / Video / Dokumen (Anti-Copy & Anti-New-Tab) -->
                 <div class="flex-1 overflow-hidden p-4 bg-slate-950 flex justify-center items-center relative select-none"
                      @contextmenu.prevent=""
                      @wheel.prevent="handleWheelZoom"
@@ -2591,6 +2650,26 @@ onUnmounted(() => {
                     <div v-if="isImageLoading" class="flex flex-col items-center gap-3 text-slate-300">
                         <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                         <p class="text-xs font-bold uppercase tracking-wider">Mendekripsi Data Gambar...</p>
+                    </div>
+
+                    <!-- Video Streaming Player Langsung (Native HTML5 dengan Hardware Acceleration) -->
+                    <div v-else-if="previewType === 'video' && previewUrl" class="w-full h-full flex flex-col items-center justify-center p-2 sm:p-4 relative">
+                        <video 
+                            ref="videoPlayerRef"
+                            :src="previewUrl" 
+                            controls 
+                            autoplay 
+                            playsinline
+                            preload="metadata"
+                            class="max-h-[75vh] max-w-full rounded-2xl shadow-2xl bg-black border border-slate-800 outline-none"
+                        >
+                            Peramban Anda tidak mendukung pemutaran video langsung.
+                        </video>
+                        
+                        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md text-indigo-300 text-[11px] font-bold px-4 py-1.5 rounded-full border border-indigo-500/40 flex items-center gap-2 shadow-xl pointer-events-none">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span>Streaming Parsial HTTP 206 • Akselerasi GPU Klien</span>
+                        </div>
                     </div>
 
                     <!-- Gambar Aman (Menggunakan In-Memory Object Blob, Anti-Drag, Anti-Right-Click) -->

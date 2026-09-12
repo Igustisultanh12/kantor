@@ -135,6 +135,13 @@ const isExcel = (filename) => {
     return ['xlsx', 'xls', 'csv'].includes(ext);
 };
 
+const isVideo = (filename) => {
+    const ext = filename?.split('.').pop()?.toLowerCase();
+    return ['mp4', 'webm', 'ogg', 'mov', 'm4v', 'mkv'].includes(ext);
+};
+
+const videoPlayerRef = ref(null);
+
 // --- STATE ZOOM, ROTATE, PAN & SECURE BLOB PREVIEW ---
 const zoomLevel = ref(1);
 const rotationDegree = ref(0);
@@ -238,6 +245,9 @@ const openPreview = async (item) => {
     } else if (isArw(item.file_name)) {
         previewType.value = 'arw';
         await fetchSecureBlob(item.preview_url);
+    } else if (isVideo(item.file_name)) {
+        previewType.value = 'video';
+        previewUrl.value = item.preview_url;
     } else if (isPdf(item.file_name)) {
         previewType.value = 'pdf';
         previewUrl.value = item.preview_url;
@@ -248,6 +258,13 @@ const openPreview = async (item) => {
 };
 
 const closePreview = () => {
+    if (videoPlayerRef.value) {
+        try {
+            videoPlayerRef.value.pause();
+            videoPlayerRef.value.removeAttribute('src');
+            videoPlayerRef.value.load();
+        } catch (e) {}
+    }
     if (previewUrl.value && previewUrl.value.startsWith('blob:')) {
         URL.revokeObjectURL(previewUrl.value);
     }
@@ -616,6 +633,16 @@ const exitAndLock = () => {
                                     <span class="text-[9px] sm:text-[10px] font-black text-emerald-700 uppercase mt-1">EXCEL</span>
                                 </div>
 
+                                <!-- Video Streamable -->
+                                <div v-else-if="isVideo(item.file_name)" 
+                                     @click="openPreview(item)"
+                                     class="w-full aspect-4/3 sm:aspect-square bg-indigo-50/80 rounded-xl flex flex-col items-center justify-center border border-indigo-100/80 group-hover:bg-indigo-100/70 transition relative cursor-pointer">
+                                    <svg class="w-10 h-10 sm:w-12 sm:h-12 text-indigo-600 drop-shadow-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    </svg>
+                                    <span class="text-[9px] sm:text-[10px] font-black text-indigo-700 uppercase mt-1">VIDEO</span>
+                                </div>
+
                                 <!-- Berkas Lainnya / Fallback -->
                                 <div v-else class="w-full aspect-4/3 sm:aspect-square bg-slate-100 rounded-xl flex flex-col items-center justify-center border border-slate-200/80 group-hover:bg-slate-200/60 transition relative">
                                     <svg class="w-10 h-10 sm:w-12 sm:h-12 text-slate-500 drop-shadow-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -725,6 +752,15 @@ const exitAndLock = () => {
                                     </svg>
                                 </div>
 
+                                <div v-else-if="isVideo(item.file_name)" 
+                                     @click="openPreview(item)"
+                                     class="w-full aspect-square bg-indigo-50 rounded-lg flex flex-col items-center justify-center border border-indigo-100 group-hover:bg-indigo-100/70 transition cursor-pointer">
+                                    <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    </svg>
+                                    <span class="text-[8px] font-black text-indigo-700 uppercase mt-0.5">VIDEO</span>
+                                </div>
+
                                 <div v-else class="w-full aspect-square bg-slate-100 rounded-lg flex items-center justify-center border border-slate-200">
                                     <svg class="w-8 h-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -815,6 +851,9 @@ const exitAndLock = () => {
                                         <svg v-else-if="isExcel(item.file_name)" class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
+                                        <svg v-else-if="isVideo(item.file_name)" class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        </svg>
                                         <svg v-else class="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
@@ -830,6 +869,9 @@ const exitAndLock = () => {
                                             </svg>
                                             <span v-if="isArw(item.file_name)" class="px-1.5 py-0.2 text-[8px] bg-amber-100 text-amber-800 rounded font-bold uppercase">
                                                 RAW
+                                            </span>
+                                            <span v-else-if="isVideo(item.file_name)" class="px-1.5 py-0.2 text-[8px] bg-indigo-100 text-indigo-800 rounded font-bold uppercase">
+                                                VIDEO
                                             </span>
                                         </div>
                                         <div class="flex items-center gap-2 text-[10px] text-slate-400 font-semibold mt-0.5">
@@ -929,6 +971,11 @@ const exitAndLock = () => {
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                         </svg>
                                                     </div>
+                                                    <div v-else-if="isVideo(item.file_name)" class="w-full h-full bg-indigo-50 flex items-center justify-center text-indigo-600">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                        </svg>
+                                                    </div>
                                                     <div v-else class="w-full h-full bg-slate-100 flex items-center justify-center text-slate-500">
                                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -947,9 +994,12 @@ const exitAndLock = () => {
                                                         <span v-if="isArw(item.file_name)" class="px-2 py-0.5 text-[9px] bg-amber-100 text-amber-800 rounded font-bold uppercase border border-amber-300">
                                                             Sony RAW
                                                         </span>
+                                                        <span v-else-if="isVideo(item.file_name)" class="px-2 py-0.5 text-[9px] bg-indigo-100 text-indigo-800 rounded font-bold uppercase border border-indigo-300">
+                                                            Video
+                                                        </span>
                                                     </div>
                                                     <p class="text-[10px] text-slate-400 font-bold uppercase">
-                                                        {{ item.is_folder ? 'Folder' : (isArw(item.file_name) ? 'Foto Sony RAW' : (item.file_type || 'Berkas')) }}
+                                                        {{ item.is_folder ? 'Folder' : (isArw(item.file_name) ? 'Foto Sony RAW' : (isVideo(item.file_name) ? 'Video Streaming' : (item.file_type || 'Berkas'))) }}
                                                     </p>
                                                 </div>
                                             </div>
@@ -1053,8 +1103,12 @@ const exitAndLock = () => {
                 <div class="p-3 sm:p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 gap-2 flex-wrap">
                     <div class="flex items-center gap-2 sm:gap-3 min-w-0">
                         <div class="w-8 h-8 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center shrink-0">
-                            <svg v-if="previewType === 'arw'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg v-if="previewType === 'arw'" class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            </svg>
+                            <svg v-else-if="previewType === 'video'" class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -1070,9 +1124,12 @@ const exitAndLock = () => {
                                 <span v-if="previewType === 'arw'" class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 uppercase tracking-wider border border-amber-300">
                                     Sony RAW
                                 </span>
+                                <span v-else-if="previewType === 'video'" class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-indigo-100 text-indigo-800 uppercase tracking-wider border border-indigo-300">
+                                    Streaming Video (HTTP 206)
+                                </span>
                             </div>
                             <p class="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase">
-                                {{ previewType === 'arw' ? 'Pratinjau Foto RAW Resolusi Tinggi' : 'Mode Pratinjau Dokumen' }}
+                                {{ previewType === 'arw' ? 'Pratinjau Foto RAW Resolusi Tinggi' : (previewType === 'video' ? 'Pemutaran Video Langsung • Hemat Bandwidth & Enteng' : 'Mode Pratinjau Dokumen') }}
                             </p>
                         </div>
                     </div>
@@ -1129,6 +1186,19 @@ const exitAndLock = () => {
                             <span class="sm:hidden">JPG</span>
                         </a>
 
+                        <!-- Unduh Berkas Video -->
+                        <a 
+                            v-if="previewType === 'video' && activePreviewItem?.download_url"
+                            :href="activePreviewItem.download_url"
+                            class="px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] sm:text-xs font-bold uppercase shadow-2xs transition flex items-center gap-1"
+                            title="Unduh berkas video asli">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            <span class="hidden sm:inline">Unduh Video</span>
+                            <span class="sm:hidden">Unduh</span>
+                        </a>
+
                         <button 
                             @click="closePreview" 
                             class="w-8 h-8 rounded-full bg-slate-200 hover:bg-rose-100 hover:text-rose-700 text-slate-700 font-bold flex items-center justify-center transition cursor-pointer">
@@ -1153,6 +1223,26 @@ const exitAndLock = () => {
                     <div v-if="isImageLoading" class="flex flex-col items-center gap-3 text-slate-300">
                         <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                         <p class="text-xs font-bold uppercase tracking-wider">Mendekripsi Data Gambar...</p>
+                    </div>
+
+                    <!-- Video Streaming Player Langsung (Native HTML5 dengan Hardware Acceleration) -->
+                    <div v-else-if="previewType === 'video' && previewUrl" class="w-full h-full flex flex-col items-center justify-center p-2 sm:p-4 relative">
+                        <video 
+                            ref="videoPlayerRef"
+                            :src="previewUrl" 
+                            controls 
+                            autoplay 
+                            playsinline
+                            preload="metadata"
+                            class="max-h-[75vh] max-w-full rounded-2xl shadow-2xl bg-black border border-slate-800 outline-none"
+                        >
+                            Peramban Anda tidak mendukung pemutaran video langsung.
+                        </video>
+                        
+                        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md text-indigo-300 text-[11px] font-bold px-4 py-1.5 rounded-full border border-indigo-500/40 flex items-center gap-2 shadow-xl pointer-events-none">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span>Streaming Parsial HTTP 206 • Akselerasi GPU Klien</span>
+                        </div>
                     </div>
 
                     <!-- ARW or standard image preview -->
