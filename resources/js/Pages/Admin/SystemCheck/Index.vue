@@ -8,7 +8,7 @@ import axios from 'axios';
 const props = defineProps({
     initialMetrics: {
         type: Object,
-        required: true,
+        default: () => ({}),
     }
 });
 

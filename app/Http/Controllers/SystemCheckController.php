@@ -27,7 +27,11 @@ class SystemCheckController extends Controller
     {
         $this->authorizeAdmin();
 
-        $initialMetrics = SystemCheckService::getAllMetrics();
+        try {
+            $initialMetrics = SystemCheckService::getAllMetrics();
+        } catch (\Throwable $e) {
+            $initialMetrics = [];
+        }
 
         return Inertia::render('Admin/SystemCheck/Index', [
             'initialMetrics' => $initialMetrics,
