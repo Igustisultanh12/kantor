@@ -15,14 +15,45 @@ const monthNames = [
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
 
+const monthsList = [
+    { id: 1, name: 'Januari' },
+    { id: 2, name: 'Februari' },
+    { id: 3, name: 'Maret' },
+    { id: 4, name: 'April' },
+    { id: 5, name: 'Mei' },
+    { id: 6, name: 'Juni' },
+    { id: 7, name: 'Juli' },
+    { id: 8, name: 'Agustus' },
+    { id: 9, name: 'September' },
+    { id: 10, name: 'Oktober' },
+    { id: 11, name: 'November' },
+    { id: 12, name: 'Desember' },
+];
+
+const initMonth = parseInt(props.defaultMonth || (new Date().getMonth() + 1), 10);
+const initYear = parseInt(props.defaultYear || new Date().getFullYear(), 10);
+const daysInInitMonth = new Date(initYear, initMonth, 0).getDate();
+const initPrevMonth = initMonth === 1 ? 12 : initMonth - 1;
+const initPrevYear = initMonth === 1 ? initYear - 1 : initYear;
+const daysInInitPrevMonth = new Date(initPrevYear, initPrevMonth, 0).getDate();
+const initMonthNameUpper = (monthNames[initMonth] || '').toUpperCase();
+
+const getInitDivisiDates = (offset) => {
+    const dates = [];
+    for (let d = offset; d <= daysInInitMonth; d += 5) {
+        dates.push(String(d).padStart(2, '0'));
+    }
+    return `${dates.join(', ')} ${initMonthNameUpper} ${initYear}`;
+};
+
 // Data Form SP Jaga
 const form = useForm({
-    bulan: props.defaultMonth || 7,
-    tahun: props.defaultYear || 2026,
+    bulan: initMonth,
+    tahun: initYear,
     nomor_urut: 29,
-    tmt_mulai: `${props.defaultYear || 2026}-${String(props.defaultMonth || 7).padStart(2, '0')}-01`,
-    tmt_selesai: `${props.defaultYear || 2026}-${String(props.defaultMonth || 7).padStart(2, '0')}-31`,
-    tanggal_surat: `${props.defaultYear || 2026}-${String(props.defaultMonth === 1 ? 12 : props.defaultMonth - 1).padStart(2, '0')}-30`,
+    tmt_mulai: `${initYear}-${String(initMonth).padStart(2, '0')}-01`,
+    tmt_selesai: `${initYear}-${String(initMonth).padStart(2, '0')}-${String(daysInInitMonth).padStart(2, '0')}`,
+    tanggal_surat: `${initPrevYear}-${String(initPrevMonth).padStart(2, '0')}-${String(daysInInitPrevMonth).padStart(2, '0')}`,
     ttd_type: 'tte', // 'tte' atau 'manual'
     
     // Perwira Tertua (Pater / Penerima Perintah)
@@ -46,7 +77,7 @@ const form = useForm({
     anggotas: [
         {
             divisi_no: 1,
-            tanggal_list_text: '04, 09, 14, 19, 24, 29 JULI 2026',
+            tanggal_list_text: getInitDivisiDates(4),
             anggota_items: [
                 { user_id: '', nama: 'HASAN BASRI', pangkat_korps: 'PELDA MAR', nrp_nip: '106737', role_jaga: 'BAGA' },
                 { user_id: '', nama: 'ADITYA H.', pangkat_korps: 'SERMA KOM', nrp_nip: '115980', role_jaga: 'ANGGOTA' },
@@ -56,7 +87,7 @@ const form = useForm({
         },
         {
             divisi_no: 2,
-            tanggal_list_text: '05, 10, 15, 20, 25, 30 JULI 2026',
+            tanggal_list_text: getInitDivisiDates(5),
             anggota_items: [
                 { user_id: '', nama: 'ANDIS Y.', pangkat_korps: 'SERKA EKO', nrp_nip: '114153', role_jaga: 'BAGA' },
                 { user_id: '', nama: 'PUJIANTO', pangkat_korps: 'SERKA TKU', nrp_nip: '117387', role_jaga: 'ANGGOTA' },
@@ -66,7 +97,7 @@ const form = useForm({
         },
         {
             divisi_no: 3,
-            tanggal_list_text: '01, 06, 11, 16, 21, 26, 31 JULI 2026',
+            tanggal_list_text: getInitDivisiDates(1),
             anggota_items: [
                 { user_id: '', nama: 'HARTANTO', pangkat_korps: 'PELTU NAV', nrp_nip: '98486', role_jaga: 'BAGA' },
                 { user_id: '', nama: 'DWI PURNOMO', pangkat_korps: 'SERTU TTU', nrp_nip: '105224', role_jaga: 'ANGGOTA' },
@@ -76,7 +107,7 @@ const form = useForm({
         },
         {
             divisi_no: 4,
-            tanggal_list_text: '02, 07, 12, 17, 22, 27 JULI 2026',
+            tanggal_list_text: getInitDivisiDates(2),
             anggota_items: [
                 { user_id: '', nama: 'TRI WINDARTO', pangkat_korps: 'SERMA PDK', nrp_nip: '114222', role_jaga: 'BAGA' },
                 { user_id: '', nama: 'KARIYADI', pangkat_korps: 'SERKA JAS', nrp_nip: '85822', role_jaga: 'ANGGOTA' },
@@ -86,7 +117,7 @@ const form = useForm({
         },
         {
             divisi_no: 5,
-            tanggal_list_text: '03, 08, 13, 18, 23, 28 JULI 2026',
+            tanggal_list_text: getInitDivisiDates(3),
             anggota_items: [
                 { user_id: '', nama: 'RIBUT JOHAN P', pangkat_korps: 'SERMA KEU', nrp_nip: '112631', role_jaga: 'BAGA' },
                 { user_id: '', nama: 'HENDRA S', pangkat_korps: 'SERMA KOM', nrp_nip: '114931', role_jaga: 'ANGGOTA' },
@@ -216,12 +247,15 @@ const removeAnggotaFromDivisi = (divIdx, itemIdx) => {
 };
 
 
+let isSyncingDates = false;
+
 // Fungsi Otomatis Hitung Ulang Tanggal Berdasarkan Pilihan Bulan & Tahun
 const recalculateDatesForMonth = () => {
     const b = parseInt(form.bulan);
     const y = parseInt(form.tahun);
     if (!b || !y) return;
 
+    isSyncingDates = true;
     const mName = (monthNames[b] || '').toUpperCase();
     const daysInMonth = new Date(y, b, 0).getDate();
 
@@ -254,10 +288,34 @@ const recalculateDatesForMonth = () => {
             }
         });
     }
+
+    setTimeout(() => {
+        isSyncingDates = false;
+    }, 50);
 };
 
 watch(() => [form.bulan, form.tahun], () => {
-    recalculateDatesForMonth();
+    if (!isSyncingDates) {
+        recalculateDatesForMonth();
+    }
+});
+
+// Watcher untuk sinkronisasi dua arah dari tmt_mulai ke bulan & tahun
+watch(() => form.tmt_mulai, (newVal) => {
+    if (isSyncingDates || !newVal) return;
+    const parts = newVal.split('-');
+    if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10);
+        if (m >= 1 && m <= 12 && (parseInt(form.bulan) !== m || parseInt(form.tahun) !== y)) {
+            isSyncingDates = true;
+            form.bulan = m;
+            form.tahun = y;
+            setTimeout(() => {
+                isSyncingDates = false;
+            }, 50);
+        }
+    }
 });
 
 const submit = () => {
@@ -307,8 +365,8 @@ const submit = () => {
                         <!-- Periode Bulan -->
                         <div class="space-y-1.5">
                             <label class="text-xs font-bold text-slate-700 block">Bulan Dinas</label>
-                            <select v-model="form.bulan" class="w-full p-2.5 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500">
-                                <option v-for="(m, i) in monthNames.slice(1)" :key="i" :value="i + 1">{{ m }}</option>
+                            <select v-model.number="form.bulan" class="w-full p-2.5 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500">
+                                <option v-for="m in monthsList" :key="m.id" :value="m.id">{{ m.name }}</option>
                             </select>
                         </div>
 

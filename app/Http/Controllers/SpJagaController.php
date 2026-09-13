@@ -179,13 +179,12 @@ class SpJagaController extends Controller
             ->get();
 
         $currentMonth = (int)date('n');
-        $nextMonth = ($currentMonth % 12) + 1;
-        $nextYear = ($currentMonth == 12) ? (int)date('Y') + 1 : (int)date('Y');
+        $currentYear = (int)date('Y');
 
         return Inertia::render('SpJaga/Create', [
             'personels' => $personels,
-            'defaultMonth' => $nextMonth,
-            'defaultYear' => $nextYear,
+            'defaultMonth' => $currentMonth,
+            'defaultYear' => $currentYear,
         ]);
     }
 
@@ -207,9 +206,19 @@ class SpJagaController extends Controller
         ]);
 
         $user = auth()->user();
-        $bulanRomawi = $this->getRomanMonth($request->bulan);
+
+        // Sinkronkan bulan dan tahun dengan tmt_mulai jika ada
+        $bulanInput = (int)$request->bulan;
+        $tahunInput = (int)$request->tahun;
+        if (!empty($request->tmt_mulai)) {
+            $tmtCarbon = \Carbon\Carbon::parse($request->tmt_mulai);
+            $bulanInput = (int)$tmtCarbon->format('n');
+            $tahunInput = (int)$tmtCarbon->format('Y');
+        }
+
+        $bulanRomawi = $this->getRomanMonth($bulanInput);
         $nomorUrut = $request->nomor_urut ?: 29;
-        $nomorSprin = "Sprin/ {$nomorUrut} /{$bulanRomawi}/{$request->tahun}";
+        $nomorSprin = "Sprin/ {$nomorUrut} /{$bulanRomawi}/{$tahunInput}";
 
         // Hitung total personel
         $totalPersonel = count($request->perwiras);
@@ -226,15 +235,15 @@ class SpJagaController extends Controller
         $perwiraTertuaPangkatNrp = $request->perwira_tertua_pangkat_nrp ?: (($firstPerwira['pangkat_korps'] ?? 'Kapten Laut (P)') . ' NRP ' . ($firstPerwira['nrp'] ?? '19739/P'));
         $perwiraTertuaJabatan = $request->perwira_tertua_jabatan ?: 'Dan Unit 1 Lid Den Intel Kodaeral V';
 
-        $uniqueCode = 'TTE-SPJAGA-' . $request->tahun . str_pad($request->bulan, 2, '0', STR_PAD_LEFT) . '-' . strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 6));
+        $uniqueCode = 'TTE-SPJAGA-' . $tahunInput . str_pad($bulanInput, 2, '0', STR_PAD_LEFT) . '-' . strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 6));
 
         $status = ($request->ttd_type === 'tte') ? 'pending_signature' : 'draft';
 
         $spJaga = SpJaga::create([
             'nomor_sprin' => $nomorSprin,
             'nomor_urut' => $nomorUrut,
-            'bulan' => $request->bulan,
-            'tahun' => $request->tahun,
+            'bulan' => $bulanInput,
+            'tahun' => $tahunInput,
             'bulan_romawi' => $bulanRomawi,
             'tmt_mulai' => $request->tmt_mulai,
             'tmt_selesai' => $request->tmt_selesai,
@@ -347,9 +356,18 @@ class SpJagaController extends Controller
             'anggotas' => 'required|array|min:1',
         ]);
 
-        $bulanRomawi = $this->getRomanMonth($request->bulan);
+        // Sinkronkan bulan dan tahun dengan tmt_mulai jika ada
+        $bulanInput = (int)$request->bulan;
+        $tahunInput = (int)$request->tahun;
+        if (!empty($request->tmt_mulai)) {
+            $tmtCarbon = \Carbon\Carbon::parse($request->tmt_mulai);
+            $bulanInput = (int)$tmtCarbon->format('n');
+            $tahunInput = (int)$tmtCarbon->format('Y');
+        }
+
+        $bulanRomawi = $this->getRomanMonth($bulanInput);
         $nomorUrut = $request->nomor_urut ?: $spJaga->nomor_urut;
-        $nomorSprin = "Sprin/ {$nomorUrut} /{$bulanRomawi}/{$request->tahun}";
+        $nomorSprin = "Sprin/ {$nomorUrut} /{$bulanRomawi}/{$tahunInput}";
 
         $totalPersonel = count($request->perwiras);
         foreach ($request->anggotas as $div) {
@@ -368,8 +386,8 @@ class SpJagaController extends Controller
         $spJaga->update([
             'nomor_sprin' => $nomorSprin,
             'nomor_urut' => $nomorUrut,
-            'bulan' => $request->bulan,
-            'tahun' => $request->tahun,
+            'bulan' => $bulanInput,
+            'tahun' => $tahunInput,
             'bulan_romawi' => $bulanRomawi,
             'tmt_mulai' => $request->tmt_mulai,
             'tmt_selesai' => $request->tmt_selesai,
@@ -566,7 +584,15 @@ class SpJagaController extends Controller
         ));
         $pdf->setPaper([0, 0, 609.45, 935.43], 'portrait'); // Ukuran Folio / F4
 
-        $filename = "SP_JAGA_" . strtoupper($this->getNamaBulanIndo($spJaga->bulan) . '_' . $spJaga->tahun) . ".pdf";
+        $blnAngka = (int)$spJaga->bulan;
+        $tahunAngka = (int)$spJaga->tahun;
+        if (!empty($spJaga->tmt_mulai)) {
+            $tmtCarbon = \Carbon\Carbon::parse($spJaga->tmt_mulai);
+            $blnAngka = (int)$tmtCarbon->format('n');
+            $tahunAngka = (int)$tmtCarbon->format('Y');
+        }
+
+        $filename = "SP_JAGA_" . strtoupper($this->getNamaBulanIndo($blnAngka) . '_' . $tahunAngka) . ".pdf";
 
         return $pdf->stream($filename);
     }
@@ -589,7 +615,14 @@ class SpJagaController extends Controller
      */
     private function sendBroadcastWa($spJaga)
     {
-        $namaBulanTahun = strtoupper($this->getNamaBulanIndo($spJaga->bulan) . ' ' . $spJaga->tahun);
+        $blnAngka = (int)$spJaga->bulan;
+        $tahunAngka = (int)$spJaga->tahun;
+        if (!empty($spJaga->tmt_mulai)) {
+            $tmtCarbon = \Carbon\Carbon::parse($spJaga->tmt_mulai);
+            $blnAngka = (int)$tmtCarbon->format('n');
+            $tahunAngka = (int)$tmtCarbon->format('Y');
+        }
+        $namaBulanTahun = strtoupper($this->getNamaBulanIndo($blnAngka) . ' ' . $tahunAngka);
         $notifiedPhones = [];
 
         // 1. Broadcast ke Perwira Jaga

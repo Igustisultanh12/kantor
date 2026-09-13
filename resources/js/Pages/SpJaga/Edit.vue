@@ -14,11 +14,30 @@ const monthNames = [
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
 
+const monthsList = [
+    { id: 1, name: 'Januari' },
+    { id: 2, name: 'Februari' },
+    { id: 3, name: 'Maret' },
+    { id: 4, name: 'April' },
+    { id: 5, name: 'Mei' },
+    { id: 6, name: 'Juni' },
+    { id: 7, name: 'Juli' },
+    { id: 8, name: 'Agustus' },
+    { id: 9, name: 'September' },
+    { id: 10, name: 'Oktober' },
+    { id: 11, name: 'November' },
+    { id: 12, name: 'Desember' },
+];
+
+const initialTmtMulai = props.spJaga.tmt_mulai ? props.spJaga.tmt_mulai.substring(0, 10) : '';
+const initialBulan = initialTmtMulai ? parseInt(initialTmtMulai.substring(5, 7), 10) : parseInt(props.spJaga.bulan || 9, 10);
+const initialTahun = initialTmtMulai ? parseInt(initialTmtMulai.substring(0, 4), 10) : parseInt(props.spJaga.tahun || 2026, 10);
+
 const form = useForm({
-    bulan: props.spJaga.bulan,
-    tahun: props.spJaga.tahun,
+    bulan: initialBulan,
+    tahun: initialTahun,
     nomor_urut: props.spJaga.nomor_urut || 29,
-    tmt_mulai: props.spJaga.tmt_mulai ? props.spJaga.tmt_mulai.substring(0, 10) : '',
+    tmt_mulai: initialTmtMulai,
     tmt_selesai: props.spJaga.tmt_selesai ? props.spJaga.tmt_selesai.substring(0, 10) : '',
     tanggal_surat: props.spJaga.tanggal_surat ? props.spJaga.tanggal_surat.substring(0, 10) : '',
     ttd_type: props.spJaga.ttd_type || 'tte',
@@ -169,12 +188,15 @@ const removeAnggotaFromDivisi = (divIdx, itemIdx) => {
 };
 
 
+let isSyncingDates = false;
+
 // Fungsi Otomatis Hitung Ulang Tanggal Berdasarkan Pilihan Bulan & Tahun
 const recalculateDatesForMonth = () => {
     const b = parseInt(form.bulan);
     const y = parseInt(form.tahun);
     if (!b || !y) return;
 
+    isSyncingDates = true;
     const mName = (monthNames[b] || '').toUpperCase();
     const daysInMonth = new Date(y, b, 0).getDate();
 
@@ -207,10 +229,34 @@ const recalculateDatesForMonth = () => {
             }
         });
     }
+
+    setTimeout(() => {
+        isSyncingDates = false;
+    }, 50);
 };
 
 watch(() => [form.bulan, form.tahun], () => {
-    recalculateDatesForMonth();
+    if (!isSyncingDates) {
+        recalculateDatesForMonth();
+    }
+});
+
+// Watcher untuk sinkronisasi dua arah dari tmt_mulai ke bulan & tahun
+watch(() => form.tmt_mulai, (newVal) => {
+    if (isSyncingDates || !newVal) return;
+    const parts = newVal.split('-');
+    if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10);
+        if (m >= 1 && m <= 12 && (parseInt(form.bulan) !== m || parseInt(form.tahun) !== y)) {
+            isSyncingDates = true;
+            form.bulan = m;
+            form.tahun = y;
+            setTimeout(() => {
+                isSyncingDates = false;
+            }, 50);
+        }
+    }
 });
 
 const submit = () => {
@@ -257,8 +303,8 @@ const submit = () => {
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div class="space-y-1.5">
                             <label class="text-xs font-bold text-slate-700 block">Bulan Dinas</label>
-                            <select v-model="form.bulan" class="w-full p-2.5 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500">
-                                <option v-for="(m, i) in monthNames.slice(1)" :key="i" :value="i + 1">{{ m }}</option>
+                            <select v-model.number="form.bulan" class="w-full p-2.5 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500">
+                                <option v-for="m in monthsList" :key="m.id" :value="m.id">{{ m.name }}</option>
                             </select>
                         </div>
 

@@ -1,8 +1,53 @@
+@php
+    $bulanBaku = [
+        1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+        5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+        9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+    ];
+
+    $bulanRomawiList = [
+        1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V', 6 => 'VI',
+        7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII'
+    ];
+
+    $formatTglBaku = function($date) use ($bulanBaku) {
+        if (!$date) return '-';
+        $c = \Carbon\Carbon::parse($date);
+        $m = (int)$c->format('n');
+        $bln = $bulanBaku[$m] ?? $c->format('F');
+        return $c->format('j') . ' ' . $bln . ' ' . $c->format('Y');
+    };
+
+    // Prioritas bulan & tahun dari tmt_mulai jika ada
+    $blnAngka = (int)($spJaga->bulan ?? 1);
+    $tahunAngka = (int)($spJaga->tahun ?? 2026);
+    if (!empty($spJaga->tmt_mulai)) {
+        $cTmt = \Carbon\Carbon::parse($spJaga->tmt_mulai);
+        $blnAngka = (int)$cTmt->format('n');
+        $tahunAngka = (int)$cTmt->format('Y');
+    }
+
+    $namaBulanBaku = $bulanBaku[$blnAngka] ?? 'Januari';
+    $namaBulanTahun = strtoupper($namaBulanBaku . ' ' . $tahunAngka);
+    $romawiBaku = $bulanRomawiList[$blnAngka] ?? 'IX';
+
+    $nomorUrutVal = $spJaga->nomor_urut ?: 29;
+    if (!empty($spJaga->nomor_sprin)) {
+        // Sinkronkan angka romawi dan tahun dengan bulan tmt yang benar
+        $nomorSprinBaku = preg_replace('/\/(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII)\/\d{4}/i', "/{$romawiBaku}/{$tahunAngka}", $spJaga->nomor_sprin);
+    } else {
+        $nomorSprinBaku = "Sprin/ {$nomorUrutVal} /{$romawiBaku}/{$tahunAngka}";
+    }
+
+    $tmtMulai = $spJaga->tmt_mulai ? \Carbon\Carbon::parse($spJaga->tmt_mulai)->format('d') : '01';
+    $tmtSelesai = $spJaga->tmt_selesai ? $formatTglBaku($spJaga->tmt_selesai) : ('30 ' . $namaBulanBaku . ' ' . $tahunAngka);
+    $tglSuratBaku = $spJaga->tanggal_surat ? $formatTglBaku($spJaga->tanggal_surat) : ('30 ' . $namaBulanBaku . ' ' . $tahunAngka);
+@endphp
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Surat Perintah Jaga - {{ $spJaga->nomor_sprin ?: 'SINDEN' }}</title>
+    <title>Surat Perintah Jaga - {{ $nomorSprinBaku }}</title>
     <style>
         @page {
             margin: 0.6cm 1.5cm 0.6cm 1.5cm;
@@ -76,29 +121,6 @@
     </style>
 </head>
 <body>
-    @php
-        $bulanBaku = [
-            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
-            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
-            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
-        ];
-
-        $formatTglBaku = function($date) use ($bulanBaku) {
-            if (!$date) return '-';
-            $c = \Carbon\Carbon::parse($date);
-            $m = (int)$c->format('n');
-            $bln = $bulanBaku[$m] ?? $c->format('F');
-            return $c->format('j') . ' ' . $bln . ' ' . $c->format('Y');
-        };
-
-        $blnAngka = (int)($spJaga->bulan ?? 1);
-        $namaBulanBaku = $bulanBaku[$blnAngka] ?? 'Januari';
-        $namaBulanTahun = strtoupper($namaBulanBaku . ' ' . ($spJaga->tahun ?? 2026));
-
-        $tmtMulai = $spJaga->tmt_mulai ? \Carbon\Carbon::parse($spJaga->tmt_mulai)->format('d') : '01';
-        $tmtSelesai = $spJaga->tmt_selesai ? $formatTglBaku($spJaga->tmt_selesai) : ('30 ' . $namaBulanBaku . ' ' . ($spJaga->tahun ?? 2026));
-        $tglSuratBaku = $spJaga->tanggal_surat ? $formatTglBaku($spJaga->tanggal_surat) : ('30 ' . $namaBulanBaku . ' ' . ($spJaga->tahun ?? 2026));
-    @endphp
 
     <!-- ========================================================================= -->
     <!-- HALAMAN 1: SURAT PERINTAH (SP JAGA UTAMA)                                -->
@@ -130,7 +152,7 @@
                 SURAT PERINTAH
             </div>
             <div style="font-size: 12pt; margin-top: 2px;">
-                Nomor: {{ $spJaga->nomor_sprin ?: 'Sprin/ ' . ($spJaga->nomor_urut ?? '   ') . ' /' . ($spJaga->bulan_romawi ?? 'VI') . '/' . ($spJaga->tahun ?? '2026') }}
+                Nomor: {{ $nomorSprinBaku }}
             </div>
         </div>
 
@@ -281,7 +303,7 @@
                             <tr>
                                 <td style="vertical-align: top;">Nomor</td>
                                 <td style="vertical-align: top;">:</td>
-                                <td style="padding-left: 10px;">{{ $spJaga->nomor_sprin ?: 'Sprin/ ' . ($spJaga->nomor_urut ?? '   ') . ' /' . ($spJaga->bulan_romawi ?? 'VI') . '/' . ($spJaga->tahun ?? '2026') }}</td>
+                                <td style="padding-left: 10px;">{{ $nomorSprinBaku }}</td>
                             </tr>
                             <tr>
                                 <td style="vertical-align: top;">Tanggal</td>
