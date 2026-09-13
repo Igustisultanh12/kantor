@@ -113,7 +113,7 @@
         }
 
         .ttd-box {
-            width: 320px;
+            width: 360px;
             margin-left: auto;
             text-align: center;
             font-size: 11.5pt;
@@ -196,7 +196,7 @@
                         <tr>
                             <td style="width: 25px; vertical-align: top; padding-bottom: 6px;">1.</td>
                             <td style="vertical-align: top; text-align: justify; padding-bottom: 6px; padding-left: 8px;">
-                                Seterimanya surat perintah ini disamping tugas dan tanggungjawab yang ada, ditunjuk menjabat sebagai Perwira Siaga dan Anggota Siaga Sintel Kodaeral V sesuai dengan Jadwal terlampir.
+                                Seterimanya surat perintah ini disamping tugas dan tanggung jawab yang ada, ditunjuk menjabat sebagai Perwira Siaga dan Anggota Siaga Sintel Kodaeral V sesuai dengan Jadwal terlampir.
                             </td>
                         </tr>
                         <tr>
@@ -221,7 +221,7 @@
         <!-- Kolom Tanda Tangan & Tanggal Keluar -->
         <table style="width: 100%; margin-top: 4px;">
             <tr>
-                <td style="width: 45%; vertical-align: bottom;">
+                <td style="width: 42%; vertical-align: bottom;">
                     <!-- Tembusan -->
                     <div style="font-size: 11pt;">
                         <u>Tembusan:</u>
@@ -231,7 +231,7 @@
                         </ol>
                     </div>
                 </td>
-                <td style="width: 55%; vertical-align: top;">
+                <td style="width: 58%; vertical-align: top;">
                     <div class="ttd-box">
                         <table style="width: 100%; text-align: left; margin-bottom: 3px; font-size: 11.5pt;">
                             <tr>
@@ -248,8 +248,8 @@
                         <div style="border-bottom: 1px solid #000; margin-bottom: 4px;"></div>
 
                         <div style="text-align: center;">
-                            <div style="font-size: 12pt;">a.n. Komandan Detasemen Intelijen Kodaeral V,</div>
-                            <div style="margin-bottom: 4px; font-size: 12pt;">Pasiops,</div>
+                            <div style="font-size: 11.5pt; white-space: nowrap;">a.n. Komandan Detasemen Intelijen Kodaeral V,</div>
+                            <div style="margin-bottom: 4px; font-size: 11.5pt;">Pasiops,</div>
 
                             <!-- Area TTE QR Code vs TTD Basah -->
                             @if($spJaga->ttd_type === 'tte' && $spJaga->status === 'published' && !empty($qr_base64))
@@ -383,11 +383,11 @@
         <!-- Kolom Tanda Tangan Lampiran 1 -->
         <table style="width: 100%; margin-top: 4px;">
             <tr>
-                <td style="width: 50%;"></td>
-                <td style="width: 50%;">
+                <td style="width: 42%;"></td>
+                <td style="width: 58%;">
                     <div class="ttd-box">
-                        <div style="font-size: 12pt;">a.n. Komandan Detasemen Intelijen Kodaeral V,</div>
-                        <div style="margin-bottom: 4px; font-size: 12pt;">Pasiops,</div>
+                        <div style="font-size: 11.5pt; white-space: nowrap;">a.n. Komandan Detasemen Intelijen Kodaeral V,</div>
+                        <div style="margin-bottom: 4px; font-size: 11.5pt;">Pasiops,</div>
 
                         @if($spJaga->ttd_type === 'tte' && $spJaga->status === 'published' && !empty($qr_base64))
                             <div style="margin: 4px auto; text-align: center;">
@@ -518,8 +518,8 @@
         <!-- Kolom Tanda Tangan Lampiran 2 -->
         <table style="width: 100%; margin-top: 4px;">
             <tr>
-                <td style="width: 50%;"></td>
-                <td style="width: 50%;">
+                <td style="width: 42%;"></td>
+                <td style="width: 58%;">
                     <div class="ttd-box">
                         <table style="width: 100%; text-align: left; margin-bottom: 3px; font-size: 11.5pt;">
                             <tr>
@@ -535,8 +535,8 @@
                         </table>
                         <div style="border-bottom: 1px solid #000; margin-bottom: 4px;"></div>
 
-                        <div style="font-size: 12pt;">a.n. Komandan Detasemen Intelijen Kodaeral V,</div>
-                        <div style="margin-bottom: 4px; font-size: 12pt;">Pasiops,</div>
+                        <div style="font-size: 11.5pt; white-space: nowrap;">a.n. Komandan Detasemen Intelijen Kodaeral V,</div>
+                        <div style="margin-bottom: 4px; font-size: 11.5pt;">Pasiops,</div>
 
                         @if($spJaga->ttd_type === 'tte' && $spJaga->status === 'published' && !empty($qr_base64))
                             <div style="margin: 4px auto; text-align: center;">
