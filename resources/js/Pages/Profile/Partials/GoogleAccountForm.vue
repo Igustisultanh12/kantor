@@ -1,6 +1,6 @@
 <script setup>
 import { usePage, router } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted, watch } from 'vue';
 import Swal from 'sweetalert2';
 
 const page = usePage();
@@ -10,6 +10,35 @@ const isUnlinking = ref(false);
 const isGoogleLinked = computed(() => {
     return !!(user.value && user.value.google_id);
 });
+
+const checkFlash = () => {
+    if (page.props.flash?.success) {
+        Swal.fire({
+            icon: 'success',
+            title: 'BERHASIL',
+            text: page.props.flash.success,
+            confirmButtonColor: '#2563eb',
+            customClass: {
+                popup: 'rounded-2xl shadow-2xl',
+                confirmButton: 'font-bold text-xs uppercase px-5 py-2.5 rounded-xl',
+            }
+        });
+    } else if (page.props.flash?.error) {
+        Swal.fire({
+            icon: 'error',
+            title: 'GAGAL',
+            text: page.props.flash.error,
+            confirmButtonColor: '#dc2626',
+            customClass: {
+                popup: 'rounded-2xl shadow-2xl',
+                confirmButton: 'font-bold text-xs uppercase px-5 py-2.5 rounded-xl',
+            }
+        });
+    }
+};
+
+onMounted(checkFlash);
+watch(() => page.props.flash, checkFlash, { deep: true });
 
 const unlinkGoogleAccount = () => {
     Swal.fire({
