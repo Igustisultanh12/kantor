@@ -541,68 +541,304 @@ class BackupController extends Controller
     }
 
     /**
-     * FEATURE: EXTRAK ZIP STANDARD
+     * SINKRONISASI STRUKTUR FOLDER & BERKAS HASIL EKSTRAKSI KE BASIS DATA
+     */
+    private function syncExtractedTree($diskDir, $dbSubPath, $parentId, $pcId, &$totalExtracted, $cancelKey, $logKey, $cacheKey)
+    {
+        $items = @scandir($diskDir);
+        if (!$items) return true;
+
+        $fileCount = max(1, count($items) - 2);
+        $idx = 0;
+
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') continue;
+            if (Cache::has($cancelKey)) {
+                return false;
+            }
+
+            $itemPath = $diskDir . DIRECTORY_SEPARATOR . $item;
+            $itemSubPath = $dbSubPath . '/' . $item;
+
+            if (is_dir($itemPath)) {
+                $folderRecord = Backup::create([
+                    'pc_id' => $pcId,
+                    'parent_id' => $parentId,
+                    'file_name' => strtoupper($item),
+                    'is_folder' => true,
+                    'file_path' => $itemSubPath,
+                    'file_size' => 0,
+                    'file_type' => 'folder'
+                ]);
+                $totalExtracted++;
+                Cache::put($logKey, "Mendaftar folder: " . $item, 600);
+                $res = $this->syncExtractedTree($itemPath, $itemSubPath, $folderRecord->id, $pcId, $totalExtracted, $cancelKey, $logKey, $cacheKey);
+                if ($res === false) return false;
+            } else {
+                $fSize = file_exists($itemPath) ? filesize($itemPath) : 0;
+                $fExt = strtolower(pathinfo($item, PATHINFO_EXTENSION) ?: 'file');
+                Backup::create([
+                    'pc_id' => $pcId,
+                    'parent_id' => $parentId,
+                    'file_name' => $item,
+                    'is_folder' => false,
+                    'file_path' => $itemSubPath,
+                    'file_size' => $fSize,
+                    'file_type' => $fExt,
+                ]);
+                $totalExtracted++;
+                Cache::put($logKey, "Mendaftar berkas: " . $item, 600);
+            }
+
+            $idx++;
+            $progress = min(98, 50 + (int)(($idx / $fileCount) * 48));
+            Cache::put($cacheKey, $progress, 600);
+        }
+        return true;
+    }
+
+    /**
+     * FEATURE: EKSTRAK ARSIP STANDARD (ZIP / RAR / 7Z / TAR)
      */
     public function extract($id)
     {
         $backup = Backup::findOrFail($id);
-        $fullPath = storage_path('app/public/' . $backup->file_path);
+        $user = Auth::user();
 
-        if ($backup->file_type !== 'zip') {
-            return back()->with('error', 'Hanya berkas berekstensi ZIP yang dapat didekripsi.');
+        $pc = Pc::findOrFail($backup->pc_id);
+        if ($pc->user_id !== $user->id && $user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
+            abort(403, 'Akses Ditolak: Anda tidak memiliki otoritas atas berkas PC ini.');
         }
 
-        $zip = new \ZipArchive;
-        if ($zip->open($fullPath) === TRUE) {
-            $folderName = 'EXTRACTED_' . strtoupper(pathinfo($backup->file_name, PATHINFO_FILENAME));
-            $extractSubPath = 'backups/' . $backup->pc_id . '/' . time() . '_' . $folderName;
-            
-            $zip->extractTo(storage_path('app/public/' . $extractSubPath));
-            $zip->close();
-
-            Backup::create([
-                'pc_id' => $backup->pc_id,
-                'parent_id' => $backup->parent_id,
-                'file_name' => $folderName,
-                'is_folder' => true,
-                'file_path' => $extractSubPath,
-                'file_size' => 0,
-                'file_type' => 'folder'
-            ]);
-
-            return back()->with('success', 'Berhasil di Ekstrak.');
+        $fullPath = FileSecurityService::verifySafeStoragePath($backup->file_path);
+        if (!file_exists($fullPath)) {
+            return back()->with('error', 'Berkas fisik arsip tidak ditemukan.');
         }
-        return back()->with('error', 'Gagal membuka paket ZIP.');
+
+        $ext = strtolower(pathinfo($backup->file_name, PATHINFO_EXTENSION) ?: $backup->file_type ?: 'zip');
+        $archiveExts = ['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz'];
+        if (!in_array($ext, $archiveExts)) {
+            return back()->with('error', 'Hanya berkas arsip (ZIP / RAR / 7Z / TAR) yang dapat diekstrak.');
+        }
+
+        $folderName = 'EXTRACTED_' . strtoupper(pathinfo($backup->file_name, PATHINFO_FILENAME));
+        $extractSubPath = 'backups/' . $backup->pc_id . '/' . time() . '_' . $folderName;
+        $fullExtractPath = storage_path('app/public/' . $extractSubPath);
+        if (!file_exists($fullExtractPath)) {
+            @mkdir($fullExtractPath, 0777, true);
+        }
+
+        $tempArchive = null;
+        if (FileSecurityService::isEncrypted($fullPath)) {
+            $tempArchive = FileSecurityService::createDecryptedTempFile($fullPath);
+            $archiveFile = $tempArchive ?: $fullPath;
+        } else {
+            $archiveFile = $fullPath;
+        }
+
+        $extracted = false;
+        try {
+            if ($ext === 'zip') {
+                $zip = new \ZipArchive;
+                if ($zip->open($archiveFile) === TRUE) {
+                    $zip->extractTo($fullExtractPath);
+                    $zip->close();
+                    $extracted = true;
+                }
+            }
+
+            if (!$extracted && $ext === 'rar' && class_exists('\RarArchive')) {
+                try {
+                    $rar = @\RarArchive::open($archiveFile);
+                    if ($rar !== false) {
+                        foreach ($rar->getEntries() as $entry) {
+                            $entry->extract($fullExtractPath);
+                        }
+                        $rar->close();
+                        $extracted = true;
+                    }
+                } catch (\Exception $e) {}
+            }
+
+            if (!$extracted) {
+                $commands = [
+                    "7z x -y -o" . escapeshellarg($fullExtractPath) . " " . escapeshellarg($archiveFile) . " 2>&1",
+                    "7za x -y -o" . escapeshellarg($fullExtractPath) . " " . escapeshellarg($archiveFile) . " 2>&1",
+                    "unrar x -y -o+ " . escapeshellarg($archiveFile) . " " . escapeshellarg($fullExtractPath . DIRECTORY_SEPARATOR) . " 2>&1",
+                    "tar -xf " . escapeshellarg($archiveFile) . " -C " . escapeshellarg($fullExtractPath) . " 2>&1",
+                ];
+                foreach ($commands as $cmd) {
+                    @exec($cmd);
+                    $scanned = @scandir($fullExtractPath);
+                    if ($scanned && count($scanned) > 2) {
+                        $extracted = true;
+                        break;
+                    }
+                }
+            }
+
+            if ($extracted) {
+                $rootFolder = Backup::create([
+                    'pc_id' => $backup->pc_id,
+                    'parent_id' => $backup->parent_id,
+                    'file_name' => $folderName,
+                    'is_folder' => true,
+                    'file_path' => $extractSubPath,
+                    'file_size' => 0,
+                    'file_type' => 'folder'
+                ]);
+
+                $total = 0;
+                $dummyCancel = 'dummy_cancel_' . uniqid();
+                $dummyLog = 'dummy_log_' . uniqid();
+                $dummyCache = 'dummy_cache_' . uniqid();
+                $this->syncExtractedTree($fullExtractPath, $extractSubPath, $rootFolder->id, $backup->pc_id, $total, $dummyCancel, $dummyLog, $dummyCache);
+
+                return back()->with('success', "Berhasil mengekstrak {$total} item ke folder {$folderName}.");
+            }
+
+            return back()->with('error', 'Gagal mengekstrak berkas arsip. Pastikan arsip tidak rusak.');
+        } finally {
+            if ($tempArchive && file_exists($tempArchive)) {
+                @unlink($tempArchive);
+            }
+        }
     }
 
     /**
-     * FEATURE: EKSTRAKSI CERDAS (STRUKTUR BERLAPIS & LIVE LOG PROCESS)
+     * FEATURE: EKSTRAKSI CERDAS DENGAN RADAR PROGRES (MENDUKUNG ZIP & RAR BESAR)
      */
     public function startExtract(Request $request, $id)
     {
         $backup = Backup::findOrFail($id);
         $user = Auth::user();
+
+        $pc = Pc::findOrFail($backup->pc_id);
+        if ($pc->user_id !== $user->id && $user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
+            abort(403, 'Akses Ditolak: Anda tidak memiliki otoritas atas berkas PC ini.');
+        }
+
+        if ($backup->is_folder) {
+            return response()->json(['status' => 'error', 'message' => 'Folder tidak dapat diekstrak.'], 400);
+        }
+
+        $fullPath = FileSecurityService::verifySafeStoragePath($backup->file_path);
+        if (!file_exists($fullPath)) {
+            return response()->json(['status' => 'error', 'message' => 'Berkas fisik arsip tidak ditemukan di server.'], 404);
+        }
+
         $cacheKey = 'extract_progress_' . $user->id;
         $cancelKey = 'extract_cancel_' . $user->id;
         $logKey = 'extract_log_' . $user->id;
 
-        Cache::put($cacheKey, 0, 600);
-        Cache::put($logKey, 'Menyiapkan ...', 600);
+        Cache::put($cacheKey, 5, 600);
+        Cache::put($logKey, 'Menyiapkan berkas arsip...', 600);
         Cache::forget($cancelKey);
 
-        $zipFile = storage_path('app/public/' . $backup->file_path);
-        $destinationFolder = $request->destination ?? 'EXTRACTED_' . time();
-        $extractSubPath = 'backups/' . $backup->pc_id . '/' . $destinationFolder;
+        $destinationFolder = $request->destination ? preg_replace('/[^A-Za-z0-9_\-\.\s]/', '_', trim($request->destination)) : 'EXTRACTED_' . time();
+        if (empty($destinationFolder)) {
+            $destinationFolder = 'EXTRACTED_' . time();
+        }
+
+        $extractSubPath = 'backups/' . $backup->pc_id . '/' . time() . '_' . $destinationFolder;
         $fullExtractPath = storage_path('app/public/' . $extractSubPath);
 
         if (!file_exists($fullExtractPath)) {
-            mkdir($fullExtractPath, 0777, true);
+            @mkdir($fullExtractPath, 0777, true);
         }
 
-        $zip = new \ZipArchive;
-        if ($zip->open($zipFile) === TRUE) {
-            $totalFiles = $zip->numFiles;
+        // Dekripsi jika berkas di storage terenkripsi
+        $tempArchive = null;
+        if (FileSecurityService::isEncrypted($fullPath)) {
+            Cache::put($logKey, 'Mendekripsi data arsip...', 600);
+            $tempArchive = FileSecurityService::createDecryptedTempFile($fullPath);
+            $archiveFile = $tempArchive ?: $fullPath;
+        } else {
+            $archiveFile = $fullPath;
+        }
 
+        $ext = strtolower(pathinfo($backup->file_name, PATHINFO_EXTENSION) ?: $backup->file_type ?: 'zip');
+        $extracted = false;
+
+        try {
+            Cache::put($cacheKey, 20, 600);
+            Cache::put($logKey, 'Membongkar isi arsip (' . strtoupper($ext) . ')...', 600);
+
+            // 1. Jika ZIP, coba ZipArchive terlebih dahulu
+            if ($ext === 'zip') {
+                $zip = new \ZipArchive;
+                if ($zip->open($archiveFile) === TRUE) {
+                    $zip->extractTo($fullExtractPath);
+                    $zip->close();
+                    $extracted = true;
+                }
+            }
+
+            // 2. Jika RAR dan ekstensi RarArchive ada
+            if (!$extracted && $ext === 'rar' && class_exists('\RarArchive')) {
+                try {
+                    $rar = @\RarArchive::open($archiveFile);
+                    if ($rar !== false) {
+                        foreach ($rar->getEntries() as $entry) {
+                            $entry->extract($fullExtractPath);
+                        }
+                        $rar->close();
+                        $extracted = true;
+                    }
+                } catch (\Exception $e) {}
+            }
+
+            // 3. Fallback ke Command-Line Tools (7z, unrar, tar, unzip)
+            if (!$extracted) {
+                $commands = [];
+                $commands[] = "7z x -y -o" . escapeshellarg($fullExtractPath) . " " . escapeshellarg($archiveFile) . " 2>&1";
+                $commands[] = "7za x -y -o" . escapeshellarg($fullExtractPath) . " " . escapeshellarg($archiveFile) . " 2>&1";
+
+                if ($ext === 'rar') {
+                    $commands[] = "unrar x -y -o+ " . escapeshellarg($archiveFile) . " " . escapeshellarg($fullExtractPath . DIRECTORY_SEPARATOR) . " 2>&1";
+                }
+
+                $commands[] = "tar -xf " . escapeshellarg($archiveFile) . " -C " . escapeshellarg($fullExtractPath) . " 2>&1";
+
+                if ($ext === 'zip') {
+                    $commands[] = "unzip -o " . escapeshellarg($archiveFile) . " -d " . escapeshellarg($fullExtractPath) . " 2>&1";
+                }
+
+                foreach ($commands as $cmd) {
+                    $out = [];
+                    $ret = -1;
+                    @exec($cmd, $out, $ret);
+                    $scanned = @scandir($fullExtractPath);
+                    if ($scanned && count($scanned) > 2) {
+                        $extracted = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!$extracted) {
+                $scanned = @scandir($fullExtractPath);
+                if ($scanned && count($scanned) > 2) {
+                    $extracted = true;
+                }
+            }
+
+            if (!$extracted) {
+                @rmdir($fullExtractPath);
+                return response()->json([
+                    'status' => 'error', 
+                    'message' => 'Gagal membongkar berkas arsip. Pastikan format arsip ZIP/RAR valid dan tidak dilindungi kata sandi.'
+                ], 500);
+            }
+
+            if (Cache::has($cancelKey)) {
+                return response()->json(['status' => 'cancelled']);
+            }
+
+            Cache::put($cacheKey, 50, 600);
+            Cache::put($logKey, 'Mendaftarkan struktur berkas ke pangkalan data...', 600);
+
+            // Buat Folder Induk Hasil Ekstraksi
             $rootFolder = Backup::create([
                 'pc_id' => $backup->pc_id,
                 'parent_id' => $backup->parent_id,
@@ -613,66 +849,29 @@ class BackupController extends Controller
                 'file_type' => 'folder'
             ]);
 
-            $createdFolders = [];
+            $totalExtracted = 0;
+            $res = $this->syncExtractedTree($fullExtractPath, $extractSubPath, $rootFolder->id, $backup->pc_id, $totalExtracted, $cancelKey, $logKey, $cacheKey);
 
-            for ($i = 0; $i < $totalFiles; $i++) {
-                if (Cache::has($cancelKey)) {
-                    $zip->close();
-                    return response()->json(['status' => 'cancelled']);
-                }
-
-                $fullZipEntryName = $zip->getNameIndex($i); 
-                $zip->extractTo($fullExtractPath, array($fullZipEntryName));
-
-                Cache::put($logKey, "Mengekstrak: " . basename($fullZipEntryName), 600);
-
-                $pathParts = explode('/', rtrim($fullZipEntryName, '/'));
-                $currentParentId = $rootFolder->id;
-                $cumulativePath = $extractSubPath;
-
-                foreach ($pathParts as $index => $part) {
-                    $isLastPart = ($index === count($pathParts) - 1);
-                    $cumulativePath .= '/' . $part;
-                    $pathKey = implode('/', array_slice($pathParts, 0, $index + 1));
-
-                    if (!$isLastPart || substr($fullZipEntryName, -1) === '/') {
-                        if (!isset($createdFolders[$pathKey])) {
-                            $newFolder = Backup::create([
-                                'pc_id' => $backup->pc_id,
-                                'parent_id' => $currentParentId,
-                                'file_name' => strtoupper($part),
-                                'is_folder' => true,
-                                'file_path' => $cumulativePath,
-                                'file_size' => 0,
-                                'file_type' => 'folder'
-                            ]);
-                            $createdFolders[$pathKey] = $newFolder->id;
-                        }
-                        $currentParentId = $createdFolders[$pathKey];
-                    } 
-                    else {
-                        Backup::create([
-                            'pc_id' => $backup->pc_id,
-                            'parent_id' => $currentParentId,
-                            'file_name' => $part,
-                            'file_path' => $cumulativePath,
-                            'file_size' => file_exists($fullExtractPath . '/' . $fullZipEntryName) ? filesize($fullExtractPath . '/' . $fullZipEntryName) : 0,
-                            'is_folder' => false,
-                            'file_type' => pathinfo($part, PATHINFO_EXTENSION),
-                        ]);
-                    }
-                }
-
-                $progress = round((($i + 1) / $totalFiles) * 100);
-                Cache::put($cacheKey, $progress, 600);
+            if ($res === false || Cache::has($cancelKey)) {
+                return response()->json(['status' => 'cancelled']);
             }
 
-            $zip->close();
-            Cache::put($logKey, "Operasi Selesai.", 600);
-            return response()->json(['status' => 'success', 'message' => 'Logistik dibongkar sesuai formasi.']);
-        }
+            Cache::put($cacheKey, 100, 600);
+            Cache::put($logKey, "Selesai: {$totalExtracted} item berhasil diekstrak.", 600);
 
-        return response()->json(['status' => 'error', 'message' => 'Gagal membuka paket.'], 500);
+            return response()->json([
+                'status' => 'success', 
+                'message' => "Arsip berhasil dibongkar! Sebanyak {$totalExtracted} item tersimpan di folder {$rootFolder->file_name}."
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("Gagal ekstraksi arsip ID {$id}: " . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => 'Terjadi kesalahan saat ekstraksi: ' . $e->getMessage()], 500);
+        } finally {
+            if ($tempArchive && file_exists($tempArchive)) {
+                @unlink($tempArchive);
+            }
+        }
     }
 
     /**

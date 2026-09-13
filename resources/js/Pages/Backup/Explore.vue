@@ -930,19 +930,25 @@ const closeUploadDrawer = () => {
 // --- LOGIKA EKSTRAKSI CERDAS ---
 const handleExtract = (item) => {
     activeExtractItem.value = item;
-    extractionDestination.value = 'EXTRACTED_' + item.file_name.split('.')[0].toUpperCase();
+    const baseName = item.file_name.replace(/\.[^/.]+$/, "");
+    extractionDestination.value = 'EXTRACTED_' + baseName.toUpperCase();
     
     Swal.fire({
-        title: 'Konfigurasi Ekstraksi',
+        title: 'Ekstrak Arsip (ZIP / RAR)',
         html: `
-            <div class="text-left">
-                <label class="text-[10px] font-black uppercase text-gray-500">Nama Folder Tujuan:</label>
-                <input id="swal-destination" class="swal2-input !m-0 !w-full !text-sm font-bold uppercase" value="${extractionDestination.value}">
+            <div class="text-left text-xs space-y-2">
+                <p class="text-slate-600">Berkas: <b class="text-slate-900">${item.file_name}</b></p>
+                <div>
+                    <label class="text-[10px] font-black uppercase text-gray-500">Nama Folder Tujuan:</label>
+                    <input id="swal-destination" class="swal2-input !m-0 !w-full !text-sm font-bold uppercase" value="${extractionDestination.value}">
+                </div>
             </div>
         `,
+        icon: 'question',
         showCancelButton: true,
-        confirmButtonText: 'Mulai Bongkar Muatan',
+        confirmButtonText: 'Mulai Ekstrak Arsip',
         cancelButtonText: 'Batal',
+        confirmButtonColor: '#4f46e5',
         preConfirm: () => {
             return document.getElementById('swal-destination').value;
         }
@@ -1123,6 +1129,15 @@ const isVideo = (item) => {
     const nameExt = name.split('.').pop() || '';
     const videoExtensions = ['mp4', 'webm', 'ogg', 'mov', 'm4v', 'mkv'];
     return videoExtensions.includes(ext) || videoExtensions.includes(nameExt);
+};
+
+const isArchive = (item) => {
+    if (!item || item.is_folder) return false;
+    const ext = (item.file_type || '').toLowerCase().replace(/^\./, '');
+    const name = (item.file_name || '').toLowerCase();
+    const nameExt = name.split('.').pop() || '';
+    const archiveExtensions = ['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz'];
+    return archiveExtensions.includes(ext) || archiveExtensions.includes(nameExt);
 };
 
 const videoPlayerRef = ref(null);
@@ -2082,7 +2097,7 @@ onUnmounted(() => {
                     <div class="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-8 border-t-8 border-indigo-600">
                         <div class="text-center space-y-4">
                             <div class="inline-block p-4 bg-indigo-50 rounded-full animate-bounce"></div>
-                            <h3 class="font-black uppercase tracking-tighter text-lg text-indigo-900">Membongkar ZIP</h3>
+                            <h3 class="font-black uppercase tracking-tighter text-lg text-indigo-900">Membongkar Arsip (ZIP / RAR)</h3>
                             <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Target: {{ activeExtractItem?.file_name }}</p>
                             
                             <div class="relative pt-4">
@@ -2148,7 +2163,7 @@ onUnmounted(() => {
                                     @dragover.prevent="item.is_folder ? handleFolderDragOver($event, item) : null"
                                     @dragleave="item.is_folder ? handleFolderDragLeave($event, item) : null"
                                     @drop.prevent="item.is_folder ? handleFolderDrop($event, item) : null"
-                                    @dblclick="item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: item.id })) : (isExcel(item) ? openExcelEditor(item) : openPreview(item))"
+                                    @dblclick="item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: item.id })) : (isExcel(item) ? openExcelEditor(item) : (isArchive(item) ? handleExtract(item) : openPreview(item)))"
                                     @contextmenu.stop="openContextMenu($event, item)"
                                     :class="[
                                         selectedItemIds.includes(item.id) ? 'bg-blue-50/80 border-l-4 border-l-blue-600' : 'hover:bg-slate-50/80',
@@ -2179,6 +2194,7 @@ onUnmounted(() => {
                                                 <svg v-else-if="isExcel(item)" class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                                 <svg v-else-if="isPdf(item)" class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                                                 <svg v-else-if="isArw(item)" class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                <svg v-else-if="isArchive(item)" class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
                                                 <svg v-else class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                             </div>
                                             <div>
@@ -2194,12 +2210,15 @@ onUnmounted(() => {
                                                     <span v-else-if="isVideo(item)" class="px-2 py-0.5 text-[9px] bg-indigo-100 text-indigo-800 rounded-full font-bold uppercase border border-indigo-300">
                                                         VIDEO
                                                     </span>
+                                                    <span v-else-if="isArchive(item)" class="px-2 py-0.5 text-[9px] bg-indigo-100 text-indigo-800 rounded-full font-bold uppercase border border-indigo-300">
+                                                        ARSIP {{ (item.file_type || '').toUpperCase() }}
+                                                    </span>
                                                     <span v-if="item.is_folder && item.share_info?.is_active" class="px-2 py-0.5 text-[9px] bg-emerald-100 text-emerald-700 rounded-full font-bold uppercase border border-emerald-300 flex items-center gap-1">
                                                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                                                         Link Aktif
                                                     </span>
                                                 </div>
-                                                <p class="text-[10px] text-gray-400 font-bold uppercase">{{ item.is_folder ? 'Folder Strategis' : (isArw(item) ? 'Foto Sony RAW (Bisa Konversi ke JPG)' : (isVideo(item) ? 'Video Streaming (Bisa Putar Langsung)' : item.file_type)) }}</p>
+                                                <p class="text-[10px] text-gray-400 font-bold uppercase">{{ item.is_folder ? 'Folder Strategis' : (isArw(item) ? 'Foto Sony RAW (Bisa Konversi ke JPG)' : (isVideo(item) ? 'Video Streaming (Bisa Putar Langsung)' : (isArchive(item) ? 'Arsip Berkas (Bisa Ekstrak)' : item.file_type))) }}</p>
                                             </div>
                                         </div>
                                     </td>
@@ -2233,10 +2252,10 @@ onUnmounted(() => {
                                                     title="Edit Berkas Excel (Spreadsheet)">
                                                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-2h2v2zm0-4H7v-2h2v2zm0-4H7V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z"/></svg>
                                             </button>
-                                            <button v-if="!item.is_folder && (item.file_type?.toLowerCase() === 'zip' || item.file_name?.toLowerCase().endsWith('.zip'))" 
+                                            <button v-if="isArchive(item)" 
                                                     @click.stop="handleExtract(item)" 
                                                     class="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 p-2 rounded-lg transition cursor-pointer" 
-                                                    title="Ekstrak Paket ZIP">
+                                                    title="Ekstrak Arsip (ZIP / RAR)">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
                                             </button>
                                             <button v-if="!item.is_folder" 
@@ -2272,7 +2291,7 @@ onUnmounted(() => {
                              @dragover.prevent="item.is_folder ? handleFolderDragOver($event, item) : null"
                              @dragleave="item.is_folder ? handleFolderDragLeave($event, item) : null"
                              @drop.prevent="item.is_folder ? handleFolderDrop($event, item) : null"
-                             @dblclick="item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: item.id })) : (isExcel(item) ? openExcelEditor(item) : openPreview(item))"
+                             @dblclick="item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: item.id })) : (isExcel(item) ? openExcelEditor(item) : (isArchive(item) ? handleExtract(item) : openPreview(item)))"
                              @contextmenu.stop="openContextMenu($event, item)"
                              :class="[
                                  selectedItemIds.includes(item.id) ? 'ring-2 ring-blue-600 bg-blue-50/80 shadow-md' : 'bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md',
@@ -2351,14 +2370,14 @@ onUnmounted(() => {
                                     </span>
                                 </template>
 
-                                <template v-else-if="item.file_type === 'zip' || (item.file_name || '').endsWith('.zip')">
+                                <template v-else-if="isArchive(item)">
                                     <div class="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 shadow-xs group-hover:scale-110 transition duration-200">
                                         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                                         </svg>
                                     </div>
                                     <span class="absolute bottom-2 right-2 px-1.5 py-0.5 text-[8px] bg-amber-700 text-white rounded font-black uppercase shadow-xs">
-                                        ZIP
+                                        {{ (item.file_type || 'ZIP').toUpperCase() }}
                                     </span>
                                 </template>
 
@@ -2392,7 +2411,7 @@ onUnmounted(() => {
                              @dragover.prevent="item.is_folder ? handleFolderDragOver($event, item) : null"
                              @dragleave="item.is_folder ? handleFolderDragLeave($event, item) : null"
                              @drop.prevent="item.is_folder ? handleFolderDrop($event, item) : null"
-                             @dblclick="item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: item.id })) : (isExcel(item) ? openExcelEditor(item) : openPreview(item))"
+                             @dblclick="item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: item.id })) : (isExcel(item) ? openExcelEditor(item) : (isArchive(item) ? handleExtract(item) : openPreview(item)))"
                              @contextmenu.stop="openContextMenu($event, item)"
                              :class="[
                                  selectedItemIds.includes(item.id) ? 'ring-2 ring-blue-600 bg-blue-50/80 shadow-md' : 'bg-white border border-slate-200 hover:border-blue-400 hover:shadow-xs',
@@ -2435,7 +2454,7 @@ onUnmounted(() => {
                                 <template v-else-if="isVideo(item)">
                                     <svg class="w-7 h-7 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
                                 </template>
-                                <template v-else-if="item.file_type === 'zip' || (item.file_name || '').endsWith('.zip')">
+                                <template v-else-if="isArchive(item)">
                                     <svg class="w-7 h-7 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
                                 </template>
                                 <template v-else>
@@ -2458,7 +2477,7 @@ onUnmounted(() => {
                              @dragover.prevent="item.is_folder ? handleFolderDragOver($event, item) : null"
                              @dragleave="item.is_folder ? handleFolderDragLeave($event, item) : null"
                              @drop.prevent="item.is_folder ? handleFolderDrop($event, item) : null"
-                             @dblclick="item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: item.id })) : (isExcel(item) ? openExcelEditor(item) : openPreview(item))"
+                             @dblclick="item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: item.id })) : (isExcel(item) ? openExcelEditor(item) : (isArchive(item) ? handleExtract(item) : openPreview(item)))"
                              @contextmenu.stop="openContextMenu($event, item)"
                              :class="[
                                  selectedItemIds.includes(item.id) ? 'ring-2 ring-blue-600 bg-blue-50/80 shadow-xs' : 'bg-white border border-slate-200 hover:border-blue-400 hover:bg-slate-50/70',
@@ -2485,6 +2504,7 @@ onUnmounted(() => {
                                 <svg v-else-if="isExcel(item)" class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                 <svg v-else-if="isPdf(item)" class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                                 <svg v-else-if="isVideo(item)" class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                <svg v-else-if="isArchive(item)" class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
                                 <svg v-else class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                             </div>
 
@@ -2563,7 +2583,7 @@ onUnmounted(() => {
             
             <!-- 1. JIKA KLIK KANAN PADA ITEM SPESIFIK -->
             <template v-if="contextMenu.item">
-                <div @click="contextMenu.item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: contextMenu.item.id })) : (isExcel(contextMenu.item) ? openExcelEditor(contextMenu.item) : openPreview(contextMenu.item))" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
+                <div @click="contextMenu.item.is_folder ? $inertia.get(route('backup.explore', { id: pc.id, folder: contextMenu.item.id })) : (isExcel(contextMenu.item) ? openExcelEditor(contextMenu.item) : (isArchive(contextMenu.item) ? handleExtract(contextMenu.item) : openPreview(contextMenu.item)))" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
                     <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                     <span>BUKA ITEM</span>
                 </div>
@@ -2622,10 +2642,11 @@ onUnmounted(() => {
                     <span>EDIT FILE EXCEL</span>
                 </div>
                 
-                <div v-if="!contextMenu.item.is_folder && (contextMenu.item.file_type?.toLowerCase() === 'zip' || contextMenu.item.file_name?.toLowerCase().endsWith('.zip'))"
+                <!-- OPSI EKSTRAK ARSIP (ZIP / RAR) -->
+                <div v-if="isArchive(contextMenu.item)"
                      @click="handleExtract(contextMenu.item)" class="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white cursor-pointer flex items-center gap-3 transition font-black">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
-                    <span>EKSTRAK BERKAS (ZIP)</span>
+                    <span>EKSTRAK ARSIP (ZIP / RAR)</span>
                 </div>
                 
                 <div class="border-t my-1 border-slate-100"></div>
@@ -2695,7 +2716,7 @@ onUnmounted(() => {
         </div>
 
         <!-- MODAL PREVIEW DOKUMEN & FOTO (DILENGKAPI ZOOM IN/OUT, ROTASI & PROTEKSI ANTI-COPY KEAMANAN TINGGI) -->
-        <div v-if="previewUrl || isImageLoading" 
+        <div v-if="activePreviewItem || previewUrl || isImageLoading || isDocxLoading || isOfficeLoading" 
              @contextmenu.prevent=""
              class="fixed inset-0 z-[250] flex items-center justify-center bg-black/85 p-2 sm:p-4 backdrop-blur-sm">
             <div class="bg-white w-full max-w-6xl h-[92vh] rounded-[2rem] flex flex-col relative overflow-hidden shadow-2xl border-t-8"
