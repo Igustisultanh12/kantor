@@ -397,9 +397,30 @@ class UserController extends Controller
     }
 
     /**
+     * FITUR CETAK REKAP DATA PERSONEL PDF
+     */
+    public function printPdf(Request $request)
+    {
+        $users = User::where('id', '!=', auth()->id())
+            ->orderBy('role', 'asc')
+            ->orderBy('name', 'asc')
+            ->get();
+
+        $pdf = Pdf::loadView('pdf.users_report', [
+            'users' => $users,
+            'title' => 'REKAPITULASI OTORITAS AKSES PERSONEL',
+            'unit'  => 'DETASEMEN INTELIJEN KOARMADA II',
+            'date'  => now()->format('d/m/Y H:i')
+        ]);
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf->stream('Rekap_Personel_SINDEN.pdf');
+    }
+
+    /**
      * GENERATE TOKEN MANUAL DARI ADMIN
      */
-    public function generateToken(User $user)
+    public function generateToken(Request $request, User $user)
     {
         $token = strtoupper(Str::random(6));
         $expiresAt = now()->addMinutes(5);
@@ -418,10 +439,35 @@ class UserController extends Controller
             'ip_address'       => request()->ip(),
         ]);
 
-        return back()->with('flash', [
-            'token' => $token,
-            'message' => "Token untuk {$user->name} berhasil dibuat: {$token}"
-        ]);
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'token' => $token,
+                'message' => "Token untuk {$user->name} berhasil dibuat: {$token}",
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'pangkat' => $user->pangkat,
+                    'nrp' => $user->nrp,
+                ]
+            ]);
+        }
+
+        return back()
+            ->with('token', $token)
+            ->with('flash', [
+                'token' => $token,
+                'message' => "Token untuk {$user->name} berhasil dibuat: {$token}"
+            ])
+            ->with('message', "Token untuk {$user->name} berhasil dibuat: {$token}");
+    }
+
+    /**
+     * ALIAS UNTUK GENERATE TOKEN
+     */
+    public function generateResetToken(Request $request, User $user)
+    {
+        return $this->generateToken($request, $user);
     }
 
     /**
@@ -447,7 +493,62 @@ class UserController extends Controller
             'ip_address'       => $request->ip(),
         ]);
 
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'is_active' => $user->is_active,
+                'message' => 'Status akses berhasil diperbarui.'
+            ]);
+        }
+
         return back()->with('message', 'Status akses berhasil diperbarui.');
+    }
+
+    /**
+     * ALIAS UNTUK TOGGLE STATUS
+     */
+    public function toggleStatus(Request $request, User $user)
+    {
+        return $this->toggle($request, $user);
+    }
+
+    /**
+     * FITUR: ADMIN MENGUBAH PASSWORD PERSONEL SECARA LANGSUNG
+     */
+    public function changePassword(Request $request, User $user)
+    {
+        $request->validate([
+            'password' => 'required|string|min:6',
+        ], [
+            'password.required' => 'Password baru wajib diisi.',
+            'password.min'      => 'Password minimal 6 karakter.',
+        ]);
+
+        $user->update([
+            'password'             => Hash::make($request->password),
+            'must_change_password' => false,
+            'is_active'            => true,
+            'reset_token'          => null,
+            'token_expires_at'     => null,
+        ]);
+
+        AuditLog::create([
+            'user_id'          => auth()->id(),
+            'admin_name'       => auth()->user()->name,
+            'action'           => 'UBAH PASSWORD PERSONEL',
+            'target_personnel' => $user->name,
+            'description'      => "Admin " . auth()->user()->name . " mengubah password akun {$user->name} ({$user->nrp}) secara langsung.",
+            'ip_address'       => $request->ip(),
+        ]);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Password untuk {$user->name} berhasil diperbarui."
+            ]);
+        }
+
+        return back()->with('message', "Password untuk {$user->name} berhasil diperbarui.");
     }
 
     /**
@@ -456,12 +557,13 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         $request->validate([
-            'name'    => 'required|string|max:255',
-            'pangkat' => 'required|string',
-            'nrp'     => 'required|string|unique:users,nrp,' . $user->id,
-            'phone'   => 'nullable|string',
-            'email'   => 'required|email|unique:users,email,' . $user->id,
-            'role'    => 'nullable|string|in:admin,komandan,wadan,pasops,danunit1,danunit2,danunitteknis,kaurmintel,paurset,staf,personel,anggotasintel',
+            'name'     => 'required|string|max:255',
+            'pangkat'  => 'required|string',
+            'nrp'      => 'required|string|unique:users,nrp,' . $user->id,
+            'phone'    => 'nullable|string',
+            'email'    => 'required|email|unique:users,email,' . $user->id,
+            'role'     => 'nullable|string|in:admin,komandan,wadan,pasops,danunit1,danunit2,danunitteknis,kaurmintel,paurset,staf,personel,anggotasintel',
+            'password' => 'nullable|string|min:6',
         ]);
 
         $updateData = [
@@ -476,6 +578,11 @@ class UserController extends Controller
             $updateData['role'] = $request->role;
         }
 
+        if ($request->filled('password')) {
+            $updateData['password'] = Hash::make($request->password);
+            $updateData['must_change_password'] = false;
+        }
+
         $user->update($updateData);
 
         AuditLog::create([
@@ -483,7 +590,7 @@ class UserController extends Controller
             'admin_name'       => auth()->user()->name,
             'action'           => 'UPDATE PERSONEL',
             'target_personnel' => $user->name,
-            'description'      => "Memperbarui data profil {$user->name}",
+            'description'      => "Memperbarui data profil {$user->name}" . ($request->filled('password') ? " dan password akun" : ""),
             'ip_address'       => $request->ip(),
         ]);
 

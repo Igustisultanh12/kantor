@@ -66,7 +66,7 @@ class HandleInertiaRequests extends Middleware
                 'error'   => fn () => $request->session()->get('error'),
                 'info'    => fn () => $request->session()->get('info'),
                 'warning' => fn () => $request->session()->get('warning'),
-                'token'   => fn () => $request->session()->get('flash.token'),
+                'token'   => fn () => $request->session()->get('token') ?? $request->session()->get('flash.token') ?? (is_array($request->session()->get('flash')) ? ($request->session()->get('flash')['token'] ?? null) : null),
                 
                 // --- KOORDINAT BARU: Menangkap Kode Akses untuk Dashboard Admin ---
                 'generatedCode' => fn () => $request->session()->get('generatedCode'),

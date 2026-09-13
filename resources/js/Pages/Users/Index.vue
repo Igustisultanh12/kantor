@@ -64,6 +64,7 @@ const editForm = useForm({
     pangkat: '',
     nrp: '',
     phone: '',
+    password: '',
 });
 
 // Form untuk Tambah Personel Baru (Otomatis)
@@ -197,36 +198,167 @@ const submitAdd = () => {
 /**
  * RESET PASSWORD: Request Token
  */
-const requestToken = (user) => {
-    Swal.fire({
+const requestToken = async (user) => {
+    const result = await Swal.fire({
         title: 'REQUEST TOKEN?',
         text: `Generate token reset password untuk ${user.name}?`,
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#f59e0b',
-        confirmButtonText: 'YA, GENERATE'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            router.post(route('users.generate-token', user.id), {}, {
-                onSuccess: (page) => {
-                    const token = page.props.flash.token;
-                    if(token) {
-                        Swal.fire({
-                            title: 'TOKEN BERHASIL DIBUAT',
-                            html: `
-                                <div class="bg-indigo-50 p-6 rounded-3xl border-2 border-dashed border-indigo-200 my-4">
-                                    <div class="text-4xl font-black tracking-[0.3em] text-indigo-600">${token}</div>
-                                </div>
-                                <p class="text-[10px] uppercase font-bold text-gray-400">Berikan kode ini kepada personel.<br>Berlaku selama 5 menit.</p>
-                            `,
-                            icon: 'success',
-                            confirmButtonColor: '#4f46e5'
-                        });
+        cancelButtonColor: '#94a3b8',
+        confirmButtonText: 'YA, GENERATE',
+        cancelButtonText: 'BATAL'
+    });
+
+    if (result.isConfirmed) {
+        Swal.fire({
+            title: 'MEMPROSES...',
+            text: 'Sedang men-generate token reset password...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const res = await axios.post(route('users.generate-token', user.id));
+            const token = res.data?.token || res.data?.flash?.token;
+            if (token) {
+                Swal.fire({
+                    title: 'TOKEN BERHASIL DIBUAT',
+                    html: `
+                        <div class="bg-indigo-50 p-6 rounded-3xl border-2 border-dashed border-indigo-200 my-4 text-center">
+                            <p class="text-[11px] font-extrabold uppercase text-gray-500 mb-0.5">Personel: ${user.pangkat || ''} ${user.name}</p>
+                            <p class="text-[10px] font-bold text-gray-400 mb-3">NRP/NIP: ${user.nrp || '-'}</p>
+                            <div class="text-4xl font-black tracking-[0.3em] text-indigo-600 select-all cursor-pointer font-mono py-3 bg-white rounded-2xl shadow-inner border border-indigo-100">${token}</div>
+                        </div>
+                        <p class="text-[10px] uppercase font-bold text-gray-400">Berikan kode ini kepada personel.<br>Berlaku selama 5 menit untuk reset password.</p>
+                        <div class="mt-4 flex justify-center gap-2">
+                            <button type="button" id="copyTokenBtn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md inline-flex items-center gap-1.5 cursor-pointer">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                <span id="copyTokenText">SALIN TOKEN</span>
+                            </button>
+                        </div>
+                    `,
+                    icon: 'success',
+                    confirmButtonColor: '#4f46e5',
+                    confirmButtonText: 'TUTUP',
+                    didOpen: () => {
+                        const copyBtn = document.getElementById('copyTokenBtn');
+                        const copyText = document.getElementById('copyTokenText');
+                        if (copyBtn && copyText) {
+                            copyBtn.addEventListener('click', () => {
+                                navigator.clipboard.writeText(token).then(() => {
+                                    copyText.innerText = 'BERHASIL DISALIN!';
+                                    copyBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+                                    copyBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
+                                    setTimeout(() => {
+                                        copyText.innerText = 'SALIN TOKEN';
+                                        copyBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
+                                        copyBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+                                    }, 2500);
+                                }).catch(() => {
+                                    copyText.innerText = 'GAGAL SALIN';
+                                });
+                            });
+                        }
                     }
-                }
-            });
+                });
+            } else {
+                Swal.fire('BERHASIL', res.data?.message || 'Token berhasil dibuat.', 'success');
+            }
+        } catch (err) {
+            console.error(err);
+            const errMsg = err.response?.data?.message || 'Gagal generate token. Pastikan sistem terhubung.';
+            Swal.fire('GAGAL', errMsg, 'error');
+        }
+    }
+};
+
+/**
+ * FITUR: ADMIN UBAH PASSWORD PERSONEL LANGSUNG
+ */
+const openChangePasswordModal = async (user) => {
+    if (!user) return;
+    const { value: formValues } = await Swal.fire({
+        title: 'UBAH PASSWORD PERSONEL',
+        html: `
+            <div class="text-left mb-3">
+                <div class="bg-indigo-50/80 p-3.5 rounded-2xl border border-indigo-100 mb-4">
+                    <p class="text-[11px] font-black text-indigo-950 uppercase tracking-tight">${user.pangkat || ''} ${user.name}</p>
+                    <p class="text-[10px] font-bold text-indigo-600">NRP/NIP: ${user.nrp || '-'} | Email: ${user.email}</p>
+                </div>
+                <label class="block text-[10px] font-black uppercase text-gray-500 mb-1">Password Baru *</label>
+                <input id="swal-input-password" type="password" placeholder="Minimal 6 karakter" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3" />
+                
+                <label class="block text-[10px] font-black uppercase text-gray-500 mb-1">Konfirmasi Password Baru *</label>
+                <input id="swal-input-confirm" type="password" placeholder="Ulangi password baru" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                
+                <div class="mt-2 text-right">
+                    <button type="button" id="swal-toggle-pwd" class="text-[10px] text-indigo-600 font-bold hover:underline cursor-pointer">Lihat / Sembunyikan Password</button>
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonColor: '#4f46e5',
+        cancelButtonColor: '#94a3b8',
+        confirmButtonText: 'SIMPAN PASSWORD',
+        cancelButtonText: 'BATAL',
+        didOpen: () => {
+            const pwdInput = document.getElementById('swal-input-password');
+            const confirmInput = document.getElementById('swal-input-confirm');
+            const toggleBtn = document.getElementById('swal-toggle-pwd');
+            if (toggleBtn && pwdInput && confirmInput) {
+                toggleBtn.addEventListener('click', () => {
+                    const isPassword = pwdInput.type === 'password';
+                    pwdInput.type = isPassword ? 'text' : 'password';
+                    confirmInput.type = isPassword ? 'text' : 'password';
+                    toggleBtn.innerText = isPassword ? 'Sembunyikan Password' : 'Lihat Password';
+                });
+            }
+            if (pwdInput) pwdInput.focus();
+        },
+        preConfirm: () => {
+            const password = document.getElementById('swal-input-password').value;
+            const confirm = document.getElementById('swal-input-confirm').value;
+            if (!password) {
+                Swal.showValidationMessage('Password baru wajib diisi.');
+                return false;
+            }
+            if (password.length < 6) {
+                Swal.showValidationMessage('Password minimal 6 karakter.');
+                return false;
+            }
+            if (password !== confirm) {
+                Swal.showValidationMessage('Konfirmasi password tidak cocok.');
+                return false;
+            }
+            return { password };
         }
     });
+
+    if (formValues && formValues.password) {
+        Swal.fire({
+            title: 'MEMPERBARUI PASSWORD...',
+            text: `Sedang mengupdate password untuk ${user.name}...`,
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const res = await axios.post(route('users.change-password', user.id), {
+                password: formValues.password
+            });
+            Swal.fire({
+                title: 'BERHASIL!',
+                text: res.data?.message || `Password untuk ${user.name} berhasil diperbarui. Personel dapat login dengan password baru tersebut.`,
+                icon: 'success',
+                confirmButtonColor: '#4f46e5'
+            });
+        } catch (err) {
+            console.error(err);
+            const errMsg = err.response?.data?.message || err.response?.data?.errors?.password?.[0] || 'Gagal mengubah password.';
+            Swal.fire('GAGAL', errMsg, 'error');
+        }
+    }
 };
 
 /**
@@ -240,6 +372,7 @@ const startEdit = (user) => {
     editForm.pangkat = user.pangkat;
     editForm.nrp = user.nrp;
     editForm.phone = user.phone;
+    editForm.password = '';
     showEditModal.value = true;
 };
 
@@ -247,7 +380,12 @@ const submitEdit = () => {
     editForm.put(route('users.update', editForm.id), {
         onSuccess: () => {
             showEditModal.value = false;
+            editForm.password = '';
             Swal.fire('BERHASIL', 'Data personel telah diperbarui.', 'success');
+        },
+        onError: (err) => {
+            const msg = Object.values(err)[0] || 'Gagal memperbarui data personel.';
+            Swal.fire('GAGAL', msg, 'error');
         }
     });
 };
@@ -595,7 +733,11 @@ onUnmounted(() => {
                                         <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                                         <span>PDF</span>
                                     </button>
-                                    <button @click="requestToken(user)" class="px-3 py-2 bg-amber-100 text-amber-700 text-[8px] font-black uppercase rounded-lg hover:bg-amber-500 hover:text-white transition-all shadow-sm"> Req Token
+                                    <button @click="requestToken(user)" class="px-3 py-2 bg-amber-100 text-amber-700 text-[8px] font-black uppercase rounded-lg hover:bg-amber-500 hover:text-white transition-all shadow-sm" title="Generate Token Reset Password 6-Digit"> Req Token
+                                    </button>
+                                    <button @click="openChangePasswordModal(user)" class="px-2.5 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 text-[8px] font-black uppercase rounded-lg hover:bg-indigo-600 hover:text-white transition-all shadow-xs flex items-center gap-1 cursor-pointer" title="Ubah Password Akun Personel Secara Langsung">
+                                        <svg class="w-3 h-3 text-indigo-600 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+                                        <span>Ubah Pass</span>
                                     </button>
                                     <button @click="startConfirmation(user)" 
                                         :class="user.is_active ? 'border-rose-500 text-rose-500 hover:bg-rose-500 hover:text-white' : 'bg-indigo-600 text-white hover:bg-indigo-700'"class="px-5 py-2 font-black text-[9px] uppercase rounded-xl shadow-lg transition-all active:scale-95 border-2 border-transparent">
@@ -776,6 +918,13 @@ onUnmounted(() => {
                         <div class="col-span-2">
                             <label class="text-[9px] font-black text-gray-400 uppercase ml-2">WhatsApp</label>
                             <input v-model="editForm.phone" type="text" class="w-full bg-gray-50 border-none rounded-2xl p-4 text-[11px] font-bold focus:ring-2 focus:ring-indigo-500" />
+                        </div>
+                        <div class="col-span-2 pt-2 border-t border-gray-100">
+                            <label class="text-[9px] font-black text-gray-400 uppercase ml-2 flex items-center gap-1.5">
+                                <svg class="w-3 h-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+                                Password Baru (Opsional - Kosongkan jika tidak diubah)
+                            </label>
+                            <input v-model="editForm.password" type="password" placeholder="Ketik password baru jika ingin mengubah..." class="w-full bg-gray-50 border-none rounded-2xl p-4 text-[11px] font-bold focus:ring-2 focus:ring-indigo-500 mt-1" autocomplete="new-password" />
                         </div>
                     </div>
                     <div class="flex gap-4 pt-4">
@@ -1086,11 +1235,17 @@ onUnmounted(() => {
                 </div>
 
                 <!-- FOOTER MODAL (FIXED) -->
-                <div class="flex justify-between items-center pt-3 border-t border-slate-100 shrink-0">
-                    <button @click="startEdit(detailUser)" class="px-4 py-2.5 bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs uppercase rounded-xl transition flex items-center gap-1.5 cursor-pointer">
-                        <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                        <span>Ubah Profil / Peran</span>
-                    </button>
+                <div class="flex justify-between items-center pt-3 border-t border-slate-100 shrink-0 gap-2 flex-wrap">
+                    <div class="flex items-center gap-2">
+                        <button @click="startEdit(detailUser)" class="px-4 py-2.5 bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs uppercase rounded-xl transition flex items-center gap-1.5 cursor-pointer">
+                            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                            <span>Ubah Profil / Peran</span>
+                        </button>
+                        <button @click="openChangePasswordModal(detailUser)" class="px-4 py-2.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white font-bold text-xs uppercase rounded-xl transition flex items-center gap-1.5 cursor-pointer border border-indigo-200 shadow-xs" title="Ubah Password Personel Secara Langsung">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+                            <span>Ubah Password</span>
+                        </button>
+                    </div>
                     <button @click="showDetailModal = false" class="px-6 py-2.5 bg-indigo-600 text-white font-bold text-xs uppercase rounded-xl hover:bg-indigo-700 transition cursor-pointer shadow-md shadow-indigo-500/20">
                         Tutup
                     </button>
