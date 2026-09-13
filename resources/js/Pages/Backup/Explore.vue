@@ -1192,6 +1192,162 @@ const convertArw = async (item, saveToFolder = true) => {
     }
 };
 
+const isDocx = (item) => {
+    if (!item || item.is_folder) return false;
+    const ext = (item.file_type || '').toLowerCase();
+    const name = (item.file_name || '').toLowerCase();
+    return ext === 'docx' || name.endsWith('.docx');
+};
+
+const docxContainerRef = ref(null);
+const isDocxLoading = ref(false);
+const docxLoadingStatus = ref('');
+const docxDownloadProgress = ref(0);
+
+const loadDocxLibraries = () => {
+    return new Promise(async (resolve, reject) => {
+        if (window.docx) return resolve(window.docx);
+        try {
+            if (!window.JSZip) {
+                await new Promise((res, rej) => {
+                    const existing = document.getElementById('jszip-script');
+                    if (existing) {
+                        existing.addEventListener('load', res);
+                        existing.addEventListener('error', rej);
+                        return;
+                    }
+                    const s = document.createElement('script');
+                    s.id = 'jszip-script';
+                    s.src = '/js/jszip.min.js';
+                    s.onload = res;
+                    s.onerror = () => {
+                        const cdn = document.createElement('script');
+                        cdn.src = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
+                        cdn.onload = res;
+                        cdn.onerror = rej;
+                        document.head.appendChild(cdn);
+                    };
+                    document.head.appendChild(s);
+                });
+            }
+            await new Promise((res, rej) => {
+                const existing = document.getElementById('docx-preview-script');
+                if (existing) {
+                    existing.addEventListener('load', () => resolve(window.docx));
+                    existing.addEventListener('error', rej);
+                    return;
+                }
+                const s = document.createElement('script');
+                s.id = 'docx-preview-script';
+                s.src = '/js/docx-preview.min.js';
+                s.onload = () => resolve(window.docx);
+                s.onerror = () => {
+                    const cdn = document.createElement('script');
+                    cdn.src = 'https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js';
+                    cdn.onload = () => resolve(window.docx);
+                    cdn.onerror = rej;
+                    document.head.appendChild(cdn);
+                };
+                document.head.appendChild(s);
+            });
+        } catch (e) {
+            reject(e);
+        }
+    });
+};
+
+const renderDocxPreview = async (item) => {
+    previewType.value = 'docx';
+    isDocxLoading.value = true;
+    docxLoadingStatus.value = 'Menyiapkan pratinjau dokumen...';
+    docxDownloadProgress.value = 0;
+
+    try {
+        const docxLib = await loadDocxLibraries();
+        docxLoadingStatus.value = 'Mengunduh Dokumen Word...';
+
+        const res = await axios.get(route('backup.download', item.id), {
+            responseType: 'arraybuffer',
+            onDownloadProgress: (progressEvent) => {
+                if (progressEvent.total) {
+                    const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    docxDownloadProgress.value = percent;
+                    const loadedMB = (progressEvent.loaded / (1024 * 1024)).toFixed(1);
+                    const totalMB = (progressEvent.total / (1024 * 1024)).toFixed(1);
+                    docxLoadingStatus.value = `Mengunduh Dokumen Word... ${percent}% (${loadedMB} MB / ${totalMB} MB)`;
+                } else {
+                    const loadedMB = (progressEvent.loaded / (1024 * 1024)).toFixed(1);
+                    docxLoadingStatus.value = `Mengunduh Dokumen Word... (${loadedMB} MB)`;
+                }
+            }
+        });
+
+        docxLoadingStatus.value = 'Merender Tampilan Dokumen Word...';
+        await nextTick();
+
+        if (docxContainerRef.value) {
+            docxContainerRef.value.innerHTML = '';
+            await docxLib.renderAsync(res.data, docxContainerRef.value, null, {
+                className: 'docx-preview',
+                inWrapper: true,
+                ignoreWidth: false,
+                ignoreHeight: false,
+                breakPages: true,
+            });
+        }
+    } catch (err) {
+        console.warn('Render docx di peramban gagal, beralih ke pratinjau konversi server:', err);
+        previewType.value = 'office';
+        previewUrl.value = route('backup.view-office', item.id);
+    } finally {
+        isDocxLoading.value = false;
+    }
+};
+
+const downloadItem = (item) => {
+    if (!item) return;
+    closeContextMenu();
+
+    if (selectedItemIds.value.length > 1 && selectedItemIds.value.includes(item.id)) {
+        downloadSelectedZip();
+        return;
+    }
+
+    if (item.is_folder) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = route('backup.bulk-download-zip');
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (csrfToken) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+        }
+
+        const pcInput = document.createElement('input');
+        pcInput.type = 'hidden';
+        pcInput.name = 'pc_id';
+        pcInput.value = props.pc.id;
+        form.appendChild(pcInput);
+
+        const idInput = document.createElement('input');
+        idInput.type = 'hidden';
+        idInput.name = 'ids[]';
+        idInput.value = item.id;
+        form.appendChild(idInput);
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+        return;
+    }
+
+    window.location.href = route('backup.download', item.id);
+};
+
 const openPreview = async (item) => {
     if (item.is_folder) return; 
     activePreviewItem.value = item;
@@ -1213,6 +1369,8 @@ const openPreview = async (item) => {
     } else if (ext === 'pdf') {
         previewType.value = 'pdf';
         previewUrl.value = item.preview_url;
+    } else if (isDocx(item)) {
+        await renderDocxPreview(item);
     } else if (officeExts.includes(ext)) {
         previewType.value = 'office';
         previewUrl.value = route('backup.view-office', item.id);
@@ -1235,6 +1393,12 @@ const closePreview = () => {
     previewUrl.value = null;
     previewType.value = null;
     activePreviewItem.value = null;
+    isDocxLoading.value = false;
+    docxDownloadProgress.value = 0;
+    docxLoadingStatus.value = '';
+    if (docxContainerRef.value) {
+        docxContainerRef.value.innerHTML = '';
+    }
     resetZoomAndRotate();
 };
 
@@ -2398,6 +2562,12 @@ onUnmounted(() => {
                     <span>BUKA ITEM</span>
                 </div>
 
+                <!-- OPSI DOWNLOAD (UNDUH) PADA KLIK KANAN -->
+                <div @click="downloadItem(contextMenu.item)" class="px-4 py-2 hover:bg-emerald-600 hover:text-white cursor-pointer flex items-center gap-3 transition text-emerald-700 font-black">
+                    <svg class="w-4 h-4 text-emerald-600 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    <span>DOWNLOAD (UNDUH)</span>
+                </div>
+
                 <div class="border-t my-1 border-slate-100"></div>
 
                 <!-- Jika Item ini Adalah Folder dan Ada Item di Clipboard: Opsi Tempel ke Dalam Folder Ini -->
@@ -2484,6 +2654,14 @@ onUnmounted(() => {
                     <span>BATALKAN SALIN / POTONG</span>
                 </div>
 
+                <!-- OPSI UNDUH BULK ZIP JIKA ADA ITEM TERPILIH -->
+                <div v-if="selectedItemIds.length > 0"
+                     @click="downloadSelectedZip()"
+                     class="px-4 py-2 bg-emerald-50 text-emerald-900 hover:bg-emerald-600 hover:text-white cursor-pointer flex items-center gap-3 transition font-black">
+                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    <span>UNDUH {{ selectedItemIds.length }} ITEM TERPILIH (ZIP)</span>
+                </div>
+
                 <div v-if="clipboard.items.length > 0" class="border-t my-1 border-slate-100"></div>
 
                 <div @click="createFolder" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
@@ -2542,9 +2720,12 @@ onUnmounted(() => {
                                 <span v-else-if="previewType === 'video'" class="px-2 py-0.5 text-[9px] bg-indigo-100 text-indigo-800 rounded-full font-bold uppercase border border-indigo-300 whitespace-nowrap">
                                     Streaming Video (HTTP 206)
                                 </span>
+                                <span v-else-if="previewType === 'docx'" class="px-2 py-0.5 text-[9px] bg-blue-100 text-blue-800 rounded-full font-bold uppercase border border-blue-300 whitespace-nowrap">
+                                    Word Document (Render Klien)
+                                </span>
                             </div>
                             <p class="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase">
-                                {{ previewType === 'arw' ? 'Sensor Sony RAW • Pratinjau Terenkripsi' : (previewType === 'video' ? 'Pemutaran Video Langsung • Hemat Bandwidth & Enteng' : 'Pratinjau Dokumen Terproteksi SINDEN') }}
+                                {{ previewType === 'arw' ? 'Sensor Sony RAW • Pratinjau Terenkripsi' : (previewType === 'video' ? 'Pemutaran Video Langsung • Hemat Bandwidth & Enteng' : (previewType === 'docx' ? 'Pratinjau Instan Word • Diolah di Peramban' : 'Pratinjau Dokumen Terproteksi SINDEN')) }}
                             </p>
                         </div>
                     </div>
@@ -2624,6 +2805,17 @@ onUnmounted(() => {
                             <span>Unduh Video</span>
                         </a>
 
+                        <!-- Unduh Berkas Dokumen / PDF / Word / Umum Langsung -->
+                        <a v-if="activePreviewItem && !isArw(activePreviewItem) && !isVideo(activePreviewItem)"
+                           :href="route('backup.download', activePreviewItem.id)"
+                           class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+                           title="Unduh berkas asli ke perangkat">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            <span>Unduh Berkas</span>
+                        </a>
+
                         <button v-if="activePreviewItem && isExcel(activePreviewItem)" 
                                 @click="const itm = activePreviewItem; closePreview(); openExcelEditor(itm);" 
                                 class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold text-xs transition shadow-sm flex items-center gap-2 cursor-pointer">
@@ -2672,6 +2864,25 @@ onUnmounted(() => {
                         </div>
                     </div>
 
+                    <!-- Pratinjau Dokumen Word .docx (Client-Side Rendering via docx-preview) -->
+                    <div v-else-if="previewType === 'docx'" class="w-full h-full flex flex-col relative bg-slate-900 overflow-hidden rounded-lg">
+                        <!-- Loading & Progress Bar -->
+                        <div v-if="isDocxLoading" class="absolute inset-0 z-20 bg-slate-950/85 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-white select-none">
+                            <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                            <h4 class="font-bold text-sm mb-1 text-slate-200">{{ docxLoadingStatus }}</h4>
+                            <div class="w-72 max-w-full bg-slate-800 rounded-full h-2.5 overflow-hidden mt-2 border border-slate-700">
+                                <div class="bg-gradient-to-r from-blue-500 to-indigo-500 h-full rounded-full transition-all duration-200" :style="{ width: `${docxDownloadProgress}%` }"></div>
+                            </div>
+                            <span class="text-xs text-slate-400 mt-1.5 font-mono font-bold">{{ docxDownloadProgress }}%</span>
+                            <p class="text-[11px] text-slate-400 mt-3 text-center">Memproses dan menampilkan tata letak dokumen langsung di peramban...</p>
+                        </div>
+
+                        <!-- Wadah Kontainer Render DOCX (Scrollable) -->
+                        <div class="flex-1 w-full h-full overflow-y-auto overflow-x-auto p-2 sm:p-6 bg-slate-700/50 flex justify-center">
+                            <div ref="docxContainerRef" class="docx-preview-container max-w-4xl w-full bg-white shadow-2xl rounded-sm min-h-[500px]"></div>
+                        </div>
+                    </div>
+
                     <!-- Gambar Aman (Menggunakan In-Memory Object Blob, Anti-Drag, Anti-Right-Click) -->
                     <img v-else-if="(previewType === 'image' || previewType === 'arw') && previewUrl" 
                          :src="previewUrl" 
@@ -2685,7 +2896,7 @@ onUnmounted(() => {
                          }" 
                          alt="Pratinjau Foto SINDEN" />
                     
-                    <iframe v-if="previewType === 'pdf' || previewType === 'office'" :src="previewUrl" class="w-full h-full border-none bg-white rounded-lg"></iframe>
+                    <iframe v-else-if="previewType === 'pdf' || previewType === 'office'" :src="previewUrl" class="w-full h-full border-none bg-white rounded-lg"></iframe>
 
                     <!-- Badge Keterangan Kualitas untuk ARW di pojok bawah -->
                     <div v-if="previewType === 'arw'" class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md text-amber-300 text-[11px] font-bold px-4 py-1.5 rounded-full border border-amber-500/40 flex items-center gap-2 shadow-xl pointer-events-none">
@@ -3265,5 +3476,14 @@ onUnmounted(() => {
 }
 .transition-all {
     transition: all 0.5s ease-in-out;
+}
+:deep(.docx-wrapper) {
+    background: transparent !important;
+    padding: 0 !important;
+}
+:deep(.docx-wrapper > section.docx) {
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+    margin-bottom: 20px !important;
+    border-radius: 4px !important;
 }
 </style>

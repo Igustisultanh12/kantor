@@ -268,32 +268,95 @@ class BackupController extends Controller
     }
 
     /**
-     * OPERASI KONVERSI OFFICE KE PDF (LIBREOFFICE LOKAL HEADLESS)
+     * OPERASI KONVERSI OFFICE KE PDF DENGAN DEKRIPSI & CACHING INSTAN
      */
     public function viewOffice($id)
     {
-        $item = Backup::findOrFail($id);
-        $filePath = storage_path('app/public/' . $item->file_path);
-        $outputDir = storage_path('app/public/temp_pdf/');
+        $backup = Backup::findOrFail($id);
 
-        if (!file_exists($outputDir)) {
-            mkdir($outputDir, 0777, true);
+        $user = Auth::user();
+        $pc = Pc::findOrFail($backup->pc_id);
+        if ($pc->user_id !== $user->id && $user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
+            abort(403, 'Akses Ditolak: Anda tidak memiliki otoritas atas berkas PC ini.');
         }
 
-        $pdfName = pathinfo($item->file_name, PATHINFO_FILENAME) . '_' . time() . '.pdf';
-        $command = "libreoffice --headless --convert-to pdf --outdir " . escapeshellarg($outputDir) . " " . escapeshellarg($filePath);
-        shell_exec($command);
-
-        $originalName = pathinfo($item->file_name, PATHINFO_FILENAME);
-        $expectedPdfPath = $outputDir . $originalName . '.pdf';
-        $finalPdfPath = $outputDir . $pdfName;
-
-        if (file_exists($expectedPdfPath)) {
-            rename($expectedPdfPath, $finalPdfPath);
-            return response()->file($finalPdfPath)->deleteFileAfterSend(true);
+        if ($backup->is_folder) {
+            abort(400, 'Folder tidak dapat dipratinjau.');
         }
 
-        return abort(404, "Gagal mengonversi dokumen.");
+        $fullPath = FileSecurityService::verifySafeStoragePath($backup->file_path);
+        if (!file_exists($fullPath)) {
+            abort(404, 'Berkas fisik tidak ditemukan di server.');
+        }
+
+        $cacheDir = storage_path('app/public/office_cache');
+        if (!file_exists($cacheDir)) {
+            @mkdir($cacheDir, 0777, true);
+        }
+
+        $cacheKey = 'office_' . $backup->id . '_' . $backup->file_size . '.pdf';
+        $cachedPdf = $cacheDir . '/' . $cacheKey;
+
+        // Jika cache PDF sudah ada dan valid, langsung kirim dengan cepat
+        if (file_exists($cachedPdf) && filesize($cachedPdf) > 100) {
+            return response()->file($cachedPdf, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="' . pathinfo($backup->file_name, PATHINFO_FILENAME) . '.pdf"'
+            ]);
+        }
+
+        // Dekripsi berkas sementara dengan ekstensi aslinya agar LibreOffice mengenali formatnya
+        $ext = strtolower(pathinfo($backup->file_name, PATHINFO_EXTENSION) ?: $backup->file_type ?: 'docx');
+        $tempDecDir = storage_path('app/temp_dec');
+        if (!file_exists($tempDecDir)) {
+            @mkdir($tempDecDir, 0777, true);
+        }
+        $tempPlainFile = $tempDecDir . '/dec_' . uniqid() . '.' . $ext;
+
+        if (FileSecurityService::isEncrypted($fullPath)) {
+            $createdTmp = FileSecurityService::createDecryptedTempFile($fullPath);
+            if ($createdTmp && file_exists($createdTmp)) {
+                @rename($createdTmp, $tempPlainFile);
+            } else {
+                @copy($fullPath, $tempPlainFile);
+            }
+        } else {
+            @copy($fullPath, $tempPlainFile);
+        }
+
+        try {
+            $tempOutDir = storage_path('app/temp_out_' . uniqid());
+            @mkdir($tempOutDir, 0777, true);
+
+            $command = "libreoffice --headless --convert-to pdf --outdir " . escapeshellarg($tempOutDir) . " " . escapeshellarg($tempPlainFile) . " 2>&1";
+            @exec($command, $out, $ret);
+
+            if (file_exists($tempPlainFile)) {
+                @unlink($tempPlainFile);
+            }
+
+            $generatedPdfs = glob($tempOutDir . '/*.pdf');
+            if (!empty($generatedPdfs) && filesize($generatedPdfs[0]) > 100) {
+                copy($generatedPdfs[0], $cachedPdf);
+                @unlink($generatedPdfs[0]);
+                @rmdir($tempOutDir);
+
+                return response()->file($cachedPdf, [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . pathinfo($backup->file_name, PATHINFO_FILENAME) . '.pdf"'
+                ]);
+            }
+            @rmdir($tempOutDir);
+        } catch (\Exception $e) {
+            Log::warning("Gagal konversi office ID {$id} ke PDF: " . $e->getMessage());
+        } finally {
+            if (file_exists($tempPlainFile)) {
+                @unlink($tempPlainFile);
+            }
+        }
+
+        // Fallback jika LibreOffice tidak tersedia / gagal: langsung arahkan ke unduhan
+        return redirect()->route('backup.download', $backup->id);
     }
 
     /**
