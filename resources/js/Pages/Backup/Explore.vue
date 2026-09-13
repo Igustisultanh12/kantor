@@ -1386,11 +1386,13 @@ const openPreview = async (item) => {
         previewUrl.value = route('backup.preview-file', item.id);
         isOfficeLoading.value = true;
         officeLoadingMessage.value = 'Memuat dokumen PDF...';
-    } else if (isDocx(item) || officeExts.includes(ext)) {
+    } else if (isDocx(item)) {
+        await renderDocxPreview(item);
+    } else if (officeExts.includes(ext)) {
         previewType.value = 'office';
         previewUrl.value = route('backup.view-office', item.id);
         isOfficeLoading.value = true;
-        officeLoadingMessage.value = 'Menyiapkan pratinjau dokumen...';
+        officeLoadingMessage.value = 'Menyiapkan pratinjau dokumen di server...';
     } else {
         return window.location.href = route('backup.download', item.id);
     }
@@ -2715,7 +2717,7 @@ onUnmounted(() => {
 
         <!-- MODAL PREVIEW DOKUMEN & FOTO (IDENTIK DENGAN ARSIP SURAT) -->
         <Teleport to="body">
-            <div v-if="activePreviewItem || previewUrl || isImageLoading || isOfficeLoading" 
+            <div v-if="activePreviewItem || previewUrl || isImageLoading || isDocxLoading || isOfficeLoading" 
                  class="fixed inset-0 z-[250] flex items-center justify-center p-2 sm:p-4">
                 <div class="fixed inset-0 bg-black/80 backdrop-blur-sm" @click="closePreview"></div>
                 
@@ -2756,14 +2758,34 @@ onUnmounted(() => {
                             </a>
                         </div>
 
-                        <!-- 1. Pratinjau Dokumen PDF & Dokumen Office (.docx, .doc, .xlsx, .pptx) Menggunakan PDF Reader Bawaan Browser -->
+                        <!-- 1. Pratinjau Dokumen PDF & Dokumen Office (.pdf, .doc, .xlsx, .pptx) Menggunakan PDF Reader Bawaan Browser -->
                         <iframe v-if="previewType === 'pdf' || previewType === 'office'" 
                                 :src="previewUrl" 
                                 @load="isOfficeLoading = false" 
                                 class="flex-1 w-full h-full border-none bg-gray-200">
                         </iframe>
 
-                        <!-- 2. Pratinjau Gambar / Foto / Sony RAW -->
+                        <!-- 2. Pratinjau Dokumen Word (.docx) Cepat & Akurat via docx-preview -->
+                        <div v-else-if="previewType === 'docx'" class="flex-1 w-full h-full overflow-y-auto overflow-x-auto p-3 sm:p-6 bg-gray-200 flex justify-center relative">
+                            <!-- Loading Overlay Dokumen Word -->
+                            <div v-if="isDocxLoading" class="absolute inset-0 z-20 bg-slate-900/80 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-white select-none">
+                                <div class="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+                                <h4 class="font-bold text-xs uppercase tracking-wider text-slate-200">{{ docxLoadingStatus || 'Menyiapkan dokumen Word...' }}</h4>
+                                <div class="w-72 max-w-full bg-slate-800 rounded-full h-2 overflow-hidden mt-2 border border-slate-700">
+                                    <div class="bg-indigo-500 h-full rounded-full transition-all duration-200" :style="{ width: `${docxDownloadProgress}%` }"></div>
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-2 text-center max-w-sm">Sedang merender tata letak dokumen Word langsung di peramban...</p>
+                                <a v-if="activePreviewItem" :href="route('backup.download', activePreviewItem.id)" 
+                                   class="mt-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-md">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                    <span>Unduh Berkas Langsung</span>
+                                </a>
+                            </div>
+
+                            <div ref="docxContainerRef" class="docx-preview-container max-w-4xl w-full bg-white shadow-xl rounded-xs p-4 sm:p-8 min-h-[90vh]"></div>
+                        </div>
+
+                        <!-- 3. Pratinjau Gambar / Foto / Sony RAW -->
                         <div v-else-if="previewType === 'image' || previewType === 'arw'" class="flex-1 w-full bg-slate-950 flex flex-col items-center justify-center p-4 relative overflow-hidden select-none">
                             <div v-if="isImageLoading" class="flex flex-col items-center gap-3 text-slate-300">
                                 <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>

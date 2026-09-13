@@ -329,12 +329,12 @@ class BackupController extends Controller
             $tempOutDir = storage_path('app/temp_out_' . uniqid());
             @mkdir($tempOutDir, 0777, true);
 
-            $command = "libreoffice --headless --convert-to pdf --outdir " . escapeshellarg($tempOutDir) . " " . escapeshellarg($tempPlainFile) . " 2>&1";
+            $command = "export HOME=/tmp && libreoffice --headless --invisible --nologo --nodefault --nofirststartwizard -env:UserInstallation=file:///tmp/libo_user_" . uniqid() . " --convert-to pdf --outdir " . escapeshellarg($tempOutDir) . " " . escapeshellarg($tempPlainFile) . " 2>&1";
             @exec($command, $out, $ret);
 
             $generatedPdfs = glob($tempOutDir . '/*.pdf');
             if (empty($generatedPdfs)) {
-                $commandSoffice = "soffice --headless --convert-to pdf --outdir " . escapeshellarg($tempOutDir) . " " . escapeshellarg($tempPlainFile) . " 2>&1";
+                $commandSoffice = "export HOME=/tmp && soffice --headless --invisible --nologo --nodefault --nofirststartwizard -env:UserInstallation=file:///tmp/libo_user_" . uniqid() . " --convert-to pdf --outdir " . escapeshellarg($tempOutDir) . " " . escapeshellarg($tempPlainFile) . " 2>&1";
                 @exec($commandSoffice, $outSoffice, $retSoffice);
                 $generatedPdfs = glob($tempOutDir . '/*.pdf');
             }
@@ -363,8 +363,13 @@ class BackupController extends Controller
             }
         }
 
-        // Fallback jika LibreOffice tidak tersedia / gagal: langsung arahkan ke unduhan
-        return redirect()->route('backup.download', $backup->id);
+        // Jangan redirect ke unduhan di dalam iframe! Kembalikan tampilan HTML informatif agar iframe selesai memuat
+        return response('<div style="font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#f8fafc;color:#1e293b;text-align:center;padding:24px;">' .
+            '<svg style="width:48px;height:48px;color:#64748b;margin-bottom:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>' .
+            '<h3 style="margin:0 0 8px 0;font-size:15px;font-weight:800;text-transform:uppercase;">Pratinjau Server Belum Tersedia</h3>' .
+            '<p style="font-size:12px;color:#64748b;max-width:380px;margin:0 0 16px 0;line-height:1.5;">Dokumen ini belum dapat dikonversi ke PDF otomatis di server. Silakan klik tombol di bawah untuk mengunduh berkas langsung.</p>' .
+            '<a href="' . route('backup.download', $backup->id) . '" style="padding:10px 20px;background:#059669;color:#fff;text-decoration:none;border-radius:10px;font-weight:700;font-size:12px;display:inline-flex;align-items:center;gap:8px;">Unduh Berkas Langsung</a>' .
+            '</div>', 200, ['Content-Type' => 'text/html']);
     }
 
     /**
