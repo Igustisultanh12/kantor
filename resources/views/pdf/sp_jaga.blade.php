@@ -50,7 +50,11 @@
     <title>Surat Perintah Jaga - {{ $nomorSprinBaku }}</title>
     <style>
         @page {
-            margin: 0.6cm 1.5cm 0.6cm 1.5cm;
+            margin-top: 1.5cm;
+            margin-right: 1.5cm;
+            margin-bottom: 2cm;
+            margin-left: 1.5cm;
+            margin: 1.5cm 1.5cm 2cm 1.5cm;
             size: 215mm 330mm portrait; /* Format F4 / Folio Resmi Kedinasan TNI */
         }
 
