@@ -21,6 +21,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Set Standar Locale Indonesia untuk Tanggal & Waktu (Baku)
+        \Carbon\Carbon::setLocale('id');
+        \Illuminate\Support\Carbon::setLocale('id');
+        setlocale(LC_TIME, 'id_ID.utf8', 'id_ID', 'id', 'indonesian');
+
         /**
          * SOLUSI MIXED CONTENT
          * Memaksa semua URL aset (JS/CSS) menggunakan HTTPS agar tidak diblokir browser.

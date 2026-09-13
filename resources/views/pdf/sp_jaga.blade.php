@@ -76,6 +76,29 @@
     </style>
 </head>
 <body>
+    @php
+        $bulanBaku = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+        ];
+
+        $formatTglBaku = function($date) use ($bulanBaku) {
+            if (!$date) return '-';
+            $c = \Carbon\Carbon::parse($date);
+            $m = (int)$c->format('n');
+            $bln = $bulanBaku[$m] ?? $c->format('F');
+            return $c->format('j') . ' ' . $bln . ' ' . $c->format('Y');
+        };
+
+        $blnAngka = (int)($spJaga->bulan ?? 1);
+        $namaBulanBaku = $bulanBaku[$blnAngka] ?? 'Januari';
+        $namaBulanTahun = strtoupper($namaBulanBaku . ' ' . ($spJaga->tahun ?? 2026));
+
+        $tmtMulai = $spJaga->tmt_mulai ? \Carbon\Carbon::parse($spJaga->tmt_mulai)->format('d') : '01';
+        $tmtSelesai = $spJaga->tmt_selesai ? $formatTglBaku($spJaga->tmt_selesai) : ('30 ' . $namaBulanBaku . ' ' . ($spJaga->tahun ?? 2026));
+        $tglSuratBaku = $spJaga->tanggal_surat ? $formatTglBaku($spJaga->tanggal_surat) : ('30 ' . $namaBulanBaku . ' ' . ($spJaga->tahun ?? 2026));
+    @endphp
 
     <!-- ========================================================================= -->
     <!-- HALAMAN 1: SURAT PERINTAH (SP JAGA UTAMA)                                -->
@@ -155,12 +178,8 @@
                             </td>
                         </tr>
                         <tr>
-                            <td style="vertical-align: top; padding-bottom: 6px;">2.</td>
+                            <td style="width: 25px; vertical-align: top; padding-bottom: 6px;">2.</td>
                             <td style="vertical-align: top; text-align: justify; padding-bottom: 6px; padding-left: 8px;">
-                                @php
-                                    $tmtMulai = $spJaga->tmt_mulai ? \Carbon\Carbon::parse($spJaga->tmt_mulai)->isoFormat('DD') : '01';
-                                    $tmtSelesai = $spJaga->tmt_selesai ? \Carbon\Carbon::parse($spJaga->tmt_selesai)->isoFormat('D MMMM Y') : '30 September 2026';
-                                @endphp
                                 Pelaksanaan TMT {{ $tmtMulai }} s.d. {{ $tmtSelesai }}
                             </td>
                         </tr>
@@ -201,7 +220,7 @@
                             <tr>
                                 <td>pada tanggal</td>
                                 <td>:</td>
-                                <td style="padding-left: 10px;">{{ $spJaga->tanggal_surat ? \Carbon\Carbon::parse($spJaga->tanggal_surat)->isoFormat('D MMMM Y') : '30 Agustus 2026' }}</td>
+                                <td style="padding-left: 10px;">{{ $tglSuratBaku }}</td>
                             </tr>
                         </table>
                         <div style="border-bottom: 1px solid #000; margin-bottom: 4px;"></div>
@@ -267,7 +286,7 @@
                             <tr>
                                 <td style="vertical-align: top;">Tanggal</td>
                                 <td style="vertical-align: top;">:</td>
-                                <td style="padding-left: 10px;">{{ $spJaga->tanggal_surat ? \Carbon\Carbon::parse($spJaga->tanggal_surat)->isoFormat('D MMMM Y') : '30 Agustus 2026' }}</td>
+                                <td style="padding-left: 10px;">{{ $tglSuratBaku }}</td>
                             </tr>
                         </table>
                         <div style="border-bottom: 1px solid #000; margin-top: 3px;"></div>
@@ -277,9 +296,6 @@
         </table>
 
         <!-- Judul Lampiran 1 (Font 12pt Bold) -->
-        @php
-            $namaBulanTahun = strtoupper(\Carbon\Carbon::createFromDate($spJaga->tahun, $spJaga->bulan, 1)->isoFormat('MMMM Y'));
-        @endphp
         <div style="text-align: center; margin-bottom: 12px;">
             <div style="font-size: 12pt; font-weight: bold; text-transform: uppercase;">
                 DAFTAR NAMA PERWIRA JAGA SINTEL KODAERAL V
@@ -492,7 +508,7 @@
                             <tr>
                                 <td>pada tanggal</td>
                                 <td>:</td>
-                                <td style="padding-left: 10px;">{{ $spJaga->tanggal_surat ? \Carbon\Carbon::parse($spJaga->tanggal_surat)->isoFormat('D MMMM Y') : '30 Agustus 2026' }}</td>
+                                <td style="padding-left: 10px;">{{ $tglSuratBaku }}</td>
                             </tr>
                         </table>
                         <div style="border-bottom: 1px solid #000; margin-bottom: 4px;"></div>

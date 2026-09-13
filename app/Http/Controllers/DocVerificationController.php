@@ -99,7 +99,13 @@ class DocVerificationController extends Controller
             $pNrp = ($pasopsUser && $pasopsUser->nrp) ? 'NRP ' . $pasopsUser->nrp : ($spJaga->penandatangan_pangkat_nrp ?: 'NRP 17456/P');
             $pRankNrp = str_contains($pNrp, $pRank) ? $pNrp : "{$pRank} {$pNrp}";
 
-            $namaBulanTahun = strtoupper(Carbon::createFromDate($spJaga->tahun, $spJaga->bulan, 1)->isoFormat('MMMM Y'));
+            $bulanIndoList = [
+                1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+                5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+                9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+            ];
+            $blnNamaBaku = $bulanIndoList[(int)$spJaga->bulan] ?? 'Januari';
+            $namaBulanTahun = strtoupper("{$blnNamaBaku} {$spJaga->tahun}");
             $docData = (object) [
                 'id' => $spJaga->id,
                 'verification_code' => $spJaga->verification_code,

@@ -25,6 +25,30 @@ class SpJagaController extends Controller
         return $map[(int)$month] ?? 'I';
     }
 
+    private function getNamaBulanIndo($month)
+    {
+        $map = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+        ];
+        return $map[(int)$month] ?? 'Januari';
+    }
+
+    private function formatTanggalIndo($dateStr)
+    {
+        if (!$dateStr) return '';
+        $bulanIndo = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+        ];
+        $c = Carbon::parse($dateStr);
+        $m = (int)$c->format('n');
+        $namaBulan = $bulanIndo[$m] ?? $c->format('F');
+        return $c->format('j') . ' ' . $namaBulan . ' ' . $c->format('Y');
+    }
+
     private function terbilangAngka($angka)
     {
         $angka = (int)$angka;
@@ -269,7 +293,7 @@ class SpJagaController extends Controller
                        ?? User::where('role', 'admin')->whereNotNull('phone')->first();
 
                 if ($pasops && $pasops->phone) {
-                    $bulanNama = strtoupper(Carbon::createFromDate($spJaga->tahun, $spJaga->bulan, 1)->isoFormat('MMMM Y'));
+                    $bulanNama = strtoupper($this->getNamaBulanIndo($spJaga->bulan) . ' ' . $spJaga->tahun);
                     $pesan = "*SI SINDEN: PENGAJUAN TTE SP JAGA BARU*\n\n" .
                              "Mohon izin Pasops, terdapat pengajuan Surat Perintah Jaga Siaga Sintel baru yang memerlukan pemeriksaan & tanda tangan elektronik (TTE):\n\n" .
                              "- *Nomor Sprin:* " . $spJaga->nomor_sprin . "\n" .
@@ -542,7 +566,7 @@ class SpJagaController extends Controller
         ));
         $pdf->setPaper([0, 0, 609.45, 935.43], 'portrait'); // Ukuran Folio / F4
 
-        $filename = "SP_JAGA_" . strtoupper(Carbon::createFromDate($spJaga->tahun, $spJaga->bulan, 1)->isoFormat('MMMM_Y')) . ".pdf";
+        $filename = "SP_JAGA_" . strtoupper($this->getNamaBulanIndo($spJaga->bulan) . '_' . $spJaga->tahun) . ".pdf";
 
         return $pdf->stream($filename);
     }
@@ -565,7 +589,7 @@ class SpJagaController extends Controller
      */
     private function sendBroadcastWa($spJaga)
     {
-        $namaBulanTahun = strtoupper(Carbon::createFromDate($spJaga->tahun, $spJaga->bulan, 1)->isoFormat('MMMM Y'));
+        $namaBulanTahun = strtoupper($this->getNamaBulanIndo($spJaga->bulan) . ' ' . $spJaga->tahun);
         $notifiedPhones = [];
 
         // 1. Broadcast ke Perwira Jaga
