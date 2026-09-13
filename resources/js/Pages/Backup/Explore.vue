@@ -1369,9 +1369,9 @@ const openPreview = async (item) => {
     resetZoomAndRotate();
 
     const ext = (item.file_type || '').toLowerCase();
-    const officeExts = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'];
+    const officeExts = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'rtf', 'csv'];
 
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) {
         previewType.value = 'image';
         await fetchSecureBlob(item.preview_url);
     } else if (isArw(item)) {
@@ -1383,16 +1383,15 @@ const openPreview = async (item) => {
         previewUrl.value = item.preview_url || route('backup.preview-file', item.id);
     } else if (ext === 'pdf') {
         previewType.value = 'pdf';
-        previewUrl.value = route('backup.preview-file', item.id);
+        previewUrl.value = route('backup.preview-file', item.id) + '#toolbar=1&navpanes=1&pagemode=thumbs';
         isOfficeLoading.value = true;
         officeLoadingMessage.value = 'Memuat dokumen PDF...';
-    } else if (isDocx(item)) {
-        await renderDocxPreview(item);
-    } else if (officeExts.includes(ext)) {
+    } else if (isDocx(item) || officeExts.includes(ext)) {
+        // TAMPILAN RESMI WORD & OFFICE: Menggunakan PDF Reader bawaan browser sesuai permintaan
         previewType.value = 'office';
-        previewUrl.value = route('backup.view-office', item.id);
+        previewUrl.value = route('backup.view-office', item.id) + '#toolbar=1&navpanes=1&pagemode=thumbs';
         isOfficeLoading.value = true;
-        officeLoadingMessage.value = 'Menyiapkan pratinjau dokumen di server...';
+        officeLoadingMessage.value = 'Menyiapkan dan mengonversi dokumen Word ke format PDF...';
     } else {
         return window.location.href = route('backup.download', item.id);
     }
@@ -1895,13 +1894,29 @@ const checkMobileDevice = () => {
     return false;
 };
 
+const handleGlobalKeydown = (e) => {
+    if (e.key === 'Escape') {
+        if (previewUrl.value || previewType.value) {
+            closePreview();
+        }
+        if (isShareModalOpen.value) {
+            isShareModalOpen.value = false;
+        }
+        if (isExcelEditorOpen.value) {
+            closeExcelEditor();
+        }
+    }
+};
+
 onMounted(() => {
     checkMobileDevice();
     window.addEventListener('click', closeContextMenu);
+    window.addEventListener('keydown', handleGlobalKeydown);
 });
 
 onUnmounted(() => {
     window.removeEventListener('click', closeContextMenu);
+    window.removeEventListener('keydown', handleGlobalKeydown);
 });
 </script>
 
@@ -2905,75 +2920,90 @@ onUnmounted(() => {
             </div>
         </Teleport>
 
-        <!-- 2. MODAL PREVIEW DOKUMEN ("WORD DAN KAWAN2 NYA": DOCX, PDF, OFFICE) -->
+        <!-- 2. MODAL PREVIEW DOKUMEN ("WORD DAN KAWAN2 NYA": PDF, DOCX, DOC, OFFICE) -->
         <Teleport to="body">
-            <div v-if="previewType === 'docx' || previewType === 'pdf' || previewType === 'office'" 
-                 class="fixed inset-0 z-[250] flex items-center justify-center p-2 sm:p-4">
-                <div class="fixed inset-0 bg-black/80 backdrop-blur-sm" @click="closePreview"></div>
+            <div v-if="(previewType === 'pdf' || previewType === 'office' || previewType === 'docx') && previewUrl" 
+                 class="fixed inset-0 z-[250] flex flex-col bg-black/90 backdrop-blur-xs p-1 sm:p-2.5">
+                <div class="fixed inset-0" @click="closePreview"></div>
                 
-                <div class="relative w-full max-w-6xl bg-white border-4 border-gray-900 flex flex-col h-[90vh] shadow-2xl overflow-hidden z-10">
-                    <!-- Header Modal Dokumen Seperti Arsip Surat SISINDEN -->
-                    <div class="px-4 sm:px-6 py-2 border-b-2 border-gray-900 flex justify-between items-center bg-gray-50 gap-2 flex-wrap">
-                        <div class="flex items-center gap-2 min-w-0">
-                            <span class="text-[10px] font-black uppercase text-indigo-700 whitespace-nowrap">Preview Dokumen</span>
-                            <span v-if="activePreviewItem" class="text-[10px] font-bold text-gray-700 uppercase tracking-tight truncate max-w-xs sm:max-w-md">
-                                • {{ activePreviewItem.file_name }}
-                            </span>
+                <div class="relative w-full h-full bg-[#323639] rounded-xl sm:rounded-2xl flex flex-col overflow-hidden shadow-2xl border border-slate-700/80 z-10">
+                    <!-- Header Modal Dokumen Yang Rapi, Ringkas & Senada dengan Toolbar PDF Browser -->
+                    <div class="px-4 py-2 bg-slate-900 border-b border-slate-800 flex justify-between items-center gap-3 shrink-0 select-none">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <!-- Icon Dokumen Sesuai Format -->
+                            <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 font-black text-xs shadow-sm"
+                                 :class="previewType === 'pdf' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'">
+                                <svg v-if="previewType === 'pdf'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                </svg>
+                                <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <h3 class="font-black text-xs sm:text-sm text-white truncate max-w-xs sm:max-w-md tracking-tight" :title="activePreviewItem?.file_name">
+                                        {{ activePreviewItem?.file_name }}
+                                    </h3>
+                                    <span v-if="previewType === 'pdf'" class="px-2 py-0.5 text-[9px] bg-rose-500/20 text-rose-300 rounded-md font-bold uppercase border border-rose-500/30 whitespace-nowrap">
+                                        PDF
+                                    </span>
+                                    <span v-else class="px-2 py-0.5 text-[9px] bg-blue-500/20 text-blue-300 rounded-md font-bold uppercase border border-blue-500/30 whitespace-nowrap">
+                                        Word / Office &rarr; PDF
+                                    </span>
+                                </div>
+                                <p class="text-[10px] text-slate-400 font-semibold truncate hidden sm:block">
+                                    Pratinjau Dokumen Bawaan Peramban (Chromium PDF Viewer) &bull; Ukuran: {{ activePreviewItem?.size_human || '-' }}
+                                </p>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-4">
-                            <!-- Opsi Unduh Berkas Langsung di Header -->
+
+                        <div class="flex items-center gap-2 shrink-0">
+                            <!-- Opsi Unduh Berkas Asli -->
                             <a v-if="activePreviewItem" 
                                :href="route('backup.download', activePreviewItem.id)" 
-                               class="text-[10px] font-black text-emerald-700 hover:text-emerald-900 uppercase transition cursor-pointer"
-                               title="Unduh Berkas Langsung">
-                                [ Unduh Berkas ]
+                               class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg border border-slate-700 transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                               title="Unduh berkas dokumen asli">
+                                <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                <span class="hidden sm:inline">Unduh Berkas</span>
                             </a>
-                            <button @click="closePreview" class="font-black text-gray-900 hover:text-rose-600 uppercase text-[10px] transition cursor-pointer">
-                                [ Tutup X ]
+
+                            <!-- Tombol Tutup (X) -->
+                            <button @click="closePreview" 
+                                    class="px-3 py-1.5 bg-rose-600/90 hover:bg-rose-600 text-white text-xs font-bold rounded-lg transition flex items-center gap-1 cursor-pointer shadow-sm"
+                                    title="Tutup Pratinjau (ESC)">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                <span class="hidden sm:inline">Tutup</span>
                             </button>
                         </div>
                     </div>
 
-                    <!-- Area Konten Dokumen -->
-                    <div class="flex-1 w-full relative bg-gray-200 overflow-hidden flex flex-col">
+                    <!-- Area Konten Dokumen (Full Iframe Native Browser PDF Viewer) -->
+                    <div class="flex-1 w-full h-full relative bg-[#323639] overflow-hidden">
                         <!-- Loading Overlay Dokumen Office / PDF -->
-                        <div v-if="isOfficeLoading" class="absolute inset-0 z-20 bg-slate-900/80 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-white select-none">
-                            <div class="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-3"></div>
-                            <h4 class="font-bold text-xs uppercase tracking-wider text-slate-200">{{ officeLoadingMessage || 'Memuat dokumen...' }}</h4>
-                            <p class="text-[10px] text-slate-400 mt-1.5 text-center max-w-sm">Sedang menyiapkan dan memproses pratinjau dokumen di server...</p>
+                        <div v-if="isOfficeLoading" class="absolute inset-0 z-20 bg-slate-900/85 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-white select-none">
+                            <div class="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4 shadow-lg"></div>
+                            <h4 class="font-bold text-sm uppercase tracking-wider text-slate-200">{{ officeLoadingMessage || 'Memuat dokumen...' }}</h4>
+                            <p class="text-xs text-slate-400 mt-2 text-center max-w-sm">Sedang menyiapkan dan merender tata letak dokumen resmi di peramban...</p>
                             <a v-if="activePreviewItem" :href="route('backup.download', activePreviewItem.id)" 
-                               class="mt-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-md">
+                               class="mt-5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-md">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                                 <span>Unduh Berkas Langsung</span>
                             </a>
                         </div>
 
-                        <!-- A. Pratinjau Dokumen PDF & Dokumen Office (.pdf, .doc, .xlsx, .pptx) Menggunakan PDF Reader Bawaan Browser -->
-                        <iframe v-if="previewType === 'pdf' || previewType === 'office'" 
+                        <!-- Pratinjau Dokumen PDF & Word via Chromium Native PDF Reader (dengan Navpanes & Toolbar) -->
+                        <iframe v-if="previewUrl" 
                                 :src="previewUrl" 
                                 @load="isOfficeLoading = false" 
-                                class="flex-1 w-full h-full border-none bg-gray-200">
+                                class="w-full h-full border-none bg-[#323639]"
+                                allow="fullscreen">
                         </iframe>
-
-                        <!-- B. Pratinjau Dokumen Word (.docx) Cepat & Akurat via docx-preview -->
-                        <div v-else-if="previewType === 'docx'" class="flex-1 w-full h-full overflow-y-auto overflow-x-auto p-3 sm:p-6 bg-gray-200 flex justify-center relative">
-                            <!-- Loading Overlay Dokumen Word -->
-                            <div v-if="isDocxLoading" class="absolute inset-0 z-20 bg-slate-900/80 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-white select-none">
-                                <div class="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-3"></div>
-                                <h4 class="font-bold text-xs uppercase tracking-wider text-slate-200">{{ docxLoadingStatus || 'Menyiapkan dokumen Word...' }}</h4>
-                                <div class="w-72 max-w-full bg-slate-800 rounded-full h-2 overflow-hidden mt-2 border border-slate-700">
-                                    <div class="bg-indigo-500 h-full rounded-full transition-all duration-200" :style="{ width: `${docxDownloadProgress}%` }"></div>
-                                </div>
-                                <p class="text-[10px] text-slate-400 mt-2 text-center max-w-sm">Sedang merender tata letak dokumen Word langsung di peramban...</p>
-                                <a v-if="activePreviewItem" :href="route('backup.download', activePreviewItem.id)" 
-                                   class="mt-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-md">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                                    <span>Unduh Berkas Langsung</span>
-                                </a>
-                            </div>
-
-                            <div ref="docxContainerRef" class="docx-preview-container max-w-4xl w-full bg-white shadow-xl rounded-xs p-4 sm:p-8 min-h-[90vh]"></div>
-                        </div>
                     </div>
                 </div>
             </div>

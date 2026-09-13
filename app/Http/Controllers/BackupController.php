@@ -297,17 +297,22 @@ class BackupController extends Controller
         $cacheKey = 'office_' . $backup->id . '_' . $backup->file_size . '.pdf';
         $cachedPdf = $cacheDir . '/' . $cacheKey;
 
+        $ext = strtolower(pathinfo($backup->file_name, PATHINFO_EXTENSION) ?: $backup->file_type ?: 'docx');
+        if ($ext === 'pdf') {
+            return FileSecurityService::streamDecryptedInline($fullPath, $backup->file_name);
+        }
+
         // Jika cache PDF sudah ada dan valid, langsung kirim dengan cepat
         if (file_exists($cachedPdf) && filesize($cachedPdf) > 100) {
             return response()->file($cachedPdf, [
                 'Content-Type' => 'application/pdf',
                 'Content-Disposition' => 'inline; filename="' . pathinfo($backup->file_name, PATHINFO_FILENAME) . '.pdf"',
-                'X-Frame-Options' => 'SAMEORIGIN'
+                'X-Frame-Options' => 'SAMEORIGIN',
+                'Cache-Control' => 'public, max-age=86400',
             ]);
         }
 
         // Dekripsi berkas sementara dengan ekstensi aslinya agar LibreOffice mengenali formatnya
-        $ext = strtolower(pathinfo($backup->file_name, PATHINFO_EXTENSION) ?: $backup->file_type ?: 'docx');
         $tempDecDir = storage_path('app/temp_dec');
         if (!file_exists($tempDecDir)) {
             @mkdir($tempDecDir, 0777, true);
@@ -329,12 +334,32 @@ class BackupController extends Controller
             $tempOutDir = storage_path('app/temp_out_' . uniqid());
             @mkdir($tempOutDir, 0777, true);
 
-            $command = "export HOME=/tmp && libreoffice --headless --invisible --nologo --nodefault --nofirststartwizard -env:UserInstallation=file:///tmp/libo_user_" . uniqid() . " --convert-to pdf --outdir " . escapeshellarg($tempOutDir) . " " . escapeshellarg($tempPlainFile) . " 2>&1";
+            $binary = 'libreoffice';
+            $userProfile = '-env:UserInstallation=file:///tmp/libo_user_' . uniqid();
+            $prefix = 'export HOME=/tmp && ';
+
+            if (PHP_OS_FAMILY === 'Windows') {
+                $prefix = '';
+                $userProfile = '';
+                $winPaths = [
+                    'C:\\Program Files\\LibreOffice\\program\\soffice.exe',
+                    'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe',
+                ];
+                $binary = 'soffice';
+                foreach ($winPaths as $wp) {
+                    if (file_exists($wp)) {
+                        $binary = '"' . $wp . '"';
+                        break;
+                    }
+                }
+            }
+
+            $command = "{$prefix}{$binary} --headless --invisible --nologo --nodefault --nofirststartwizard {$userProfile} --convert-to pdf --outdir " . escapeshellarg($tempOutDir) . " " . escapeshellarg($tempPlainFile) . " 2>&1";
             @exec($command, $out, $ret);
 
             $generatedPdfs = glob($tempOutDir . '/*.pdf');
-            if (empty($generatedPdfs)) {
-                $commandSoffice = "export HOME=/tmp && soffice --headless --invisible --nologo --nodefault --nofirststartwizard -env:UserInstallation=file:///tmp/libo_user_" . uniqid() . " --convert-to pdf --outdir " . escapeshellarg($tempOutDir) . " " . escapeshellarg($tempPlainFile) . " 2>&1";
+            if (empty($generatedPdfs) && PHP_OS_FAMILY !== 'Windows') {
+                $commandSoffice = "export HOME=/tmp && soffice --headless --invisible --nologo --nodefault --nofirststartwizard {$userProfile} --convert-to pdf --outdir " . escapeshellarg($tempOutDir) . " " . escapeshellarg($tempPlainFile) . " 2>&1";
                 @exec($commandSoffice, $outSoffice, $retSoffice);
                 $generatedPdfs = glob($tempOutDir . '/*.pdf');
             }

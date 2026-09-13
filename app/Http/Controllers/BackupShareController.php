@@ -369,7 +369,7 @@ class BackupShareController extends Controller
      */
     public function previewFile($token, $fileId)
     {
-        if (request()->header('Sec-Fetch-Dest') === 'document' || request()->header('Sec-Fetch-Mode') === 'navigate') {
+        if (request()->header('Sec-Fetch-Dest') === 'document') {
             abort(403, 'Akses Ditolak: Pratinjau berkas hanya diizinkan melalui antarmuka aplikasi internal.');
         }
 
@@ -400,11 +400,140 @@ class BackupShareController extends Controller
     }
 
     /**
+     * Konversi Dokumen Office (Word, Excel, dsb.) ke PDF untuk Pratinjau Shared Folder
+     */
+    public function viewOffice($token, $fileId)
+    {
+        $share = BackupShare::where('share_token', $token)->where('is_active', true)->firstOrFail();
+
+        $sessionKey = 'verified_backup_share_' . $share->id;
+        if (session()->get($sessionKey) !== true) {
+            abort(403, 'Otoritas PIN keamanan belum terverifikasi.');
+        }
+
+        $file = Backup::where('id', $fileId)->where('pc_id', $share->pc_id)->firstOrFail();
+
+        if ($file->is_folder || !$share->isWithinScope($file)) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $fullPath = FileSecurityService::verifySafeStoragePath($file->file_path);
+        if (!file_exists($fullPath)) {
+            abort(404, 'Berkas fisik tidak ditemukan.');
+        }
+
+        $ext = strtolower(pathinfo($file->file_name, PATHINFO_EXTENSION) ?: $file->file_type ?: 'docx');
+        if ($ext === 'pdf') {
+            return FileSecurityService::streamDecryptedInline($fullPath, $file->file_name);
+        }
+
+        $cacheDir = storage_path('app/public/office_cache');
+        if (!file_exists($cacheDir)) {
+            @mkdir($cacheDir, 0777, true);
+        }
+
+        $cacheKey = 'office_' . $file->id . '_' . $file->file_size . '.pdf';
+        $cachedPdf = $cacheDir . '/' . $cacheKey;
+
+        if (file_exists($cachedPdf) && filesize($cachedPdf) > 100) {
+            return response()->file($cachedPdf, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="' . pathinfo($file->file_name, PATHINFO_FILENAME) . '.pdf"',
+                'X-Frame-Options' => 'SAMEORIGIN',
+                'Cache-Control' => 'public, max-age=86400',
+            ]);
+        }
+
+        $tempDecDir = storage_path('app/temp_dec');
+        if (!file_exists($tempDecDir)) {
+            @mkdir($tempDecDir, 0777, true);
+        }
+        $tempPlainFile = $tempDecDir . '/dec_' . uniqid() . '.' . $ext;
+
+        if (FileSecurityService::isEncrypted($fullPath)) {
+            $createdTmp = FileSecurityService::createDecryptedTempFile($fullPath);
+            if ($createdTmp && file_exists($createdTmp)) {
+                @rename($createdTmp, $tempPlainFile);
+            } else {
+                @copy($fullPath, $tempPlainFile);
+            }
+        } else {
+            @copy($fullPath, $tempPlainFile);
+        }
+
+        try {
+            $tempOutDir = storage_path('app/temp_out_' . uniqid());
+            @mkdir($tempOutDir, 0777, true);
+
+            $binary = 'libreoffice';
+            $userProfile = '-env:UserInstallation=file:///tmp/libo_user_' . uniqid();
+            $prefix = 'export HOME=/tmp && ';
+
+            if (PHP_OS_FAMILY === 'Windows') {
+                $prefix = '';
+                $userProfile = '';
+                $winPaths = [
+                    'C:\\Program Files\\LibreOffice\\program\\soffice.exe',
+                    'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe',
+                ];
+                $binary = 'soffice';
+                foreach ($winPaths as $wp) {
+                    if (file_exists($wp)) {
+                        $binary = '"' . $wp . '"';
+                        break;
+                    }
+                }
+            }
+
+            $command = "{$prefix}{$binary} --headless --invisible --nologo --nodefault --nofirststartwizard {$userProfile} --convert-to pdf --outdir " . escapeshellarg($tempOutDir) . " " . escapeshellarg($tempPlainFile) . " 2>&1";
+            @exec($command, $out, $ret);
+
+            $generatedPdfs = glob($tempOutDir . '/*.pdf');
+            if (empty($generatedPdfs) && PHP_OS_FAMILY !== 'Windows') {
+                $commandSoffice = "export HOME=/tmp && soffice --headless --invisible --nologo --nodefault --nofirststartwizard {$userProfile} --convert-to pdf --outdir " . escapeshellarg($tempOutDir) . " " . escapeshellarg($tempPlainFile) . " 2>&1";
+                @exec($commandSoffice, $outSoffice, $retSoffice);
+                $generatedPdfs = glob($tempOutDir . '/*.pdf');
+            }
+
+            if (file_exists($tempPlainFile)) {
+                @unlink($tempPlainFile);
+            }
+
+            if (!empty($generatedPdfs) && filesize($generatedPdfs[0]) > 100) {
+                copy($generatedPdfs[0], $cachedPdf);
+                @unlink($generatedPdfs[0]);
+                @rmdir($tempOutDir);
+
+                return response()->file($cachedPdf, [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . pathinfo($file->file_name, PATHINFO_FILENAME) . '.pdf"',
+                    'X-Frame-Options' => 'SAMEORIGIN',
+                    'Cache-Control' => 'public, max-age=86400',
+                ]);
+            }
+            @rmdir($tempOutDir);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Gagal konversi shared office ID {$fileId} ke PDF: " . $e->getMessage());
+        } finally {
+            if (file_exists($tempPlainFile)) {
+                @unlink($tempPlainFile);
+            }
+        }
+
+        return response('<div style="font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#f8fafc;color:#1e293b;text-align:center;padding:24px;">' .
+            '<svg style="width:48px;height:48px;color:#64748b;margin-bottom:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>' .
+            '<h3 style="margin:0 0 8px 0;font-size:15px;font-weight:800;text-transform:uppercase;">Pratinjau Server Belum Tersedia</h3>' .
+            '<p style="font-size:12px;color:#64748b;max-width:380px;margin:0 0 16px 0;line-height:1.5;">Dokumen ini belum dapat dikonversi ke PDF otomatis di server. Silakan klik tombol di bawah untuk mengunduh berkas langsung.</p>' .
+            '<a href="' . route('backup.shared.download', ['token' => $token, 'fileId' => $file->id]) . '" style="padding:10px 20px;background:#059669;color:#fff;text-decoration:none;border-radius:10px;font-weight:700;font-size:12px;display:inline-flex;align-items:center;gap:8px;">Unduh Berkas Langsung</a>' .
+            '</div>', 200, ['Content-Type' => 'text/html']);
+    }
+
+    /**
      * Sajikan thumbnail gambar terkompresi cepat untuk shared folder (Disk Cached)
      */
     public function thumbnail($token, $fileId)
     {
-        if (request()->header('Sec-Fetch-Dest') === 'document' || request()->header('Sec-Fetch-Mode') === 'navigate') {
+        if (request()->header('Sec-Fetch-Dest') === 'document') {
             abort(403, 'Akses Ditolak.');
         }
 

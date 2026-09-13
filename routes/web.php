@@ -189,6 +189,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/shared-folder/{token}/exit', [BackupShareController::class, 'exitShare'])->name('backup.shared.exit');
     Route::get('/shared-folder/{token}/download/{fileId}', [BackupShareController::class, 'downloadFile'])->name('backup.shared.download');
     Route::get('/shared-folder/{token}/preview/{fileId}', [BackupShareController::class, 'previewFile'])->name('backup.shared.preview');
+    Route::get('/shared-folder/{token}/view-office/{fileId}', [BackupShareController::class, 'viewOffice'])->name('backup.shared.view-office');
     Route::get('/shared-folder/{token}/thumb/{fileId}', [BackupShareController::class, 'thumbnail'])->name('backup.shared.thumbnail');
     Route::get('/shared-folder/{token}/download-zip', [BackupShareController::class, 'downloadFolderZip'])->name('backup.shared.download-zip');
     Route::get('/shared-folder/{token}/download-arw-jpg/{fileId}', [BackupShareController::class, 'downloadArwJpg'])->name('backup.shared.download-arw-jpg');

@@ -130,6 +130,11 @@ const isPdf = (filename) => {
     return filename?.toLowerCase().endsWith('.pdf');
 };
 
+const isWord = (filename) => {
+    const ext = filename?.split('.').pop()?.toLowerCase();
+    return ['doc', 'docx', 'odt', 'rtf'].includes(ext);
+};
+
 const isExcel = (filename) => {
     const ext = filename?.split('.').pop()?.toLowerCase();
     return ['xlsx', 'xls', 'csv'].includes(ext);
@@ -250,7 +255,10 @@ const openPreview = async (item) => {
         previewUrl.value = item.preview_url;
     } else if (isPdf(item.file_name)) {
         previewType.value = 'pdf';
-        previewUrl.value = item.preview_url;
+        previewUrl.value = item.preview_url + '#toolbar=1&navpanes=1&pagemode=thumbs';
+    } else if (isWord(item.file_name)) {
+        previewType.value = 'pdf';
+        previewUrl.value = route('backup.shared.view-office', { token: props.share.share_token, fileId: item.id }) + '#toolbar=1&navpanes=1&pagemode=thumbs';
     } else {
         previewType.value = 'other';
         previewUrl.value = item.preview_url;
@@ -1264,6 +1272,7 @@ const exitAndLock = () => {
                         v-else-if="previewType === 'pdf'" 
                         :src="previewUrl" 
                         class="w-full h-full rounded-md sm:rounded-lg border-0 bg-white shadow-lg"
+                        allow="fullscreen"
                     ></iframe>
 
                     <div v-else-if="!isImageLoading" class="text-center text-white space-y-4 max-w-sm p-6 bg-slate-800 rounded-2xl mx-4">
