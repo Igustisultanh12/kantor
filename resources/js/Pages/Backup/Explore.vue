@@ -2715,14 +2715,204 @@ onUnmounted(() => {
             </template>
         </div>
 
-        <!-- MODAL PREVIEW DOKUMEN & FOTO (IDENTIK DENGAN ARSIP SURAT) -->
+        <!-- 1. MODAL PREVIEW GAMBAR & VIDEO (TAMPILAN ASLI INTERAKTIF DENGAN ZOOM, ROTASI, PAN & STREAMING) -->
         <Teleport to="body">
-            <div v-if="activePreviewItem || previewUrl || isImageLoading || isDocxLoading || isOfficeLoading" 
+            <div v-if="(previewType === 'image' || previewType === 'arw' || previewType === 'video') && (previewUrl || isImageLoading)" 
+                 @contextmenu.prevent=""
+                 class="fixed inset-0 z-[250] flex items-center justify-center bg-black/85 p-2 sm:p-4 backdrop-blur-sm">
+                <div class="fixed inset-0" @click="closePreview"></div>
+                
+                <div class="bg-white w-full max-w-6xl h-[92vh] rounded-[2rem] flex flex-col relative overflow-hidden shadow-2xl border-t-8 z-10"
+                     :class="previewType === 'arw' ? 'border-amber-500' : (previewType === 'video' ? 'border-indigo-600' : 'border-blue-600')">
+                    
+                    <!-- Header Toolbar Modal Preview Gambar & Video -->
+                    <div class="p-4 sm:p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50 gap-3 flex-wrap">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-8 h-8 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center shrink-0">
+                                <svg v-if="previewType === 'arw'" class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                </svg>
+                                <svg v-else-if="previewType === 'video'" class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                            </div>
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <h3 class="font-black text-xs sm:text-sm uppercase tracking-tighter truncate max-w-xs sm:max-w-md">{{ activePreviewItem?.file_name }}</h3>
+                                    <span v-if="previewType === 'arw'" class="px-2 py-0.5 text-[9px] bg-amber-100 text-amber-800 rounded-full font-bold uppercase border border-amber-300 whitespace-nowrap">
+                                        Sony Alpha RAW (HD)
+                                    </span>
+                                    <span v-else-if="previewType === 'video'" class="px-2 py-0.5 text-[9px] bg-indigo-100 text-indigo-800 rounded-full font-bold uppercase border border-indigo-300 whitespace-nowrap">
+                                        Streaming Video (HTTP 206)
+                                    </span>
+                                </div>
+                                <p class="text-[9px] sm:text-[10px] text-gray-400 font-bold uppercase">
+                                    {{ previewType === 'arw' ? 'Sensor Sony RAW • Pratinjau Terenkripsi' : (previewType === 'video' ? 'Pemutaran Video Langsung • Hemat Bandwidth & Enteng' : 'Pratinjau Gambar Terproteksi SINDEN') }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- KONTROL ZOOM & ROTASI GAMBAR (KHUSUS PREVIEW GAMBAR & SONY RAW) -->
+                        <div v-if="previewType === 'image' || previewType === 'arw'" 
+                             class="flex items-center gap-1 bg-slate-200/80 p-1 rounded-xl border border-slate-300/80 shadow-2xs">
+                            <button @click="zoomOut" 
+                                    type="button"
+                                    class="w-8 h-8 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-black flex items-center justify-center shadow-xs transition cursor-pointer" 
+                                    title="Perkecil (Zoom Out)">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" /></svg>
+                            </button>
+                            <button @click="resetZoomAndRotate" 
+                                    type="button"
+                                    class="px-2.5 h-8 rounded-lg bg-white hover:bg-slate-100 text-slate-800 font-black text-xs flex items-center justify-center shadow-xs transition min-w-[55px] cursor-pointer" 
+                                    title="Reset Ukuran (100%)">
+                                {{ Math.round(zoomLevel * 100) }}%
+                            </button>
+                            <button @click="zoomIn" 
+                                    type="button"
+                                    class="w-8 h-8 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-black flex items-center justify-center shadow-xs transition cursor-pointer" 
+                                    title="Perbesar (Zoom In)">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                            </button>
+                            <div class="h-4 w-px bg-slate-300 mx-0.5"></div>
+                            <button @click="rotateLeft" 
+                                    type="button"
+                                    class="w-8 h-8 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-bold flex items-center justify-center shadow-xs transition cursor-pointer" 
+                                    title="Putar Kiri (-90°)">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a5 5 0 015 5v2m0 0l-3-3m3 3l3-3M3 10l3 3m-3-3l3-3" /></svg>
+                            </button>
+                            <button @click="rotateRight" 
+                                    type="button"
+                                    class="w-8 h-8 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-bold flex items-center justify-center shadow-xs transition cursor-pointer" 
+                                    title="Putar Kanan (+90°)">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10H11a5 5 0 00-5 5v2m0 0l3-3m-3 3l-3-3m17-4l-3 3m3-3l-3-3" /></svg>
+                            </button>
+                            <button @click="resetZoomAndRotate" 
+                                    type="button"
+                                    class="w-8 h-8 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-bold flex items-center justify-center shadow-xs transition cursor-pointer" 
+                                    title="Reset Posisi & Rotasi">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            </button>
+                        </div>
+
+                        <!-- Tombol Aksi Tambahan & Tutup -->
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <template v-if="activePreviewItem && isArw(activePreviewItem)">
+                                <button @click="convertArw(activePreviewItem, true)" 
+                                        :disabled="isConvertingArw"
+                                        class="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50" 
+                                        title="Konversi dan simpan berkas JPG baru di folder">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                                    </svg>
+                                    <span>{{ isConvertingArw ? 'Mengonversi...' : 'Simpan JPG' }}</span>
+                                </button>
+                                <a :href="route('backup.download-arw-jpg', activePreviewItem.id)" 
+                                   class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+                                   title="Unduh langsung sebagai JPG kualitas tinggi">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    <span>Unduh JPG</span>
+                                </a>
+                            </template>
+
+                            <!-- Unduh Berkas Video Langsung -->
+                            <a v-if="activePreviewItem && isVideo(activePreviewItem)"
+                               :href="route('backup.download', activePreviewItem.id)"
+                               class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+                               title="Unduh berkas video asli ke perangkat">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                <span>Unduh Video</span>
+                            </a>
+
+                            <!-- Unduh Berkas Gambar Langsung -->
+                            <a v-if="activePreviewItem && !isArw(activePreviewItem) && !isVideo(activePreviewItem)"
+                               :href="route('backup.download', activePreviewItem.id)"
+                               class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+                               title="Unduh berkas gambar ke perangkat">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                <span>Unduh Foto</span>
+                            </a>
+
+                            <button @click="closePreview" class="bg-slate-700 text-white px-4 py-2 rounded-xl font-bold text-xs hover:bg-slate-800 transition shadow-sm cursor-pointer">Tutup</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Wadah Area Gambar & Video (Anti-Copy & Anti-New-Tab) -->
+                    <div class="flex-1 overflow-hidden p-4 bg-slate-950 flex justify-center items-center relative select-none"
+                         @contextmenu.prevent=""
+                         @wheel.prevent="handleWheelZoom"
+                         @mousedown="startPan"
+                         @mousemove="onPan"
+                         @mouseup="endPan"
+                         @mouseleave="endPan"
+                         :style="{ cursor: zoomLevel > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default' }">
+                        
+                        <!-- Loading Spinner Saat Pengaliran & Dekripsi Blob -->
+                        <div v-if="isImageLoading" class="flex flex-col items-center gap-3 text-slate-300">
+                            <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                            <p class="text-xs font-bold uppercase tracking-wider">Mendekripsi Data Gambar...</p>
+                        </div>
+
+                        <!-- Video Streaming Player Langsung (Native HTML5 dengan Hardware Acceleration) -->
+                        <div v-else-if="previewType === 'video' && previewUrl" class="w-full h-full flex flex-col items-center justify-center p-2 sm:p-4 relative">
+                            <video 
+                                ref="videoPlayerRef"
+                                :src="previewUrl" 
+                                controls 
+                                autoplay 
+                                playsinline
+                                preload="metadata"
+                                class="max-h-[75vh] max-w-full rounded-2xl shadow-2xl bg-black border border-slate-800 outline-none"
+                            >
+                                Peramban Anda tidak mendukung pemutaran video langsung.
+                            </video>
+                            
+                            <div class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md text-indigo-300 text-[11px] font-bold px-4 py-1.5 rounded-full border border-indigo-500/40 flex items-center gap-2 shadow-xl pointer-events-none">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                <span>Streaming Parsial HTTP 206 • Akselerasi GPU Klien</span>
+                            </div>
+                        </div>
+
+                        <!-- Gambar Aman (Menggunakan In-Memory Object Blob, Anti-Drag, Anti-Right-Click) -->
+                        <img v-else-if="(previewType === 'image' || previewType === 'arw') && previewUrl" 
+                             :src="previewUrl" 
+                             draggable="false"
+                             @dragstart.prevent=""
+                             @contextmenu.prevent=""
+                             class="max-h-full max-w-full object-contain shadow-2xl rounded-lg pointer-events-auto"
+                             :style="{
+                                 transform: `translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoomLevel}) rotate(${rotationDegree}deg)`,
+                                 transition: isPanning ? 'none' : 'transform 0.15s cubic-bezier(0.4, 0, 0.2, 1)'
+                             }" 
+                             alt="Pratinjau Foto SINDEN" />
+                        
+                        <!-- Badge Keterangan Kualitas untuk ARW di pojok bawah -->
+                        <div v-if="previewType === 'arw'" class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md text-amber-300 text-[11px] font-bold px-4 py-1.5 rounded-full border border-amber-500/40 flex items-center gap-2 shadow-xl pointer-events-none">
+                            <span>Pratinjau Sony Alpha RAW Resolusi Tinggi</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- 2. MODAL PREVIEW DOKUMEN ("WORD DAN KAWAN2 NYA": DOCX, PDF, OFFICE) -->
+        <Teleport to="body">
+            <div v-if="previewType === 'docx' || previewType === 'pdf' || previewType === 'office'" 
                  class="fixed inset-0 z-[250] flex items-center justify-center p-2 sm:p-4">
                 <div class="fixed inset-0 bg-black/80 backdrop-blur-sm" @click="closePreview"></div>
                 
                 <div class="relative w-full max-w-6xl bg-white border-4 border-gray-900 flex flex-col h-[90vh] shadow-2xl overflow-hidden z-10">
-                    <!-- Header Modal Sesuai Tampilan Standar SISINDEN -->
+                    <!-- Header Modal Dokumen Seperti Arsip Surat SISINDEN -->
                     <div class="px-4 sm:px-6 py-2 border-b-2 border-gray-900 flex justify-between items-center bg-gray-50 gap-2 flex-wrap">
                         <div class="flex items-center gap-2 min-w-0">
                             <span class="text-[10px] font-black uppercase text-indigo-700 whitespace-nowrap">Preview Dokumen</span>
@@ -2744,7 +2934,7 @@ onUnmounted(() => {
                         </div>
                     </div>
 
-                    <!-- Area Konten Modal -->
+                    <!-- Area Konten Dokumen -->
                     <div class="flex-1 w-full relative bg-gray-200 overflow-hidden flex flex-col">
                         <!-- Loading Overlay Dokumen Office / PDF -->
                         <div v-if="isOfficeLoading" class="absolute inset-0 z-20 bg-slate-900/80 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-white select-none">
@@ -2758,14 +2948,14 @@ onUnmounted(() => {
                             </a>
                         </div>
 
-                        <!-- 1. Pratinjau Dokumen PDF & Dokumen Office (.pdf, .doc, .xlsx, .pptx) Menggunakan PDF Reader Bawaan Browser -->
+                        <!-- A. Pratinjau Dokumen PDF & Dokumen Office (.pdf, .doc, .xlsx, .pptx) Menggunakan PDF Reader Bawaan Browser -->
                         <iframe v-if="previewType === 'pdf' || previewType === 'office'" 
                                 :src="previewUrl" 
                                 @load="isOfficeLoading = false" 
                                 class="flex-1 w-full h-full border-none bg-gray-200">
                         </iframe>
 
-                        <!-- 2. Pratinjau Dokumen Word (.docx) Cepat & Akurat via docx-preview -->
+                        <!-- B. Pratinjau Dokumen Word (.docx) Cepat & Akurat via docx-preview -->
                         <div v-else-if="previewType === 'docx'" class="flex-1 w-full h-full overflow-y-auto overflow-x-auto p-3 sm:p-6 bg-gray-200 flex justify-center relative">
                             <!-- Loading Overlay Dokumen Word -->
                             <div v-if="isDocxLoading" class="absolute inset-0 z-20 bg-slate-900/80 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-white select-none">
@@ -2783,25 +2973,6 @@ onUnmounted(() => {
                             </div>
 
                             <div ref="docxContainerRef" class="docx-preview-container max-w-4xl w-full bg-white shadow-xl rounded-xs p-4 sm:p-8 min-h-[90vh]"></div>
-                        </div>
-
-                        <!-- 3. Pratinjau Gambar / Foto / Sony RAW -->
-                        <div v-else-if="previewType === 'image' || previewType === 'arw'" class="flex-1 w-full bg-slate-950 flex flex-col items-center justify-center p-4 relative overflow-hidden select-none">
-                            <div v-if="isImageLoading" class="flex flex-col items-center gap-3 text-slate-300">
-                                <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                                <p class="text-xs font-bold uppercase tracking-wider">Mendekripsi Data Foto...</p>
-                            </div>
-                            <img v-else-if="previewUrl" 
-                                 :src="previewUrl" 
-                                 class="max-h-full max-w-full object-contain rounded shadow-lg" 
-                                 alt="Pratinjau Foto" />
-                        </div>
-
-                        <!-- 3. Pratinjau Video Streaming -->
-                        <div v-else-if="previewType === 'video' && previewUrl" class="flex-1 w-full bg-black flex items-center justify-center p-4 relative">
-                            <video ref="videoPlayerRef" :src="previewUrl" controls autoplay playsinline class="max-h-full max-w-full rounded shadow-xl bg-black outline-none">
-                                Peramban Anda tidak mendukung pemutaran video langsung.
-                            </video>
                         </div>
                     </div>
                 </div>
