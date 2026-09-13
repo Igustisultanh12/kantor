@@ -301,7 +301,8 @@ class BackupController extends Controller
         if (file_exists($cachedPdf) && filesize($cachedPdf) > 100) {
             return response()->file($cachedPdf, [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="' . pathinfo($backup->file_name, PATHINFO_FILENAME) . '.pdf"'
+                'Content-Disposition' => 'inline; filename="' . pathinfo($backup->file_name, PATHINFO_FILENAME) . '.pdf"',
+                'X-Frame-Options' => 'SAMEORIGIN'
             ]);
         }
 
@@ -331,11 +332,17 @@ class BackupController extends Controller
             $command = "libreoffice --headless --convert-to pdf --outdir " . escapeshellarg($tempOutDir) . " " . escapeshellarg($tempPlainFile) . " 2>&1";
             @exec($command, $out, $ret);
 
+            $generatedPdfs = glob($tempOutDir . '/*.pdf');
+            if (empty($generatedPdfs)) {
+                $commandSoffice = "soffice --headless --convert-to pdf --outdir " . escapeshellarg($tempOutDir) . " " . escapeshellarg($tempPlainFile) . " 2>&1";
+                @exec($commandSoffice, $outSoffice, $retSoffice);
+                $generatedPdfs = glob($tempOutDir . '/*.pdf');
+            }
+
             if (file_exists($tempPlainFile)) {
                 @unlink($tempPlainFile);
             }
 
-            $generatedPdfs = glob($tempOutDir . '/*.pdf');
             if (!empty($generatedPdfs) && filesize($generatedPdfs[0]) > 100) {
                 copy($generatedPdfs[0], $cachedPdf);
                 @unlink($generatedPdfs[0]);
@@ -343,7 +350,8 @@ class BackupController extends Controller
 
                 return response()->file($cachedPdf, [
                     'Content-Type' => 'application/pdf',
-                    'Content-Disposition' => 'inline; filename="' . pathinfo($backup->file_name, PATHINFO_FILENAME) . '.pdf"'
+                    'Content-Disposition' => 'inline; filename="' . pathinfo($backup->file_name, PATHINFO_FILENAME) . '.pdf"',
+                    'X-Frame-Options' => 'SAMEORIGIN'
                 ]);
             }
             @rmdir($tempOutDir);
@@ -365,7 +373,7 @@ class BackupController extends Controller
      */
     public function previewFile(Request $request, $id)
     {
-        if ($request->header('Sec-Fetch-Dest') === 'document' || $request->header('Sec-Fetch-Mode') === 'navigate') {
+        if ($request->header('Sec-Fetch-Dest') === 'document') {
             abort(403, 'Akses Ditolak: Pratinjau berkas hanya diizinkan melalui antarmuka aplikasi internal.');
         }
 
@@ -399,7 +407,7 @@ class BackupController extends Controller
      */
     public function previewArw(Request $request, $id)
     {
-        if ($request->header('Sec-Fetch-Dest') === 'document' || $request->header('Sec-Fetch-Mode') === 'navigate') {
+        if ($request->header('Sec-Fetch-Dest') === 'document') {
             abort(403, 'Akses Ditolak: Pratinjau Sony RAW hanya diizinkan melalui antarmuka aplikasi internal.');
         }
 
@@ -425,7 +433,7 @@ class BackupController extends Controller
      */
     public function thumbnail(Request $request, $id)
     {
-        if ($request->header('Sec-Fetch-Dest') === 'document' || $request->header('Sec-Fetch-Mode') === 'navigate') {
+        if ($request->header('Sec-Fetch-Dest') === 'document') {
             abort(403, 'Akses Ditolak.');
         }
 
