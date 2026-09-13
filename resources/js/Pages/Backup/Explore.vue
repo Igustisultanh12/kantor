@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, Link, router } from '@inertiajs/vue3'; 
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'; 
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'; 
 import Swal from 'sweetalert2';
 import axios from 'axios'; 
 import SecureThumbnail from '@/Components/SecureThumbnail.vue'; 
@@ -1203,68 +1203,66 @@ const docxContainerRef = ref(null);
 const isDocxLoading = ref(false);
 const docxLoadingStatus = ref('');
 const docxDownloadProgress = ref(0);
+const isOfficeLoading = ref(false);
+const officeLoadingMessage = ref('');
 
-const loadDocxLibraries = () => {
-    return new Promise(async (resolve, reject) => {
-        if (window.docx) return resolve(window.docx);
-        try {
-            if (!window.JSZip) {
-                await new Promise((res, rej) => {
-                    const existing = document.getElementById('jszip-script');
-                    if (existing) {
-                        existing.addEventListener('load', res);
-                        existing.addEventListener('error', rej);
-                        return;
-                    }
-                    const s = document.createElement('script');
-                    s.id = 'jszip-script';
-                    s.src = '/js/jszip.min.js';
-                    s.onload = res;
-                    s.onerror = () => {
-                        const cdn = document.createElement('script');
-                        cdn.src = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
-                        cdn.onload = res;
-                        cdn.onerror = rej;
-                        document.head.appendChild(cdn);
-                    };
-                    document.head.appendChild(s);
-                });
+const loadScript = (id, src, cdnSrc) => {
+    return new Promise((resolve, reject) => {
+        const existing = document.getElementById(id);
+        if (existing) {
+            if (existing.getAttribute('data-loaded') === 'true' || (id === 'jszip-script' && window.JSZip) || (id === 'docx-preview-script' && window.docx)) {
+                return resolve();
             }
-            await new Promise((res, rej) => {
-                const existing = document.getElementById('docx-preview-script');
-                if (existing) {
-                    existing.addEventListener('load', () => resolve(window.docx));
-                    existing.addEventListener('error', rej);
-                    return;
-                }
-                const s = document.createElement('script');
-                s.id = 'docx-preview-script';
-                s.src = '/js/docx-preview.min.js';
-                s.onload = () => resolve(window.docx);
-                s.onerror = () => {
-                    const cdn = document.createElement('script');
-                    cdn.src = 'https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js';
-                    cdn.onload = () => resolve(window.docx);
-                    cdn.onerror = rej;
-                    document.head.appendChild(cdn);
-                };
-                document.head.appendChild(s);
-            });
-        } catch (e) {
-            reject(e);
+            existing.addEventListener('load', () => resolve());
+            existing.addEventListener('error', () => reject(new Error(`Gagal memuat pustaka dari ${src}`)));
+            return;
         }
+
+        const script = document.createElement('script');
+        script.id = id;
+        script.src = src;
+        script.onload = () => {
+            script.setAttribute('data-loaded', 'true');
+            resolve();
+        };
+        script.onerror = () => {
+            console.warn(`Pustaka lokal ${src} gagal dimuat, mencoba cadangan CDN ${cdnSrc}`);
+            script.remove();
+            const cdn = document.createElement('script');
+            cdn.id = id;
+            cdn.src = cdnSrc;
+            cdn.onload = () => {
+                cdn.setAttribute('data-loaded', 'true');
+                resolve();
+            };
+            cdn.onerror = (e) => reject(new Error(`Gagal memuat pustaka dari CDN ${cdnSrc}`));
+            document.head.appendChild(cdn);
+        };
+        document.head.appendChild(script);
     });
+};
+
+const loadDocxLibraries = async () => {
+    if (window.docx && window.JSZip) return window.docx;
+
+    if (!window.JSZip) {
+        await loadScript('jszip-script', '/js/jszip.min.js', 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js');
+    }
+    if (!window.docx) {
+        await loadScript('docx-preview-script', '/js/docx-preview.min.js', 'https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js');
+    }
+    return window.docx;
 };
 
 const renderDocxPreview = async (item) => {
     previewType.value = 'docx';
     isDocxLoading.value = true;
-    docxLoadingStatus.value = 'Menyiapkan pratinjau dokumen...';
+    docxLoadingStatus.value = 'Menyiapkan modul pratinjau dokumen...';
     docxDownloadProgress.value = 0;
 
     try {
         const docxLib = await loadDocxLibraries();
-        docxLoadingStatus.value = 'Mengunduh Dokumen Word...';
+        docxLoadingStatus.value = 'Mengunduh Dokumen Word... 0%';
 
         const res = await axios.get(route('backup.download', item.id), {
             responseType: 'arraybuffer',
@@ -1282,7 +1280,7 @@ const renderDocxPreview = async (item) => {
             }
         });
 
-        docxLoadingStatus.value = 'Merender Tampilan Dokumen Word...';
+        docxLoadingStatus.value = 'Merender tata letak dokumen Word...';
         await nextTick();
 
         if (docxContainerRef.value) {
@@ -1295,12 +1293,14 @@ const renderDocxPreview = async (item) => {
                 breakPages: true,
             });
         }
+        isDocxLoading.value = false;
     } catch (err) {
         console.warn('Render docx di peramban gagal, beralih ke pratinjau konversi server:', err);
+        isDocxLoading.value = false;
+        isOfficeLoading.value = true;
+        officeLoadingMessage.value = 'Mengonversi dokumen Word ke PDF di server...';
         previewType.value = 'office';
         previewUrl.value = route('backup.view-office', item.id);
-    } finally {
-        isDocxLoading.value = false;
     }
 };
 
@@ -1369,11 +1369,15 @@ const openPreview = async (item) => {
     } else if (ext === 'pdf') {
         previewType.value = 'pdf';
         previewUrl.value = item.preview_url;
+        isOfficeLoading.value = true;
+        officeLoadingMessage.value = 'Memuat dokumen PDF...';
     } else if (isDocx(item)) {
         await renderDocxPreview(item);
     } else if (officeExts.includes(ext)) {
         previewType.value = 'office';
         previewUrl.value = route('backup.view-office', item.id);
+        isOfficeLoading.value = true;
+        officeLoadingMessage.value = 'Menyiapkan dan mengonversi dokumen office di server...';
     } else {
         return window.location.href = route('backup.download', item.id);
     }
@@ -1396,6 +1400,8 @@ const closePreview = () => {
     isDocxLoading.value = false;
     docxDownloadProgress.value = 0;
     docxLoadingStatus.value = '';
+    isOfficeLoading.value = false;
+    officeLoadingMessage.value = '';
     if (docxContainerRef.value) {
         docxContainerRef.value.innerHTML = '';
     }
@@ -2875,6 +2881,12 @@ onUnmounted(() => {
                             </div>
                             <span class="text-xs text-slate-400 mt-1.5 font-mono font-bold">{{ docxDownloadProgress }}%</span>
                             <p class="text-[11px] text-slate-400 mt-3 text-center">Memproses dan menampilkan tata letak dokumen langsung di peramban...</p>
+                            <a :href="route('backup.download', activePreviewItem?.id)" 
+                               class="mt-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-lg"
+                               title="Unduh langsung tanpa menunggu pratinjau">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                <span>Unduh Berkas Langsung</span>
+                            </a>
                         </div>
 
                         <!-- Wadah Kontainer Render DOCX (Scrollable) -->
@@ -2896,7 +2908,24 @@ onUnmounted(() => {
                          }" 
                          alt="Pratinjau Foto SINDEN" />
                     
-                    <iframe v-else-if="previewType === 'pdf' || previewType === 'office'" :src="previewUrl" class="w-full h-full border-none bg-white rounded-lg"></iframe>
+                    <!-- Pratinjau Dokumen Office / PDF dengan Loading Indicator & Tombol Unduh Cepat -->
+                    <div v-else-if="previewType === 'pdf' || previewType === 'office'" class="w-full h-full relative rounded-lg overflow-hidden flex flex-col justify-center items-center bg-slate-900">
+                        <!-- Loading Overlay saat memuat / mengonversi dokumen di server -->
+                        <div v-if="isOfficeLoading" class="absolute inset-0 z-20 bg-slate-950/85 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-white select-none">
+                            <div class="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                            <h4 class="font-bold text-sm mb-1 text-slate-200">{{ officeLoadingMessage || 'Menyiapkan pratinjau dokumen...' }}</h4>
+                            <p class="text-xs text-slate-400 mt-2 text-center max-w-sm">
+                                Sedang memproses dokumen di server. Jika berkas berukuran besar, proses mungkin membutuhkan beberapa saat...
+                            </p>
+                            <a :href="route('backup.download', activePreviewItem?.id)" 
+                               class="mt-5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-lg"
+                               title="Unduh langsung tanpa menunggu pratinjau">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                <span>Unduh Berkas Langsung</span>
+                            </a>
+                        </div>
+                        <iframe :src="previewUrl" @load="isOfficeLoading = false" class="w-full h-full border-none bg-white rounded-lg"></iframe>
+                    </div>
 
                     <!-- Badge Keterangan Kualitas untuk ARW di pojok bawah -->
                     <div v-if="previewType === 'arw'" class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md text-amber-300 text-[11px] font-bold px-4 py-1.5 rounded-full border border-amber-500/40 flex items-center gap-2 shadow-xl pointer-events-none">
