@@ -370,13 +370,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/admin/system-check', [SystemCheckController::class, 'index'])->name('system-check.index');
         Route::get('/admin/system-check/metrics', [SystemCheckController::class, 'getMetrics'])->name('system-check.metrics');
         Route::post('/admin/system-check/speedtest', [SystemCheckController::class, 'runSpeedtest'])->name('system-check.speedtest');
-
-        // Chrome Web Browser & File Downloader Terintegrasi
-        Route::get('/admin/system-check/chrome/browse', [SystemCheckController::class, 'chromeBrowse'])->name('system-check.chrome.browse');
-        Route::match(['get', 'post'], '/admin/system-check/chrome/download', [SystemCheckController::class, 'chromeDownload'])->name('system-check.chrome.download');
-        Route::get('/admin/system-check/chrome/downloads', [SystemCheckController::class, 'chromeServerDownloads'])->name('system-check.chrome.downloads');
-        Route::delete('/admin/system-check/chrome/downloads/{filename}', [SystemCheckController::class, 'chromeDeleteDownload'])->name('system-check.chrome.downloads.destroy');
-        Route::get('/admin/system-check/chrome/check-docker', [SystemCheckController::class, 'chromeCheckDocker'])->name('system-check.chrome.check-docker');
         
         // Rencana Kegiatan Pengamanan Aktivitas Masyarakat
         Route::get('/community-activities', [CommunityActivityController::class, 'index'])->name('activities.index');

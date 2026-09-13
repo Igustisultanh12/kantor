@@ -2,7 +2,6 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import ChromeBrowser from './Partials/ChromeBrowser.vue';
 import Swal from 'sweetalert2';
 import axios from 'axios';
 
@@ -12,9 +11,6 @@ const props = defineProps({
         default: () => ({}),
     }
 });
-
-// --- TAB UTAMA: 'metrics' ATAU 'chrome' ---
-const activeMainTab = ref('metrics');
 
 // --- STATE METRIK SERVER ---
 const metrics = ref(props.initialMetrics || {});
@@ -137,11 +133,7 @@ const copyCommand = (cmd) => {
 };
 
 onMounted(() => {
-    // Cek parameter URL jika ingin langsung membuka Chrome
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('tab') === 'chrome') {
-        activeMainTab.value = 'chrome';
-    }
+    // Jalankan auto refresh default jika diinginkan atau biarkan manual
 });
 
 onUnmounted(() => {
@@ -208,7 +200,6 @@ onUnmounted(() => {
 
                     <!-- Tombol Refresh Manual -->
                     <button 
-                        v-if="activeMainTab === 'metrics'"
                         @click="fetchMetrics(false)"
                         :disabled="isRefreshing"
                         class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold uppercase transition shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
@@ -217,54 +208,9 @@ onUnmounted(() => {
                         </svg>
                         <span>{{ isRefreshing ? 'Memuat...' : 'Perbarui' }}</span>
                     </button>
-
-                    <!-- Tombol Buka Chrome Cepat -->
-                    <button 
-                        @click="activeMainTab = activeMainTab === 'metrics' ? 'chrome' : 'metrics'"
-                        class="px-3.5 py-2 rounded-xl text-xs font-bold uppercase transition shadow-xs flex items-center gap-1.5 cursor-pointer"
-                        :class="activeMainTab === 'chrome' ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300' : 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:opacity-95 text-white'">
-                        <svg class="w-4 h-4" viewBox="0 0 24 24">
-                            <circle cx="12" cy="12" r="10" fill="#4285F4"/>
-                            <path d="M12 2C6.48 2 2 6.48 2 12c0 2.85 1.2 5.42 3.12 7.24L9.8 11h9.1c-.48-4.99-4.7-9-9.9-9z" fill="#EA4335"/>
-                            <path d="M21.9 11h-9.1l-4.68 8.24C9.52 20.35 10.72 21 12 21c4.99 0 9.1-3.68 9.9-8.5.07-.49.1-1 .1-1.5z" fill="#FBBC05"/>
-                            <circle cx="12" cy="12" r="4.5" fill="#34A853"/>
-                            <circle cx="12" cy="12" r="3.2" fill="#ffffff"/>
-                        </svg>
-                        <span>{{ activeMainTab === 'chrome' ? 'Lihat Metrik Server' : 'Buka Chrome' }}</span>
-                    </button>
                 </div>
             </div>
 
-            <!-- TAB SWITCHER UTAMA (METRIK VS CHROME BROWSER) -->
-            <div class="flex items-center gap-2 border-b border-slate-200 pb-2">
-                <button 
-                    @click="activeMainTab = 'metrics'"
-                    :class="activeMainTab === 'metrics' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'"
-                    class="px-4 sm:px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-black uppercase tracking-wider flex items-center gap-2.5 transition cursor-pointer">
-                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-                    </svg>
-                    <span>Kinerja & Monitoring Server</span>
-                </button>
-
-                <button 
-                    @click="activeMainTab = 'chrome'"
-                    :class="activeMainTab === 'chrome' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'"
-                    class="px-4 sm:px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-black uppercase tracking-wider flex items-center gap-2.5 transition cursor-pointer relative">
-                    <svg class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10" fill="#4285F4"/>
-                        <path d="M12 2C6.48 2 2 6.48 2 12c0 2.85 1.2 5.42 3.12 7.24L9.8 11h9.1c-.48-4.99-4.7-9-9.9-9z" fill="#EA4335"/>
-                        <path d="M21.9 11h-9.1l-4.68 8.24C9.52 20.35 10.72 21 12 21c4.99 0 9.1-3.68 9.9-8.5.07-.49.1-1 .1-1.5z" fill="#FBBC05"/>
-                        <circle cx="12" cy="12" r="4.5" fill="#34A853"/>
-                        <circle cx="12" cy="12" r="3.2" fill="#ffffff"/>
-                    </svg>
-                    <span>Chrome Browser & Downloader</span>
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                </button>
-            </div>
-
-            <!-- TAMPILAN 1: METRIK & MONITORING SERVER -->
-            <template v-if="activeMainTab === 'metrics'">
             <!-- 2. KARTU EMPAT PILAR KINERJA (CPU, RAM, DISK, VRAM/GPU) -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 
@@ -698,12 +644,6 @@ onUnmounted(() => {
                 </div>
 
             </div>
-            </template>
-
-            <!-- TAMPILAN 2: CHROME WEB BROWSER & DOWNLOADER TERINTEGRASI -->
-            <template v-else-if="activeMainTab === 'chrome'">
-                <ChromeBrowser />
-            </template>
 
         </div>
     </AuthenticatedLayout>
