@@ -2,6 +2,7 @@
 import DeleteUserForm from './Partials/DeleteUserForm.vue';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue';
+import GoogleAccountForm from './Partials/GoogleAccountForm.vue';
 import { Head } from '@inertiajs/vue3';
 
 defineProps({
@@ -28,6 +29,7 @@ defineProps({
             </div>
 
             <div class="space-y-6">
+                <!-- 1. Informasi Profil Dasar (Nama, Pangkat, NRP, Foto Profil) -->
                 <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0]">
                     <UpdateProfileInformationForm
                         :must-verify-email="mustVerifyEmail"
@@ -35,10 +37,17 @@ defineProps({
                     />
                 </div>
 
+                <!-- 2. Tautan Akun Google & SSO Masuk Cepat -->
+                <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0]">
+                    <GoogleAccountForm class="max-w-xl" />
+                </div>
+
+                <!-- 3. Pembaruan Kata Sandi -->
                 <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0]">
                     <UpdatePasswordForm class="max-w-xl" />
                 </div>
 
+                <!-- 4. Hapus Akun -->
                 <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0]">
                     <DeleteUserForm class="max-w-xl" />
                 </div>

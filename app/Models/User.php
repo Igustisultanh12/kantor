@@ -37,6 +37,9 @@ class User extends Authenticatable
         'reset_token',
         'token_expires_at',
         'birth_date',
+        'google_id',
+        'google_email',
+        'google_avatar',
     ];
 
     /**

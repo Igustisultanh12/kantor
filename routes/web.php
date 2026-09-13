@@ -13,6 +13,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\Auth\ResetPasswordController; 
+use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\SignatureRequestController;
 use App\Http\Controllers\SoldierViolationController;
 use App\Http\Controllers\CommunityActivityController;
@@ -60,6 +61,10 @@ Route::post('/aktivasi', [UserController::class, 'activate'])->name('aktivasi.pr
 
 Route::get('forgot-password-custom', [ResetPasswordController::class, 'showResetForm'])->name('password.request.custom');
 Route::post('reset-password-custom', [ResetPasswordController::class, 'store'])->name('password.update.custom');
+
+// --- INTEGRASI GOOGLE OAUTH: LOGIN & TAUTKAN AKUN ---
+Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirectToGoogle'])->name('auth.google.redirect');
+Route::get('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback'])->name('auth.google.callback');
 
 // --- FITUR TRACKING PENGAJUAN SC (AKSES PUBLIK TANPA LOGIN) ---
 Route::get('/tracking-sc', [PublicTrackingController::class, 'index'])->name('tracking-sc.index');
@@ -213,6 +218,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::match(['patch', 'post'], '/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::post('/profile/google/unlink', [GoogleAuthController::class, 'unlinkGoogle'])->name('profile.google.unlink');
 
     // Manajemen Surat-Menyurat
     Route::resource('letters', LetterController::class);
