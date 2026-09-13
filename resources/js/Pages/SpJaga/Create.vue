@@ -25,6 +25,12 @@ const form = useForm({
     tanggal_surat: `${props.defaultYear || 2026}-${String(props.defaultMonth === 1 ? 12 : props.defaultMonth - 1).padStart(2, '0')}-30`,
     ttd_type: 'tte', // 'tte' atau 'manual'
     
+    // Perwira Tertua (Pater / Penerima Perintah)
+    perwira_tertua_user_id: '',
+    perwira_tertua_nama: 'Indra Gunawan',
+    perwira_tertua_pangkat_nrp: 'Kapten Laut (P) NRP 19739/P',
+    perwira_tertua_jabatan: 'Dan Unit 1 Lid Den Intel Kodaeral V',
+    
     // Perwira Jaga (Default 7 Baris Sesuai Format Resmi PDF)
     perwiras: [
         { user_id: '', nama: 'Bambang', pangkat_korps: 'Peltu Saa', nrp: '82068', tgl_1: '-', tgl_2: '06', tgl_3: '12', tgl_4: '18', tgl_5: '24', tgl_6: '30', tgl_7: '-' },
@@ -91,6 +97,61 @@ const form = useForm({
     ]
 });
 
+// Menetapkan baris perwira jaga sebagai Perwira Tertua
+const setAsPerwiraTertua = (idx) => {
+    const p = form.perwiras[idx];
+    if (!p) return;
+    form.perwira_tertua_user_id = p.user_id || '';
+    form.perwira_tertua_nama = p.nama || '';
+    const pangkat = p.pangkat_korps ? p.pangkat_korps.trim() : '';
+    const nrp = p.nrp ? `NRP ${p.nrp.replace(/^NRP\s*/i, '').trim()}` : '';
+    form.perwira_tertua_pangkat_nrp = [pangkat, nrp].filter(Boolean).join(' ');
+    if (!form.perwira_tertua_jabatan) {
+        form.perwira_tertua_jabatan = 'Dan Unit 1 Lid Den Intel Kodaeral V';
+    }
+};
+
+// Mengecek apakah baris tertentu merupakan Perwira Tertua yang aktif
+const isRowPerwiraTertua = (p, idx) => {
+    if (form.perwira_tertua_user_id && p.user_id && form.perwira_tertua_user_id == p.user_id) {
+        return true;
+    }
+    if (form.perwira_tertua_nama && p.nama && form.perwira_tertua_nama.toLowerCase().trim() === p.nama.toLowerCase().trim()) {
+        return true;
+    }
+    return false;
+};
+
+// Memilih perwira tertua dari dropdown cepat
+const onSelectPerwiraTertuaFromDropdown = (val) => {
+    if (!val) return;
+    // Cek di baris perwiras
+    const perwiraRow = form.perwiras.find(p => p.nama === val || (p.user_id && p.user_id == val));
+    if (perwiraRow) {
+        form.perwira_tertua_user_id = perwiraRow.user_id || '';
+        form.perwira_tertua_nama = perwiraRow.nama || '';
+        const pangkat = perwiraRow.pangkat_korps ? perwiraRow.pangkat_korps.trim() : '';
+        const nrp = perwiraRow.nrp ? `NRP ${perwiraRow.nrp.replace(/^NRP\s*/i, '').trim()}` : '';
+        form.perwira_tertua_pangkat_nrp = [pangkat, nrp].filter(Boolean).join(' ');
+        if (!form.perwira_tertua_jabatan) {
+            form.perwira_tertua_jabatan = 'Dan Unit 1 Lid Den Intel Kodaeral V';
+        }
+        return;
+    }
+    // Cek di database personels
+    const person = props.personels.find(u => u.id == val || u.name === val);
+    if (person) {
+        form.perwira_tertua_user_id = person.id;
+        form.perwira_tertua_nama = person.name;
+        const pangkat = person.pangkat ? person.pangkat.trim() : '';
+        const nrp = person.nrp ? `NRP ${person.nrp.replace(/^NRP\s*/i, '').trim()}` : '';
+        form.perwira_tertua_pangkat_nrp = [pangkat, nrp].filter(Boolean).join(' ');
+        if (!form.perwira_tertua_jabatan) {
+            form.perwira_tertua_jabatan = 'Dan Unit 1 Lid Den Intel Kodaeral V';
+        }
+    }
+};
+
 // Auto-fill Perwira saat memilih dari database User
 const onPerwiraSelect = (idx, userId) => {
     const p = props.personels.find(x => x.id === userId);
@@ -98,6 +159,9 @@ const onPerwiraSelect = (idx, userId) => {
         form.perwiras[idx].nama = p.name;
         form.perwiras[idx].pangkat_korps = p.pangkat || '';
         form.perwiras[idx].nrp = p.nrp || '';
+        if (isRowPerwiraTertua(form.perwiras[idx], idx)) {
+            setAsPerwiraTertua(idx);
+        }
     }
 };
 
@@ -279,6 +343,92 @@ const submit = () => {
                         </div>
                     </div>
 
+                    <!-- Dedicated Card: Pemilihan Perwira Tertua (Pater / Penerima Perintah) -->
+                    <div class="p-5 sm:p-6 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/80 pb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="p-1.5 bg-amber-500 text-white rounded-lg shadow-xs text-sm">🎖️</span>
+                                <div>
+                                    <h3 class="text-xs font-black uppercase tracking-wider text-amber-950">Perwira Tertua (Pater / Penerima Perintah)</h3>
+                                    <p class="text-[11px] text-amber-800">Pejabat perwira tertua yang ditunjuk menerima surat perintah di Diktum Kepada.</p>
+                                </div>
+                            </div>
+                            <div class="text-[11px] font-bold text-amber-900 bg-amber-200/60 px-2.5 py-1 rounded-lg">
+                                Diktum: Kepada
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <!-- Quick Selector Dropdown -->
+                            <div>
+                                <label class="text-[11px] font-bold text-amber-900 block mb-1">
+                                    ⚡ Pilih Cepat dari Perwira Jaga / Seluruh Personel:
+                                </label>
+                                <select 
+                                    @change="onSelectPerwiraTertuaFromDropdown($event.target.value)"
+                                    class="w-full p-2.5 text-xs border border-amber-300 rounded-xl bg-white font-medium text-slate-800 focus:ring-2 focus:ring-amber-500 shadow-xs"
+                                >
+                                    <option value="">-- Pilih dari Daftar Perwira / Personel --</option>
+                                    <optgroup label="📋 Perwira Jaga (Lampiran 1)">
+                                        <option 
+                                            v-for="(p, idx) in form.perwiras.filter(x => x.nama)" 
+                                            :key="'p-' + idx" 
+                                            :value="p.user_id || p.nama"
+                                        >
+                                            {{ p.pangkat_korps }} {{ p.nama }} (NRP {{ p.nrp || '-' }})
+                                        </option>
+                                    </optgroup>
+                                    <optgroup label="👥 Seluruh Personel (Database)">
+                                        <option v-for="user in personels" :key="'u-' + user.id" :value="user.id">
+                                            {{ user.pangkat }} {{ user.name }} (NRP {{ user.nrp || '-' }})
+                                        </option>
+                                    </optgroup>
+                                </select>
+                            </div>
+
+                            <!-- 3 Field Rincian Perwira Tertua -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+                                <div class="space-y-1">
+                                    <label class="text-[11px] font-bold text-slate-700 block">Nama Lengkap Perwira Tertua</label>
+                                    <input 
+                                        type="text" 
+                                        v-model="form.perwira_tertua_nama" 
+                                        placeholder="Contoh: Indra Gunawan"
+                                        class="w-full p-2.5 text-xs border border-slate-300 rounded-xl bg-white font-bold text-slate-900 focus:ring-2 focus:ring-amber-500" 
+                                    />
+                                </div>
+
+                                <div class="space-y-1">
+                                    <label class="text-[11px] font-bold text-slate-700 block">Pangkat, Korps & NRP</label>
+                                    <input 
+                                        type="text" 
+                                        v-model="form.perwira_tertua_pangkat_nrp" 
+                                        placeholder="Contoh: Kapten Laut (P) NRP 19739/P"
+                                        class="w-full p-2.5 text-xs border border-slate-300 rounded-xl bg-white text-slate-900 focus:ring-2 focus:ring-amber-500" 
+                                    />
+                                </div>
+
+                                <div class="space-y-1">
+                                    <label class="text-[11px] font-bold text-slate-700 block">Jabatan Dinas</label>
+                                    <input 
+                                        type="text" 
+                                        v-model="form.perwira_tertua_jabatan" 
+                                        placeholder="Contoh: Dan Unit 1 Lid Den Intel Kodaeral V"
+                                        class="w-full p-2.5 text-xs border border-slate-300 rounded-xl bg-white text-slate-900 focus:ring-2 focus:ring-amber-500" 
+                                    />
+                                </div>
+                            </div>
+
+                            <!-- Preview Diktum Kepada Text -->
+                            <div class="p-2.5 rounded-xl bg-amber-100/60 border border-amber-300/50 text-[11px] text-amber-950 flex items-start gap-2">
+                                <span class="font-black text-amber-700 uppercase tracking-wider shrink-0">Preview Teks Kepada:</span>
+                                <span class="italic font-serif">
+                                    "{{ form.perwira_tertua_pangkat_nrp || 'Kapten Laut (P) NRP 19739/P' }} {{ form.perwira_tertua_nama || 'Indra Gunawan' }}, {{ form.perwira_tertua_jabatan || 'Dan Unit 1 Lid Den Intel Kodaeral V' }}, beserta ... orang sesuai lampiran."
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Pilihan Jenis Tanda Tangan (TTE vs TTD Manual) -->
                     <div class="p-5 rounded-2xl bg-blue-50/60 border border-blue-200 space-y-3">
                         <label class="text-xs font-black uppercase tracking-wider text-blue-900 block">
@@ -319,7 +469,7 @@ const submit = () => {
                     <div class="flex items-center justify-between border-b border-slate-100 pb-4">
                         <div>
                             <h2 class="text-base font-extrabold text-slate-900">2. Lampiran 1: Daftar Nama Perwira Jaga</h2>
-                            <p class="text-xs text-slate-500">Daftar perwira siaga dan jadwal rotasi tanggal dinas selama bulan berjalan.</p>
+                            <p class="text-xs text-slate-500">Daftar perwira siaga dan jadwal rotasi tanggal dinas selama bulan berjalan. Anda juga dapat memilih Perwira Tertua (Pater) langsung dari tabel.</p>
                         </div>
                         <button 
                             @click="addPerwira" 
@@ -335,15 +485,21 @@ const submit = () => {
                             <thead>
                                 <tr class="bg-slate-50 border-b border-slate-200 text-[10px] font-extrabold uppercase text-slate-500">
                                     <th class="p-2.5 text-center w-10">No</th>
-                                    <th class="p-2.5 w-64">Nama Perwira</th>
-                                    <th class="p-2.5 w-44">Pangkat, Korps</th>
-                                    <th class="p-2.5 w-32">NRP</th>
+                                    <th class="p-2.5 w-60">Nama Perwira</th>
+                                    <th class="p-2.5 w-36">Pangkat, Korps</th>
+                                    <th class="p-2.5 w-28">NRP</th>
+                                    <th class="p-2.5 text-center w-28">Pater / Tertua</th>
                                     <th class="p-2.5 text-center" colspan="7">Tanggal Dinas Jaga</th>
-                                    <th class="p-2.5 text-center w-12">Hapus</th>
+                                    <th class="p-2.5 text-center w-10">Hapus</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
-                                <tr v-for="(p, idx) in form.perwiras" :key="idx" class="hover:bg-slate-50/50">
+                                <tr 
+                                    v-for="(p, idx) in form.perwiras" 
+                                    :key="idx" 
+                                    class="transition"
+                                    :class="isRowPerwiraTertua(p, idx) ? 'bg-amber-50/60 ring-1 ring-amber-300' : 'hover:bg-slate-50/50'"
+                                >
                                     <td class="p-2 text-center font-bold text-slate-500">{{ idx + 1 }}.</td>
                                     <td class="p-2">
                                         <div class="space-y-1">
@@ -363,6 +519,23 @@ const submit = () => {
                                     </td>
                                     <td class="p-2">
                                         <input type="text" v-model="p.nrp" placeholder="82068" class="w-full p-1.5 text-xs border border-slate-200 rounded-lg" />
+                                    </td>
+                                    <td class="p-2 text-center whitespace-nowrap">
+                                        <span 
+                                            v-if="isRowPerwiraTertua(p, idx)"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-400 text-slate-950 font-black text-[10px] rounded-lg shadow-xs ring-1 ring-amber-500"
+                                        >
+                                            ⭐ Pater (Tertua)
+                                        </span>
+                                        <button
+                                            v-else
+                                            type="button"
+                                            @click="setAsPerwiraTertua(idx)"
+                                            class="px-2.5 py-1 bg-slate-100 hover:bg-amber-100 text-slate-600 hover:text-amber-800 text-[10px] font-bold rounded-lg transition cursor-pointer"
+                                            title="Pilih perwira ini sebagai Perwira Tertua"
+                                        >
+                                            ⭐ Pilih Pater
+                                        </button>
                                     </td>
                                     <!-- 7 Kolom Tanggal Dinas -->
                                     <td class="p-1 w-12"><input type="text" v-model="p.tgl_1" class="w-full p-1.5 text-xs text-center border border-slate-200 rounded-lg" /></td>

@@ -140,7 +140,7 @@
                 <td style="width: 140px; vertical-align: top; padding-bottom: 10px;">Kepada</td>
                 <td style="width: 25px; vertical-align: top; text-align: center; padding-bottom: 10px;">:</td>
                 <td style="vertical-align: top; text-align: justify; padding-bottom: 10px; padding-left: 15px;">
-                    {{ $danunitPangkat ?? 'Kapten Laut (P)' }} {{ $danunitNama ?? 'Indra Gunawan' }} {{ $danunitNrp ?? 'NRP 19739/P' }}, {{ $danunitJabatan ?? 'Dan Unit 1 Lid Den Intel Kodaeral V' }}, beserta 26 (Dua puluh enam) orang sesuai lampiran.
+                    {{ $penerimaDiktumKepada ?? (($spJaga->perwira_tertua_pangkat_nrp ?: 'Kapten Laut (P)') . ' ' . ($spJaga->perwira_tertua_nama ?: 'Indra Gunawan')) }}, {{ $perwiraTertuaJabatan ?? ($spJaga->perwira_tertua_jabatan ?: 'Dan Unit 1 Lid Den Intel Kodaeral V') }}, beserta {{ $totalPengikut ?? ($spJaga->total_personel_count > 1 ? $spJaga->total_personel_count - 1 : 26) }} ({{ $totalPengikutTerbilang ?? ($spJaga->total_personel_terbilang ?: 'Dua puluh enam') }}) orang sesuai lampiran.
                 </td>
             </tr>
             <tr>

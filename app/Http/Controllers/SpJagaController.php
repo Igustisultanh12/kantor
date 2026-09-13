@@ -195,11 +195,12 @@ class SpJagaController extends Controller
         }
         $terbilang = $this->terbilangAngka($totalPersonel);
 
-        // Perwira Tertua
+        // Perwira Tertua (Pater / Penerima Perintah)
         $firstPerwira = $request->perwiras[0] ?? [];
-        $perwiraTertuaNama = $firstPerwira['nama'] ?? 'Kapten Laut (P) Indra Gunawan T.Z';
-        $perwiraTertuaPangkatNrp = ($firstPerwira['pangkat_korps'] ?? 'Kapten Laut (P)') . ' NRP ' . ($firstPerwira['nrp'] ?? '19739/P');
-        $perwiraTertuaJabatan = $firstPerwira['jabatan'] ?? 'Dan Unit 1 Lid Den Intel Kodaeral V';
+        $perwiraTertuaUserId = $request->perwira_tertua_user_id ?: ($firstPerwira['user_id'] ?? null);
+        $perwiraTertuaNama = $request->perwira_tertua_nama ?: ($firstPerwira['nama'] ?? 'Kapten Laut (P) Indra Gunawan T.Z');
+        $perwiraTertuaPangkatNrp = $request->perwira_tertua_pangkat_nrp ?: (($firstPerwira['pangkat_korps'] ?? 'Kapten Laut (P)') . ' NRP ' . ($firstPerwira['nrp'] ?? '19739/P'));
+        $perwiraTertuaJabatan = $request->perwira_tertua_jabatan ?: 'Dan Unit 1 Lid Den Intel Kodaeral V';
 
         $uniqueCode = 'TTE-SPJAGA-' . $request->tahun . str_pad($request->bulan, 2, '0', STR_PAD_LEFT) . '-' . strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 6));
 
@@ -214,7 +215,7 @@ class SpJagaController extends Controller
             'tmt_mulai' => $request->tmt_mulai,
             'tmt_selesai' => $request->tmt_selesai,
             'tanggal_surat' => $request->tanggal_surat,
-            'perwira_tertua_user_id' => $firstPerwira['user_id'] ?? null,
+            'perwira_tertua_user_id' => $perwiraTertuaUserId,
             'perwira_tertua_nama' => $perwiraTertuaNama,
             'perwira_tertua_pangkat_nrp' => $perwiraTertuaPangkatNrp,
             'perwira_tertua_jabatan' => $perwiraTertuaJabatan,
@@ -333,10 +334,12 @@ class SpJagaController extends Controller
         }
         $terbilang = $this->terbilangAngka($totalPersonel);
 
+        // Perwira Tertua (Pater / Penerima Perintah)
         $firstPerwira = $request->perwiras[0] ?? [];
-        $perwiraTertuaNama = $firstPerwira['nama'] ?? 'Kapten Laut (P) Indra Gunawan T.Z';
-        $perwiraTertuaPangkatNrp = ($firstPerwira['pangkat_korps'] ?? 'Kapten Laut (P)') . ' NRP ' . ($firstPerwira['nrp'] ?? '19739/P');
-        $perwiraTertuaJabatan = $firstPerwira['jabatan'] ?? 'Dan Unit 1 Lid Den Intel Kodaeral V';
+        $perwiraTertuaUserId = $request->perwira_tertua_user_id ?: ($firstPerwira['user_id'] ?? null);
+        $perwiraTertuaNama = $request->perwira_tertua_nama ?: ($firstPerwira['nama'] ?? 'Kapten Laut (P) Indra Gunawan T.Z');
+        $perwiraTertuaPangkatNrp = $request->perwira_tertua_pangkat_nrp ?: (($firstPerwira['pangkat_korps'] ?? 'Kapten Laut (P)') . ' NRP ' . ($firstPerwira['nrp'] ?? '19739/P'));
+        $perwiraTertuaJabatan = $request->perwira_tertua_jabatan ?: 'Dan Unit 1 Lid Den Intel Kodaeral V';
 
         $spJaga->update([
             'nomor_sprin' => $nomorSprin,
@@ -347,7 +350,7 @@ class SpJagaController extends Controller
             'tmt_mulai' => $request->tmt_mulai,
             'tmt_selesai' => $request->tmt_selesai,
             'tanggal_surat' => $request->tanggal_surat,
-            'perwira_tertua_user_id' => $firstPerwira['user_id'] ?? null,
+            'perwira_tertua_user_id' => $perwiraTertuaUserId,
             'perwira_tertua_nama' => $perwiraTertuaNama,
             'perwira_tertua_pangkat_nrp' => $perwiraTertuaPangkatNrp,
             'perwira_tertua_jabatan' => $perwiraTertuaJabatan,
@@ -480,15 +483,34 @@ class SpJagaController extends Controller
             }
         }
 
-        // Ambil Data Pejabat Dan Unit 1 Lid dari Database Users
-        $danunitUser = User::where('role', 'danunit1')->first()
-                    ?? User::where('name', 'like', '%Indra Gunawan%')->first()
-                    ?? User::where('role', 'danunit')->first();
+        // Ambil Data Pejabat Perwira Tertua (Pater / Penerima Perintah)
+        $perwiraTertuaNama = $spJaga->perwira_tertua_nama ?: 'Indra Gunawan';
+        $perwiraTertuaPangkatNrp = $spJaga->perwira_tertua_pangkat_nrp ?: 'Kapten Laut (P) NRP 19739/P';
+        $perwiraTertuaJabatan = $spJaga->perwira_tertua_jabatan ?: 'Dan Unit 1 Lid Den Intel Kodaeral V';
 
-        $danunitPangkat = $danunitUser?->pangkat ?? 'Kapten Laut (P)';
-        $danunitNama = $danunitUser?->name ?? 'Indra Gunawan';
-        $danunitNrp = $danunitUser?->nrp ? 'NRP ' . $danunitUser->nrp : 'NRP 19739/P';
-        $danunitJabatan = 'Dan Unit 1 Lid Den Intel Kodaeral V';
+        // Hitung personel pengikut (total dikurangi 1 perwira tertua)
+        $totalPengikut = ($spJaga->total_personel_count > 1) ? ($spJaga->total_personel_count - 1) : 26;
+        $totalPengikutTerbilang = $this->terbilangAngka($totalPengikut);
+
+        // Format penerima Diktum Kepada
+        if (stripos($perwiraTertuaPangkatNrp, 'NRP') !== false) {
+            [$pangkatPart, $nrpPart] = explode('NRP', $perwiraTertuaPangkatNrp, 2);
+            $pangkatPart = trim($pangkatPart);
+            $nrpPart = trim($nrpPart);
+            if ($pangkatPart && stripos($perwiraTertuaNama, $pangkatPart) === 0) {
+                $penerimaDiktumKepada = $perwiraTertuaNama . ($nrpPart ? ' NRP ' . $nrpPart : '');
+            } else {
+                $penerimaDiktumKepada = ($pangkatPart ? $pangkatPart . ' ' : '') . $perwiraTertuaNama . ($nrpPart ? ' NRP ' . $nrpPart : '');
+            }
+        } else {
+            $penerimaDiktumKepada = ($perwiraTertuaPangkatNrp ? $perwiraTertuaPangkatNrp . ' ' : '') . $perwiraTertuaNama;
+        }
+
+        // Kompatibilitas variabel lama
+        $danunitPangkat = $perwiraTertuaPangkatNrp;
+        $danunitNama = $perwiraTertuaNama;
+        $danunitNrp = '';
+        $danunitJabatan = $perwiraTertuaJabatan;
 
         // Ambil Data Pejabat Pasops / Pasiops dari Database Users (role: pasops)
         $pasopsUser = User::where('role', 'pasops')->first()
@@ -505,6 +527,12 @@ class SpJagaController extends Controller
         $pdf = Pdf::loadView('pdf.sp_jaga', compact(
             'spJaga', 
             'qr_base64', 
+            'perwiraTertuaNama',
+            'perwiraTertuaPangkatNrp',
+            'perwiraTertuaJabatan',
+            'penerimaDiktumKepada',
+            'totalPengikut',
+            'totalPengikutTerbilang',
             'danunitPangkat', 
             'danunitNama', 
             'danunitNrp', 
