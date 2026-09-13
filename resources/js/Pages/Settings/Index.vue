@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { useForm, Head, router } from '@inertiajs/vue3';
-import { ref, onMounted, onUnmounted } from 'vue'; 
+import { ref, computed, onMounted, onUnmounted } from 'vue'; 
 import axios from 'axios';
 import QrcodeVue from 'qrcode.vue';
 
@@ -18,12 +18,49 @@ const form = useForm({
     mobile_apk_download_url: props.settings.mobile_apk_download_url || 'https://sisinden.my.id/download/sinden-mobile.apk',
     mobile_api_status: props.settings.mobile_api_status || 'AKTIF',
     mobile_min_version: props.settings.mobile_min_version || '1.0.0',
+    google_client_id: props.settings.google_client_id || '',
+    google_client_secret: props.settings.google_client_secret || '',
+    google_login_enabled: props.settings.google_login_enabled !== undefined ? String(props.settings.google_login_enabled) : '1',
     logo: null,
     login_background: null,
     signature_file: null,
     favicon: null,
     _method: 'PUT' 
 });
+
+const showClientSecret = ref(false);
+const copiedCallback = ref(false);
+
+const callbackUrl = computed(() => {
+    if (typeof window !== 'undefined') {
+        return `${window.location.origin}/auth/google/callback`;
+    }
+    return 'https://sisinden.my.id/auth/google/callback';
+});
+
+const copyCallbackUrl = async () => {
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(callbackUrl.value);
+        } else {
+            const textarea = document.createElement('textarea');
+            textarea.value = callbackUrl.value;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+        }
+        copiedCallback.value = true;
+        setTimeout(() => {
+            copiedCallback.value = false;
+        }, 2500);
+    } catch (err) {
+        console.error('Gagal menyalin:', err);
+    }
+};
 
 const logoPreview = ref(props.settings.agency_logo ? '/storage/' + props.settings.agency_logo : null);
 const bgPreview = ref(props.settings.login_background ? '/storage/' + props.settings.login_background : null);
@@ -298,6 +335,134 @@ onUnmounted(() => { if (waInterval) clearInterval(waInterval); });
                                 <label class="text-[10px] font-extrabold text-indigo-900 uppercase tracking-wider ms-1">Versi Minimum APK Mobile</label>
                                 <input v-model="form.mobile_min_version" type="text" class="w-full rounded-2xl border-indigo-200 bg-white focus:ring-indigo-500 focus:border-indigo-600 text-xs font-extrabold px-4 py-3 text-slate-800" placeholder="1.0.0">
                                 <p class="text-[9px] text-indigo-500 font-bold ms-1">Versi minimum aplikasi Android yang diizinkan.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- INTEGRASI GOOGLE OAUTH & SINGLE SIGN-ON (SSO) -->
+                    <div class="pt-8 border-t border-slate-100 space-y-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-center shrink-0">
+                                    <svg class="w-5 h-5" viewBox="0 0 24 24">
+                                        <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+                                        <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
+                                        <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                                        <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-xs font-black text-slate-900 uppercase tracking-wider">INTEGRASI GOOGLE OAUTH & SINGLE SIGN-ON (SSO)</h3>
+                                    <p class="text-[10px] text-slate-500 font-semibold">Kelola Kredensial Google OAuth langsung dari Admin tanpa perlu akses terminal VPS</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Toggle switch status OAuth -->
+                            <div class="flex items-center gap-3 bg-slate-50 p-2.5 px-4 rounded-2xl border border-slate-200">
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" :checked="form.google_login_enabled === '1'" @change="form.google_login_enabled = $event.target.checked ? '1' : '0'" class="sr-only peer" />
+                                    <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                                <span class="text-xs font-black uppercase tracking-wider" :class="form.google_login_enabled === '1' ? 'text-blue-600' : 'text-slate-400'">
+                                    {{ form.google_login_enabled === '1' ? 'LOGIN GOOGLE AKTIF' : 'LOGIN GOOGLE NONAKTIF' }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="bg-gradient-to-br from-slate-50 to-blue-50/30 p-6 rounded-3xl border border-slate-200 space-y-6">
+                            <!-- Input Client ID & Secret -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider ms-1 flex items-center gap-1.5">
+                                        <span>Google Client ID</span>
+                                        <span class="text-[9px] text-rose-500 font-black">*</span>
+                                    </label>
+                                    <input 
+                                        v-model="form.google_client_id" 
+                                        type="text" 
+                                        class="w-full rounded-2xl border-slate-200 bg-white focus:ring-blue-500 focus:border-blue-600 font-mono text-xs font-semibold px-4 py-3 text-slate-800 transition" 
+                                        placeholder="contoh: 1234567890-abcdef.apps.googleusercontent.com"
+                                    />
+                                    <p class="text-[9px] text-slate-400 font-medium ms-1">Client ID OAuth 2.0 Web Client dari Google Cloud Console.</p>
+                                </div>
+
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider ms-1 flex items-center justify-between">
+                                        <div class="flex items-center gap-1.5">
+                                            <span>Google Client Secret</span>
+                                            <span class="text-[9px] text-rose-500 font-black">*</span>
+                                        </div>
+                                        <button 
+                                            type="button" 
+                                            @click="showClientSecret = !showClientSecret"
+                                            class="text-[9px] font-bold text-blue-600 hover:text-blue-800 transition uppercase cursor-pointer"
+                                        >
+                                            {{ showClientSecret ? 'Sembunyikan' : 'Tampilkan' }}
+                                        </button>
+                                    </label>
+                                    <div class="relative">
+                                        <input 
+                                            v-model="form.google_client_secret" 
+                                            :type="showClientSecret ? 'text' : 'password'" 
+                                            class="w-full rounded-2xl border-slate-200 bg-white focus:ring-blue-500 focus:border-blue-600 font-mono text-xs font-semibold px-4 py-3 text-slate-800 transition pr-10" 
+                                            placeholder="contoh: GOCSPX-xxxxxxxxxxxxxxxx"
+                                        />
+                                        <button 
+                                            type="button"
+                                            @click="showClientSecret = !showClientSecret"
+                                            class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                                        >
+                                            <svg v-if="!showClientSecret" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <p class="text-[9px] text-slate-400 font-medium ms-1">Client Secret rahasia yang diberikan oleh Google Cloud Console.</p>
+                                </div>
+                            </div>
+
+                            <!-- Callback URL / Authorized Redirect URIs Box -->
+                            <div class="p-4 bg-white rounded-2xl border border-blue-100 shadow-xs space-y-2">
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                    <label class="text-[10px] font-extrabold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
+                                        <svg class="w-3.5 h-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                        </svg>
+                                        <span>Authorized Redirect URI (Wajib Didaftarkan di Google Cloud Console)</span>
+                                    </label>
+                                    <button 
+                                        type="button" 
+                                        @click="copyCallbackUrl"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition self-start sm:self-auto cursor-pointer"
+                                        :class="copiedCallback ? 'bg-emerald-600 text-white' : 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-200'"
+                                    >
+                                        <svg v-if="!copiedCallback" xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        </svg>
+                                        <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        <span>{{ copiedCallback ? 'Tersalin ke Clipboard!' : 'Salin URI' }}</span>
+                                    </button>
+                                </div>
+                                <div class="bg-slate-900 text-emerald-400 font-mono text-xs px-4 py-3 rounded-xl select-all break-all border border-slate-800">
+                                    <span>{{ callbackUrl }}</span>
+                                </div>
+                                <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[10px] text-amber-900 space-y-1">
+                                    <p class="font-bold flex items-center gap-1">
+                                        <span>Panduan Google Cloud Console:</span>
+                                    </p>
+                                    <ol class="list-decimal list-inside space-y-0.5 text-[9.5px] text-amber-800 font-medium pl-1">
+                                        <li>Buka Google Cloud Console di bagian <b>APIs & Services &rarr; Credentials</b>.</li>
+                                        <li>Buka <b>OAuth 2.0 Client IDs</b> tipe Web application Anda.</li>
+                                        <li>Pada bagian <b>"Authorized redirect URIs"</b>, klik <b>"+ ADD URI"</b> lalu tempel URI di atas.</li>
+                                        <li>Klik <b>Save</b>. Kredensial yang disimpan pada form ini langsung aktif seketika tanpa perlu restart server atau edit file .env di VPS!</li>
+                                    </ol>
+                                </div>
                             </div>
                         </div>
                     </div>

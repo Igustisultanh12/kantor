@@ -12,6 +12,10 @@ defineProps({
     status: {
         type: String,
     },
+    googleLoginEnabled: {
+        type: Boolean,
+        default: true,
+    },
 });
 </script>
 
@@ -38,7 +42,7 @@ defineProps({
                 </div>
 
                 <!-- 2. Tautan Akun Google & SSO Masuk Cepat -->
-                <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0]">
+                <div v-if="googleLoginEnabled" class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0]">
                     <GoogleAccountForm class="max-w-xl" />
                 </div>
 

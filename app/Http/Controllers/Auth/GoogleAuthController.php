@@ -17,23 +17,41 @@ use Illuminate\Support\Str;
 class GoogleAuthController extends Controller
 {
     /**
-     * Dapatkan Client ID Google (dari .env atau database setting)
+     * Cek apakah integrasi login Google diaktifkan oleh Administrator
      */
-    private function getClientId(): ?string
+    private function isGoogleLoginEnabled(): bool
     {
-        $id = config('services.google.client_id');
-        if (!empty($id)) return $id;
-        return Setting::where('key', 'google_client_id')->value('value');
+        $enabled = Setting::where('key', 'google_login_enabled')->value('value');
+        if ($enabled !== null && $enabled !== '') {
+            return $enabled === '1' || $enabled === 1 || $enabled === 'true';
+        }
+        return true;
     }
 
     /**
-     * Dapatkan Client Secret Google (dari .env atau database setting)
+     * Dapatkan Client ID Google (dari database setting atau fallback ke .env)
+     */
+    private function getClientId(): ?string
+    {
+        $db = Setting::where('key', 'google_client_id')->value('value');
+        if (!empty($db) && trim($db) !== '') {
+            return trim($db);
+        }
+        $id = config('services.google.client_id');
+        return !empty($id) ? trim($id) : null;
+    }
+
+    /**
+     * Dapatkan Client Secret Google (dari database setting atau fallback ke .env)
      */
     private function getClientSecret(): ?string
     {
+        $db = Setting::where('key', 'google_client_secret')->value('value');
+        if (!empty($db) && trim($db) !== '') {
+            return trim($db);
+        }
         $secret = config('services.google.client_secret');
-        if (!empty($secret)) return $secret;
-        return Setting::where('key', 'google_client_secret')->value('value');
+        return !empty($secret) ? trim($secret) : null;
     }
 
     /**
@@ -42,10 +60,10 @@ class GoogleAuthController extends Controller
     private function getRedirectUri(): string
     {
         $redirect = config('services.google.redirect');
-        if (filter_var($redirect, FILTER_VALIDATE_URL)) {
+        if (!empty($redirect) && filter_var($redirect, FILTER_VALIDATE_URL)) {
             return $redirect;
         }
-        return url($redirect ?: '/auth/google/callback');
+        return url('/auth/google/callback');
     }
 
     /**
@@ -55,11 +73,21 @@ class GoogleAuthController extends Controller
     public function redirectToGoogle(Request $request): RedirectResponse
     {
         $action = $request->query('action', 'login');
+
+        // Validasi apakah fitur Google OAuth diaktifkan
+        if (!$this->isGoogleLoginEnabled()) {
+            $msg = 'Fitur Autentikasi Google saat ini sedang dinonaktifkan oleh Administrator.';
+            if ($action === 'link') {
+                return redirect()->route('profile.edit')->with('error', $msg);
+            }
+            return redirect()->route('login')->with('error', $msg);
+        }
+
         $clientId = $this->getClientId();
 
-        // Validasi jika kredensial Google belum disiapkan di server
+        // Validasi jika kredensial Google belum disiapkan
         if (empty($clientId)) {
-            $msg = 'Autentikasi Google belum dikonfigurasi di server. Mohon lengkapi GOOGLE_CLIENT_ID & GOOGLE_CLIENT_SECRET di file .env atau Pengaturan Sistem.';
+            $msg = 'Autentikasi Google belum dikonfigurasi. Mohon lengkapi Client ID & Secret di menu Pengaturan Sistem (Admin) atau file .env.';
             if ($action === 'link') {
                 return redirect()->route('profile.edit')->with('error', $msg);
             }
@@ -100,6 +128,14 @@ class GoogleAuthController extends Controller
     {
         $action = session('google_oauth_action', 'login');
 
+        // Validasi apakah fitur Google OAuth diaktifkan
+        if (!$this->isGoogleLoginEnabled()) {
+            if ($action === 'link') {
+                return redirect()->route('profile.edit')->with('error', 'Fitur Google OAuth sedang dinonaktifkan oleh Administrator.');
+            }
+            return redirect()->route('login')->with('error', 'Fitur Masuk dengan Google sedang dinonaktifkan oleh Administrator.');
+        }
+
         // A. Cek jika pengguna membatalkan atau terjadi error dari Google
         if ($request->has('error')) {
             $errorDesc = $request->get('error_description') ?: 'Otoritas Google dibatalkan.';
@@ -132,12 +168,23 @@ class GoogleAuthController extends Controller
             return redirect()->route('login')->with('error', 'Kode otorisasi Google tidak valid.');
         }
 
+        // Pastikan Client ID & Secret tersedia
+        $clientId = $this->getClientId();
+        $clientSecret = $this->getClientSecret();
+        if (empty($clientId) || empty($clientSecret)) {
+            Log::error("[GOOGLE_OAUTH] Kredensial Client ID / Secret belum dikonfigurasi.");
+            if ($action === 'link') {
+                return redirect()->route('profile.edit')->with('error', 'Kredensial Google OAuth belum dikonfigurasi di Pengaturan Admin.');
+            }
+            return redirect()->route('login')->with('error', 'Kredensial Google OAuth belum dikonfigurasi di Pengaturan Admin.');
+        }
+
         // C. Tukar Code dengan Access Token ke Google OAuth Endpoint
         try {
             $tokenResponse = Http::asForm()->post('https://oauth2.googleapis.com/token', [
                 'code' => $code,
-                'client_id' => $this->getClientId(),
-                'client_secret' => $this->getClientSecret(),
+                'client_id' => $clientId,
+                'client_secret' => $clientSecret,
                 'redirect_uri' => $this->getRedirectUri(),
                 'grant_type' => 'authorization_code',
             ]);

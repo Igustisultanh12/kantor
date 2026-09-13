@@ -19,9 +19,14 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): Response
     {
+        $rawSettings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        $clientId = !empty($rawSettings['google_client_id']) ? $rawSettings['google_client_id'] : config('services.google.client_id');
+        $googleLoginEnabled = isset($rawSettings['google_login_enabled']) ? ($rawSettings['google_login_enabled'] === '1' || $rawSettings['google_login_enabled'] === 1) : true;
+
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
+            'googleLoginEnabled' => $googleLoginEnabled && !empty($clientId),
         ]);
     }
 

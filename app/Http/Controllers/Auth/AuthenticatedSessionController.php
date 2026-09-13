@@ -16,10 +16,14 @@ class AuthenticatedSessionController extends Controller
     public function create(Request $request): Response
     {
         $rawSettings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        $clientId = !empty($rawSettings['google_client_id']) ? $rawSettings['google_client_id'] : config('services.google.client_id');
+        $googleLoginEnabled = isset($rawSettings['google_login_enabled']) ? ($rawSettings['google_login_enabled'] === '1' || $rawSettings['google_login_enabled'] === 1) : true;
+
         $settings = [
             'app_name' => $rawSettings['agency_name'] ?? 'SINDEN',
             'agency_logo' => isset($rawSettings['agency_logo']) && $rawSettings['agency_logo'] ? asset('storage/' . $rawSettings['agency_logo']) : null,
             'login_background' => isset($rawSettings['login_background']) && $rawSettings['login_background'] ? asset('storage/' . $rawSettings['login_background']) : null,
+            'google_login_enabled' => $googleLoginEnabled && !empty($clientId),
         ];
 
         $redirect = $request->query('redirect') ?: session('url.intended');
