@@ -39,6 +39,17 @@ class IbuBetiAccountController extends Controller
     {
         $access = $this->checkAccess();
 
+        // Ambil daftar bulan yang tersedia dari database transaksi
+        $availableMonths = IbuBetiAccount::selectRaw("DISTINCT DATE_FORMAT(tanggal, '%Y-%m') as ym")
+            ->orderBy('ym', 'desc')
+            ->pluck('ym')
+            ->toArray();
+
+        $currentYm = date('Y-m');
+        if (!in_array($currentYm, $availableMonths)) {
+            array_unshift($availableMonths, $currentYm);
+        }
+
         $query = IbuBetiAccount::query();
 
         // Filter Pencarian Keterangan
@@ -51,38 +62,74 @@ class IbuBetiAccountController extends Controller
             $query->where('jenis', $request->jenis);
         }
 
-        // Filter Bulan/Tahun
-        if ($request->filled('month')) {
-            $query->whereMonth('tanggal', date('m', strtotime($request->month)))
-                  ->whereYear('tanggal', date('Y', strtotime($request->month)));
+        $saldoAwal = 0;
+        $totalMasukKeseluruhan = (float) IbuBetiAccount::where('jenis', 'MASUK')->sum('jumlah');
+        $totalKeluarKeseluruhan = (float) IbuBetiAccount::where('jenis', 'KELUAR')->sum('jumlah');
+        $saldoKeseluruhan = $totalMasukKeseluruhan - $totalKeluarKeseluruhan;
+
+        if ($request->filled('month') && preg_match('/^\d{4}-\d{2}$/', $request->month)) {
+            $carbon = \Carbon\Carbon::parse($request->month . '-01');
+            $startOfMonth = $carbon->copy()->startOfMonth()->toDateString();
+            $endOfMonth = $carbon->copy()->endOfMonth()->toDateString();
+
+            // Saldo Awal sebelum bulan ini
+            $prevMasuk = (float) IbuBetiAccount::where('tanggal', '<', $startOfMonth)->where('jenis', 'MASUK')->sum('jumlah');
+            $prevKeluar = (float) IbuBetiAccount::where('tanggal', '<', $startOfMonth)->where('jenis', 'KELUAR')->sum('jumlah');
+            $saldoAwal = $prevMasuk - $prevKeluar;
+
+            $query->whereBetween('tanggal', [$startOfMonth, $endOfMonth]);
+
+            $totalMasukPeriode = (float) (clone $query)->where('jenis', 'MASUK')->sum('jumlah');
+            $totalKeluarPeriode = (float) (clone $query)->where('jenis', 'KELUAR')->sum('jumlah');
+            $totalMasuk = $totalMasukPeriode;
+            $totalKeluar = $totalKeluarPeriode;
+            $saldoAkhir = $saldoAwal + $totalMasukPeriode - $totalKeluarPeriode;
+        } else {
+            $totalMasuk = $totalMasukKeseluruhan;
+            $totalKeluar = $totalKeluarKeseluruhan;
+            $saldoAkhir = $saldoKeseluruhan;
         }
 
-        $logs = (clone $query)->orderBy('tanggal', 'desc')->orderBy('id', 'desc')->get()->map(function ($item) {
-            return [
+        // Hitung Saldo Berjalan (Running Balance)
+        $runningBalance = $saldoAwal;
+        $periodLogs = (clone $query)->orderBy('tanggal', 'asc')->orderBy('id', 'asc')->get();
+        $mapped = [];
+
+        foreach ($periodLogs as $item) {
+            if ($item->jenis === 'MASUK') {
+                $runningBalance += (float) $item->jumlah;
+            } else {
+                $runningBalance -= (float) $item->jumlah;
+            }
+
+            $mapped[] = [
                 'id' => $item->id,
                 'tanggal' => $item->tanggal ? $item->tanggal->format('Y-m-d') : null,
                 'keterangan' => $item->keterangan,
                 'jenis' => $item->jenis,
-                'jumlah' => (float)$item->jumlah,
+                'jumlah' => (float) $item->jumlah,
+                'saldo_berjalan' => $runningBalance,
                 'bukti' => $item->bukti ? asset('storage/' . $item->bukti) : null,
                 'bukti_path' => $item->bukti,
                 'is_pdf' => $item->bukti ? str_ends_with(strtolower($item->bukti), '.pdf') : false,
                 'petugas_input' => $item->petugas_input,
                 'created_at' => $item->created_at ? $item->created_at->format('Y-m-d H:i') : null,
             ];
-        });
+        }
 
-        // Kalkulasi Statistik Keseluruhan
-        $totalMasuk = IbuBetiAccount::where('jenis', 'MASUK')->sum('jumlah');
-        $totalKeluar = IbuBetiAccount::where('jenis', 'KELUAR')->sum('jumlah');
-        $saldoAkhir = $totalMasuk - $totalKeluar;
+        // Urutkan transaksi terbaru di atas untuk antarmuka tabel web
+        $logs = array_reverse($mapped);
 
         return Inertia::render('IbuBetiAccount/Index', [
             'logs' => $logs,
+            'available_months' => $availableMonths,
             'stats' => [
-                'total_masuk' => (float)$totalMasuk,
-                'total_keluar' => (float)$totalKeluar,
-                'saldo_akhir' => (float)$saldoAkhir,
+                'saldo_awal' => (float) $saldoAwal,
+                'total_masuk' => (float) $totalMasuk,
+                'total_keluar' => (float) $totalKeluar,
+                'saldo_akhir' => (float) $saldoAkhir,
+                'saldo_keseluruhan' => (float) $saldoKeseluruhan,
+                'is_monthly' => $request->filled('month'),
             ],
             'filters' => [
                 'search' => $request->search ?? '',
@@ -217,28 +264,78 @@ class IbuBetiAccountController extends Controller
     }
 
     /**
-     * Cetak Laporan Rekapitulasi Format PDF Resmi Kedinasan
+     * Cetak Laporan Rekapitulasi Format PDF Rekening Koran (Bank Statement)
      */
     public function exportPdf(Request $request)
     {
         $this->checkAccess();
+        $month = $request->query('month');
 
-        $query = IbuBetiAccount::orderBy('tanggal', 'asc')->orderBy('id', 'asc');
+        $saldoAwal = 0;
+        $periodLabel = 'Semua Periode Transaksi';
+        $periodDates = 'Keseluruhan Log Mutasi';
 
-        if ($request->filled('month')) {
-            $query->whereMonth('tanggal', date('m', strtotime($request->month)))
-                  ->whereYear('tanggal', date('Y', strtotime($request->month)));
+        $monthsIndo = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+        ];
+
+        if ($month && preg_match('/^\d{4}-\d{2}$/', $month)) {
+            $carbon = \Carbon\Carbon::parse($month . '-01');
+            $startOfMonth = $carbon->copy()->startOfMonth()->toDateString();
+            $endOfMonth = $carbon->copy()->endOfMonth()->toDateString();
+
+            $periodLabel = strtoupper($monthsIndo[(int)$carbon->format('n')] . ' ' . $carbon->format('Y'));
+            $periodDates = '01 ' . $monthsIndo[(int)$carbon->format('n')] . ' ' . $carbon->format('Y') . ' s/d ' . $carbon->copy()->endOfMonth()->format('d') . ' ' . $monthsIndo[(int)$carbon->format('n')] . ' ' . $carbon->format('Y');
+
+            // Saldo Awal sebelum bulan ini
+            $prevMasuk = (float) IbuBetiAccount::where('tanggal', '<', $startOfMonth)->where('jenis', 'MASUK')->sum('jumlah');
+            $prevKeluar = (float) IbuBetiAccount::where('tanggal', '<', $startOfMonth)->where('jenis', 'KELUAR')->sum('jumlah');
+            $saldoAwal = $prevMasuk - $prevKeluar;
+
+            $rawLogs = IbuBetiAccount::whereBetween('tanggal', [$startOfMonth, $endOfMonth])
+                ->orderBy('tanggal', 'asc')
+                ->orderBy('id', 'asc')
+                ->get();
+
+            $totalMasuk = (float) IbuBetiAccount::whereBetween('tanggal', [$startOfMonth, $endOfMonth])->where('jenis', 'MASUK')->sum('jumlah');
+            $totalKeluar = (float) IbuBetiAccount::whereBetween('tanggal', [$startOfMonth, $endOfMonth])->where('jenis', 'KELUAR')->sum('jumlah');
+        } else {
+            $rawLogs = IbuBetiAccount::orderBy('tanggal', 'asc')->orderBy('id', 'asc')->get();
+            $totalMasuk = (float) IbuBetiAccount::where('jenis', 'MASUK')->sum('jumlah');
+            $totalKeluar = (float) IbuBetiAccount::where('jenis', 'KELUAR')->sum('jumlah');
         }
 
-        $logs = $query->get();
+        // Kalkulasi Saldo Berjalan (Running Balance) untuk tiap baris
+        $runningBalance = $saldoAwal;
+        $logs = [];
+        $countMasuk = 0;
+        $countKeluar = 0;
 
-        $totalMasuk = (clone $query)->where('jenis', 'MASUK')->sum('jumlah');
-        $totalKeluar = (clone $query)->where('jenis', 'KELUAR')->sum('jumlah');
-        $saldo = $totalMasuk - $totalKeluar;
+        foreach ($rawLogs as $item) {
+            if ($item->jenis === 'MASUK') {
+                $runningBalance += (float) $item->jumlah;
+                $countMasuk++;
+            } else {
+                $runningBalance -= (float) $item->jumlah;
+                $countKeluar++;
+            }
+            $item->saldo_berjalan = $runningBalance;
+            $logs[] = $item;
+        }
 
-        $pdf = Pdf::loadView('pdf.ibu_beti_cash', compact('logs', 'totalMasuk', 'totalKeluar', 'saldo'))
-                  ->setPaper('a4', 'portrait');
+        $saldoAkhir = $saldoAwal + $totalMasuk - $totalKeluar;
+        $accountNo = 'SINDEN-BETI-02';
+        $accountHolder = 'REKENING IBU BETI';
 
-        return $pdf->stream('LAPORAN_REKENING_IBU_BETI_' . date('Ymd_His') . '.pdf');
+        $pdf = Pdf::loadView('pdf.ibu_beti_cash', compact(
+            'logs', 'totalMasuk', 'totalKeluar', 'saldoAwal', 'saldoAkhir',
+            'periodLabel', 'periodDates', 'month', 'accountNo', 'accountHolder',
+            'countMasuk', 'countKeluar'
+        ))->setPaper('a4', 'portrait');
+
+        $filename = 'REKENING_KORAN_IBU_BETI_' . ($month ? str_replace('-', '', $month) : date('Ymd_His')) . '.pdf';
+        return $pdf->stream($filename);
     }
 }

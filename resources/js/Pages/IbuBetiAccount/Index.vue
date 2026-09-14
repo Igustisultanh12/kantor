@@ -8,6 +8,7 @@ const props = defineProps({
     logs: Array,
     stats: Object,
     filters: Object,
+    available_months: Array,
 });
 
 const showModal = ref(false);
@@ -160,6 +161,14 @@ const formatDateIndo = (dateStr) => {
         year: 'numeric'
     });
 };
+
+const formatMonthName = (ym) => {
+    if (!ym) return '';
+    const [year, month] = ym.split('-');
+    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    const idx = parseInt(month, 10) - 1;
+    return `${months[idx] || month} ${year}`;
+};
 </script>
 
 <template>
@@ -204,17 +213,31 @@ const formatDateIndo = (dateStr) => {
                         <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
                         </svg>
-                        <span>Cetak Laporan PDF</span>
+                        <span>Cetak Rekening Koran (PDF)</span>
                     </a>
                 </div>
             </div>
 
-            <!-- Stats Cards Row -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+            <!-- Stats Cards Row (4 Cards jika Bulanan, 3 Cards jika Semua Periode) -->
+            <div :class="stats?.is_monthly ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 md:grid-cols-3'" class="grid gap-4 sm:gap-6">
+                <!-- Saldo Awal (Khusus Mode Bulanan) -->
+                <div v-if="stats?.is_monthly" class="bg-white p-5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-xs border border-amber-100 flex items-center justify-between relative overflow-hidden">
+                    <div class="space-y-1">
+                        <span class="text-[10px] font-extrabold text-amber-700 uppercase tracking-wider block">Saldo Awal Bulan</span>
+                        <p class="text-xl sm:text-2xl font-black text-amber-600 font-mono">{{ formatRupiah(stats?.saldo_awal) }}</p>
+                        <span class="text-[10px] text-amber-700/90 font-semibold bg-amber-50 px-2 py-0.5 rounded-md inline-block">Bawaan Periode Sebelumnya</span>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+
                 <!-- Total Masuk -->
                 <div class="bg-white p-5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-xs border border-emerald-100 flex items-center justify-between relative overflow-hidden">
                     <div class="space-y-1">
-                        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Total Uang Masuk</span>
+                        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">{{ stats?.is_monthly ? 'Uang Masuk Bulan Ini' : 'Total Uang Masuk' }}</span>
                         <p class="text-xl sm:text-2xl font-black text-emerald-600 font-mono">{{ formatRupiah(stats?.total_masuk) }}</p>
                         <span class="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md inline-block">Debet / Penerimaan</span>
                     </div>
@@ -228,7 +251,7 @@ const formatDateIndo = (dateStr) => {
                 <!-- Total Keluar -->
                 <div class="bg-white p-5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-xs border border-rose-100 flex items-center justify-between relative overflow-hidden">
                     <div class="space-y-1">
-                        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Total Uang Keluar</span>
+                        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">{{ stats?.is_monthly ? 'Uang Keluar Bulan Ini' : 'Total Uang Keluar' }}</span>
                         <p class="text-xl sm:text-2xl font-black text-rose-600 font-mono">{{ formatRupiah(stats?.total_keluar) }}</p>
                         <span class="text-[10px] text-rose-700 font-semibold bg-rose-50 px-2 py-0.5 rounded-md inline-block">Kredit / Pengeluaran</span>
                     </div>
@@ -242,7 +265,7 @@ const formatDateIndo = (dateStr) => {
                 <!-- Saldo Akhir -->
                 <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg flex items-center justify-between relative overflow-hidden">
                     <div class="space-y-1 z-10">
-                        <span class="text-[10px] font-extrabold text-slate-300 uppercase tracking-wider block">Saldo Akhir Rekening</span>
+                        <span class="text-[10px] font-extrabold text-slate-300 uppercase tracking-wider block">{{ stats?.is_monthly ? 'Saldo Akhir Bulan' : 'Saldo Akhir Rekening' }}</span>
                         <p class="text-xl sm:text-2xl font-black text-white font-mono">{{ formatRupiah(stats?.saldo_akhir) }}</p>
                         <span class="text-[10px] text-pink-300 font-bold bg-white/10 px-2 py-0.5 rounded-md inline-block">Sisa Kas Tersedia</span>
                     </div>
@@ -282,7 +305,19 @@ const formatDateIndo = (dateStr) => {
                         <option value="KELUAR">Uang Keluar (Kredit)</option>
                     </select>
 
-                    <!-- Month Filter -->
+                    <!-- Dropdown Periode Bulan Cepat -->
+                    <select 
+                        v-model="filterMonth" 
+                        @change="applyFilters"
+                        class="bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold px-3 py-2 text-slate-800 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition cursor-pointer"
+                    >
+                        <option value="">Semua Periode</option>
+                        <option v-for="ym in available_months" :key="ym" :value="ym">
+                            {{ formatMonthName(ym) }}
+                        </option>
+                    </select>
+
+                    <!-- Month Filter (Input picker) -->
                     <input 
                         type="month" 
                         v-model="filterMonth" 
@@ -291,16 +326,20 @@ const formatDateIndo = (dateStr) => {
                     />
 
                     <button 
+                        v-if="filterMonth || filterSearch || filterJenis"
                         @click="resetFilters" 
-                        class="px-3 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+                        class="px-3 py-2 text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl transition cursor-pointer"
                         title="Reset Filter"
                     >
                         Reset
                     </button>
                 </div>
 
-                <div class="text-xs font-bold text-slate-500 self-end md:self-center">
-                    Total: <span class="text-slate-900 font-extrabold">{{ logs.length }}</span> Transaksi
+                <div class="text-xs font-bold text-slate-500 self-end md:self-center flex items-center gap-2">
+                    <span v-if="filterMonth" class="bg-pink-50 text-pink-700 px-2.5 py-1 rounded-full text-[10px] font-black uppercase">
+                        Periode: {{ formatMonthName(filterMonth) }}
+                    </span>
+                    <span>Total: <span class="text-slate-900 font-extrabold">{{ logs.length }}</span> Transaksi</span>
                 </div>
             </div>
 
@@ -313,15 +352,16 @@ const formatDateIndo = (dateStr) => {
                                 <th class="py-4 px-4 text-center w-12">No</th>
                                 <th class="py-4 px-4 w-28">Tanggal</th>
                                 <th class="py-4 px-4 min-w-[200px]">Keterangan Transaksi</th>
-                                <th class="py-4 px-4 text-center w-24">Bukti</th>
-                                <th class="py-4 px-4 text-right w-36">Masuk (Debet)</th>
-                                <th class="py-4 px-4 text-right w-36">Keluar (Kredit)</th>
+                                <th class="py-4 px-4 text-center w-20">Bukti</th>
+                                <th class="py-4 px-4 text-right w-32">Masuk (Debet)</th>
+                                <th class="py-4 px-4 text-right w-32">Keluar (Kredit)</th>
+                                <th class="py-4 px-4 text-right w-36 bg-pink-50/40 text-pink-900">Saldo Berjalan</th>
                                 <th class="py-4 px-4 text-center w-24">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 font-medium">
-                            <tr v-if="logs.length === 0">
-                                <td colspan="7" class="py-12 text-center text-slate-400 italic">
+                            <tr v-if="logs.length === 0 && (!stats?.is_monthly || stats?.saldo_awal === 0)">
+                                <td colspan="8" class="py-12 text-center text-slate-400 italic">
                                     Belum ada catatan transaksi pada Rekening Ibu Beti.
                                 </td>
                             </tr>
@@ -350,8 +390,8 @@ const formatDateIndo = (dateStr) => {
                                         title="Buka Berkas Bukti Transaksi"
                                     >
                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                             <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                         </svg>
                                         <span>Bukti</span>
                                     </button>
@@ -362,6 +402,9 @@ const formatDateIndo = (dateStr) => {
                                 </td>
                                 <td class="py-4 px-4 text-right whitespace-nowrap font-mono font-bold text-rose-600">
                                     {{ item.jenis === 'KELUAR' ? formatRupiah(item.jumlah) : '-' }}
+                                </td>
+                                <td class="py-4 px-4 text-right whitespace-nowrap font-mono font-bold text-slate-900 bg-pink-50/20">
+                                    {{ formatRupiah(item.saldo_berjalan) }}
                                 </td>
                                 <td class="py-4 px-4 text-center whitespace-nowrap">
                                     <div class="flex items-center justify-center gap-1.5">
@@ -385,6 +428,27 @@ const formatDateIndo = (dateStr) => {
                                         </button>
                                     </div>
                                 </td>
+                            </tr>
+
+                            <!-- Baris Saldo Awal jika memfilter bulan tertentu -->
+                            <tr v-if="stats?.is_monthly && stats?.saldo_awal !== 0" class="bg-amber-50/40 font-semibold border-t-2 border-amber-200/60">
+                                <td class="py-4 px-4 text-center font-bold text-amber-800">-</td>
+                                <td class="py-4 px-4 whitespace-nowrap font-bold text-amber-900">
+                                    01/{{ filterMonth.split('-')[1] }}/{{ filterMonth.split('-')[0] }}
+                                </td>
+                                <td class="py-4 px-4">
+                                    <p class="font-extrabold text-amber-900 uppercase tracking-tight text-xs">SALDO AWAL BULAN (BEGINNING BALANCE)</p>
+                                    <span class="text-[10px] text-amber-700/80 font-medium mt-0.5 block">
+                                        Bawaan saldo kumulatif sebelum periode ini
+                                    </span>
+                                </td>
+                                <td class="py-4 px-4 text-center text-slate-300">-</td>
+                                <td class="py-4 px-4 text-right text-slate-400 font-mono">-</td>
+                                <td class="py-4 px-4 text-right text-slate-400 font-mono">-</td>
+                                <td class="py-4 px-4 text-right whitespace-nowrap font-mono font-black text-xs sm:text-sm text-pink-700 bg-pink-50/40">
+                                    {{ formatRupiah(stats?.saldo_awal) }}
+                                </td>
+                                <td class="py-4 px-4 text-center text-slate-300">-</td>
                             </tr>
                         </tbody>
                     </table>
