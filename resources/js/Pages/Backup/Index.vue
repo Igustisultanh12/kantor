@@ -1,7 +1,8 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm, router, usePage } from '@inertiajs/vue3';
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import axios from 'axios';
 import Swal from 'sweetalert2';
 
 const page = usePage();
@@ -242,8 +243,124 @@ const deleteNetwork = (id) => {
     });
 };
 
+// --- OPERASI ADMIN: MONITORING REALTIME LOG AKSES SHARE FOLDER ---
+const isShareLogsModalOpen = ref(false);
+const shareLogs = ref([]);
+const shareLogsStats = ref({
+    total_accessors: 0,
+    total_personel: 0,
+    total_tamu: 0,
+    total_hits: 0,
+});
+const isLoadingShareLogs = ref(false);
+const isRealtimeActive = ref(true);
+const shareLogsSearch = ref('');
+const shareLogsTypeFilter = ref('all'); // 'all', 'personel', 'tamu'
+const lastUpdatedTime = ref('');
+let shareLogsPollTimer = null;
+
+const fetchShareLogs = async (isBackground = false) => {
+    if (!isBackground) {
+        isLoadingShareLogs.value = true;
+    }
+    try {
+        const response = await axios.get(route('admin.backup.share-access-logs'));
+        if (response.data && response.data.status === 'success') {
+            shareLogs.value = response.data.logs || [];
+            shareLogsStats.value = response.data.stats || {
+                total_accessors: 0,
+                total_personel: 0,
+                total_tamu: 0,
+                total_hits: 0,
+            };
+            lastUpdatedTime.value = response.data.server_time || new Date().toLocaleTimeString();
+        }
+    } catch (err) {
+        console.error('Gagal memuat log akses share folder:', err);
+    } finally {
+        if (!isBackground) {
+            isLoadingShareLogs.value = false;
+        }
+    }
+};
+
+const startRealtimePolling = () => {
+    stopRealtimePolling();
+    isRealtimeActive.value = true;
+    shareLogsPollTimer = setInterval(() => {
+        if (isShareLogsModalOpen.value && isRealtimeActive.value) {
+            fetchShareLogs(true);
+        }
+    }, 3000);
+};
+
+const stopRealtimePolling = () => {
+    if (shareLogsPollTimer) {
+        clearInterval(shareLogsPollTimer);
+        shareLogsPollTimer = null;
+    }
+};
+
+const toggleRealtime = () => {
+    isRealtimeActive.value = !isRealtimeActive.value;
+    if (isRealtimeActive.value) {
+        fetchShareLogs(true);
+    }
+};
+
+const openShareLogsModal = () => {
+    isShareLogsModalOpen.value = true;
+    fetchShareLogs(false);
+    startRealtimePolling();
+};
+
+const closeShareLogsModal = () => {
+    isShareLogsModalOpen.value = false;
+    stopRealtimePolling();
+};
+
+const filteredShareLogs = computed(() => {
+    return shareLogs.value.filter(item => {
+        // Filter tipe
+        if (shareLogsTypeFilter.value !== 'all' && item.access_type !== shareLogsTypeFilter.value) {
+            return false;
+        }
+        // Filter search
+        if (shareLogsSearch.value.trim()) {
+            const q = shareLogsSearch.value.toLowerCase().trim();
+            const matchName = item.nama?.toLowerCase().includes(q);
+            const matchPangkat = item.pangkat?.toLowerCase().includes(q);
+            const matchNrp = item.nrp?.toLowerCase().includes(q);
+            const matchSatuan = item.satuan?.toLowerCase().includes(q);
+            const matchIp = item.ip_address?.toLowerCase().includes(q);
+            const matchFolder = item.share_name?.toLowerCase().includes(q);
+            const matchPc = item.pc_name?.toLowerCase().includes(q);
+            return matchName || matchPangkat || matchNrp || matchSatuan || matchIp || matchFolder || matchPc;
+        }
+        return true;
+    });
+});
+
+const copyToClipboard = (text, label = 'Data') => {
+    if (!text || text === '-') return;
+    navigator.clipboard.writeText(text).then(() => {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: `${label} berhasil disalin!`,
+            showConfirmButton: false,
+            timer: 1500,
+        });
+    });
+};
+
 onMounted(() => {
     checkAksesStatus();
+});
+
+onUnmounted(() => {
+    stopRealtimePolling();
 });
 </script>
 
@@ -292,10 +409,27 @@ onMounted(() => {
                         <h3 class="text-lg font-bold text-blue-800 uppercase flex items-center gap-2">
                             <span> Penyimpanan PC Saya</span>
                         </h3>
-                        <button v-if="isAdmin" @click="openCreatePcModal" class="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition shadow-sm flex items-center gap-2 cursor-pointer">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
-                            <span>Buat Pangkalan Backup Baru</span>
-                        </button>
+                        <div v-if="isAdmin" class="flex items-center gap-2.5 flex-wrap">
+                            <button 
+                                @click="openShareLogsModal" 
+                                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition shadow-sm flex items-center gap-2 cursor-pointer border border-indigo-500 hover:shadow-md"
+                                title="Pantau siapa saja yang mengakses folder berbagi secara realtime">
+                                <span class="relative flex h-2 w-2">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+                                </span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                <span>Cek Akses Share Folder</span>
+                            </button>
+
+                            <button @click="openCreatePcModal" class="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition shadow-sm flex items-center gap-2 cursor-pointer">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                                <span>Buat Pangkalan Backup Baru</span>
+                            </button>
+                        </div>
                     </div>
 
                     <div v-if="myPcs.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -576,6 +710,281 @@ onMounted(() => {
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- MODAL CEK AKSES SHARE FOLDER (KHUSUS ADMIN - REALTIME) -->
+        <Teleport to="body">
+            <div v-if="isShareLogsModalOpen" class="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-3 sm:p-5 animate-fade-in overflow-y-auto">
+                <div class="bg-white w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden border border-slate-200 my-auto max-h-[92vh] flex flex-col">
+                    
+                    <!-- Modal Header -->
+                    <div class="p-4 sm:p-6 bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 text-white flex justify-between items-center shrink-0 border-b border-indigo-800/50">
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2.5 flex-wrap">
+                                <div class="w-8 h-8 rounded-xl bg-indigo-500/30 border border-indigo-400/40 flex items-center justify-center text-indigo-300">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                    </svg>
+                                </div>
+                                <h3 class="text-base sm:text-lg font-black tracking-tight uppercase">Monitoring Akses Share Folder</h3>
+                                
+                                <!-- Realtime Live Badge Toggle -->
+                                <button 
+                                    type="button" 
+                                    @click="toggleRealtime" 
+                                    :class="isRealtimeActive ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40' : 'bg-slate-700/60 text-slate-300 border-slate-600'" 
+                                    class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border flex items-center gap-1.5 transition cursor-pointer"
+                                    :title="isRealtimeActive ? 'Klik untuk jeda pembaruan realtime' : 'Klik untuk mengaktifkan pembaruan realtime'">
+                                    <span class="relative flex h-2 w-2">
+                                        <span v-if="isRealtimeActive" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                        <span :class="isRealtimeActive ? 'bg-emerald-400' : 'bg-slate-400'" class="relative inline-flex rounded-full h-2 w-2"></span>
+                                    </span>
+                                    <span>{{ isRealtimeActive ? 'Realtime (3s)' : 'Jeda' }}</span>
+                                </button>
+                            </div>
+                            <p class="text-xs text-indigo-200/80 font-medium">
+                                Memantau seluruh personel & pengunjung tamu yang mengakses folder berbagi secara langsung.
+                            </p>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button 
+                                type="button" 
+                                @click="fetchShareLogs(false)" 
+                                :disabled="isLoadingShareLogs"
+                                class="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs transition cursor-pointer flex items-center gap-1" 
+                                title="Segarkan data sekarang">
+                                <svg :class="isLoadingShareLogs ? 'animate-spin' : ''" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                            </button>
+                            <button 
+                                type="button" 
+                                @click="closeShareLogsModal" 
+                                class="text-white/70 hover:text-white text-2xl font-bold p-1 leading-none transition cursor-pointer">
+                                &times;
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Modal Body -->
+                    <div class="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 bg-slate-50/50">
+                        
+                        <!-- Stat Cards Row -->
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Pengakses</p>
+                                <p class="text-xl sm:text-2xl font-black text-slate-900 mt-0.5">{{ shareLogsStats.total_accessors }} <span class="text-xs font-semibold text-slate-500 font-normal">Orang</span></p>
+                            </div>
+                            <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+                                <p class="text-[10px] font-bold text-indigo-500 uppercase tracking-wider">Total Frekuensi Akses</p>
+                                <p class="text-xl sm:text-2xl font-black text-indigo-900 mt-0.5">{{ shareLogsStats.total_hits }} <span class="text-xs font-semibold text-indigo-600 font-normal">Kali</span></p>
+                            </div>
+                            <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+                                <p class="text-[10px] font-bold text-blue-500 uppercase tracking-wider">Personel Internal</p>
+                                <p class="text-xl sm:text-2xl font-black text-blue-900 mt-0.5">{{ shareLogsStats.total_personel }} <span class="text-xs font-semibold text-blue-600 font-normal">Akun</span></p>
+                            </div>
+                            <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+                                <p class="text-[10px] font-bold text-amber-500 uppercase tracking-wider">Pengunjung Tamu</p>
+                                <p class="text-xl sm:text-2xl font-black text-amber-900 mt-0.5">{{ shareLogsStats.total_tamu }} <span class="text-xs font-semibold text-amber-600 font-normal">Tamu</span></p>
+                            </div>
+                        </div>
+
+                        <!-- Filter & Search Toolbar -->
+                        <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                            <!-- Search Input -->
+                            <div class="relative flex-1">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 pointer-events-none">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                </span>
+                                <input 
+                                    v-model="shareLogsSearch" 
+                                    type="text" 
+                                    placeholder="Cari Pangkat, Nama, NRP, Satuan, IP, atau Folder..." 
+                                    class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:border-indigo-600 focus:outline-none transition"
+                                />
+                            </div>
+
+                            <!-- Type Filter Pills -->
+                            <div class="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200 shrink-0">
+                                <button 
+                                    type="button" 
+                                    @click="shareLogsTypeFilter = 'all'" 
+                                    :class="shareLogsTypeFilter === 'all' ? 'bg-white text-slate-900 shadow-2xs font-black' : 'text-slate-500 hover:text-slate-800 font-bold'" 
+                                    class="px-3 py-1.5 rounded-lg text-xs transition cursor-pointer">
+                                    Semua ({{ shareLogs.length }})
+                                </button>
+                                <button 
+                                    type="button" 
+                                    @click="shareLogsTypeFilter = 'personel'" 
+                                    :class="shareLogsTypeFilter === 'personel' ? 'bg-white text-indigo-700 shadow-2xs font-black' : 'text-slate-500 hover:text-slate-800 font-bold'" 
+                                    class="px-3 py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center gap-1">
+                                    <span>🔒 Personel</span>
+                                </button>
+                                <button 
+                                    type="button" 
+                                    @click="shareLogsTypeFilter = 'tamu'" 
+                                    :class="shareLogsTypeFilter === 'tamu' ? 'bg-white text-amber-700 shadow-2xs font-black' : 'text-slate-500 hover:text-slate-800 font-bold'" 
+                                    class="px-3 py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center gap-1">
+                                    <span>👥 Tamu</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Table Content -->
+                        <div class="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+                            <div v-if="isLoadingShareLogs && shareLogs.length === 0" class="p-12 text-center text-slate-400 space-y-2">
+                                <div class="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                                <p class="text-xs font-bold">Memuat log akses folder berbagi...</p>
+                            </div>
+
+                            <div v-else-if="filteredShareLogs.length === 0" class="p-12 text-center text-slate-400 space-y-2">
+                                <div class="w-12 h-12 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-2xl text-slate-400">
+                                    🔍
+                                </div>
+                                <p class="text-xs font-bold text-slate-600">Tidak ada data akses yang sesuai filter.</p>
+                                <p class="text-[11px] text-slate-400">Belum ada aktivitas akses atau kata kunci pencarian tidak ditemukan.</p>
+                            </div>
+
+                            <!-- Responsive Table -->
+                            <div v-else class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse text-xs">
+                                    <thead>
+                                        <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] font-black tracking-wider">
+                                            <th class="py-3 px-4">Pengakses (Pangkat / Nama / NRP)</th>
+                                            <th class="py-3 px-3">Tipe</th>
+                                            <th class="py-3 px-3">Folder Yang Diakses</th>
+                                            <th class="py-3 px-3">Pukul Berapa Mengakses</th>
+                                            <th class="py-3 px-3">Alamat IP</th>
+                                            <th class="py-3 px-3 text-center">Frekuensi</th>
+                                            <th class="py-3 px-3">Status Sesi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        <tr v-for="log in filteredShareLogs" :key="log.id" class="hover:bg-slate-50/70 transition">
+                                            
+                                            <!-- Pengakses (Pangkat, Nama, NRP, Satuan, WhatsApp) -->
+                                            <td class="py-3 px-4">
+                                                <div class="space-y-0.5">
+                                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                                        <span v-if="log.pangkat && log.pangkat !== '-'" class="px-1.5 py-0.5 bg-indigo-50 border border-indigo-200 text-indigo-800 text-[10px] font-extrabold rounded-md uppercase">
+                                                            {{ log.pangkat }}
+                                                        </span>
+                                                        <span class="font-black text-slate-900 uppercase text-xs">{{ log.nama }}</span>
+                                                    </div>
+                                                    <div class="text-[11px] text-slate-500 font-semibold flex items-center gap-2 flex-wrap">
+                                                        <span>NRP/NIP: <strong class="text-slate-700 font-mono">{{ log.nrp }}</strong></span>
+                                                        <span>&bull;</span>
+                                                        <span>{{ log.satuan }}</span>
+                                                    </div>
+                                                    <div v-if="log.whatsapp" class="text-[10.5px] text-emerald-700 font-bold flex items-center gap-1">
+                                                        <span>📱 WA:</span>
+                                                        <a :href="'https://wa.me/' + log.whatsapp" target="_blank" class="hover:underline font-mono">{{ log.whatsapp }}</a>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            <!-- Tipe Akses -->
+                                            <td class="py-3 px-3 whitespace-nowrap">
+                                                <span v-if="log.access_type === 'personel'" class="px-2 py-1 bg-blue-100 text-blue-800 border border-blue-200 rounded-lg text-[10px] font-black uppercase flex items-center gap-1 w-fit">
+                                                    <span>🔒 Personel</span>
+                                                </span>
+                                                <span v-else class="px-2 py-1 bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-[10px] font-black uppercase flex items-center gap-1 w-fit">
+                                                    <span>👥 Tamu Luar</span>
+                                                </span>
+                                            </td>
+
+                                            <!-- Folder yang Diakses -->
+                                            <td class="py-3 px-3">
+                                                <div class="space-y-0.5 max-w-[200px]">
+                                                    <p class="font-extrabold text-slate-800 uppercase truncate" :title="log.share_name">
+                                                        📁 {{ log.share_name }}
+                                                    </p>
+                                                    <p class="text-[10px] text-slate-400 font-semibold truncate">
+                                                        PC: {{ log.pc_name }}
+                                                    </p>
+                                                </div>
+                                            </td>
+
+                                            <!-- Pukul Berapa Mengakses (Timestamp) -->
+                                            <td class="py-3 px-3 whitespace-nowrap">
+                                                <div class="space-y-0.5">
+                                                    <p class="font-black text-slate-900 text-xs flex items-center gap-1 font-mono">
+                                                        <span>⏱️</span>
+                                                        <span>{{ log.last_accessed_time }}</span>
+                                                    </p>
+                                                    <p class="text-[10px] text-slate-400 font-semibold">
+                                                        {{ log.last_accessed_date }} ({{ log.time_ago }})
+                                                    </p>
+                                                </div>
+                                            </td>
+
+                                            <!-- Alamat IP -->
+                                            <td class="py-3 px-3 whitespace-nowrap">
+                                                <div class="flex items-center gap-1.5">
+                                                    <span class="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded-md border border-slate-200">
+                                                        {{ log.ip_address }}
+                                                    </span>
+                                                    <button 
+                                                        type="button" 
+                                                        @click="copyToClipboard(log.ip_address, 'IP Address')" 
+                                                        class="text-slate-400 hover:text-slate-700 p-1 rounded transition cursor-pointer" 
+                                                        title="Salin IP">
+                                                        📋
+                                                    </button>
+                                                </div>
+                                            </td>
+
+                                            <!-- Berapa Kali Akses -->
+                                            <td class="py-3 px-3 text-center whitespace-nowrap">
+                                                <span class="inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-black bg-indigo-50 border border-indigo-200 text-indigo-800 shadow-2xs">
+                                                    {{ log.access_count }}x Akses
+                                                </span>
+                                            </td>
+
+                                            <!-- Status Sesi -->
+                                            <td class="py-3 px-3 whitespace-nowrap">
+                                                <div v-if="log.access_type === 'tamu'">
+                                                    <span v-if="log.is_expired" class="px-2 py-0.5 bg-rose-100 text-rose-700 rounded-md text-[10px] font-bold">
+                                                        Kadaluarsa
+                                                    </span>
+                                                    <span v-else class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-md text-[10px] font-bold">
+                                                        Sesi Aktif
+                                                    </span>
+                                                    <p v-if="log.expires_at" class="text-[9px] text-slate-400 mt-0.5">
+                                                        s/d {{ log.expires_at }}
+                                                    </p>
+                                                </div>
+                                                <div v-else>
+                                                    <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-md text-[10px] font-bold">
+                                                        Terdaftar
+                                                    </span>
+                                                </div>
+                                            </td>
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal Footer -->
+                    <div class="p-4 bg-white border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2 shrink-0 text-xs text-slate-500">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full" :class="isRealtimeActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'"></span>
+                            <span>Status: <strong>{{ isRealtimeActive ? 'Pembaruan Realtime Aktif (Tiap 3 Detik)' : 'Jeda Pembaruan' }}</strong></span>
+                            <span v-if="lastUpdatedTime">&bull; Terakhir dicek: <strong>{{ lastUpdatedTime }}</strong></span>
+                        </div>
+                        <button 
+                            type="button" 
+                            @click="closeShareLogsModal" 
+                            class="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider transition cursor-pointer">
+                            Tutup
+                        </button>
+                    </div>
                 </div>
             </div>
         </Teleport>

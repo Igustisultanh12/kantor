@@ -6,6 +6,7 @@ use App\Models\Pc;
 use App\Models\Backup;
 use App\Models\BackupShare;
 use App\Models\BackupShareGuest;
+use App\Models\BackupShareAccessLog;
 use App\Services\ArwService;
 use App\Services\FileSecurityService;
 use App\Services\ThumbnailService;
@@ -349,6 +350,23 @@ class BackupShareController extends Controller
         $user = Auth::user();
         if ($user) {
             Log::info("Personel {$user->name} (" . ($user->nrp ?? $user->id) . ") berhasil memverifikasi PIN folder share ID {$share->id}");
+
+            try {
+                BackupShareAccessLog::recordAccess(
+                    shareId: $share->id,
+                    accessType: 'personel',
+                    nama: $user->name,
+                    nrp: $user->nrp ?? $user->nip ?? '-',
+                    pangkat: $user->pangkat ?? 'Personel',
+                    satuan: 'Internal SINDEN',
+                    whatsapp: null,
+                    userId: $user->id,
+                    ip: $request->ip(),
+                    userAgent: substr((string)$request->userAgent(), 0, 500)
+                );
+            } catch (\Throwable $e) {
+                Log::warning("Gagal mencatat audit log akses personel: " . $e->getMessage());
+            }
         }
 
         // Perbarui statistik akses
@@ -456,6 +474,25 @@ class BackupShareController extends Controller
             'accessed_at' => now(),
             'expires_at' => $expiresAt,
         ]);
+
+        // Catat ke tabel audit log akses terpadu (BackupShareAccessLog)
+        try {
+            BackupShareAccessLog::recordAccess(
+                shareId: $share->id,
+                accessType: 'tamu',
+                nama: $guestRecord->nama,
+                nrp: $guestRecord->nrp,
+                pangkat: $guestRecord->pangkat,
+                satuan: $guestRecord->satuan,
+                whatsapp: $guestRecord->whatsapp,
+                userId: null,
+                ip: $request->ip(),
+                userAgent: substr((string)$request->userAgent(), 0, 500),
+                expiresAt: $expiresAt
+            );
+        } catch (\Throwable $logErr) {
+            Log::warning("Gagal mencatat log akses tamu ke BackupShareAccessLog: " . $logErr->getMessage());
+        }
 
         // Simpan sesi terverifikasi dan identitas tamu
         session()->put('verified_backup_share_' . $share->id, true);
@@ -1019,6 +1056,105 @@ class BackupShareController extends Controller
         }
 
         abort(500, 'Gagal mengompresi berkas ke dalam ZIP.');
+    }
+
+    /**
+     * Endpoint API Khusus Admin: Menampilkan Log Siapa Saja yang Mengakses Share Folder Secara Realtime
+     */
+    public function getAccessLogs(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthenticated.'], 401);
+        }
+
+        $isAdmin = $user->role === 'admin' || $user->name === 'I Gusti Sultan H.A, A.Md.Kom';
+        if (!$isAdmin) {
+            return response()->json(['status' => 'error', 'message' => 'Otoritas ditolak: Khusus Administrator.'], 403);
+        }
+
+        BackupShareAccessLog::ensureSchema();
+
+        $query = BackupShareAccessLog::with(['share.pc', 'share.folder', 'user'])
+            ->latest('last_accessed_at');
+
+        // Filter tipe akses ('all', 'personel', 'tamu')
+        if ($request->filled('type') && in_array($request->type, ['personel', 'tamu'])) {
+            $query->where('access_type', $request->type);
+        }
+
+        // Filter folder tertentu
+        if ($request->filled('share_id')) {
+            $query->where('backup_share_id', $request->share_id);
+        }
+
+        // Filter pencarian (nama, pangkat, nrp, satuan, ip, nama folder)
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                    ->orWhere('pangkat', 'like', "%{$search}%")
+                    ->orWhere('nrp', 'like', "%{$search}%")
+                    ->orWhere('satuan', 'like', "%{$search}%")
+                    ->orWhere('ip_address', 'like', "%{$search}%")
+                    ->orWhereHas('share', function ($sq) use ($search) {
+                        $sq->where('share_name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $allLogs = $query->take(150)->get();
+
+        // Statistik agregat
+        $totalAccessors = BackupShareAccessLog::count();
+        $totalPersonel = BackupShareAccessLog::where('access_type', 'personel')->count();
+        $totalTamu = BackupShareAccessLog::where('access_type', 'tamu')->count();
+        $totalHits = (int)BackupShareAccessLog::sum('access_count');
+
+        $formattedLogs = $allLogs->map(function ($log) {
+            $share = $log->share;
+            $shareTitle = $share?->share_name ?: ($share?->folder?->file_name ?: $share?->pc?->pc_name ?: 'Folder Berbagi');
+            $isExpired = $log->expires_at ? now()->greaterThan($log->expires_at) : false;
+
+            return [
+                'id' => $log->id,
+                'access_type' => $log->access_type,
+                'pangkat' => $log->pangkat ?: ($log->access_type === 'personel' ? 'Personel' : '-'),
+                'nama' => $log->nama,
+                'nrp' => $log->nrp ?: '-',
+                'satuan' => $log->satuan ?: ($log->access_type === 'personel' ? 'Internal SINDEN' : '-'),
+                'whatsapp' => $log->whatsapp ?: null,
+                'ip_address' => $log->ip_address ?: '-',
+                'user_agent' => $log->user_agent,
+                'access_count' => (int)$log->access_count,
+                'last_accessed_at' => $log->last_accessed_at ? $log->last_accessed_at->format('d/m/Y H:i:s') . ' WIB' : '-',
+                'last_accessed_time' => $log->last_accessed_at ? $log->last_accessed_at->format('H:i:s') . ' WIB' : '-',
+                'last_accessed_date' => $log->last_accessed_at ? $log->last_accessed_at->format('d M Y') : '-',
+                'time_ago' => $log->last_accessed_at ? $log->last_accessed_at->diffForHumans() : '-',
+                'first_accessed_at' => $log->first_accessed_at ? $log->first_accessed_at->format('d/m/Y H:i') . ' WIB' : '-',
+                'expires_at' => $log->expires_at ? $log->expires_at->format('d/m/Y H:i') . ' WIB' : null,
+                'is_expired' => $isExpired,
+                'share_id' => $log->backup_share_id,
+                'share_name' => $shareTitle,
+                'pc_name' => $share?->pc?->pc_name ?: '-',
+                'share_url' => $share ? route('backup.shared.view', $share->share_token) : null,
+                'guest_share_url' => $share ? route('backup.shared.guest-view', $share->share_token) : null,
+                'is_share_active' => (bool)($share?->is_active ?? false),
+            ];
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'server_time' => now()->format('H:i:s') . ' WIB',
+            'server_timestamp' => now()->timestamp,
+            'stats' => [
+                'total_accessors' => $totalAccessors,
+                'total_personel' => $totalPersonel,
+                'total_tamu' => $totalTamu,
+                'total_hits' => $totalHits,
+            ],
+            'logs' => $formattedLogs,
+        ]);
     }
 
     private function formatBytes($bytes)

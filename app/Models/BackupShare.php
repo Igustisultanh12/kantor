@@ -94,6 +94,14 @@ class BackupShare extends Model
     }
 
     /**
+     * Relasi ke seluruh log akses (personel internal & tamu)
+     */
+    public function accessLogs(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(BackupShareAccessLog::class, 'backup_share_id')->latest('last_accessed_at');
+    }
+
+    /**
      * Validasi kecocokan PIN keamanan
      */
     public function verifyPin(?string $inputPin): bool

@@ -170,6 +170,7 @@ Route::middleware(['auth', 'office.only'])->group(function () {
     Route::post('/pc-backup/share/save', [BackupShareController::class, 'saveShare'])->name('backup.share.save');
     Route::delete('/pc-backup/share/{id}', [BackupShareController::class, 'revokeShare'])->name('backup.share.revoke');
     Route::delete('/pc-backup/share/{id}/guest', [BackupShareController::class, 'revokeGuestLink'])->name('backup.share.revoke-guest');
+    Route::get('/pc-backup/share/access-logs', [BackupShareController::class, 'getAccessLogs'])->name('admin.backup.share-access-logs');
 
     // --- FITUR PREVIEW & KONVERSI SONY RAW (.ARW) KE JPG HD ---
     Route::get('/pc-backup/preview-arw/{id}', [BackupController::class, 'previewArw'])->name('backup.preview-arw');
