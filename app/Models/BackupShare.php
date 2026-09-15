@@ -22,6 +22,7 @@ class BackupShare extends Model
         'is_active',
         'allow_guest',
         'guest_duration_hours',
+        'guest_expires_at',
         'created_by',
         'share_name',
         'access_count',
@@ -33,6 +34,7 @@ class BackupShare extends Model
         'is_active' => 'boolean',
         'allow_guest' => 'boolean',
         'guest_duration_hours' => 'integer',
+        'guest_expires_at' => 'datetime',
         'access_count' => 'integer',
         'last_accessed_at' => 'datetime',
         'expires_at' => 'datetime',
@@ -179,11 +181,32 @@ class BackupShare extends Model
                         $table->integer('guest_duration_hours')->default(24)->after('allow_guest');
                     });
                 }
+                if (!Schema::hasColumn('backup_shares', 'guest_expires_at')) {
+                    Schema::table('backup_shares', function (Blueprint $table) {
+                        $table->timestamp('guest_expires_at')->nullable()->after('guest_duration_hours');
+                    });
+                }
             }
 
             BackupShareGuest::ensureSchema();
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('ensureSchema backup_shares warning: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Memeriksa apakah akses link tamu / pengunjung telah kadaluarsa
+     */
+    public function isGuestExpired(): bool
+    {
+        if (!$this->allow_guest) {
+            return true;
+        }
+
+        if ($this->guest_expires_at && now()->greaterThan($this->guest_expires_at)) {
+            return true;
+        }
+
+        return false;
     }
 }

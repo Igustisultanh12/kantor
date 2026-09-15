@@ -169,6 +169,7 @@ Route::middleware(['auth', 'office.only'])->group(function () {
     // --- FITUR BAGIKAN FOLDER (GOOGLE DRIVE STYLE DENGAN PIN) ---
     Route::post('/pc-backup/share/save', [BackupShareController::class, 'saveShare'])->name('backup.share.save');
     Route::delete('/pc-backup/share/{id}', [BackupShareController::class, 'revokeShare'])->name('backup.share.revoke');
+    Route::delete('/pc-backup/share/{id}/guest', [BackupShareController::class, 'revokeGuestLink'])->name('backup.share.revoke-guest');
 
     // --- FITUR PREVIEW & KONVERSI SONY RAW (.ARW) KE JPG HD ---
     Route::get('/pc-backup/preview-arw/{id}', [BackupController::class, 'previewArw'])->name('backup.preview-arw');

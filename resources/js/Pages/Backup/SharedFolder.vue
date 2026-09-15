@@ -22,6 +22,10 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    isGuestExpired: {
+        type: Boolean,
+        default: false,
+    },
     isGuestMode: {
         type: Boolean,
         default: false,
@@ -457,10 +461,10 @@ const exitAndLock = () => {
         </header>
 
         <!-- MAIN BODY CONTENT -->
-        <main class="flex-1 flex flex-col items-center justify-center p-3 sm:p-6 lg:p-8">
+        <main class="flex-1 flex flex-col items-center p-3 sm:p-6 py-6 sm:py-10 overflow-y-auto min-h-0">
 
             <!-- STATE 1: TAUTAN TIDAK DITEMUKAN (404) -->
-            <div v-if="isNotFound" class="max-w-md w-full bg-white rounded-3xl shadow-xl p-6 sm:p-8 border border-slate-200 text-center space-y-5 animate-fade-in mx-auto">
+            <div v-if="isNotFound" class="max-w-md w-full bg-white rounded-3xl shadow-xl p-6 sm:p-8 border border-slate-200 text-center space-y-5 animate-fade-in mx-auto my-auto">
                 <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full bg-rose-50 border-2 border-rose-200 flex items-center justify-center text-rose-600 shadow-inner">
                     <svg class="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -480,7 +484,7 @@ const exitAndLock = () => {
             </div>
 
             <!-- STATE 2: TAUTAN DINONAKTIFKAN OLEH ADMIN -->
-            <div v-else-if="isDeactivated" class="max-w-md w-full bg-white rounded-3xl shadow-xl p-6 sm:p-8 border border-amber-200 text-center space-y-5 animate-fade-in mx-auto">
+            <div v-else-if="isDeactivated" class="max-w-md w-full bg-white rounded-3xl shadow-xl p-6 sm:p-8 border border-amber-200 text-center space-y-5 animate-fade-in mx-auto my-auto">
                 <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full bg-amber-50 border-2 border-amber-200 flex items-center justify-center text-amber-600 shadow-inner">
                     <svg class="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -501,8 +505,38 @@ const exitAndLock = () => {
                 </div>
             </div>
 
-            <!-- STATE 2B: AKSES TAMU DINONAKTIFKAN UNTUK FOLDER INI -->
-            <div v-else-if="isGuestDisabled" class="max-w-md w-full bg-white rounded-3xl shadow-xl p-6 sm:p-8 border border-amber-200 text-center space-y-5 animate-fade-in mx-auto">
+            <!-- STATE 2B: AKSES TAMU KADALUARSA / DIHAPUS OTOMATIS -->
+            <div v-else-if="isGuestExpired" class="max-w-md w-full bg-white rounded-3xl shadow-xl p-6 sm:p-8 border border-rose-200 text-center space-y-5 animate-fade-in mx-auto my-auto">
+                <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full bg-rose-50 border-2 border-rose-200 flex items-center justify-center text-rose-600 shadow-inner">
+                    <svg class="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div class="space-y-2">
+                    <div class="inline-block px-3 py-1 bg-rose-100 text-rose-800 text-[10px] font-black uppercase tracking-widest rounded-full mb-1">
+                        Tautan Kadaluarsa & Dihapus
+                    </div>
+                    <h2 class="text-lg sm:text-xl font-black text-slate-900 uppercase tracking-tight">{{ shareName || 'Folder Berbagi' }}</h2>
+                    <p class="text-xs text-slate-500 font-medium leading-relaxed">
+                        Masa berlaku tautan akses pengunjung telah berakhir sesuai batas waktu yang ditentukan ({{ guestDurationHours || 24 }} Jam) dan telah dihapus secara otomatis demi keamanan berkas.
+                    </p>
+                </div>
+                <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-[11px] text-slate-600 text-left space-y-1">
+                    <p class="font-bold">Informasi Akses:</p>
+                    <p>Silakan hubungi pemilik folder atau Administrator apabila Anda memerlukan tautan akses baru.</p>
+                </div>
+                <div class="pt-2 border-t border-slate-100 space-y-2">
+                    <a :href="personnelUrl || route('backup.shared.view', shareToken)" class="inline-flex items-center justify-center w-full px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase tracking-wider transition shadow-md gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                        </svg>
+                        <span>Login Sebagai Personel SINDEN</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- STATE 2C: AKSES TAMU DINONAKTIFKAN UNTUK FOLDER INI -->
+            <div v-else-if="isGuestDisabled" class="max-w-md w-full bg-white rounded-3xl shadow-xl p-6 sm:p-8 border border-amber-200 text-center space-y-5 animate-fade-in mx-auto my-auto">
                 <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full bg-amber-50 border-2 border-amber-200 flex items-center justify-center text-amber-600 shadow-inner">
                     <svg class="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -527,36 +561,36 @@ const exitAndLock = () => {
                 </div>
             </div>
 
-            <!-- STATE 3A: FORMULIR BUKU TAMU & PIN (AKSES PENGUNJUNG TAMU TANPA LOGIN) -->
-            <div v-else-if="needsPin && isGuestMode" class="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 animate-fade-in mx-auto">
+            <!-- STATE 3A: FORMULIR TAMU / SHARING FOLDER (AKSES PENGUNJUNG TAMU TANPA LOGIN) -->
+            <div v-else-if="needsPin && isGuestMode" class="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 animate-fade-in mx-auto my-auto">
                 <!-- Header Banner Tamu -->
-                <div class="p-5 sm:p-6 bg-slate-900 text-white text-center space-y-2.5">
-                    <div class="w-14 h-14 mx-auto rounded-2xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400 shadow-md">
-                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                <div class="p-5 sm:p-6 bg-slate-900 text-white text-center space-y-2">
+                    <div class="w-12 h-12 sm:w-14 sm:h-14 mx-auto rounded-2xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400 shadow-md">
+                        <svg class="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                         </svg>
                     </div>
                     <div>
-                        <div class="inline-block px-2.5 py-0.5 bg-amber-500/20 text-amber-300 text-[10px] font-bold uppercase tracking-wider rounded-full mb-1">
-                            Buku Tamu Pengunjung Luar
+                        <div class="inline-block px-2.5 py-0.5 bg-amber-500/20 text-amber-300 text-[10px] font-black uppercase tracking-wider rounded-full mb-1">
+                            Akses Pengunjung Tamu
                         </div>
-                        <h2 class="text-base sm:text-lg font-black tracking-tight uppercase">Buku Tamu & PIN Folder</h2>
+                        <h2 class="text-base sm:text-lg font-black tracking-tight uppercase">Sharing Folder</h2>
                         <p class="text-[11px] text-slate-300 font-medium">
-                            Isi identitas tamu dan masukkan PIN keamanan untuk membuka folder berbagi.
+                            Verifikasi identitas dan PIN keamanan untuk membuka folder berbagi.
                         </p>
                     </div>
                 </div>
 
-                <!-- Buku Tamu Body -->
-                <div class="p-5 sm:p-7 space-y-4">
+                <!-- Formulir Body -->
+                <div class="p-5 sm:p-6 space-y-3.5">
                     <!-- Banner Peringatan Sesi Kedaluwarsa (Jika Ada) -->
-                    <div v-if="expiredMessage" class="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-2.5 text-rose-800 text-xs font-semibold animate-shake">
+                    <div v-if="expiredMessage" class="p-3 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-2.5 text-rose-800 text-xs font-semibold animate-shake">
                         <span class="text-base shrink-0">⚠️</span>
                         <span class="leading-relaxed">{{ expiredMessage }}</span>
                     </div>
 
                     <!-- Target Folder Info -->
-                    <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center gap-3">
+                    <div class="p-2.5 sm:p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center gap-3">
                         <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center shrink-0">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
@@ -572,7 +606,7 @@ const exitAndLock = () => {
                     </div>
 
                     <!-- Buku Tamu Form -->
-                    <form @submit.prevent="submitGuest" class="space-y-3.5">
+                    <form @submit.prevent="submitGuest" class="space-y-3">
                         <!-- NRP / NIP / No. Identitas -->
                         <div class="space-y-1">
                             <label class="text-[10px] font-bold uppercase tracking-wider text-slate-600 block">
@@ -582,7 +616,7 @@ const exitAndLock = () => {
                                 v-model="guestForm.nrp" 
                                 type="text" 
                                 required
-                                placeholder="Contoh: 12345678 / KTP"
+                                placeholder="Masukkan NRP / NIP / No. Identitas"
                                 autocomplete="off"
                                 class="w-full text-xs font-bold py-2.5 px-3 bg-slate-50 border border-slate-300 focus:border-indigo-600 focus:bg-white rounded-xl transition outline-none"
                             />
@@ -597,7 +631,7 @@ const exitAndLock = () => {
                                 v-model="guestForm.nama" 
                                 type="text" 
                                 required
-                                placeholder="Contoh: Lettu Inf Ahmad / Tamu Luar"
+                                placeholder="Masukkan Nama Lengkap"
                                 autocomplete="name"
                                 class="w-full text-xs font-bold py-2.5 px-3 bg-slate-50 border border-slate-300 focus:border-indigo-600 focus:bg-white rounded-xl transition outline-none"
                             />
@@ -612,7 +646,7 @@ const exitAndLock = () => {
                                 v-model="guestForm.satuan" 
                                 type="text" 
                                 required
-                                placeholder="Contoh: Kodim 0801 / Instansi Eksternal"
+                                placeholder="Masukkan Satuan / Instansi Asal"
                                 autocomplete="organization"
                                 class="w-full text-xs font-bold py-2.5 px-3 bg-slate-50 border border-slate-300 focus:border-indigo-600 focus:bg-white rounded-xl transition outline-none"
                             />
@@ -632,7 +666,7 @@ const exitAndLock = () => {
                                     v-model="guestForm.whatsapp" 
                                     type="tel" 
                                     required
-                                    placeholder="Contoh: 081234567890 / 628..."
+                                    placeholder="Nomor WhatsApp (08... / 62...)"
                                     autocomplete="tel"
                                     class="w-full text-xs font-bold py-2.5 pl-8 pr-3 bg-slate-50 border border-slate-300 focus:border-indigo-600 focus:bg-white rounded-xl transition outline-none"
                                 />
@@ -682,7 +716,7 @@ const exitAndLock = () => {
 
                     <div class="text-center pt-2 border-t border-slate-100 space-y-1.5">
                         <p class="text-[10px] text-slate-400">
-                            Identitas Anda dicatat ke dalam Buku Tamu Digital demi keamanan pangkalan berkas. Akses aktif selama {{ guestDurationHours || 24 }} jam.
+                            Identitas Anda dicatat ke dalam log pengunjung demi keamanan pangkalan berkas. Akses aktif selama {{ guestDurationHours || 24 }} jam.
                         </p>
                         <p class="text-[11px] font-bold text-slate-600">
                             Personel SINDEN? 
@@ -695,7 +729,7 @@ const exitAndLock = () => {
             </div>
 
             <!-- STATE 3B: FORMULIR INPUT PIN KEAMANAN (AKSES PERSONEL INTERNAL LOGIN) -->
-            <div v-else-if="needsPin" class="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 animate-fade-in mx-auto">
+            <div v-else-if="needsPin" class="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 animate-fade-in mx-auto my-auto">
                 <!-- Header Banner -->
                 <div class="p-5 sm:p-6 bg-slate-900 text-white text-center space-y-2.5">
                     <div class="w-14 h-14 mx-auto rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-white shadow-md">
@@ -794,7 +828,7 @@ const exitAndLock = () => {
                             <p class="text-[11px] font-bold text-slate-600">
                                 Pengunjung Luar / Tamu? 
                                 <a :href="guestUrl || route('backup.shared.guest-view', shareToken)" class="text-amber-600 hover:text-amber-800 underline">
-                                    Masuk via Buku Tamu
+                                    Masuk via Sharing Folder Tamu
                                 </a>
                             </p>
                         </div>

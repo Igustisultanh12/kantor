@@ -79,8 +79,18 @@ class BackupShareController extends Controller
 
         $share->pin = trim($validated['pin']);
         $share->is_active = (bool)$validated['is_active'];
-        $share->allow_guest = $request->has('allow_guest') ? (bool)$validated['allow_guest'] : true;
-        $share->guest_duration_hours = $request->filled('guest_duration_hours') ? max(1, (int)$request->input('guest_duration_hours')) : 24;
+        $allowGuest = $request->has('allow_guest') ? (bool)$validated['allow_guest'] : true;
+        $share->allow_guest = $allowGuest;
+        $durationHours = $request->filled('guest_duration_hours') ? max(1, (int)$request->input('guest_duration_hours')) : 24;
+        $share->guest_duration_hours = $durationHours;
+
+        // Atur masa berlaku tautan pengunjung luar (otomatis kedaluwarsa setelah batas waktu)
+        if ($allowGuest) {
+            $share->guest_expires_at = now()->addHours($durationHours);
+        } else {
+            $share->guest_expires_at = null;
+        }
+
         $share->share_name = $defaultName;
         $share->save();
 
@@ -106,12 +116,15 @@ class BackupShareController extends Controller
             'share_url' => route('backup.shared.view', $share->share_token),
             'guest_share_url' => route('backup.shared.guest-view', $share->share_token),
             'guest_duration_hours' => (int)($share->guest_duration_hours ?: 24),
+            'guest_expires_at' => $share->guest_expires_at ? $share->guest_expires_at->toIso8601String() : null,
+            'guest_expires_at_human' => $share->guest_expires_at ? $share->guest_expires_at->format('d/m/Y H:i') : null,
+            'is_guest_expired' => $share->isGuestExpired(),
             'recent_guests' => $recentGuests,
         ]);
     }
 
     /**
-     * Menonaktifkan atau menghapus tautan berbagi
+     * Menonaktifkan atau menghapus tautan berbagi (seluruh akses)
      */
     public function revokeShare(Request $request, $id)
     {
@@ -128,6 +141,31 @@ class BackupShareController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Akses tautan berbagi berhasil dinonaktifkan seketika.',
+            'share' => $share,
+        ]);
+    }
+
+    /**
+     * Menghapus / Menutup Tautan Pengunjung Tamu Seketika
+     */
+    public function revokeGuestLink(Request $request, $id)
+    {
+        $share = BackupShare::findOrFail($id);
+        $user = Auth::user();
+        $isAdmin = $user->role === 'admin' || $user->name === 'I Gusti Sultan H.A, A.Md.Kom';
+
+        if (!$isAdmin && $share->created_by !== $user->id && $share->pc->user_id !== $user->id) {
+            return response()->json(['status' => 'error', 'message' => 'Anda tidak memiliki otoritas.'], 403);
+        }
+
+        $share->update([
+            'allow_guest' => false,
+            'guest_expires_at' => null,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Tautan pengunjung berhasil dihapus & dinonaktifkan.',
             'share' => $share,
         ]);
     }
@@ -199,6 +237,27 @@ class BackupShareController extends Controller
             return Inertia::render('Backup/SharedFolder', [
                 'isDeactivated' => true,
                 'shareName' => $share->share_name,
+            ]);
+        }
+
+        // Periksa apakah tautan pengunjung telah kadaluarsa melewati batas waktu durasi (otomatis dihapus)
+        if ($share->guest_expires_at && now()->greaterThan($share->guest_expires_at)) {
+            // Otomatis hapus / nonaktifkan tautan pengunjung
+            $share->update([
+                'allow_guest' => false,
+                'guest_expires_at' => null,
+            ]);
+            session()->forget('verified_backup_share_' . $share->id);
+            session()->forget('guest_backup_share_' . $share->id);
+            session()->forget('guest_backup_share_expires_at_' . $share->id);
+
+            return Inertia::render('Backup/SharedFolder', [
+                'isGuestExpired' => true,
+                'shareName' => $share->share_name,
+                'folderName' => $share->folder?->file_name ?: $share->pc->pc_name,
+                'guestDurationHours' => (int)($share->guest_duration_hours ?: 24),
+                'shareToken' => $token,
+                'personnelUrl' => route('backup.shared.view', $token),
             ]);
         }
 
@@ -472,6 +531,9 @@ class BackupShareController extends Controller
             'isGuestDisabled' => false,
             'expiredMessage' => $expiredMessage,
             'guestDurationHours' => (int)($share->guest_duration_hours ?: 24),
+            'guestExpiresAt' => $share->guest_expires_at ? $share->guest_expires_at->toIso8601String() : null,
+            'guestExpiresAtHuman' => $share->guest_expires_at ? $share->guest_expires_at->format('d/m/Y H:i') : null,
+            'isGuestExpired' => $share->isGuestExpired(),
             'shareToken' => $token,
             'shareName' => $share->share_name,
             'folderName' => $share->folder?->file_name ?: $share->pc->pc_name,
@@ -613,12 +675,22 @@ class BackupShareController extends Controller
             abort(403, 'Otoritas PIN keamanan belum terverifikasi.');
         }
 
-        $guestExpiresAt = session()->get('guest_backup_share_expires_at_' . $share->id);
-        if ($guestExpiresAt && now()->timestamp > $guestExpiresAt) {
-            session()->forget('verified_backup_share_' . $share->id);
-            session()->forget('guest_backup_share_' . $share->id);
-            session()->forget('guest_backup_share_expires_at_' . $share->id);
-            abort(403, 'Masa berlaku sesi akses tamu telah habis. Silakan isi kembali Buku Tamu.');
+        $isGuestSession = session()->has('guest_backup_share_' . $share->id);
+        if ($isGuestSession) {
+            if ($share->isGuestExpired()) {
+                session()->forget('verified_backup_share_' . $share->id);
+                session()->forget('guest_backup_share_' . $share->id);
+                session()->forget('guest_backup_share_expires_at_' . $share->id);
+                abort(403, 'Masa berlaku tautan pengunjung telah berakhir dan telah dihapus secara otomatis.');
+            }
+
+            $guestExpiresAt = session()->get('guest_backup_share_expires_at_' . $share->id);
+            if ($guestExpiresAt && now()->timestamp > $guestExpiresAt) {
+                session()->forget('verified_backup_share_' . $share->id);
+                session()->forget('guest_backup_share_' . $share->id);
+                session()->forget('guest_backup_share_expires_at_' . $share->id);
+                abort(403, 'Masa berlaku sesi akses tamu telah habis. Silakan isi kembali formulir.');
+            }
         }
     }
 

@@ -23,9 +23,13 @@ const isSavingShare = ref(false);
 const isCopiedLink = ref(false);
 const isCopiedGuestLink = ref(false);
 const shareForm = ref({
+    id: null,
     is_active: true,
     allow_guest: true,
     guest_duration_hours: 24,
+    guest_expires_at: null,
+    guest_expires_at_human: null,
+    is_guest_expired: false,
     pin: '',
     share_name: '',
     share_url: '',
@@ -41,9 +45,13 @@ const openShareModal = (item = null) => {
 
     if (existing) {
         shareForm.value = {
+            id: existing.id || null,
             is_active: existing.is_active,
             allow_guest: existing.allow_guest !== undefined ? existing.allow_guest : true,
             guest_duration_hours: existing.guest_duration_hours || 24,
+            guest_expires_at: existing.guest_expires_at || null,
+            guest_expires_at_human: existing.guest_expires_at_human || null,
+            is_guest_expired: Boolean(existing.is_guest_expired),
             pin: existing.pin || '',
             share_name: item ? item.file_name : (props.breadcrumbs?.[props.breadcrumbs.length - 1]?.name || props.pc?.pc_name || 'Folder Berkas'),
             share_url: existing.share_url,
@@ -55,9 +63,13 @@ const openShareModal = (item = null) => {
     } else {
         const randomPin = Math.floor(100000 + Math.random() * 900000).toString();
         shareForm.value = {
+            id: null,
             is_active: true,
             allow_guest: true,
             guest_duration_hours: 24,
+            guest_expires_at: null,
+            guest_expires_at_human: null,
+            is_guest_expired: false,
             pin: randomPin,
             share_name: item ? item.file_name : (props.breadcrumbs?.[props.breadcrumbs.length - 1]?.name || props.pc?.pc_name || 'Folder Berkas'),
             share_url: '',
@@ -125,9 +137,13 @@ const submitShareSettings = async () => {
 
         if (res.data.status === 'success') {
             const data = res.data;
+            shareForm.value.id = data.share.id;
             shareForm.value.share_url = data.share_url;
             shareForm.value.guest_share_url = data.guest_share_url;
             shareForm.value.guest_duration_hours = Number(data.guest_duration_hours || 24);
+            shareForm.value.guest_expires_at = data.guest_expires_at;
+            shareForm.value.guest_expires_at_human = data.guest_expires_at_human;
+            shareForm.value.is_guest_expired = Boolean(data.is_guest_expired);
             shareForm.value.recent_guests = data.recent_guests || [];
             
             const updatedInfo = {
@@ -135,6 +151,9 @@ const submitShareSettings = async () => {
                 is_active: Boolean(data.share.is_active),
                 allow_guest: Boolean(data.share.allow_guest),
                 guest_duration_hours: Number(data.share.guest_duration_hours || 24),
+                guest_expires_at: data.guest_expires_at,
+                guest_expires_at_human: data.guest_expires_at_human,
+                is_guest_expired: Boolean(data.is_guest_expired),
                 share_token: data.share.share_token,
                 pin: data.share.pin,
                 share_url: data.share_url,
@@ -169,6 +188,59 @@ const submitShareSettings = async () => {
 const toggleDeactivateShare = async () => {
     shareForm.value.is_active = false;
     await submitShareSettings();
+};
+
+const revokeGuestLinkAction = async () => {
+    if (!shareForm.value.id) return;
+    
+    const result = await Swal.fire({
+        title: 'Hapus Tautan Pengunjung?',
+        text: 'Tautan khusus pengunjung luar akan langsung dinonaktifkan/dihapus seketika. Pengunjung luar tidak akan dapat membuka berkas lagi.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Hapus Tautan Tamu',
+        cancelButtonText: 'Batal',
+    });
+
+    if (!result.isConfirmed) return;
+
+    isSavingShare.value = true;
+    try {
+        const res = await axios.delete(route('backup.share.revoke-guest', shareForm.value.id));
+        if (res.data.status === 'success') {
+            shareForm.value.allow_guest = false;
+            shareForm.value.guest_expires_at = null;
+            shareForm.value.guest_expires_at_human = null;
+            shareForm.value.is_guest_expired = true;
+
+            const updatedInfo = {
+                allow_guest: false,
+                guest_expires_at: null,
+                guest_expires_at_human: null,
+                is_guest_expired: true,
+            };
+
+            if (shareTarget.value && shareTarget.value.share_info) {
+                Object.assign(shareTarget.value.share_info, updatedInfo);
+            } else if (props.currentShare) {
+                Object.assign(props.currentShare, updatedInfo);
+            }
+
+            Swal.fire({
+                title: 'Tautan Tamu Dihapus!',
+                text: 'Tautan akses pengunjung luar telah dinonaktifkan.',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false,
+            });
+        }
+    } catch (err) {
+        Swal.fire('Gagal Menghapus', err.response?.data?.message || err.message, 'error');
+    } finally {
+        isSavingShare.value = false;
+    }
 };
 
 // --- FORMULIR TAKTIS ---
@@ -3295,10 +3367,10 @@ onUnmounted(() => {
 
         <!-- MODAL BAGIKAN FOLDER DENGAN PROTEKSI PIN (GOOGLE DRIVE STYLE) -->
         <Teleport to="body">
-            <div v-if="isShareModalOpen" class="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 animate-fade-in">
-                <div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
+            <div v-if="isShareModalOpen" class="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-3 sm:p-4 animate-fade-in overflow-y-auto">
+                <div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden border border-slate-200 my-auto max-h-[90vh] flex flex-col">
                     <!-- Modal Header -->
-                    <div class="p-6 bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-900 text-white flex justify-between items-start">
+                    <div class="p-5 sm:p-6 bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-900 text-white flex justify-between items-start shrink-0">
                         <div class="space-y-1">
                             <div class="flex items-center gap-2">
                                 <span class="text-xl">🔗</span>
@@ -3308,13 +3380,13 @@ onUnmounted(() => {
                                 Bagikan akses folder dengan tautan terproteksi PIN keamanan (Akses Terbatas: Hanya Lihat & Unduh).
                             </p>
                         </div>
-                        <button @click="isShareModalOpen = false" class="text-white/70 hover:text-white text-2xl font-bold p-1 leading-none transition">
+                        <button @click="isShareModalOpen = false" class="text-white/70 hover:text-white text-2xl font-bold p-1 leading-none transition cursor-pointer">
                             &times;
                         </button>
                     </div>
 
                     <!-- Modal Body -->
-                    <div class="p-6 space-y-6">
+                    <div class="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1">
                         <!-- Info Folder -->
                         <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-200">
                             <span class="text-3xl">📁</span>
@@ -3461,21 +3533,32 @@ onUnmounted(() => {
                             </div>
 
                             <!-- Box 2: Tautan Pengunjung Luar / Tamu (Tanpa Login) -->
-                            <div class="p-3.5 bg-emerald-50/50 rounded-2xl border border-emerald-200 space-y-2">
+                            <div class="p-3.5 bg-emerald-50/50 rounded-2xl border border-emerald-200 space-y-2.5">
                                 <div class="flex items-center justify-between">
                                     <label class="text-xs font-black uppercase tracking-wider text-emerald-950 flex items-center gap-1.5">
                                         <span>👥</span> Tautan Pengunjung Luar / Tamu
                                     </label>
                                     <span v-if="shareForm.allow_guest" class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase rounded-md">Buku Tamu + PIN</span>
-                                    <span v-else class="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-black uppercase rounded-md">Dinonaktifkan</span>
+                                    <span v-else class="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-black uppercase rounded-md">Dinonaktifkan / Dihapus</span>
                                 </div>
-                                <p class="text-[10.5px] text-emerald-800 font-medium">Dapat diakses oleh tamu luar tanpa akun login. Tamu wajib mengisi NRP, Nama, Satuan, No. WhatsApp, dan PIN. Akses aktif selama {{ shareForm.guest_duration_hours || 24 }} jam.</p>
+                                <p class="text-[10.5px] text-emerald-800 font-medium">Dapat diakses oleh tamu luar tanpa akun login. Tamu wajib mengisi identitas dan PIN. Tautan otomatis dihapus setelah batas waktu {{ shareForm.guest_duration_hours || 24 }} jam.</p>
+                                
+                                <!-- Status Masa Berlaku Tautan Tamu -->
+                                <div v-if="shareForm.allow_guest && shareForm.guest_expires_at_human" class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 p-2 bg-emerald-100/70 border border-emerald-300 rounded-xl text-[11px] text-emerald-900 font-bold">
+                                    <div class="flex items-center gap-1.5">
+                                        <span>⏱️</span>
+                                        <span>Batas Waktu Tautan:</span>
+                                        <span class="font-black text-emerald-950">{{ shareForm.guest_expires_at_human }} WIB</span>
+                                    </div>
+                                    <span class="text-[10px] uppercase tracking-wider text-emerald-800">Aktif {{ shareForm.guest_duration_hours }} Jam</span>
+                                </div>
+
                                 <div class="flex items-center gap-2">
                                     <input 
                                         type="text" 
                                         readonly 
                                         :disabled="!shareForm.allow_guest"
-                                        :value="!shareForm.allow_guest ? 'Akses tamu sedang dinonaktifkan' : (shareForm.guest_share_url || 'Simpan PIN terlebih dahulu untuk mengaktifkan tautan...')" 
+                                        :value="!shareForm.allow_guest ? 'Akses tautan tamu sedang dinonaktifkan / telah dihapus' : (shareForm.guest_share_url || 'Simpan PIN terlebih dahulu untuk mengaktifkan tautan...')" 
                                         :class="!shareForm.allow_guest ? 'bg-slate-100 text-slate-400 opacity-60' : 'bg-white text-slate-700'"
                                         class="w-full px-3.5 py-2.5 border border-emerald-300 rounded-xl text-xs font-mono select-all cursor-pointer"
                                         @click="copyGuestShareLink"
@@ -3496,6 +3579,16 @@ onUnmounted(() => {
                                         title="Buka Pratinjau Tautan Tamu">
                                         ↗
                                     </a>
+                                    <button 
+                                        v-if="shareForm.id && shareForm.allow_guest" 
+                                        type="button" 
+                                        @click="revokeGuestLinkAction" 
+                                        :disabled="isSavingShare" 
+                                        class="px-3 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1 shrink-0"
+                                        title="Hapus / Nonaktifkan Tautan Tamu Sekarang">
+                                        <span>🗑️</span>
+                                        <span class="hidden sm:inline">Hapus Tautan</span>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -3546,7 +3639,7 @@ onUnmounted(() => {
                     </div>
 
                     <!-- Modal Footer -->
-                    <div class="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap justify-between items-center gap-3">
+                    <div class="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap justify-between items-center gap-3 shrink-0">
                         <button 
                             v-if="shareForm.share_url && shareForm.is_active" 
                             type="button" 
