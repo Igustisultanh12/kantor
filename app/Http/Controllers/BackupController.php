@@ -187,6 +187,7 @@ class BackupController extends Controller
                     'last_accessed_at' => $share->last_accessed_at ? Carbon::parse($share->last_accessed_at)->format('d M Y H:i') : null,
                     'recent_guests' => $share->guestLogs()->take(10)->get()->map(fn($g) => [
                         'nrp' => $g->nrp,
+                        'pangkat' => $g->pangkat,
                         'nama' => $g->nama,
                         'satuan' => $g->satuan,
                         'whatsapp' => $g->whatsapp,
@@ -260,6 +261,7 @@ class BackupController extends Controller
             'last_accessed_at' => $currentShare->last_accessed_at ? Carbon::parse($currentShare->last_accessed_at)->format('d M Y H:i') : null,
             'recent_guests' => $currentShare->guestLogs()->take(10)->get()->map(fn($g) => [
                 'nrp' => $g->nrp,
+                'pangkat' => $g->pangkat,
                 'nama' => $g->nama,
                 'satuan' => $g->satuan,
                 'whatsapp' => $g->whatsapp,

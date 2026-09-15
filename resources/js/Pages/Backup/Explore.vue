@@ -3617,7 +3617,7 @@ onUnmounted(() => {
                                 <div v-for="guest in shareForm.recent_guests" :key="guest.id || guest.time_human" class="p-2.5 text-[11px] flex items-center justify-between gap-2">
                                     <div class="min-w-0">
                                         <div class="flex items-center gap-1.5 flex-wrap">
-                                            <p class="font-extrabold text-slate-900 uppercase text-xs truncate">{{ guest.nama }}</p>
+                                            <p class="font-extrabold text-slate-900 uppercase text-xs truncate">{{ (guest.pangkat ? `${guest.pangkat} ` : '') + guest.nama }}</p>
                                             <span v-if="guest.is_expired" class="px-1.5 py-0.5 bg-rose-100 text-rose-700 text-[9px] font-bold rounded">Kadaluarsa</span>
                                             <span v-else class="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 text-[9px] font-bold rounded">Aktif</span>
                                         </div>

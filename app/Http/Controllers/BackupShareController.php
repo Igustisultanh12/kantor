@@ -99,6 +99,7 @@ class BackupShareController extends Controller
             return [
                 'id' => $g->id,
                 'nrp' => $g->nrp,
+                'pangkat' => $g->pangkat,
                 'nama' => $g->nama,
                 'satuan' => $g->satuan,
                 'whatsapp' => $g->whatsapp,
@@ -368,6 +369,7 @@ class BackupShareController extends Controller
         $request->validate([
             'pin' => 'required|string',
             'nrp' => 'nullable|string|max:50',
+            'pangkat' => 'nullable|string|max:100',
             'nama' => 'required|string|max:150',
             'satuan' => 'required|string|max:150',
             'whatsapp' => ['required', 'string', 'min:9', 'max:25'],
@@ -427,11 +429,25 @@ class BackupShareController extends Controller
         }
         $expiresAt = now()->addHours($durationHours);
 
+        $pangkat = trim($request->pangkat ?: '');
+        $nrpInput = trim($request->nrp ?: '');
+
+        // Jika pangkat tidak diisi namun mengisi NRP, coba cari data personel di sistem
+        if (empty($pangkat) && !empty($nrpInput) && $nrpInput !== '-') {
+            $matchedUser = \App\Models\User::where('nrp', $nrpInput)
+                ->orWhere('nip', $nrpInput)
+                ->first();
+            if ($matchedUser && !empty($matchedUser->pangkat)) {
+                $pangkat = trim($matchedUser->pangkat);
+            }
+        }
+
         // Catat ke tabel riwayat tamu (BackupShareGuest)
         BackupShareGuest::ensureSchema();
         $guestRecord = BackupShareGuest::create([
             'backup_share_id' => $share->id,
             'nrp' => trim($request->nrp ?: '-'),
+            'pangkat' => $pangkat ?: null,
             'nama' => trim($request->nama),
             'satuan' => trim($request->satuan),
             'whatsapp' => $waNormalized,
@@ -447,6 +463,7 @@ class BackupShareController extends Controller
         session()->put('guest_backup_share_' . $share->id, [
             'id' => $guestRecord->id,
             'nrp' => $guestRecord->nrp,
+            'pangkat' => $guestRecord->pangkat,
             'nama' => $guestRecord->nama,
             'satuan' => $guestRecord->satuan,
             'whatsapp' => $guestRecord->whatsapp,
@@ -462,10 +479,21 @@ class BackupShareController extends Controller
             $folderTitle = $share->share_name ?: ($share->folder?->file_name ?: $share->pc->pc_name);
             $guestLink = route('backup.shared.guest-view', $share->share_token);
 
-            $waMessage = "*SINDEN - PEMBERITAHUAN AKSES FOLDER BERBAGI*\n"
+            $pangkatStr = trim($guestRecord->pangkat ?: '');
+            $namaStr = trim($guestRecord->nama);
+            $nrpStr = trim($guestRecord->nrp ?: '');
+            $nrpPart = '';
+            if (!empty($nrpStr) && $nrpStr !== '-') {
+                $cleanNrp = trim(preg_replace('/^NRP\s*[:.-]?\s*/i', '', $nrpStr));
+                $nrpPart = "[NRP {$cleanNrp}]";
+            }
+
+            $salutationParts = array_filter([$pangkatStr, $namaStr, $nrpPart]);
+            $recipientHeader = "Yth. " . implode(' ', $salutationParts);
+
+            $waMessage = "*SINDEN - PEMBERITAHUAN SHARING FOLDER*\n"
                 . "━━━━━━━━━━━━━━━━━━━━\n"
-                . "Halo, Yth. Bpk/Ibu/Sdr *{$guestRecord->nama}*\n"
-                . "NRP/NIP : *{$guestRecord->nrp}*\n"
+                . "*{$recipientHeader}*\n"
                 . "Satuan/Instansi : *{$guestRecord->satuan}*\n\n"
                 . "Akses Anda ke folder berbagi telah berhasil diverifikasi:\n"
                 . "📁 *Folder* : {$folderTitle}\n"
@@ -473,9 +501,9 @@ class BackupShareController extends Controller
                 . "⏳ *Berlaku Hingga* : *{$formattedExpires}*\n\n"
                 . "🔗 *Tautan Akses* :\n"
                 . "{$guestLink}\n\n"
-                . "⚠️ *Pemberitahuan Keamanan Dinas*:\n"
-                . "1. Seluruh aktivitas penjelajahan dan pengunduhan berkas tercatat dalam Buku Tamu Digital SINDEN.\n"
-                . "2. Akses folder akan terkunci otomatis setelah batas waktu {$durationHours} jam.\n"
+                . "⚠️ *Pemberitahuan Keamanan Kedinasan*:\n"
+                . "1. Seluruh aktivitas penjelajahan dan pengunduhan berkas tercatat dalam log pangkalan berkas SINDEN.\n"
+                . "2. Tautan folder ini aktif selama {$durationHours} jam dan otomatis terkunci/dihapus setelah batas waktu berakhir.\n"
                 . "━━━━━━━━━━━━━━━━━━━━\n"
                 . "_Sistem Informasi & Dokumen Elektronik (SINDEN)_";
 
@@ -484,7 +512,7 @@ class BackupShareController extends Controller
             Log::warning("Gagal mengirim notifikasi WA akses tamu: " . $waErr->getMessage());
         }
 
-        Log::info("Tamu Luar [{$guestRecord->nama} - NRP: {$guestRecord->nrp} ({$guestRecord->satuan}) WA: {$waNormalized}] berhasil membuka folder share ID {$share->id}. Berlaku {$durationHours} jam.");
+        Log::info("Tamu Luar [" . ($guestRecord->pangkat ? "{$guestRecord->pangkat} " : "") . "{$guestRecord->nama} - NRP: {$guestRecord->nrp} ({$guestRecord->satuan}) WA: {$waNormalized}] berhasil membuka folder share ID {$share->id}. Berlaku {$durationHours} jam.");
 
         $share->increment('access_count');
         $share->update(['last_accessed_at' => now()]);

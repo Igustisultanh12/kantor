@@ -113,6 +113,7 @@ const submitPin = async () => {
 // --- STATE FORMULIR BUKU TAMU PENGUNJUNG LUAR ---
 const guestForm = ref({
     nrp: '',
+    pangkat: '',
     nama: '',
     satuan: '',
     whatsapp: '',
@@ -150,6 +151,7 @@ const submitGuest = async () => {
     try {
         const response = await axios.post(route('backup.shared.verify-guest', props.shareToken), {
             nrp: guestForm.value.nrp.trim(),
+            pangkat: guestForm.value.pangkat ? guestForm.value.pangkat.trim() : '',
             nama: guestForm.value.nama.trim(),
             satuan: guestForm.value.satuan.trim(),
             whatsapp: guestForm.value.whatsapp.trim(),
@@ -622,6 +624,20 @@ const exitAndLock = () => {
                             />
                         </div>
 
+                        <!-- Pangkat / Korps / Golongan -->
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-slate-600 block">
+                                Pangkat / Korps / Golongan
+                            </label>
+                            <input 
+                                v-model="guestForm.pangkat" 
+                                type="text" 
+                                placeholder="Masukkan Pangkat / Korps / Golongan"
+                                autocomplete="honorific-prefix"
+                                class="w-full text-xs font-bold py-2.5 px-3 bg-slate-50 border border-slate-300 focus:border-indigo-600 focus:bg-white rounded-xl transition outline-none"
+                            />
+                        </div>
+
                         <!-- Nama Lengkap -->
                         <div class="space-y-1">
                             <label class="text-[10px] font-bold uppercase tracking-wider text-slate-600 block">
@@ -849,7 +865,7 @@ const exitAndLock = () => {
                         </div>
                         <div class="text-xs min-w-0">
                             <span class="font-bold text-[10px] uppercase tracking-wider text-amber-700 block sm:inline mr-2">Sesi Tamu Luar:</span>
-                            <span class="font-black text-slate-900 uppercase truncate">{{ guestUser.nama }}</span>
+                            <span class="font-black text-slate-900 uppercase truncate">{{ (guestUser.pangkat ? `${guestUser.pangkat} ` : '') + guestUser.nama }}</span>
                             <span class="text-amber-800 ml-1.5 font-semibold text-[11px]">(NRP: {{ guestUser.nrp }} &bull; {{ guestUser.satuan }})</span>
                             <span v-if="guestUser.whatsapp" class="text-emerald-700 ml-1.5 font-bold text-[11px]">&bull; WA: {{ guestUser.whatsapp }}</span>
                         </div>

@@ -17,6 +17,7 @@ class BackupShareGuest extends Model
     protected $fillable = [
         'backup_share_id',
         'nrp',
+        'pangkat',
         'nama',
         'satuan',
         'whatsapp',
@@ -50,6 +51,7 @@ class BackupShareGuest extends Model
                     $table->id();
                     $table->foreignId('backup_share_id')->constrained('backup_shares')->onDelete('cascade');
                     $table->string('nrp', 50)->nullable()->index();
+                    $table->string('pangkat', 100)->nullable();
                     $table->string('nama', 150)->index();
                     $table->string('satuan', 150)->index();
                     $table->string('whatsapp', 30)->nullable();
@@ -60,6 +62,11 @@ class BackupShareGuest extends Model
                     $table->timestamps();
                 });
             } else {
+                if (!Schema::hasColumn('backup_share_guests', 'pangkat')) {
+                    Schema::table('backup_share_guests', function (Blueprint $table) {
+                        $table->string('pangkat', 100)->nullable()->after('nrp');
+                    });
+                }
                 if (!Schema::hasColumn('backup_share_guests', 'whatsapp')) {
                     Schema::table('backup_share_guests', function (Blueprint $table) {
                         $table->string('whatsapp', 30)->nullable()->after('satuan');
