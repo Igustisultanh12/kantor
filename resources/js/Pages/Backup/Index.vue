@@ -500,7 +500,8 @@ onUnmounted(() => {
                                 </button>
                                 <div v-if="isAdmin" class="grid grid-cols-2 gap-1.5">
                                     <button @click="openEditQuotaModal(pc)" class="block w-full text-center bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white py-1.5 rounded font-bold text-[10px] transition uppercase border border-blue-200 flex items-center justify-center gap-1 cursor-pointer" title="Sesuaikan Kuota GB">
-                                        <span>⚙️ Kuota</span>
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                        <span>Kuota</span>
                                     </button>
                                     <button @click="revokePcAccess(pc)" class="block w-full text-center bg-red-50 hover:bg-red-600 text-red-600 hover:text-white py-1.5 rounded font-bold text-[10px] transition uppercase border border-red-200 flex items-center justify-center gap-1 cursor-pointer">
                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
@@ -821,14 +822,14 @@ onUnmounted(() => {
                                     @click="shareLogsTypeFilter = 'personel'" 
                                     :class="shareLogsTypeFilter === 'personel' ? 'bg-white text-indigo-700 shadow-2xs font-black' : 'text-slate-500 hover:text-slate-800 font-bold'" 
                                     class="px-3 py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center gap-1">
-                                    <span>🔒 Personel</span>
+                                    <span>Personel</span>
                                 </button>
                                 <button 
                                     type="button" 
                                     @click="shareLogsTypeFilter = 'tamu'" 
                                     :class="shareLogsTypeFilter === 'tamu' ? 'bg-white text-amber-700 shadow-2xs font-black' : 'text-slate-500 hover:text-slate-800 font-bold'" 
                                     class="px-3 py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center gap-1">
-                                    <span>👥 Tamu</span>
+                                    <span>Tamu</span>
                                 </button>
                             </div>
                         </div>
@@ -841,8 +842,8 @@ onUnmounted(() => {
                             </div>
 
                             <div v-else-if="filteredShareLogs.length === 0" class="p-12 text-center text-slate-400 space-y-2">
-                                <div class="w-12 h-12 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-2xl text-slate-400">
-                                    🔍
+                                <div class="w-12 h-12 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                                 </div>
                                 <p class="text-xs font-bold text-slate-600">Tidak ada data akses yang sesuai filter.</p>
                                 <p class="text-[11px] text-slate-400">Belum ada aktivitas akses atau kata kunci pencarian tidak ditemukan.</p>
@@ -880,7 +881,7 @@ onUnmounted(() => {
                                                         <span>{{ log.satuan }}</span>
                                                     </div>
                                                     <div v-if="log.whatsapp" class="text-[10.5px] text-emerald-700 font-bold flex items-center gap-1">
-                                                        <span>📱 WA:</span>
+                                                        <span>WA:</span>
                                                         <a :href="'https://wa.me/' + log.whatsapp" target="_blank" class="hover:underline font-mono">{{ log.whatsapp }}</a>
                                                     </div>
                                                 </div>
@@ -889,10 +890,10 @@ onUnmounted(() => {
                                             <!-- Tipe Akses -->
                                             <td class="py-3 px-3 whitespace-nowrap">
                                                 <span v-if="log.access_type === 'personel'" class="px-2 py-1 bg-blue-100 text-blue-800 border border-blue-200 rounded-lg text-[10px] font-black uppercase flex items-center gap-1 w-fit">
-                                                    <span>🔒 Personel</span>
+                                                    <span>Personel</span>
                                                 </span>
                                                 <span v-else class="px-2 py-1 bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-[10px] font-black uppercase flex items-center gap-1 w-fit">
-                                                    <span>👥 Tamu Luar</span>
+                                                    <span>Tamu Luar</span>
                                                 </span>
                                             </td>
 
@@ -900,7 +901,7 @@ onUnmounted(() => {
                                             <td class="py-3 px-3">
                                                 <div class="space-y-0.5 max-w-[200px]">
                                                     <p class="font-extrabold text-slate-800 uppercase truncate" :title="log.share_name">
-                                                        📁 {{ log.share_name }}
+                                                        {{ log.share_name }}
                                                     </p>
                                                     <p class="text-[10px] text-slate-400 font-semibold truncate">
                                                         PC: {{ log.pc_name }}
@@ -911,9 +912,8 @@ onUnmounted(() => {
                                             <!-- Pukul Berapa Mengakses (Timestamp) -->
                                             <td class="py-3 px-3 whitespace-nowrap">
                                                 <div class="space-y-0.5">
-                                                    <p class="font-black text-slate-900 text-xs flex items-center gap-1 font-mono">
-                                                        <span>⏱️</span>
-                                                        <span>{{ log.last_accessed_time }}</span>
+                                                    <p class="font-black text-slate-900 text-xs font-mono">
+                                                        {{ log.last_accessed_time }}
                                                     </p>
                                                     <p class="text-[10px] text-slate-400 font-semibold">
                                                         {{ log.last_accessed_date }} ({{ log.time_ago }})
@@ -932,7 +932,7 @@ onUnmounted(() => {
                                                         @click="copyToClipboard(log.ip_address, 'IP Address')" 
                                                         class="text-slate-400 hover:text-slate-700 p-1 rounded transition cursor-pointer" 
                                                         title="Salin IP">
-                                                        📋
+                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                                                     </button>
                                                 </div>
                                             </td>

@@ -587,7 +587,9 @@ const exitAndLock = () => {
                 <div class="p-5 sm:p-6 space-y-3.5">
                     <!-- Banner Peringatan Sesi Kedaluwarsa (Jika Ada) -->
                     <div v-if="expiredMessage" class="p-3 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-2.5 text-rose-800 text-xs font-semibold animate-shake">
-                        <span class="text-base shrink-0">⚠️</span>
+                        <span class="text-base shrink-0">
+                            <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        </span>
                         <span class="leading-relaxed">{{ expiredMessage }}</span>
                     </div>
 
@@ -603,7 +605,7 @@ const exitAndLock = () => {
                             <p class="text-xs font-black text-slate-800 truncate uppercase">{{ shareName || folderName }}</p>
                         </div>
                         <div class="px-2.5 py-1 bg-amber-100/80 text-amber-900 rounded-lg text-[10px] font-black uppercase shrink-0">
-                            ⏱️ {{ guestDurationHours || 24 }} Jam
+                            Durasi: {{ guestDurationHours || 24 }} Jam
                         </div>
                     </div>
 
@@ -676,7 +678,7 @@ const exitAndLock = () => {
                             </label>
                             <div class="relative">
                                 <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 font-bold text-xs pointer-events-none">
-                                    📱
+                                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
                                 </span>
                                 <input 
                                     v-model="guestForm.whatsapp" 
@@ -872,7 +874,6 @@ const exitAndLock = () => {
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
                         <div class="px-3 py-1 bg-white/90 border border-amber-300 rounded-xl text-[10.5px] font-bold text-amber-950 flex items-center gap-1.5 shadow-2xs">
-                            <span>⏱️</span>
                             <span>Masa Berlaku:</span>
                             <span class="font-black text-amber-800">{{ guestUser.expires_at_human || (guestDurationHours ? `${guestDurationHours} Jam` : '24 Jam') }}</span>
                         </div>

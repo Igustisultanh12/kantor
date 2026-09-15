@@ -2124,17 +2124,19 @@ onUnmounted(() => {
                         <!-- Grup Tombol Aksi Kiri -->
                         <div class="flex items-center gap-2 flex-wrap">
                             <button @click="createFolder" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3.5 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-1.5 transition shadow-xs cursor-pointer">
-                                <span>📁 Folder Baru</span>
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path></svg>
+                                <span>Folder Baru</span>
                             </button>
                             <button @click="createNewExcelPrompt" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-1.5 transition shadow-xs cursor-pointer">
-                                <span>📊 Excel Baru</span>
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 4h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                <span>Excel Baru</span>
                             </button>
                             <!-- Tombol Bagikan Folder Ini / Pangkalan -->
                             <button @click="openShareModal(null)" 
                                     :class="currentShare?.is_active ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500 shadow-sm' : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500 shadow-sm'" 
                                     class="px-3.5 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-1.5 transition cursor-pointer border"
                                     :title="currentFolderId ? 'Bagikan Folder Ini via Tautan' : 'Bagikan Pangkalan Ini via Tautan'">
-                                <span>🔗</span>
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
                                 <span>{{ currentFolderId ? 'Bagikan Folder Ini' : 'Bagikan Pangkalan' }}</span>
                                 <span v-if="currentShare?.is_active" class="px-1.5 py-0.2 text-[9px] bg-emerald-950 text-emerald-300 rounded-md font-bold uppercase">Aktif</span>
                             </button>
@@ -2200,7 +2202,7 @@ onUnmounted(() => {
                                 @click="triggerFileInput" 
                                 class="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-xl text-xs font-black uppercase transition flex items-center gap-2 shadow-xs cursor-pointer active:scale-95"
                                 title="Pilih satu atau banyak berkas sekaligus tanpa batas (bisa drag & drop langsung)">
-                                <span>📤</span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
                                 <span>Unggah Berkas (Bulk)</span>
                             </button>
 
@@ -3215,9 +3217,10 @@ onUnmounted(() => {
                         <button 
                             type="button" 
                             @click="closeExcelEditor" 
-                            class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-wider transition cursor-pointer"
+                            class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-wider transition cursor-pointer flex items-center gap-1"
                         >
-                            ✕ Tutup
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            <span>Tutup</span>
                         </button>
                     </div>
                 </div>
@@ -3253,7 +3256,7 @@ onUnmounted(() => {
                             placeholder="Cari teks di tabel..."
                             class="w-full bg-white border border-slate-300 rounded-lg pl-7 pr-2 py-1 text-[11px] font-medium focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                         />
-                        <span class="absolute left-2 top-1.5 text-slate-400 text-xs">🔍</span>
+                        <svg class="w-3.5 h-3.5 absolute left-2 top-2 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                     </div>
                 </div>
 
@@ -3329,7 +3332,8 @@ onUnmounted(() => {
                             :class="activeSheetName === sName ? 'bg-white text-emerald-700 font-extrabold shadow-xs border-b-2 border-b-emerald-600' : 'bg-slate-200/70 text-slate-600 hover:bg-slate-200 font-bold'"
                             class="px-3.5 py-1.5 rounded-lg border border-slate-300 text-xs transition cursor-pointer flex items-center gap-2 group whitespace-nowrap"
                         >
-                            <span>📊 {{ sName }}</span>
+                            <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 4h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            <span>{{ sName }}</span>
                             <span 
                                 v-if="excelSheetNames.length > 1" 
                                 @click.stop="deleteSheetPrompt(sName)"
@@ -3340,10 +3344,10 @@ onUnmounted(() => {
                             </span>
                             <span 
                                 @click.stop="renameSheetPrompt(sName)"
-                                class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-emerald-700 font-black text-[10px] transition"
+                                class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-emerald-700 font-black text-[10px] transition flex items-center"
                                 title="Ubah Nama Lembar"
                             >
-                                ✏️
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                             </span>
                         </button>
 
@@ -3373,7 +3377,7 @@ onUnmounted(() => {
                     <div class="p-5 sm:p-6 bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-900 text-white flex justify-between items-start shrink-0">
                         <div class="space-y-1">
                             <div class="flex items-center gap-2">
-                                <span class="text-xl">🔗</span>
+                                <svg class="w-5 h-5 text-blue-200 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
                                 <h3 class="text-lg font-black tracking-tight">Bagikan Folder & Akses Personel</h3>
                             </div>
                             <p class="text-xs text-blue-100 font-medium">
@@ -3389,7 +3393,7 @@ onUnmounted(() => {
                     <div class="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1">
                         <!-- Info Folder -->
                         <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-200">
-                            <span class="text-3xl">📁</span>
+                            <svg class="w-8 h-8 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
                             <div class="flex-1 min-w-0">
                                 <p class="text-[11px] font-black uppercase text-slate-400 tracking-wider">Target Folder</p>
                                 <p class="text-sm font-black text-slate-800 truncate uppercase">{{ shareForm.share_name }}</p>
@@ -3422,7 +3426,8 @@ onUnmounted(() => {
                         <div class="flex items-center justify-between p-4 bg-blue-50/60 rounded-2xl border border-blue-100">
                             <div>
                                 <h4 class="text-xs font-black uppercase tracking-wide text-blue-950 flex items-center gap-1.5">
-                                    <span>👥</span> Izinkan Akses Tamu / Pengunjung Luar
+                                    <svg class="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                    <span>Izinkan Akses Tamu / Pengunjung Luar</span>
                                 </h4>
                                 <p class="text-[11px] text-blue-700">Tamu luar dapat mengakses tanpa akun login SINDEN dengan mengisi buku tamu (NRP, Nama, Satuan, No. WhatsApp) dan PIN.</p>
                             </div>
@@ -3437,7 +3442,8 @@ onUnmounted(() => {
                             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                 <div>
                                     <label class="text-xs font-black uppercase tracking-wide text-amber-950 flex items-center gap-1.5">
-                                        <span>⏱️</span> Masa Berlaku Akses Tamu
+                                        <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                        <span>Masa Berlaku Akses Tamu</span>
                                     </label>
                                     <p class="text-[11px] text-amber-800">
                                         Durasi aktif akses folder sejak tamu mengisi buku tamu. Rincian masa berlaku akan otomatis dikirim ke WhatsApp tamu.
@@ -3473,11 +3479,13 @@ onUnmounted(() => {
                         <!-- Input PIN Keamanan -->
                         <div class="space-y-2">
                             <div class="flex justify-between items-center">
-                                <label class="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1">
-                                    <span>🔒</span> PIN Keamanan Akses
+                                <label class="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-slate-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                    <span>PIN Keamanan Akses</span>
                                 </label>
-                                <button type="button" @click="generateRandomPin" class="text-xs font-black text-indigo-600 hover:text-indigo-800 uppercase flex items-center gap-1 cursor-pointer">
-                                    <span>🎲</span> Acak PIN Baru
+                                <button type="button" @click="generateRandomPin" class="text-xs font-black text-indigo-600 hover:text-indigo-800 uppercase flex items-center gap-1.5 cursor-pointer">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                    <span>Acak PIN Baru</span>
                                 </button>
                             </div>
                             <div class="relative">
@@ -3500,7 +3508,8 @@ onUnmounted(() => {
                             <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
                                 <div class="flex items-center justify-between">
                                     <label class="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                                        <span>🔒</span> Tautan Personel Internal
+                                        <svg class="w-3.5 h-3.5 text-slate-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                        <span>Tautan Personel Internal</span>
                                     </label>
                                     <span class="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-[10px] font-black uppercase rounded-md">Wajib Login</span>
                                 </div>
@@ -3519,7 +3528,7 @@ onUnmounted(() => {
                                         :disabled="!shareForm.share_url" 
                                         :class="isCopiedLink ? 'bg-emerald-600 text-white' : 'bg-slate-800 hover:bg-slate-900 text-white'"
                                         class="px-3.5 py-2.5 rounded-xl text-xs font-black uppercase whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
-                                        <span>{{ isCopiedLink ? '✓ Tersalin' : '📋 Salin Link' }}</span>
+                                        <span>{{ isCopiedLink ? 'Tersalin' : 'Salin Link' }}</span>
                                     </button>
                                     <a 
                                         v-if="shareForm.share_url" 
@@ -3536,7 +3545,8 @@ onUnmounted(() => {
                             <div class="p-3.5 bg-emerald-50/50 rounded-2xl border border-emerald-200 space-y-2.5">
                                 <div class="flex items-center justify-between">
                                     <label class="text-xs font-black uppercase tracking-wider text-emerald-950 flex items-center gap-1.5">
-                                        <span>👥</span> Tautan Pengunjung Luar / Tamu
+                                        <svg class="w-3.5 h-3.5 text-emerald-700 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                        <span>Tautan Pengunjung Luar / Tamu</span>
                                     </label>
                                     <span v-if="shareForm.allow_guest" class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase rounded-md">Buku Tamu + PIN</span>
                                     <span v-else class="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-black uppercase rounded-md">Dinonaktifkan / Dihapus</span>
@@ -3546,7 +3556,7 @@ onUnmounted(() => {
                                 <!-- Status Masa Berlaku Tautan Tamu -->
                                 <div v-if="shareForm.allow_guest && shareForm.guest_expires_at_human" class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 p-2 bg-emerald-100/70 border border-emerald-300 rounded-xl text-[11px] text-emerald-900 font-bold">
                                     <div class="flex items-center gap-1.5">
-                                        <span>⏱️</span>
+                                        <svg class="w-3.5 h-3.5 text-emerald-800 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                         <span>Batas Waktu Tautan:</span>
                                         <span class="font-black text-emerald-950">{{ shareForm.guest_expires_at_human }} WIB</span>
                                     </div>
@@ -3569,7 +3579,7 @@ onUnmounted(() => {
                                         :disabled="!shareForm.guest_share_url || !shareForm.allow_guest" 
                                         :class="isCopiedGuestLink ? 'bg-emerald-600 text-white' : 'bg-emerald-700 hover:bg-emerald-800 text-white'"
                                         class="px-3.5 py-2.5 rounded-xl text-xs font-black uppercase whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
-                                        <span>{{ isCopiedGuestLink ? '✓ Tersalin' : '📋 Salin Link Tamu' }}</span>
+                                        <span>{{ isCopiedGuestLink ? 'Tersalin' : 'Salin Link Tamu' }}</span>
                                     </button>
                                     <a 
                                         v-if="shareForm.guest_share_url && shareForm.allow_guest" 
@@ -3586,7 +3596,7 @@ onUnmounted(() => {
                                         :disabled="isSavingShare" 
                                         class="px-3 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1 shrink-0"
                                         title="Hapus / Nonaktifkan Tautan Tamu Sekarang">
-                                        <span>🗑️</span>
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                         <span class="hidden sm:inline">Hapus Tautan</span>
                                     </button>
                                 </div>
@@ -3609,7 +3619,8 @@ onUnmounted(() => {
                         <div v-if="shareForm.recent_guests && shareForm.recent_guests.length > 0" class="space-y-2 p-3.5 bg-slate-50 rounded-2xl border border-slate-200">
                             <div class="flex items-center justify-between">
                                 <h4 class="text-xs font-black uppercase tracking-wide text-slate-800 flex items-center gap-1.5">
-                                    <span>📖</span> Buku Tamu Digital (Pengunjung Luar)
+                                    <svg class="w-4 h-4 text-slate-700 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                                    <span>Buku Tamu Digital (Pengunjung Luar)</span>
                                 </h4>
                                 <span class="text-[10px] font-bold text-slate-500">{{ shareForm.recent_guests.length }} kunjungan terakhir</span>
                             </div>
@@ -3662,7 +3673,7 @@ onUnmounted(() => {
                                 @click="submitShareSettings" 
                                 :disabled="isSavingShare"
                                 class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase transition cursor-pointer flex items-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50">
-                                <span v-if="isSavingShare" class="animate-spin text-sm">⏳</span>
+                                <svg v-if="isSavingShare" class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
                                 <span>{{ isSavingShare ? 'Menyimpan...' : 'Simpan & Terapkan' }}</span>
                             </button>
                         </div>
@@ -3676,7 +3687,7 @@ onUnmounted(() => {
             <div v-if="isDraggingOver" 
                  class="fixed inset-0 z-[350] bg-blue-900/60 backdrop-blur-xs border-8 border-dashed border-white/80 flex flex-col items-center justify-center p-6 pointer-events-none animate-fade-in">
                 <div class="bg-white p-8 sm:p-10 rounded-3xl shadow-2xl flex flex-col items-center gap-4 text-center max-w-md border-t-8 border-blue-600 animate-bounce">
-                    <span class="text-6xl">📥</span>
+                    <svg class="w-16 h-16 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
                     <div>
                         <h3 class="text-xl font-black uppercase tracking-tight text-slate-900">Lepaskan Berkas Di Sini</h3>
                         <p class="text-xs font-bold text-slate-500 mt-1">
@@ -3700,7 +3711,7 @@ onUnmounted(() => {
                      class="bg-slate-900/95 backdrop-blur-md text-white p-3.5 rounded-2xl shadow-2xl border border-slate-700 flex items-center justify-between cursor-pointer hover:bg-slate-800 transition group">
                     <div class="flex items-center gap-3 min-w-0">
                         <div class="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-sm font-bold shadow-xs shrink-0" :class="{ 'animate-pulse': isQueueActive }">
-                            📤
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
                         </div>
                         <div class="min-w-0">
                             <p class="text-xs font-black uppercase truncate">
@@ -3712,7 +3723,7 @@ onUnmounted(() => {
                         </div>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
-                        <span class="text-[11px] font-black text-blue-400 group-hover:text-blue-300 uppercase">Buka ↗</span>
+                        <span class="text-[11px] font-black text-blue-400 group-hover:text-blue-300 uppercase">Buka</span>
                         <button @click.stop="closeUploadDrawer" class="text-slate-400 hover:text-white text-lg font-bold leading-none p-1 transition" title="Tutup">
                             &times;
                         </button>
@@ -3725,7 +3736,7 @@ onUnmounted(() => {
                     <!-- Header -->
                     <div class="p-4 bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 text-white flex items-center justify-between">
                         <div class="flex items-center gap-2.5 min-w-0">
-                            <span class="text-lg">📤</span>
+                            <svg class="w-5 h-5 text-blue-200 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
                             <div class="min-w-0">
                                 <h4 class="text-xs font-black uppercase tracking-tight truncate">
                                     {{ isQueueActive ? 'Proses Unggah Berkas' : (failedQueueFiles > 0 ? 'Unggah Berkas Selesai (Ada Kendala)' : 'Seluruh Berkas Selesai Diunggah') }}
@@ -3761,9 +3772,17 @@ onUnmounted(() => {
                         <div v-for="item in uploadQueue" :key="item.id" class="py-2.5 px-2 flex items-center justify-between gap-3 text-xs hover:bg-slate-50 rounded-xl transition">
                             
                             <div class="flex items-center gap-2.5 min-w-0 flex-1">
-                                <span class="text-base shrink-0">
-                                    {{ item.status === 'completed' ? '✅' : (item.status === 'error' ? '❌' : (item.status === 'uploading' ? '🚀' : '⏳')) }}
-                                </span>
+                                <div class="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" :class="{
+                                    'bg-emerald-100 text-emerald-700': item.status === 'completed',
+                                    'bg-rose-100 text-rose-700': item.status === 'error',
+                                    'bg-blue-100 text-blue-700': item.status === 'uploading',
+                                    'bg-slate-100 text-slate-500': item.status !== 'completed' && item.status !== 'error' && item.status !== 'uploading'
+                                }">
+                                    <svg v-if="item.status === 'completed'" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                                    <svg v-else-if="item.status === 'error'" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    <svg v-else-if="item.status === 'uploading'" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                    <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                </div>
                                 <div class="min-w-0 flex-1">
                                     <p class="font-black text-slate-800 truncate uppercase tracking-tight">{{ item.name }}</p>
                                     <div class="flex items-center gap-2 text-[10px] text-slate-400 font-semibold">
