@@ -21,6 +21,7 @@ class BackupShare extends Model
         'pin',
         'is_active',
         'allow_guest',
+        'guest_duration_hours',
         'created_by',
         'share_name',
         'access_count',
@@ -31,6 +32,7 @@ class BackupShare extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'allow_guest' => 'boolean',
+        'guest_duration_hours' => 'integer',
         'access_count' => 'integer',
         'last_accessed_at' => 'datetime',
         'expires_at' => 'datetime',
@@ -166,10 +168,17 @@ class BackupShare extends Model
                     $table->timestamp('expires_at')->nullable();
                     $table->timestamps();
                 });
-            } else if (!Schema::hasColumn('backup_shares', 'allow_guest')) {
-                Schema::table('backup_shares', function (Blueprint $table) {
-                    $table->boolean('allow_guest')->default(true)->after('is_active');
-                });
+            } else {
+                if (!Schema::hasColumn('backup_shares', 'allow_guest')) {
+                    Schema::table('backup_shares', function (Blueprint $table) {
+                        $table->boolean('allow_guest')->default(true)->after('is_active');
+                    });
+                }
+                if (!Schema::hasColumn('backup_shares', 'guest_duration_hours')) {
+                    Schema::table('backup_shares', function (Blueprint $table) {
+                        $table->integer('guest_duration_hours')->default(24)->after('allow_guest');
+                    });
+                }
             }
 
             BackupShareGuest::ensureSchema();

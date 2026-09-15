@@ -19,13 +19,16 @@ class BackupShareGuest extends Model
         'nrp',
         'nama',
         'satuan',
+        'whatsapp',
         'ip_address',
         'user_agent',
         'accessed_at',
+        'expires_at',
     ];
 
     protected $casts = [
         'accessed_at' => 'datetime',
+        'expires_at' => 'datetime',
     ];
 
     /**
@@ -49,11 +52,24 @@ class BackupShareGuest extends Model
                     $table->string('nrp', 50)->nullable()->index();
                     $table->string('nama', 150)->index();
                     $table->string('satuan', 150)->index();
+                    $table->string('whatsapp', 30)->nullable();
                     $table->string('ip_address', 45)->nullable();
                     $table->text('user_agent')->nullable();
                     $table->timestamp('accessed_at')->nullable()->index();
+                    $table->timestamp('expires_at')->nullable()->index();
                     $table->timestamps();
                 });
+            } else {
+                if (!Schema::hasColumn('backup_share_guests', 'whatsapp')) {
+                    Schema::table('backup_share_guests', function (Blueprint $table) {
+                        $table->string('whatsapp', 30)->nullable()->after('satuan');
+                    });
+                }
+                if (!Schema::hasColumn('backup_share_guests', 'expires_at')) {
+                    Schema::table('backup_share_guests', function (Blueprint $table) {
+                        $table->timestamp('expires_at')->nullable()->after('accessed_at');
+                    });
+                }
             }
         } catch (\Throwable $e) {
             // Abaikan jika sudah ada atau race condition

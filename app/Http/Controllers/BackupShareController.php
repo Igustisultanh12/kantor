@@ -9,6 +9,7 @@ use App\Models\BackupShareGuest;
 use App\Services\ArwService;
 use App\Services\FileSecurityService;
 use App\Services\ThumbnailService;
+use App\Services\WhatsappService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -34,6 +35,7 @@ class BackupShareController extends Controller
             'pin' => 'required|string|min:4|max:30',
             'is_active' => 'required|boolean',
             'allow_guest' => 'nullable|boolean',
+            'guest_duration_hours' => 'nullable|integer|min:1|max:720',
             'share_name' => 'nullable|string|max:150',
         ]);
 
@@ -78,16 +80,21 @@ class BackupShareController extends Controller
         $share->pin = trim($validated['pin']);
         $share->is_active = (bool)$validated['is_active'];
         $share->allow_guest = $request->has('allow_guest') ? (bool)$validated['allow_guest'] : true;
+        $share->guest_duration_hours = $request->filled('guest_duration_hours') ? max(1, (int)$request->input('guest_duration_hours')) : 24;
         $share->share_name = $defaultName;
         $share->save();
 
         $recentGuests = $share->guestLogs()->take(10)->get()->map(function ($g) {
+            $isExpired = $g->expires_at ? now()->greaterThan($g->expires_at) : false;
             return [
                 'id' => $g->id,
                 'nrp' => $g->nrp,
                 'nama' => $g->nama,
                 'satuan' => $g->satuan,
+                'whatsapp' => $g->whatsapp,
                 'ip' => $g->ip_address,
+                'expires_at_human' => $g->expires_at ? $g->expires_at->format('d/m/Y H:i') : null,
+                'is_expired' => $isExpired,
                 'time_human' => $g->accessed_at ? $g->accessed_at->format('d/m/Y H:i') : $g->created_at->format('d/m/Y H:i'),
             ];
         });
@@ -98,6 +105,7 @@ class BackupShareController extends Controller
             'share' => $share,
             'share_url' => route('backup.shared.view', $share->share_token),
             'guest_share_url' => route('backup.shared.guest-view', $share->share_token),
+            'guest_duration_hours' => (int)($share->guest_duration_hours ?: 24),
             'recent_guests' => $recentGuests,
         ]);
     }
@@ -208,6 +216,24 @@ class BackupShareController extends Controller
         $sessionKey = 'verified_backup_share_' . $share->id;
         $isVerified = session()->get($sessionKey) === true;
 
+        // Periksa apakah masa berlaku sesi akses tamu telah kedaluwarsa
+        if ($isVerified) {
+            $guestExpiresAt = session()->get('guest_backup_share_expires_at_' . $share->id);
+            if ($guestExpiresAt && now()->timestamp > $guestExpiresAt) {
+                session()->forget('verified_backup_share_' . $share->id);
+                session()->forget('guest_backup_share_' . $share->id);
+                session()->forget('guest_backup_share_expires_at_' . $share->id);
+                $isVerified = false;
+                $duration = $share->guest_duration_hours ?: 24;
+                return $this->renderPinView(
+                    $share, 
+                    $token, 
+                    true, 
+                    "Masa berlaku akses sesi tamu Anda ({$duration} Jam) telah berakhir. Silakan isi kembali formulir Buku Tamu untuk memperbarui akses."
+                );
+            }
+        }
+
         // Jika belum memasukkan PIN dan identitas tamu
         if (!$isVerified) {
             return $this->renderPinView($share, $token, true);
@@ -285,6 +311,9 @@ class BackupShareController extends Controller
             'nrp' => 'nullable|string|max:50',
             'nama' => 'required|string|max:150',
             'satuan' => 'required|string|max:150',
+            'whatsapp' => ['required', 'string', 'min:9', 'max:25'],
+        ], [
+            'whatsapp.required' => 'Nomor WhatsApp wajib diisi untuk menerima notifikasi masa berlaku akses.',
         ]);
 
         $share = BackupShare::where('share_token', $token)->first();
@@ -325,6 +354,20 @@ class BackupShareController extends Controller
 
         RateLimiter::clear($throttleKey);
 
+        // Bersihkan dan normalisasi nomor WhatsApp (08xxx -> 628xxx)
+        $waRaw = preg_replace('/[^0-9]/', '', (string)$request->whatsapp);
+        if (str_starts_with($waRaw, '0')) {
+            $waNormalized = '62' . substr($waRaw, 1);
+        } else {
+            $waNormalized = $waRaw;
+        }
+
+        $durationHours = (int)($share->guest_duration_hours ?: 24);
+        if ($durationHours <= 0) {
+            $durationHours = 24;
+        }
+        $expiresAt = now()->addHours($durationHours);
+
         // Catat ke tabel riwayat tamu (BackupShareGuest)
         BackupShareGuest::ensureSchema();
         $guestRecord = BackupShareGuest::create([
@@ -332,29 +375,64 @@ class BackupShareController extends Controller
             'nrp' => trim($request->nrp ?: '-'),
             'nama' => trim($request->nama),
             'satuan' => trim($request->satuan),
+            'whatsapp' => $waNormalized,
             'ip_address' => $request->ip(),
             'user_agent' => substr((string)$request->userAgent(), 0, 500),
             'accessed_at' => now(),
+            'expires_at' => $expiresAt,
         ]);
 
         // Simpan sesi terverifikasi dan identitas tamu
         session()->put('verified_backup_share_' . $share->id, true);
+        session()->put('guest_backup_share_expires_at_' . $share->id, $expiresAt->timestamp);
         session()->put('guest_backup_share_' . $share->id, [
             'id' => $guestRecord->id,
             'nrp' => $guestRecord->nrp,
             'nama' => $guestRecord->nama,
             'satuan' => $guestRecord->satuan,
+            'whatsapp' => $guestRecord->whatsapp,
+            'duration_hours' => $durationHours,
+            'expires_at_timestamp' => $expiresAt->timestamp,
+            'expires_at_human' => $expiresAt->format('d/m/Y H:i') . ' WIB',
             'login_at' => now()->format('d M Y H:i'),
         ]);
 
-        Log::info("Tamu Luar [{$guestRecord->nama} - NRP: {$guestRecord->nrp} ({$guestRecord->satuan})] berhasil membuka folder share ID {$share->id}");
+        // Kirim Notifikasi WhatsApp Otomatis ke Nomor Tamu
+        try {
+            $formattedExpires = $expiresAt->format('d/m/Y H:i') . ' WIB';
+            $folderTitle = $share->share_name ?: ($share->folder?->file_name ?: $share->pc->pc_name);
+            $guestLink = route('backup.shared.guest-view', $share->share_token);
+
+            $waMessage = "*SINDEN - PEMBERITAHUAN AKSES FOLDER BERBAGI*\n"
+                . "━━━━━━━━━━━━━━━━━━━━\n"
+                . "Halo, Yth. Bpk/Ibu/Sdr *{$guestRecord->nama}*\n"
+                . "NRP/NIP : *{$guestRecord->nrp}*\n"
+                . "Satuan/Instansi : *{$guestRecord->satuan}*\n\n"
+                . "Akses Anda ke folder berbagi telah berhasil diverifikasi:\n"
+                . "📁 *Folder* : {$folderTitle}\n"
+                . "⏱️ *Masa Berlaku Akses* : *{$durationHours} Jam*\n"
+                . "⏳ *Berlaku Hingga* : *{$formattedExpires}*\n\n"
+                . "🔗 *Tautan Akses* :\n"
+                . "{$guestLink}\n\n"
+                . "⚠️ *Pemberitahuan Keamanan Dinas*:\n"
+                . "1. Seluruh aktivitas penjelajahan dan pengunduhan berkas tercatat dalam Buku Tamu Digital SINDEN.\n"
+                . "2. Akses folder akan terkunci otomatis setelah batas waktu {$durationHours} jam.\n"
+                . "━━━━━━━━━━━━━━━━━━━━\n"
+                . "_Sistem Informasi & Dokumen Elektronik (SINDEN)_";
+
+            WhatsappService::sendMessage($waNormalized, $waMessage);
+        } catch (\Throwable $waErr) {
+            Log::warning("Gagal mengirim notifikasi WA akses tamu: " . $waErr->getMessage());
+        }
+
+        Log::info("Tamu Luar [{$guestRecord->nama} - NRP: {$guestRecord->nrp} ({$guestRecord->satuan}) WA: {$waNormalized}] berhasil membuka folder share ID {$share->id}. Berlaku {$durationHours} jam.");
 
         $share->increment('access_count');
         $share->update(['last_accessed_at' => now()]);
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Identitas tamu dan PIN terverifikasi. Membuka folder...',
+            'message' => "Identitas tamu dan PIN terverifikasi. Masa berlaku akses {$durationHours} jam. Notifikasi telah dikirim ke WhatsApp Anda.",
         ]);
     }
 
@@ -367,6 +445,7 @@ class BackupShareController extends Controller
         if ($share) {
             session()->forget('verified_backup_share_' . $share->id);
             session()->forget('guest_backup_share_' . $share->id);
+            session()->forget('guest_backup_share_expires_at_' . $share->id);
         }
 
         $isGuest = $request->query('mode') === 'guest' 
@@ -383,7 +462,7 @@ class BackupShareController extends Controller
     /**
      * Menampilkan Layar Input PIN / Formulir Buku Tamu
      */
-    private function renderPinView($share, $token, bool $isGuestMode)
+    private function renderPinView($share, $token, bool $isGuestMode, ?string $expiredMessage = null)
     {
         return Inertia::render('Backup/SharedFolder', [
             'needsPin' => true,
@@ -391,6 +470,8 @@ class BackupShareController extends Controller
             'isDeactivated' => false,
             'isNotFound' => false,
             'isGuestDisabled' => false,
+            'expiredMessage' => $expiredMessage,
+            'guestDurationHours' => (int)($share->guest_duration_hours ?: 24),
             'shareToken' => $token,
             'shareName' => $share->share_name,
             'folderName' => $share->folder?->file_name ?: $share->pc->pc_name,
@@ -491,6 +572,7 @@ class BackupShareController extends Controller
         }
 
         $guestUser = session()->get('guest_backup_share_' . $share->id);
+        $guestExpiresAt = session()->get('guest_backup_share_expires_at_' . $share->id);
 
         return Inertia::render('Backup/SharedFolder', [
             'needsPin' => false,
@@ -498,6 +580,8 @@ class BackupShareController extends Controller
             'isNotFound' => false,
             'isGuestDisabled' => false,
             'isGuestMode' => $isGuestMode,
+            'guestDurationHours' => (int)($share->guest_duration_hours ?: 24),
+            'guestExpiresAt' => $guestExpiresAt,
             'shareToken' => $token,
             'shareName' => $share->share_name,
             'pcName' => $share->pc->pc_name,
@@ -520,16 +604,31 @@ class BackupShareController extends Controller
     }
 
     /**
+     * Memvalidasi sesi akses folder berbagi dan memeriksa masa berlaku akses tamu
+     */
+    private function validateShareSession(BackupShare $share): void
+    {
+        $sessionKey = 'verified_backup_share_' . $share->id;
+        if (session()->get($sessionKey) !== true) {
+            abort(403, 'Otoritas PIN keamanan belum terverifikasi.');
+        }
+
+        $guestExpiresAt = session()->get('guest_backup_share_expires_at_' . $share->id);
+        if ($guestExpiresAt && now()->timestamp > $guestExpiresAt) {
+            session()->forget('verified_backup_share_' . $share->id);
+            session()->forget('guest_backup_share_' . $share->id);
+            session()->forget('guest_backup_share_expires_at_' . $share->id);
+            abort(403, 'Masa berlaku sesi akses tamu telah habis. Silakan isi kembali Buku Tamu.');
+        }
+    }
+
+    /**
      * Unduh Berkas Tunggal secara Aman (Terbatas dalam Lingkup Folder)
      */
     public function downloadFile($token, $fileId)
     {
         $share = BackupShare::where('share_token', $token)->where('is_active', true)->firstOrFail();
-
-        $sessionKey = 'verified_backup_share_' . $share->id;
-        if (session()->get($sessionKey) !== true) {
-            abort(403, 'Otoritas PIN keamanan belum terverifikasi.');
-        }
+        $this->validateShareSession($share);
 
         $file = Backup::where('id', $fileId)->where('pc_id', $share->pc_id)->firstOrFail();
 
@@ -561,11 +660,7 @@ class BackupShareController extends Controller
         }
 
         $share = BackupShare::where('share_token', $token)->where('is_active', true)->firstOrFail();
-
-        $sessionKey = 'verified_backup_share_' . $share->id;
-        if (session()->get($sessionKey) !== true) {
-            abort(403, 'Otoritas PIN keamanan belum terverifikasi.');
-        }
+        $this->validateShareSession($share);
 
         $file = Backup::where('id', $fileId)->where('pc_id', $share->pc_id)->firstOrFail();
 
@@ -592,11 +687,7 @@ class BackupShareController extends Controller
     public function viewOffice($token, $fileId)
     {
         $share = BackupShare::where('share_token', $token)->where('is_active', true)->firstOrFail();
-
-        $sessionKey = 'verified_backup_share_' . $share->id;
-        if (session()->get($sessionKey) !== true) {
-            abort(403, 'Otoritas PIN keamanan belum terverifikasi.');
-        }
+        $this->validateShareSession($share);
 
         $file = Backup::where('id', $fileId)->where('pc_id', $share->pc_id)->firstOrFail();
 
@@ -725,11 +816,7 @@ class BackupShareController extends Controller
         }
 
         $share = BackupShare::where('share_token', $token)->where('is_active', true)->firstOrFail();
-
-        $sessionKey = 'verified_backup_share_' . $share->id;
-        if (session()->get($sessionKey) !== true) {
-            abort(403, 'Otoritas PIN keamanan belum terverifikasi.');
-        }
+        $this->validateShareSession($share);
 
         $file = Backup::where('id', $fileId)->where('pc_id', $share->pc_id)->firstOrFail();
 
@@ -752,11 +839,7 @@ class BackupShareController extends Controller
     public function downloadArwJpg($token, $fileId)
     {
         $share = BackupShare::where('share_token', $token)->where('is_active', true)->firstOrFail();
-
-        $sessionKey = 'verified_backup_share_' . $share->id;
-        if (session()->get($sessionKey) !== true) {
-            abort(403, 'Otoritas PIN keamanan belum terverifikasi.');
-        }
+        $this->validateShareSession($share);
 
         $file = Backup::where('id', $fileId)->where('pc_id', $share->pc_id)->firstOrFail();
 
@@ -779,11 +862,7 @@ class BackupShareController extends Controller
     public function downloadFolderZip($token, Request $request)
     {
         $share = BackupShare::where('share_token', $token)->where('is_active', true)->firstOrFail();
-
-        $sessionKey = 'verified_backup_share_' . $share->id;
-        if (session()->get($sessionKey) !== true) {
-            abort(403, 'Otoritas PIN keamanan belum terverifikasi.');
-        }
+        $this->validateShareSession($share);
 
         $targetFolderId = $request->query('folder_id') ?: $share->backup_id;
         $targetFolder = null;

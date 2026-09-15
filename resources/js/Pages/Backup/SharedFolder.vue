@@ -26,6 +26,18 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    expiredMessage: {
+        type: String,
+        default: null,
+    },
+    guestDurationHours: {
+        type: Number,
+        default: 24,
+    },
+    guestExpiresAt: {
+        type: [Number, String, null],
+        default: null,
+    },
     shareToken: String,
     shareName: String,
     folderName: String,
@@ -99,11 +111,12 @@ const guestForm = ref({
     nrp: '',
     nama: '',
     satuan: '',
+    whatsapp: '',
     pin: '',
 });
 const showGuestPin = ref(false);
 const isVerifyingGuest = ref(false);
-const guestErrorMessage = ref('');
+const guestErrorMessage = ref(props.expiredMessage || '');
 
 const submitGuest = async () => {
     if (!guestForm.value.nrp.trim()) {
@@ -116,6 +129,10 @@ const submitGuest = async () => {
     }
     if (!guestForm.value.satuan.trim()) {
         guestErrorMessage.value = 'Silakan masukkan Satuan / Instansi Asal Anda.';
+        return;
+    }
+    if (!guestForm.value.whatsapp.trim()) {
+        guestErrorMessage.value = 'Silakan masukkan Nomor WhatsApp aktif Anda untuk notifikasi masa berlaku akses.';
         return;
     }
     if (!guestForm.value.pin.trim()) {
@@ -131,6 +148,7 @@ const submitGuest = async () => {
             nrp: guestForm.value.nrp.trim(),
             nama: guestForm.value.nama.trim(),
             satuan: guestForm.value.satuan.trim(),
+            whatsapp: guestForm.value.whatsapp.trim(),
             pin: guestForm.value.pin.trim(),
         });
 
@@ -531,6 +549,12 @@ const exitAndLock = () => {
 
                 <!-- Buku Tamu Body -->
                 <div class="p-5 sm:p-7 space-y-4">
+                    <!-- Banner Peringatan Sesi Kedaluwarsa (Jika Ada) -->
+                    <div v-if="expiredMessage" class="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-2.5 text-rose-800 text-xs font-semibold animate-shake">
+                        <span class="text-base shrink-0">⚠️</span>
+                        <span class="leading-relaxed">{{ expiredMessage }}</span>
+                    </div>
+
                     <!-- Target Folder Info -->
                     <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center gap-3">
                         <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center shrink-0">
@@ -541,6 +565,9 @@ const exitAndLock = () => {
                         <div class="min-w-0 flex-1">
                             <p class="text-[9px] font-bold uppercase text-slate-400 tracking-wider">Folder Target</p>
                             <p class="text-xs font-black text-slate-800 truncate uppercase">{{ shareName || folderName }}</p>
+                        </div>
+                        <div class="px-2.5 py-1 bg-amber-100/80 text-amber-900 rounded-lg text-[10px] font-black uppercase shrink-0">
+                            ⏱️ {{ guestDurationHours || 24 }} Jam
                         </div>
                     </div>
 
@@ -591,6 +618,30 @@ const exitAndLock = () => {
                             />
                         </div>
 
+                        <!-- Nomor WhatsApp Aktif -->
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-slate-700 flex items-center justify-between">
+                                <span>Nomor WhatsApp Aktif <span class="text-rose-500">*</span></span>
+                                <span class="text-[9.5px] text-emerald-600 font-bold lowercase">kirim notifikasi durasi</span>
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 font-bold text-xs pointer-events-none">
+                                    📱
+                                </span>
+                                <input 
+                                    v-model="guestForm.whatsapp" 
+                                    type="tel" 
+                                    required
+                                    placeholder="Contoh: 081234567890 / 628..."
+                                    autocomplete="tel"
+                                    class="w-full text-xs font-bold py-2.5 pl-8 pr-3 bg-slate-50 border border-slate-300 focus:border-indigo-600 focus:bg-white rounded-xl transition outline-none"
+                                />
+                            </div>
+                            <p class="text-[9.5px] text-slate-400">
+                                Rincian batas waktu aktif ({{ guestDurationHours || 24 }} jam) dan tautan berkas otomatis dikirim ke nomor ini.
+                            </p>
+                        </div>
+
                         <!-- PIN Folder -->
                         <div class="space-y-1 pt-1">
                             <label class="text-[10px] font-bold uppercase tracking-wider text-slate-700 flex items-center justify-between">
@@ -622,7 +673,7 @@ const exitAndLock = () => {
 
                         <button 
                             type="submit" 
-                            :disabled="isVerifyingGuest || !guestForm.nrp.trim() || !guestForm.nama.trim() || !guestForm.satuan.trim() || !guestForm.pin.trim()"
+                            :disabled="isVerifyingGuest || !guestForm.nrp.trim() || !guestForm.nama.trim() || !guestForm.satuan.trim() || !guestForm.whatsapp.trim() || !guestForm.pin.trim()"
                             class="w-full py-3 px-5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold text-xs uppercase tracking-wider shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer mt-2">
                             <span v-if="isVerifyingGuest" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                             <span>{{ isVerifyingGuest ? 'Memverifikasi Identitas...' : 'Verifikasi Identitas & Buka Berkas' }}</span>
@@ -631,7 +682,7 @@ const exitAndLock = () => {
 
                     <div class="text-center pt-2 border-t border-slate-100 space-y-1.5">
                         <p class="text-[10px] text-slate-400">
-                            Identitas Anda dicatat ke dalam Buku Tamu Digital demi keamanan pangkalan berkas.
+                            Identitas Anda dicatat ke dalam Buku Tamu Digital demi keamanan pangkalan berkas. Akses aktif selama {{ guestDurationHours || 24 }} jam.
                         </p>
                         <p class="text-[11px] font-bold text-slate-600">
                             Personel SINDEN? 
@@ -755,21 +806,26 @@ const exitAndLock = () => {
             <div v-else class="w-full max-w-7xl flex-1 flex flex-col space-y-3 sm:space-y-4">
                 
                 <!-- GUEST SESSION BANNER -->
-                <div v-if="isGuestMode && guestUser" class="bg-amber-500/10 border border-amber-300/70 rounded-2xl p-3 px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-amber-900">
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <div v-if="isGuestMode && guestUser" class="bg-amber-500/10 border border-amber-300/70 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-900">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
                         </div>
-                        <div class="text-xs">
+                        <div class="text-xs min-w-0">
                             <span class="font-bold text-[10px] uppercase tracking-wider text-amber-700 block sm:inline mr-2">Sesi Tamu Luar:</span>
-                            <span class="font-black text-slate-900 uppercase">{{ guestUser.nama }}</span>
+                            <span class="font-black text-slate-900 uppercase truncate">{{ guestUser.nama }}</span>
                             <span class="text-amber-800 ml-1.5 font-semibold text-[11px]">(NRP: {{ guestUser.nrp }} &bull; {{ guestUser.satuan }})</span>
+                            <span v-if="guestUser.whatsapp" class="text-emerald-700 ml-1.5 font-bold text-[11px]">&bull; WA: {{ guestUser.whatsapp }}</span>
                         </div>
                     </div>
-                    <div class="text-[10px] text-amber-700 font-medium">
-                        Kunjungan dicatat dalam Buku Tamu Digital
+                    <div class="flex items-center gap-2 shrink-0">
+                        <div class="px-3 py-1 bg-white/90 border border-amber-300 rounded-xl text-[10.5px] font-bold text-amber-950 flex items-center gap-1.5 shadow-2xs">
+                            <span>⏱️</span>
+                            <span>Masa Berlaku:</span>
+                            <span class="font-black text-amber-800">{{ guestUser.expires_at_human || (guestDurationHours ? `${guestDurationHours} Jam` : '24 Jam') }}</span>
+                        </div>
                     </div>
                 </div>
                 

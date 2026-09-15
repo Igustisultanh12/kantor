@@ -25,6 +25,7 @@ const isCopiedGuestLink = ref(false);
 const shareForm = ref({
     is_active: true,
     allow_guest: true,
+    guest_duration_hours: 24,
     pin: '',
     share_name: '',
     share_url: '',
@@ -42,6 +43,7 @@ const openShareModal = (item = null) => {
         shareForm.value = {
             is_active: existing.is_active,
             allow_guest: existing.allow_guest !== undefined ? existing.allow_guest : true,
+            guest_duration_hours: existing.guest_duration_hours || 24,
             pin: existing.pin || '',
             share_name: item ? item.file_name : (props.breadcrumbs?.[props.breadcrumbs.length - 1]?.name || props.pc?.pc_name || 'Folder Berkas'),
             share_url: existing.share_url,
@@ -55,6 +57,7 @@ const openShareModal = (item = null) => {
         shareForm.value = {
             is_active: true,
             allow_guest: true,
+            guest_duration_hours: 24,
             pin: randomPin,
             share_name: item ? item.file_name : (props.breadcrumbs?.[props.breadcrumbs.length - 1]?.name || props.pc?.pc_name || 'Folder Berkas'),
             share_url: '',
@@ -116,6 +119,7 @@ const submitShareSettings = async () => {
             pin: shareForm.value.pin,
             is_active: shareForm.value.is_active,
             allow_guest: shareForm.value.allow_guest,
+            guest_duration_hours: Number(shareForm.value.guest_duration_hours || 24),
             share_name: shareForm.value.share_name,
         });
 
@@ -123,12 +127,14 @@ const submitShareSettings = async () => {
             const data = res.data;
             shareForm.value.share_url = data.share_url;
             shareForm.value.guest_share_url = data.guest_share_url;
+            shareForm.value.guest_duration_hours = Number(data.guest_duration_hours || 24);
             shareForm.value.recent_guests = data.recent_guests || [];
             
             const updatedInfo = {
                 id: data.share.id,
                 is_active: Boolean(data.share.is_active),
                 allow_guest: Boolean(data.share.allow_guest),
+                guest_duration_hours: Number(data.share.guest_duration_hours || 24),
                 share_token: data.share.share_token,
                 pin: data.share.pin,
                 share_url: data.share_url,
@@ -3346,12 +3352,50 @@ onUnmounted(() => {
                                 <h4 class="text-xs font-black uppercase tracking-wide text-blue-950 flex items-center gap-1.5">
                                     <span>👥</span> Izinkan Akses Tamu / Pengunjung Luar
                                 </h4>
-                                <p class="text-[11px] text-blue-700">Tamu luar dapat mengakses tanpa akun login SINDEN dengan mengisi buku tamu (NRP, Nama, Satuan) dan PIN.</p>
+                                <p class="text-[11px] text-blue-700">Tamu luar dapat mengakses tanpa akun login SINDEN dengan mengisi buku tamu (NRP, Nama, Satuan, No. WhatsApp) dan PIN.</p>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" v-model="shareForm.allow_guest" class="sr-only peer">
                                 <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                             </label>
+                        </div>
+
+                        <!-- Pengaturan Durasi Masa Berlaku Akses Tamu (Jam) -->
+                        <div v-if="shareForm.allow_guest" class="p-4 bg-amber-50/70 rounded-2xl border border-amber-200 space-y-3 transition-all animate-fade-in">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <div>
+                                    <label class="text-xs font-black uppercase tracking-wide text-amber-950 flex items-center gap-1.5">
+                                        <span>⏱️</span> Masa Berlaku Akses Tamu
+                                    </label>
+                                    <p class="text-[11px] text-amber-800">
+                                        Durasi aktif akses folder sejak tamu mengisi buku tamu. Rincian masa berlaku akan otomatis dikirim ke WhatsApp tamu.
+                                    </p>
+                                </div>
+                                <div class="flex items-center gap-1.5 shrink-0">
+                                    <input 
+                                        type="number" 
+                                        min="1" 
+                                        max="720" 
+                                        v-model.number="shareForm.guest_duration_hours"
+                                        class="w-20 px-2.5 py-1.5 bg-white border-2 border-amber-300 focus:border-amber-600 rounded-xl text-center text-xs font-black text-slate-800 outline-none"
+                                    />
+                                    <span class="text-xs font-bold text-amber-900">Jam</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Preset Tombol Cepat -->
+                            <div class="flex items-center gap-2 flex-wrap pt-1">
+                                <span class="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Pilihan Cepat:</span>
+                                <button 
+                                    v-for="hrs in [2, 6, 12, 24, 48]" 
+                                    :key="'preset-' + hrs"
+                                    type="button" 
+                                    @click="shareForm.guest_duration_hours = hrs"
+                                    :class="shareForm.guest_duration_hours === hrs ? 'bg-amber-600 text-white font-black shadow-xs' : 'bg-white text-amber-900 border border-amber-300 hover:bg-amber-100 font-semibold'"
+                                    class="px-2.5 py-1 rounded-lg text-[10px] transition cursor-pointer">
+                                    {{ hrs === 24 ? '24 Jam (1 Hari)' : (hrs === 48 ? '48 Jam (2 Hari)' : `${hrs} Jam`) }}
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Input PIN Keamanan -->
@@ -3425,7 +3469,7 @@ onUnmounted(() => {
                                     <span v-if="shareForm.allow_guest" class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase rounded-md">Buku Tamu + PIN</span>
                                     <span v-else class="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-black uppercase rounded-md">Dinonaktifkan</span>
                                 </div>
-                                <p class="text-[10.5px] text-emerald-800 font-medium">Dapat diakses oleh tamu luar tanpa akun login. Tamu wajib memasukkan NRP, Nama, Satuan, dan PIN Keamanan.</p>
+                                <p class="text-[10.5px] text-emerald-800 font-medium">Dapat diakses oleh tamu luar tanpa akun login. Tamu wajib mengisi NRP, Nama, Satuan, No. WhatsApp, dan PIN. Akses aktif selama {{ shareForm.guest_duration_hours || 24 }} jam.</p>
                                 <div class="flex items-center gap-2">
                                     <input 
                                         type="text" 
@@ -3476,11 +3520,21 @@ onUnmounted(() => {
                                 </h4>
                                 <span class="text-[10px] font-bold text-slate-500">{{ shareForm.recent_guests.length }} kunjungan terakhir</span>
                             </div>
-                            <div class="max-h-36 overflow-y-auto divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
+                            <div class="max-h-48 overflow-y-auto divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
                                 <div v-for="guest in shareForm.recent_guests" :key="guest.id || guest.time_human" class="p-2.5 text-[11px] flex items-center justify-between gap-2">
-                                    <div>
-                                        <p class="font-extrabold text-slate-900 uppercase text-xs">{{ guest.nama }}</p>
-                                        <p class="text-[10px] text-slate-500 font-semibold">NRP: {{ guest.nrp }} &bull; Satuan: {{ guest.satuan }}</p>
+                                    <div class="min-w-0">
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <p class="font-extrabold text-slate-900 uppercase text-xs truncate">{{ guest.nama }}</p>
+                                            <span v-if="guest.is_expired" class="px-1.5 py-0.5 bg-rose-100 text-rose-700 text-[9px] font-bold rounded">Kadaluarsa</span>
+                                            <span v-else class="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 text-[9px] font-bold rounded">Aktif</span>
+                                        </div>
+                                        <p class="text-[10px] text-slate-500 font-semibold">
+                                            NRP: {{ guest.nrp }} &bull; Satuan: {{ guest.satuan }}
+                                            <span v-if="guest.whatsapp" class="text-emerald-700 font-bold ml-1">&bull; WA: {{ guest.whatsapp }}</span>
+                                        </p>
+                                        <p v-if="guest.expires_at_human" class="text-[9px] text-slate-400">
+                                            Berlaku s/d: {{ guest.expires_at_human }}
+                                        </p>
                                     </div>
                                     <div class="text-right shrink-0">
                                         <span class="text-[10px] font-bold text-slate-600 block">{{ guest.time_human }}</span>
