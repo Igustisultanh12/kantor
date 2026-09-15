@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Pc;
 use App\Models\Backup;
 use App\Models\BackupShare;
+use App\Models\BackupShareGuest;
 use App\Services\ArwService;
 use App\Services\FileSecurityService;
 use App\Services\ThumbnailService;
@@ -32,6 +33,7 @@ class BackupShareController extends Controller
             'backup_id' => 'nullable|exists:backups,id',
             'pin' => 'required|string|min:4|max:30',
             'is_active' => 'required|boolean',
+            'allow_guest' => 'nullable|boolean',
             'share_name' => 'nullable|string|max:150',
         ]);
 
@@ -75,14 +77,28 @@ class BackupShareController extends Controller
 
         $share->pin = trim($validated['pin']);
         $share->is_active = (bool)$validated['is_active'];
+        $share->allow_guest = $request->has('allow_guest') ? (bool)$validated['allow_guest'] : true;
         $share->share_name = $defaultName;
         $share->save();
+
+        $recentGuests = $share->guestLogs()->take(10)->get()->map(function ($g) {
+            return [
+                'id' => $g->id,
+                'nrp' => $g->nrp,
+                'nama' => $g->nama,
+                'satuan' => $g->satuan,
+                'ip' => $g->ip_address,
+                'time_human' => $g->accessed_at ? $g->accessed_at->format('d/m/Y H:i') : $g->created_at->format('d/m/Y H:i'),
+            ];
+        });
 
         return response()->json([
             'status' => 'success',
             'message' => 'Tautan berbagi dan PIN keamanan berhasil diperbarui.',
             'share' => $share,
             'share_url' => route('backup.shared.view', $share->share_token),
+            'guest_share_url' => route('backup.shared.guest-view', $share->share_token),
+            'recent_guests' => $recentGuests,
         ]);
     }
 
@@ -109,8 +125,7 @@ class BackupShareController extends Controller
     }
 
     /**
-     * Halaman Akses Berbagi Folder (Google Drive Style)
-     * Dapat diakses oleh seluruh personel yang memiliki Tautan & PIN
+     * Halaman Akses Berbagi Folder Khusus Personel Internal (Wajib Login Akun SINDEN)
      */
     public function show($token, Request $request)
     {
@@ -147,21 +162,256 @@ class BackupShareController extends Controller
 
         // Jika belum memasukkan PIN yang benar
         if (!$isVerified) {
+            return $this->renderPinView($share, $token, false);
+        }
+
+        return $this->renderFolderView($share, $token, $request, false);
+    }
+
+    /**
+     * Halaman Akses Berbagi Folder untuk Pengunjung Luar / Tamu (Tanpa Akun, Buku Tamu & PIN)
+     */
+    public function showGuest($token, Request $request)
+    {
+        BackupShare::ensureSchema();
+
+        $share = BackupShare::with(['pc', 'folder'])
+            ->where('share_token', $token)
+            ->first();
+
+        if (!$share) {
             return Inertia::render('Backup/SharedFolder', [
-                'needsPin' => true,
-                'shareToken' => $token,
-                'shareName' => $share->share_name,
-                'folderName' => $share->folder?->file_name ?: $share->pc->pc_name,
-                'pcName' => $share->pc->pc_name,
-                'currentUser' => Auth::user() ? [
-                    'id' => Auth::id(),
-                    'name' => Auth::user()->name,
-                    'pangkat' => Auth::user()->pangkat ?? 'Personel',
-                    'nrp' => Auth::user()->nrp ?? Auth::user()->nip ?? null,
-                ] : null,
+                'isNotFound' => true,
+                'shareName' => 'Tautan Tidak Ditemukan',
             ]);
         }
 
+        // Jika tautan telah dinonaktifkan oleh Admin
+        if (!$share->is_active) {
+            return Inertia::render('Backup/SharedFolder', [
+                'isDeactivated' => true,
+                'shareName' => $share->share_name,
+            ]);
+        }
+
+        // Jika pemilik folder menonaktifkan akses tamu
+        if (!$share->allow_guest) {
+            return Inertia::render('Backup/SharedFolder', [
+                'isGuestDisabled' => true,
+                'shareName' => $share->share_name,
+                'folderName' => $share->folder?->file_name ?: $share->pc->pc_name,
+                'shareToken' => $token,
+                'personnelUrl' => route('backup.shared.view', $token),
+            ]);
+        }
+
+        $sessionKey = 'verified_backup_share_' . $share->id;
+        $isVerified = session()->get($sessionKey) === true;
+
+        // Jika belum memasukkan PIN dan identitas tamu
+        if (!$isVerified) {
+            return $this->renderPinView($share, $token, true);
+        }
+
+        return $this->renderFolderView($share, $token, $request, true);
+    }
+
+    /**
+     * Memverifikasi PIN Keamanan yang dimasukkan personel internal (dengan Rate-Limiting)
+     */
+    public function verifyPin($token, Request $request)
+    {
+        $request->validate([
+            'pin' => 'required|string',
+        ]);
+
+        $share = BackupShare::where('share_token', $token)->first();
+
+        if (!$share || !$share->is_active) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Tautan tidak valid atau telah dinonaktifkan oleh Administrator.',
+            ], 403);
+        }
+
+        $throttleKey = 'backup_share_pin_' . $share->id . '_' . $request->ip();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+            return response()->json([
+                'status' => 'error',
+                'message' => "Terlalu banyak percobaan salah! Silakan tunggu {$seconds} detik lagi.",
+            ], 429);
+        }
+
+        if (!$share->verifyPin($request->pin)) {
+            RateLimiter::hit($throttleKey, 300); // Kunci 5 menit jika gagal 5x
+            $remaining = RateLimiter::remaining($throttleKey, 5);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => "PIN keamanan tidak sesuai! Sisa percobaan: {$remaining} kali.",
+            ], 401);
+        }
+
+        RateLimiter::clear($throttleKey);
+
+        // Catat keberhasilan verifikasi ke dalam session
+        session()->put('verified_backup_share_' . $share->id, true);
+
+        // Catat log audit personel yang mengakses
+        $user = Auth::user();
+        if ($user) {
+            Log::info("Personel {$user->name} (" . ($user->nrp ?? $user->id) . ") berhasil memverifikasi PIN folder share ID {$share->id}");
+        }
+
+        // Perbarui statistik akses
+        $share->increment('access_count');
+        $share->update(['last_accessed_at' => now()]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'PIN terverifikasi. Membuka folder...',
+        ]);
+    }
+
+    /**
+     * Memverifikasi PIN Keamanan & Catat Identitas Pengunjung Tamu (NRP, Nama, Satuan)
+     */
+    public function verifyGuest($token, Request $request)
+    {
+        $request->validate([
+            'pin' => 'required|string',
+            'nrp' => 'nullable|string|max:50',
+            'nama' => 'required|string|max:150',
+            'satuan' => 'required|string|max:150',
+        ]);
+
+        $share = BackupShare::where('share_token', $token)->first();
+
+        if (!$share || !$share->is_active) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Tautan tidak valid atau telah dinonaktifkan oleh Administrator.',
+            ], 403);
+        }
+
+        if (!$share->allow_guest) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Akses pengunjung / tamu untuk folder ini telah dinonaktifkan oleh pemilik folder.',
+            ], 403);
+        }
+
+        $throttleKey = 'backup_share_guest_pin_' . $share->id . '_' . $request->ip();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+            return response()->json([
+                'status' => 'error',
+                'message' => "Terlalu banyak percobaan salah! Silakan tunggu {$seconds} detik lagi.",
+            ], 429);
+        }
+
+        if (!$share->verifyPin($request->pin)) {
+            RateLimiter::hit($throttleKey, 300);
+            $remaining = RateLimiter::remaining($throttleKey, 5);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => "PIN keamanan tidak sesuai! Sisa percobaan: {$remaining} kali.",
+            ], 401);
+        }
+
+        RateLimiter::clear($throttleKey);
+
+        // Catat ke tabel riwayat tamu (BackupShareGuest)
+        BackupShareGuest::ensureSchema();
+        $guestRecord = BackupShareGuest::create([
+            'backup_share_id' => $share->id,
+            'nrp' => trim($request->nrp ?: '-'),
+            'nama' => trim($request->nama),
+            'satuan' => trim($request->satuan),
+            'ip_address' => $request->ip(),
+            'user_agent' => substr((string)$request->userAgent(), 0, 500),
+            'accessed_at' => now(),
+        ]);
+
+        // Simpan sesi terverifikasi dan identitas tamu
+        session()->put('verified_backup_share_' . $share->id, true);
+        session()->put('guest_backup_share_' . $share->id, [
+            'id' => $guestRecord->id,
+            'nrp' => $guestRecord->nrp,
+            'nama' => $guestRecord->nama,
+            'satuan' => $guestRecord->satuan,
+            'login_at' => now()->format('d M Y H:i'),
+        ]);
+
+        Log::info("Tamu Luar [{$guestRecord->nama} - NRP: {$guestRecord->nrp} ({$guestRecord->satuan})] berhasil membuka folder share ID {$share->id}");
+
+        $share->increment('access_count');
+        $share->update(['last_accessed_at' => now()]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Identitas tamu dan PIN terverifikasi. Membuka folder...',
+        ]);
+    }
+
+    /**
+     * Keluar dari sesi verifikasi PIN (Kunci Kembali Folder)
+     */
+    public function exitShare($token, Request $request)
+    {
+        $share = BackupShare::where('share_token', $token)->first();
+        if ($share) {
+            session()->forget('verified_backup_share_' . $share->id);
+            session()->forget('guest_backup_share_' . $share->id);
+        }
+
+        $isGuest = $request->query('mode') === 'guest' 
+            || str_contains(url()->previous(), '/tamu/') 
+            || str_contains(url()->previous(), '/guest/');
+
+        if ($isGuest) {
+            return redirect()->route('backup.shared.guest-view', $token);
+        }
+
+        return redirect()->route('backup.shared.view', $token);
+    }
+
+    /**
+     * Menampilkan Layar Input PIN / Formulir Buku Tamu
+     */
+    private function renderPinView($share, $token, bool $isGuestMode)
+    {
+        return Inertia::render('Backup/SharedFolder', [
+            'needsPin' => true,
+            'isGuestMode' => $isGuestMode,
+            'isDeactivated' => false,
+            'isNotFound' => false,
+            'isGuestDisabled' => false,
+            'shareToken' => $token,
+            'shareName' => $share->share_name,
+            'folderName' => $share->folder?->file_name ?: $share->pc->pc_name,
+            'pcName' => $share->pc->pc_name,
+            'allowGuest' => (bool)$share->allow_guest,
+            'personnelUrl' => route('backup.shared.view', $token),
+            'guestUrl' => route('backup.shared.guest-view', $token),
+            'currentUser' => Auth::user() ? [
+                'id' => Auth::id(),
+                'name' => Auth::user()->name,
+                'pangkat' => Auth::user()->pangkat ?? 'Personel',
+                'nrp' => Auth::user()->nrp ?? Auth::user()->nip ?? null,
+            ] : null,
+        ]);
+    }
+
+    /**
+     * Menampilkan Daftar Berkas Shared Folder (Mode Terverifikasi)
+     */
+    private function renderFolderView($share, $token, Request $request, bool $isGuestMode)
+    {
         // Menentukan folder aktif dalam cakupan berbagi
         $requestedFolderId = $request->query('folder');
         $currentFolderId = null;
@@ -240,17 +490,26 @@ class BackupShareController extends Controller
             $depth++;
         }
 
+        $guestUser = session()->get('guest_backup_share_' . $share->id);
+
         return Inertia::render('Backup/SharedFolder', [
             'needsPin' => false,
             'isDeactivated' => false,
+            'isNotFound' => false,
+            'isGuestDisabled' => false,
+            'isGuestMode' => $isGuestMode,
             'shareToken' => $token,
             'shareName' => $share->share_name,
             'pcName' => $share->pc->pc_name,
+            'folderName' => $share->folder?->file_name ?: $share->pc->pc_name,
             'contents' => $mappedContents,
             'currentFolderId' => $currentFolderId,
             'shareRootFolderId' => $share->backup_id,
             'breadcrumbs' => $breadcrumbs,
             'searchQuery' => $search,
+            'personnelUrl' => route('backup.shared.view', $token),
+            'guestUrl' => route('backup.shared.guest-view', $token),
+            'guestUser' => $guestUser,
             'currentUser' => Auth::user() ? [
                 'id' => Auth::id(),
                 'name' => Auth::user()->name,
@@ -258,78 +517,6 @@ class BackupShareController extends Controller
                 'nrp' => Auth::user()->nrp ?? Auth::user()->nip ?? null,
             ] : null,
         ]);
-    }
-
-    /**
-     * Memverifikasi PIN Keamanan yang dimasukkan personel (dengan Rate-Limiting)
-     */
-    public function verifyPin($token, Request $request)
-    {
-        $request->validate([
-            'pin' => 'required|string',
-        ]);
-
-        $share = BackupShare::where('share_token', $token)->first();
-
-        if (!$share || !$share->is_active) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Tautan tidak valid atau telah dinonaktifkan oleh Administrator.',
-            ], 403);
-        }
-
-        $throttleKey = 'backup_share_pin_' . $share->id . '_' . $request->ip();
-
-        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
-            $seconds = RateLimiter::availableIn($throttleKey);
-            return response()->json([
-                'status' => 'error',
-                'message' => "Terlalu banyak percobaan salah! Silakan tunggu {$seconds} detik lagi.",
-            ], 429);
-        }
-
-        if (!$share->verifyPin($request->pin)) {
-            RateLimiter::hit($throttleKey, 300); // Kunci 5 menit jika gagal 5x
-            $remaining = RateLimiter::remaining($throttleKey, 5);
-
-            return response()->json([
-                'status' => 'error',
-                'message' => "PIN keamanan tidak sesuai! Sisa percobaan: {$remaining} kali.",
-            ], 401);
-        }
-
-        RateLimiter::clear($throttleKey);
-
-        // Catat keberhasilan verifikasi ke dalam session
-        session()->put('verified_backup_share_' . $share->id, true);
-
-        // Catat log audit personel yang mengakses
-        $user = Auth::user();
-        if ($user) {
-            Log::info("Personel {$user->name} (" . ($user->nrp ?? $user->id) . ") berhasil memverifikasi PIN folder share ID {$share->id}");
-        }
-
-        // Perbarui statistik akses
-        $share->increment('access_count');
-        $share->update(['last_accessed_at' => now()]);
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'PIN terverifikasi. Membuka folder...',
-        ]);
-    }
-
-    /**
-     * Keluar dari sesi verifikasi PIN (Kunci Kembali Folder)
-     */
-    public function exitShare($token)
-    {
-        $share = BackupShare::where('share_token', $token)->first();
-        if ($share) {
-            session()->forget('verified_backup_share_' . $share->id);
-        }
-
-        return redirect()->route('backup.shared.view', $token);
     }
 
     /**

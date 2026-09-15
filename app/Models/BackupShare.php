@@ -20,6 +20,7 @@ class BackupShare extends Model
         'share_token',
         'pin',
         'is_active',
+        'allow_guest',
         'created_by',
         'share_name',
         'access_count',
@@ -29,6 +30,7 @@ class BackupShare extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'allow_guest' => 'boolean',
         'access_count' => 'integer',
         'last_accessed_at' => 'datetime',
         'expires_at' => 'datetime',
@@ -36,14 +38,23 @@ class BackupShare extends Model
 
     protected $appends = [
         'share_url',
+        'guest_share_url',
     ];
 
     /**
-     * URL tautan berbagi lengkap
+     * URL tautan berbagi lengkap untuk personel internal (Wajib Login)
      */
     public function getShareUrlAttribute(): string
     {
         return route('backup.shared.view', $this->share_token);
+    }
+
+    /**
+     * URL tautan berbagi lengkap untuk pengunjung luar / tamu (Buku Tamu + PIN)
+     */
+    public function getGuestShareUrlAttribute(): string
+    {
+        return route('backup.shared.guest-view', $this->share_token);
     }
 
     /**
@@ -68,6 +79,14 @@ class BackupShare extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Relasi ke riwayat log pengunjung tamu
+     */
+    public function guestLogs(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(BackupShareGuest::class, 'backup_share_id')->latest();
     }
 
     /**
@@ -139,6 +158,7 @@ class BackupShare extends Model
                     $table->string('share_token', 64)->unique()->index();
                     $table->string('pin', 255);
                     $table->boolean('is_active')->default(true)->index();
+                    $table->boolean('allow_guest')->default(true)->index();
                     $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
                     $table->string('share_name')->nullable();
                     $table->unsignedBigInteger('access_count')->default(0);
@@ -146,7 +166,13 @@ class BackupShare extends Model
                     $table->timestamp('expires_at')->nullable();
                     $table->timestamps();
                 });
+            } else if (!Schema::hasColumn('backup_shares', 'allow_guest')) {
+                Schema::table('backup_shares', function (Blueprint $table) {
+                    $table->boolean('allow_guest')->default(true)->after('is_active');
+                });
             }
+
+            BackupShareGuest::ensureSchema();
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('ensureSchema backup_shares warning: ' . $e->getMessage());
         }

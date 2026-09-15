@@ -18,6 +18,14 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    isGuestDisabled: {
+        type: Boolean,
+        default: false,
+    },
+    isGuestMode: {
+        type: Boolean,
+        default: false,
+    },
     shareToken: String,
     shareName: String,
     folderName: String,
@@ -26,6 +34,16 @@ const props = defineProps({
         type: Object,
         default: null,
     },
+    guestUser: {
+        type: Object,
+        default: null,
+    },
+    allowGuest: {
+        type: Boolean,
+        default: false,
+    },
+    personnelUrl: String,
+    guestUrl: String,
     contents: {
         type: Array,
         default: () => [],
@@ -42,7 +60,7 @@ const props = defineProps({
     },
 });
 
-// --- STATE VERIFIKASI PIN ---
+// --- STATE VERIFIKASI PIN PERSONEL ---
 const pinInput = ref('');
 const showPin = ref(false);
 const isVerifying = ref(false);
@@ -76,6 +94,60 @@ const submitPin = async () => {
     }
 };
 
+// --- STATE FORMULIR BUKU TAMU PENGUNJUNG LUAR ---
+const guestForm = ref({
+    nrp: '',
+    nama: '',
+    satuan: '',
+    pin: '',
+});
+const showGuestPin = ref(false);
+const isVerifyingGuest = ref(false);
+const guestErrorMessage = ref('');
+
+const submitGuest = async () => {
+    if (!guestForm.value.nrp.trim()) {
+        guestErrorMessage.value = 'Silakan masukkan NRP / NIP / Identitas Anda.';
+        return;
+    }
+    if (!guestForm.value.nama.trim()) {
+        guestErrorMessage.value = 'Silakan masukkan Nama Lengkap Anda.';
+        return;
+    }
+    if (!guestForm.value.satuan.trim()) {
+        guestErrorMessage.value = 'Silakan masukkan Satuan / Instansi Asal Anda.';
+        return;
+    }
+    if (!guestForm.value.pin.trim()) {
+        guestErrorMessage.value = 'Silakan masukkan PIN keamanan folder.';
+        return;
+    }
+
+    guestErrorMessage.value = '';
+    isVerifyingGuest.value = true;
+
+    try {
+        const response = await axios.post(route('backup.shared.verify-guest', props.shareToken), {
+            nrp: guestForm.value.nrp.trim(),
+            nama: guestForm.value.nama.trim(),
+            satuan: guestForm.value.satuan.trim(),
+            pin: guestForm.value.pin.trim(),
+        });
+
+        if (response.data.status === 'success') {
+            window.location.reload();
+        }
+    } catch (err) {
+        if (err.response && err.response.data && err.response.data.message) {
+            guestErrorMessage.value = err.response.data.message;
+        } else {
+            guestErrorMessage.value = 'Terjadi kesalahan verifikasi tamu. Silakan coba kembali.';
+        }
+    } finally {
+        isVerifyingGuest.value = false;
+    }
+};
+
 // --- STATE PENCARIAN & NAVIGASI BERKAS ---
 const localSearch = ref(props.searchQuery || '');
 const previewUrl = ref(null);
@@ -90,7 +162,8 @@ const filteredContents = computed(() => {
 });
 
 const openFolder = (folderItem) => {
-    router.get(route('backup.shared.view', props.shareToken), {
+    const routeName = props.isGuestMode ? 'backup.shared.guest-view' : 'backup.shared.view';
+    router.get(route(routeName, props.shareToken), {
         folder: folderItem.id,
     }, {
         preserveState: true,
@@ -99,7 +172,8 @@ const openFolder = (folderItem) => {
 };
 
 const goToBreadcrumb = (crumbId) => {
-    router.get(route('backup.shared.view', props.shareToken), {
+    const routeName = props.isGuestMode ? 'backup.shared.guest-view' : 'backup.shared.view';
+    router.get(route(routeName, props.shareToken), {
         folder: crumbId === props.shareRootFolderId ? null : crumbId,
     }, {
         preserveState: true,
@@ -258,7 +332,7 @@ const openPreview = async (item) => {
         previewUrl.value = item.preview_url + '#toolbar=1&navpanes=1&pagemode=thumbs';
     } else if (isWord(item.file_name)) {
         previewType.value = 'pdf';
-        previewUrl.value = route('backup.shared.view-office', { token: props.share.share_token, fileId: item.id }) + '#toolbar=1&navpanes=1&pagemode=thumbs';
+        previewUrl.value = route('backup.shared.view-office', { token: props.shareToken, fileId: item.id }) + '#toolbar=1&navpanes=1&pagemode=thumbs';
     } else {
         previewType.value = 'other';
         previewUrl.value = item.preview_url;
@@ -295,7 +369,10 @@ const exitAndLock = () => {
         cancelButtonText: 'Batal',
     }).then((result) => {
         if (result.isConfirmed) {
-            router.post(route('backup.shared.exit', props.shareToken));
+            router.post(route('backup.shared.exit', {
+                token: props.shareToken,
+                mode: props.isGuestMode ? 'guest' : 'personnel',
+            }));
         }
     });
 };
@@ -326,12 +403,28 @@ const exitAndLock = () => {
                             </svg>
                         </div>
                         <p class="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">
-                            Akses Personel &bull; Lihat & Unduh
+                            {{ isGuestMode ? 'Akses Tamu / Pengunjung Luar' : 'Akses Personel Internal' }} &bull; Lihat & Unduh
                         </p>
                     </div>
                 </div>
 
-                <div v-if="!needsPin && !isNotFound && !isDeactivated" class="flex items-center gap-2 shrink-0">
+                <div v-if="!needsPin && !isNotFound && !isDeactivated && !isGuestDisabled" class="flex items-center gap-2 shrink-0">
+                    <!-- Identity Badge -->
+                    <div v-if="isGuestMode && guestUser" class="hidden sm:flex items-center gap-2 px-3 py-1 bg-amber-50 border border-amber-200 rounded-xl text-amber-900">
+                        <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                        <div class="text-[11px] leading-tight text-left">
+                            <p class="font-black uppercase truncate max-w-[150px]">{{ guestUser.nama }}</p>
+                            <p class="text-[9px] text-amber-700 font-medium">NRP: {{ guestUser.nrp }} ({{ guestUser.satuan }})</p>
+                        </div>
+                    </div>
+                    <div v-else-if="currentUser" class="hidden sm:flex items-center gap-2 px-3 py-1 bg-slate-100 border border-slate-200 rounded-xl text-slate-800">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <div class="text-[11px] leading-tight text-left">
+                            <p class="font-black uppercase truncate max-w-[150px]">{{ currentUser.name }}</p>
+                            <p class="text-[9px] text-slate-500 font-medium">{{ currentUser.pangkat }} - {{ currentUser.nrp || 'Internal' }}</p>
+                        </div>
+                    </div>
+
                     <button 
                         @click="exitAndLock" 
                         class="px-2.5 sm:px-3.5 py-1.5 rounded-xl border border-slate-300 text-slate-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 text-[11px] sm:text-xs font-bold uppercase transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
@@ -390,7 +483,167 @@ const exitAndLock = () => {
                 </div>
             </div>
 
-            <!-- STATE 3: FORMULIR INPUT PIN KEAMANAN (DENGAN IDENTITAS AKUN LOGIN) -->
+            <!-- STATE 2B: AKSES TAMU DINONAKTIFKAN UNTUK FOLDER INI -->
+            <div v-else-if="isGuestDisabled" class="max-w-md w-full bg-white rounded-3xl shadow-xl p-6 sm:p-8 border border-amber-200 text-center space-y-5 animate-fade-in mx-auto">
+                <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full bg-amber-50 border-2 border-amber-200 flex items-center justify-center text-amber-600 shadow-inner">
+                    <svg class="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <div class="space-y-2">
+                    <div class="inline-block px-3 py-1 bg-amber-100 text-amber-800 text-[10px] font-black uppercase tracking-widest rounded-full mb-1">
+                        Akses Tamu Ditutup
+                    </div>
+                    <h2 class="text-lg sm:text-xl font-black text-slate-900 uppercase tracking-tight">{{ shareName }}</h2>
+                    <p class="text-xs text-slate-500 font-medium">
+                        Pemilik folder ini hanya mengizinkan akses untuk personel terdaftar (wajib login akun SINDEN). Akses publik / tamu luar tidak diaktifkan.
+                    </p>
+                </div>
+                <div class="pt-4 border-t border-slate-100 space-y-2">
+                    <a :href="personnelUrl || route('backup.shared.view', shareToken)" class="inline-flex items-center justify-center w-full px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase tracking-wider transition shadow-md gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                        </svg>
+                        <span>Login Sebagai Personel SINDEN</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- STATE 3A: FORMULIR BUKU TAMU & PIN (AKSES PENGUNJUNG TAMU TANPA LOGIN) -->
+            <div v-else-if="needsPin && isGuestMode" class="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 animate-fade-in mx-auto">
+                <!-- Header Banner Tamu -->
+                <div class="p-5 sm:p-6 bg-slate-900 text-white text-center space-y-2.5">
+                    <div class="w-14 h-14 mx-auto rounded-2xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400 shadow-md">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="inline-block px-2.5 py-0.5 bg-amber-500/20 text-amber-300 text-[10px] font-bold uppercase tracking-wider rounded-full mb-1">
+                            Buku Tamu Pengunjung Luar
+                        </div>
+                        <h2 class="text-base sm:text-lg font-black tracking-tight uppercase">Buku Tamu & PIN Folder</h2>
+                        <p class="text-[11px] text-slate-300 font-medium">
+                            Isi identitas tamu dan masukkan PIN keamanan untuk membuka folder berbagi.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Buku Tamu Body -->
+                <div class="p-5 sm:p-7 space-y-4">
+                    <!-- Target Folder Info -->
+                    <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center shrink-0">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                            </svg>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-[9px] font-bold uppercase text-slate-400 tracking-wider">Folder Target</p>
+                            <p class="text-xs font-black text-slate-800 truncate uppercase">{{ shareName || folderName }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Buku Tamu Form -->
+                    <form @submit.prevent="submitGuest" class="space-y-3.5">
+                        <!-- NRP / NIP / No. Identitas -->
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-slate-600 block">
+                                NRP / NIP / No. Identitas <span class="text-rose-500">*</span>
+                            </label>
+                            <input 
+                                v-model="guestForm.nrp" 
+                                type="text" 
+                                required
+                                placeholder="Contoh: 12345678 / KTP"
+                                autocomplete="off"
+                                class="w-full text-xs font-bold py-2.5 px-3 bg-slate-50 border border-slate-300 focus:border-indigo-600 focus:bg-white rounded-xl transition outline-none"
+                            />
+                        </div>
+
+                        <!-- Nama Lengkap -->
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-slate-600 block">
+                                Nama Lengkap Tamu <span class="text-rose-500">*</span>
+                            </label>
+                            <input 
+                                v-model="guestForm.nama" 
+                                type="text" 
+                                required
+                                placeholder="Contoh: Lettu Inf Ahmad / Tamu Luar"
+                                autocomplete="name"
+                                class="w-full text-xs font-bold py-2.5 px-3 bg-slate-50 border border-slate-300 focus:border-indigo-600 focus:bg-white rounded-xl transition outline-none"
+                            />
+                        </div>
+
+                        <!-- Satuan / Instansi Asal -->
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-slate-600 block">
+                                Satuan / Instansi Asal <span class="text-rose-500">*</span>
+                            </label>
+                            <input 
+                                v-model="guestForm.satuan" 
+                                type="text" 
+                                required
+                                placeholder="Contoh: Kodim 0801 / Instansi Eksternal"
+                                autocomplete="organization"
+                                class="w-full text-xs font-bold py-2.5 px-3 bg-slate-50 border border-slate-300 focus:border-indigo-600 focus:bg-white rounded-xl transition outline-none"
+                            />
+                        </div>
+
+                        <!-- PIN Folder -->
+                        <div class="space-y-1 pt-1">
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-slate-700 flex items-center justify-between">
+                                <span>PIN Keamanan Folder <span class="text-rose-500">*</span></span>
+                                <button 
+                                    type="button" 
+                                    @click="showGuestPin = !showGuestPin" 
+                                    class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 lowercase">
+                                    {{ showGuestPin ? 'sembunyikan' : 'lihat pin' }}
+                                </button>
+                            </label>
+                            <input 
+                                v-model="guestForm.pin" 
+                                :type="showGuestPin ? 'text' : 'password'" 
+                                maxlength="12" 
+                                inputmode="numeric"
+                                placeholder="PIN..."
+                                autocomplete="off"
+                                class="w-full text-center text-lg sm:text-xl tracking-[0.25em] font-black py-2.5 px-3 bg-slate-50 border-2 border-slate-300 focus:border-indigo-600 focus:bg-white rounded-xl shadow-inner transition outline-none"
+                            />
+                        </div>
+
+                        <p v-if="guestErrorMessage" class="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 p-2.5 rounded-xl flex items-center gap-1.5 animate-shake">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <span>{{ guestErrorMessage }}</span>
+                        </p>
+
+                        <button 
+                            type="submit" 
+                            :disabled="isVerifyingGuest || !guestForm.nrp.trim() || !guestForm.nama.trim() || !guestForm.satuan.trim() || !guestForm.pin.trim()"
+                            class="w-full py-3 px-5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold text-xs uppercase tracking-wider shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer mt-2">
+                            <span v-if="isVerifyingGuest" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                            <span>{{ isVerifyingGuest ? 'Memverifikasi Identitas...' : 'Verifikasi Identitas & Buka Berkas' }}</span>
+                        </button>
+                    </form>
+
+                    <div class="text-center pt-2 border-t border-slate-100 space-y-1.5">
+                        <p class="text-[10px] text-slate-400">
+                            Identitas Anda dicatat ke dalam Buku Tamu Digital demi keamanan pangkalan berkas.
+                        </p>
+                        <p class="text-[11px] font-bold text-slate-600">
+                            Personel SINDEN? 
+                            <a :href="personnelUrl || route('backup.shared.view', shareToken)" class="text-indigo-600 hover:text-indigo-800 underline">
+                                Masuk via Tautan Personel
+                            </a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STATE 3B: FORMULIR INPUT PIN KEAMANAN (AKSES PERSONEL INTERNAL LOGIN) -->
             <div v-else-if="needsPin" class="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 animate-fade-in mx-auto">
                 <!-- Header Banner -->
                 <div class="p-5 sm:p-6 bg-slate-900 text-white text-center space-y-2.5">
@@ -482,16 +735,43 @@ const exitAndLock = () => {
                         </button>
                     </form>
 
-                    <div class="text-center pt-1">
+                    <div class="text-center pt-1 space-y-2">
                         <p class="text-[10px] text-slate-400">
                             PIN diberikan oleh pemilik pangkalan atau pengelola. Akses dibatasi hanya untuk melihat dan mengunduh berkas.
                         </p>
+                        <div v-if="allowGuest" class="pt-2 border-t border-slate-100">
+                            <p class="text-[11px] font-bold text-slate-600">
+                                Pengunjung Luar / Tamu? 
+                                <a :href="guestUrl || route('backup.shared.guest-view', shareToken)" class="text-amber-600 hover:text-amber-800 underline">
+                                    Masuk via Buku Tamu
+                                </a>
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- STATE 4: DAFTAR BERKAS TERVERIFIKASI (MOBILE & DESKTOP OPTIMIZED) -->
             <div v-else class="w-full max-w-7xl flex-1 flex flex-col space-y-3 sm:space-y-4">
+                
+                <!-- GUEST SESSION BANNER -->
+                <div v-if="isGuestMode && guestUser" class="bg-amber-500/10 border border-amber-300/70 rounded-2xl p-3 px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-amber-900">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                        </div>
+                        <div class="text-xs">
+                            <span class="font-bold text-[10px] uppercase tracking-wider text-amber-700 block sm:inline mr-2">Sesi Tamu Luar:</span>
+                            <span class="font-black text-slate-900 uppercase">{{ guestUser.nama }}</span>
+                            <span class="text-amber-800 ml-1.5 font-semibold text-[11px]">(NRP: {{ guestUser.nrp }} &bull; {{ guestUser.satuan }})</span>
+                        </div>
+                    </div>
+                    <div class="text-[10px] text-amber-700 font-medium">
+                        Kunjungan dicatat dalam Buku Tamu Digital
+                    </div>
+                </div>
                 
                 <!-- TOP ACTION & SEARCH BAR (RESPONSIF HP & DESKTOP) -->
                 <div class="bg-white p-3 sm:p-4 rounded-2xl shadow-xs border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">

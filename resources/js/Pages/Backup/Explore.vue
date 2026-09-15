@@ -21,13 +21,17 @@ const isShareModalOpen = ref(false);
 const shareTarget = ref(null); // null jika membagikan folder saat ini / root pangkalan
 const isSavingShare = ref(false);
 const isCopiedLink = ref(false);
+const isCopiedGuestLink = ref(false);
 const shareForm = ref({
     is_active: true,
+    allow_guest: true,
     pin: '',
     share_name: '',
     share_url: '',
+    guest_share_url: '',
     access_count: 0,
     last_accessed_at: null,
+    recent_guests: [],
 });
 
 const openShareModal = (item = null) => {
@@ -37,21 +41,27 @@ const openShareModal = (item = null) => {
     if (existing) {
         shareForm.value = {
             is_active: existing.is_active,
+            allow_guest: existing.allow_guest !== undefined ? existing.allow_guest : true,
             pin: existing.pin || '',
             share_name: item ? item.file_name : (props.breadcrumbs?.[props.breadcrumbs.length - 1]?.name || props.pc?.pc_name || 'Folder Berkas'),
             share_url: existing.share_url,
+            guest_share_url: existing.guest_share_url || (existing.share_token ? route('backup.shared.guest-view', existing.share_token) : ''),
             access_count: existing.access_count || 0,
             last_accessed_at: existing.last_accessed_at || null,
+            recent_guests: existing.recent_guests || [],
         };
     } else {
         const randomPin = Math.floor(100000 + Math.random() * 900000).toString();
         shareForm.value = {
             is_active: true,
+            allow_guest: true,
             pin: randomPin,
             share_name: item ? item.file_name : (props.breadcrumbs?.[props.breadcrumbs.length - 1]?.name || props.pc?.pc_name || 'Folder Berkas'),
             share_url: '',
+            guest_share_url: '',
             access_count: 0,
             last_accessed_at: null,
+            recent_guests: [],
         };
     }
     isShareModalOpen.value = true;
@@ -70,7 +80,23 @@ const copyShareLink = () => {
             toast: true,
             position: 'top-end',
             icon: 'success',
-            title: 'Tautan berhasil disalin!',
+            title: 'Tautan Personel berhasil disalin!',
+            showConfirmButton: false,
+            timer: 2000,
+        });
+    });
+};
+
+const copyGuestShareLink = () => {
+    if (!shareForm.value.guest_share_url) return;
+    navigator.clipboard.writeText(shareForm.value.guest_share_url).then(() => {
+        isCopiedGuestLink.value = true;
+        setTimeout(() => isCopiedGuestLink.value = false, 2500);
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: 'Tautan Pengunjung/Tamu berhasil disalin!',
             showConfirmButton: false,
             timer: 2000,
         });
@@ -89,21 +115,27 @@ const submitShareSettings = async () => {
             backup_id: shareTarget.value ? shareTarget.value.id : props.currentFolderId,
             pin: shareForm.value.pin,
             is_active: shareForm.value.is_active,
+            allow_guest: shareForm.value.allow_guest,
             share_name: shareForm.value.share_name,
         });
 
         if (res.data.status === 'success') {
             const data = res.data;
             shareForm.value.share_url = data.share_url;
+            shareForm.value.guest_share_url = data.guest_share_url;
+            shareForm.value.recent_guests = data.recent_guests || [];
             
             const updatedInfo = {
                 id: data.share.id,
                 is_active: Boolean(data.share.is_active),
+                allow_guest: Boolean(data.share.allow_guest),
                 share_token: data.share.share_token,
                 pin: data.share.pin,
                 share_url: data.share_url,
+                guest_share_url: data.guest_share_url,
                 access_count: data.share.access_count,
                 last_accessed_at: data.share.last_accessed_at,
+                recent_guests: data.recent_guests || [],
             };
 
             if (shareTarget.value) {
@@ -116,7 +148,7 @@ const submitShareSettings = async () => {
 
             Swal.fire({
                 title: 'Tersimpan!',
-                text: 'Pengaturan tautan berbagi dan PIN keamanan telah aktif.',
+                text: 'Pengaturan tautan berbagi, PIN keamanan, dan akses tamu telah aktif.',
                 icon: 'success',
                 confirmButtonColor: '#2563eb',
             });
@@ -3308,6 +3340,20 @@ onUnmounted(() => {
                             </label>
                         </div>
 
+                        <!-- Saklar Izinkan Tamu / Pengunjung Luar -->
+                        <div class="flex items-center justify-between p-4 bg-blue-50/60 rounded-2xl border border-blue-100">
+                            <div>
+                                <h4 class="text-xs font-black uppercase tracking-wide text-blue-950 flex items-center gap-1.5">
+                                    <span>👥</span> Izinkan Akses Tamu / Pengunjung Luar
+                                </h4>
+                                <p class="text-[11px] text-blue-700">Tamu luar dapat mengakses tanpa akun login SINDEN dengan mengisi buku tamu (NRP, Nama, Satuan) dan PIN.</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" v-model="shareForm.allow_guest" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+
                         <!-- Input PIN Keamanan -->
                         <div class="space-y-2">
                             <div class="flex justify-between items-center">
@@ -3328,39 +3374,85 @@ onUnmounted(() => {
                                 />
                             </div>
                             <p class="text-[11px] text-slate-500 font-medium">
-                                * Personel yang membuka tautan wajib memasukkan PIN ini untuk verifikasi sebelum melihat berkas.
+                                * Personel maupun tamu yang membuka tautan wajib memasukkan PIN ini untuk verifikasi sebelum melihat berkas.
                             </p>
                         </div>
 
-                        <!-- Box Salin Link Tautan -->
-                        <div class="space-y-2">
-                            <label class="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1">
-                                <span>🌐</span> Tautan Akses Personel
-                            </label>
-                            <div class="flex items-center gap-2">
-                                <input 
-                                    type="text" 
-                                    readonly 
-                                    :value="shareForm.share_url || 'Simpan PIN terlebih dahulu untuk mengaktifkan tautan...'" 
-                                    class="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-300 rounded-xl text-xs font-mono text-slate-600 select-all cursor-pointer"
-                                    @click="copyShareLink"
-                                />
-                                <button 
-                                    type="button" 
-                                    @click="copyShareLink" 
-                                    :disabled="!shareForm.share_url" 
-                                    :class="isCopiedLink ? 'bg-emerald-600 text-white' : 'bg-slate-800 hover:bg-slate-900 text-white'"
-                                    class="px-4 py-2.5 rounded-xl text-xs font-black uppercase whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
-                                    <span>{{ isCopiedLink ? '✓ Tersalin' : '📋 Salin' }}</span>
-                                </button>
-                                <a 
-                                    v-if="shareForm.share_url" 
-                                    :href="shareForm.share_url" 
-                                    target="_blank" 
-                                    class="px-3 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-black transition"
-                                    title="Buka Pratinjau Tautan">
-                                    ↗
-                                </a>
+                        <!-- Tautan Akses Personel Internal vs Tamu Luar -->
+                        <div class="space-y-4">
+                            <!-- Box 1: Tautan Personel Internal (Wajib Login) -->
+                            <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <label class="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                                        <span>🔒</span> Tautan Personel Internal
+                                    </label>
+                                    <span class="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-[10px] font-black uppercase rounded-md">Wajib Login</span>
+                                </div>
+                                <p class="text-[10.5px] text-slate-500 font-medium">Khusus anggota/personel yang telah memiliki akun terdaftar di sistem SINDEN.</p>
+                                <div class="flex items-center gap-2">
+                                    <input 
+                                        type="text" 
+                                        readonly 
+                                        :value="shareForm.share_url || 'Simpan PIN terlebih dahulu untuk mengaktifkan tautan...'" 
+                                        class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-mono text-slate-700 select-all cursor-pointer"
+                                        @click="copyShareLink"
+                                    />
+                                    <button 
+                                        type="button" 
+                                        @click="copyShareLink" 
+                                        :disabled="!shareForm.share_url" 
+                                        :class="isCopiedLink ? 'bg-emerald-600 text-white' : 'bg-slate-800 hover:bg-slate-900 text-white'"
+                                        class="px-3.5 py-2.5 rounded-xl text-xs font-black uppercase whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
+                                        <span>{{ isCopiedLink ? '✓ Tersalin' : '📋 Salin Link' }}</span>
+                                    </button>
+                                    <a 
+                                        v-if="shareForm.share_url" 
+                                        :href="shareForm.share_url" 
+                                        target="_blank" 
+                                        class="px-2.5 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-black transition shrink-0"
+                                        title="Buka Pratinjau Tautan Personel">
+                                        ↗
+                                    </a>
+                                </div>
+                            </div>
+
+                            <!-- Box 2: Tautan Pengunjung Luar / Tamu (Tanpa Login) -->
+                            <div class="p-3.5 bg-emerald-50/50 rounded-2xl border border-emerald-200 space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <label class="text-xs font-black uppercase tracking-wider text-emerald-950 flex items-center gap-1.5">
+                                        <span>👥</span> Tautan Pengunjung Luar / Tamu
+                                    </label>
+                                    <span v-if="shareForm.allow_guest" class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase rounded-md">Buku Tamu + PIN</span>
+                                    <span v-else class="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-black uppercase rounded-md">Dinonaktifkan</span>
+                                </div>
+                                <p class="text-[10.5px] text-emerald-800 font-medium">Dapat diakses oleh tamu luar tanpa akun login. Tamu wajib memasukkan NRP, Nama, Satuan, dan PIN Keamanan.</p>
+                                <div class="flex items-center gap-2">
+                                    <input 
+                                        type="text" 
+                                        readonly 
+                                        :disabled="!shareForm.allow_guest"
+                                        :value="!shareForm.allow_guest ? 'Akses tamu sedang dinonaktifkan' : (shareForm.guest_share_url || 'Simpan PIN terlebih dahulu untuk mengaktifkan tautan...')" 
+                                        :class="!shareForm.allow_guest ? 'bg-slate-100 text-slate-400 opacity-60' : 'bg-white text-slate-700'"
+                                        class="w-full px-3.5 py-2.5 border border-emerald-300 rounded-xl text-xs font-mono select-all cursor-pointer"
+                                        @click="copyGuestShareLink"
+                                    />
+                                    <button 
+                                        type="button" 
+                                        @click="copyGuestShareLink" 
+                                        :disabled="!shareForm.guest_share_url || !shareForm.allow_guest" 
+                                        :class="isCopiedGuestLink ? 'bg-emerald-600 text-white' : 'bg-emerald-700 hover:bg-emerald-800 text-white'"
+                                        class="px-3.5 py-2.5 rounded-xl text-xs font-black uppercase whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
+                                        <span>{{ isCopiedGuestLink ? '✓ Tersalin' : '📋 Salin Link Tamu' }}</span>
+                                    </button>
+                                    <a 
+                                        v-if="shareForm.guest_share_url && shareForm.allow_guest" 
+                                        :href="shareForm.guest_share_url" 
+                                        target="_blank" 
+                                        class="px-2.5 py-2.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-black transition shrink-0"
+                                        title="Buka Pratinjau Tautan Tamu">
+                                        ↗
+                                    </a>
+                                </div>
                             </div>
                         </div>
 
@@ -3373,6 +3465,28 @@ onUnmounted(() => {
                             <div>
                                 <span class="text-slate-400 font-bold uppercase block text-[10px]">Akses Terakhir</span>
                                 <span class="font-black text-slate-700">{{ shareForm.last_accessed_at || 'Belum pernah' }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Riwayat Buku Tamu Digital (Jika Ada) -->
+                        <div v-if="shareForm.recent_guests && shareForm.recent_guests.length > 0" class="space-y-2 p-3.5 bg-slate-50 rounded-2xl border border-slate-200">
+                            <div class="flex items-center justify-between">
+                                <h4 class="text-xs font-black uppercase tracking-wide text-slate-800 flex items-center gap-1.5">
+                                    <span>📖</span> Buku Tamu Digital (Pengunjung Luar)
+                                </h4>
+                                <span class="text-[10px] font-bold text-slate-500">{{ shareForm.recent_guests.length }} kunjungan terakhir</span>
+                            </div>
+                            <div class="max-h-36 overflow-y-auto divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
+                                <div v-for="guest in shareForm.recent_guests" :key="guest.id || guest.time_human" class="p-2.5 text-[11px] flex items-center justify-between gap-2">
+                                    <div>
+                                        <p class="font-extrabold text-slate-900 uppercase text-xs">{{ guest.nama }}</p>
+                                        <p class="text-[10px] text-slate-500 font-semibold">NRP: {{ guest.nrp }} &bull; Satuan: {{ guest.satuan }}</p>
+                                    </div>
+                                    <div class="text-right shrink-0">
+                                        <span class="text-[10px] font-bold text-slate-600 block">{{ guest.time_human }}</span>
+                                        <span v-if="guest.ip" class="text-[9px] text-slate-400 font-mono">{{ guest.ip }}</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

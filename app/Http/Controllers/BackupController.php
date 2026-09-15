@@ -174,11 +174,20 @@ class BackupController extends Controller
                 $item->share_info = $share ? [
                     'id' => $share->id,
                     'is_active' => (bool)$share->is_active,
+                    'allow_guest' => isset($share->allow_guest) ? (bool)$share->allow_guest : true,
                     'share_token' => $share->share_token,
                     'pin' => $share->pin,
                     'share_url' => route('backup.shared.view', $share->share_token),
+                    'guest_share_url' => route('backup.shared.guest-view', $share->share_token),
                     'access_count' => $share->access_count,
                     'last_accessed_at' => $share->last_accessed_at ? Carbon::parse($share->last_accessed_at)->format('d M Y H:i') : null,
+                    'recent_guests' => $share->guestLogs()->take(10)->get()->map(fn($g) => [
+                        'nrp' => $g->nrp,
+                        'nama' => $g->nama,
+                        'satuan' => $g->satuan,
+                        'time_human' => $g->accessed_at ? $g->accessed_at->format('d/m/Y H:i') : $g->created_at->format('d/m/Y H:i'),
+                        'ip' => $g->ip_address,
+                    ]),
                 ] : null;
             } else {
                 $item->size_human = $this->formatBytes($item->file_size);
@@ -231,11 +240,20 @@ class BackupController extends Controller
         $currentShareInfo = $currentShare ? [
             'id' => $currentShare->id,
             'is_active' => (bool)$currentShare->is_active,
+            'allow_guest' => isset($currentShare->allow_guest) ? (bool)$currentShare->allow_guest : true,
             'share_token' => $currentShare->share_token,
             'pin' => $currentShare->pin,
             'share_url' => route('backup.shared.view', $currentShare->share_token),
+            'guest_share_url' => route('backup.shared.guest-view', $currentShare->share_token),
             'access_count' => $currentShare->access_count,
             'last_accessed_at' => $currentShare->last_accessed_at ? Carbon::parse($currentShare->last_accessed_at)->format('d M Y H:i') : null,
+            'recent_guests' => $currentShare->guestLogs()->take(10)->get()->map(fn($g) => [
+                'nrp' => $g->nrp,
+                'nama' => $g->nama,
+                'satuan' => $g->satuan,
+                'time_human' => $g->accessed_at ? $g->accessed_at->format('d/m/Y H:i') : $g->created_at->format('d/m/Y H:i'),
+                'ip' => $g->ip_address,
+            ]),
         ] : null;
 
         return Inertia::render('Backup/Explore', [
