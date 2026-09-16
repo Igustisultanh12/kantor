@@ -27,6 +27,7 @@ return new class extends Migration
                 $table->integer('printed_sheets')->default(0);
                 $table->integer('copies')->default(1);
                 $table->string('color_mode', 20)->default('monochrome');
+                $table->string('print_density', 20)->default('normal'); // normal, light (terang), dark (pekat)
                 $table->string('printer_ip')->nullable();
                 $table->enum('status', ['draft', 'queued', 'printing', 'completed', 'failed', 'cancelled'])->default('draft');
                 $table->text('error_message')->nullable();

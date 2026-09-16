@@ -27,6 +27,7 @@ const currentStats = ref(props.stats || { total_queued: 0, total_today: 0, sheet
 const isPreviewModalOpen = ref(false);
 const previewJob = ref(null);
 const previewUrl = ref(null);
+const selectedPreviewDensity = ref('normal');
 const isUploading = ref(false);
 const uploadProgress = ref(0);
 
@@ -34,7 +35,35 @@ const uploadProgress = ref(0);
 const uploadForm = useForm({
   document_title: '',
   file: null,
+  print_density: 'normal',
 });
+
+// Helper label kepekatan cetak
+const getDensityLabel = (density) => {
+  switch (density) {
+    case 'light':
+    case 'terang':
+      return 'Terang (Hemat Toner)';
+    case 'dark':
+    case 'pekat':
+      return 'Pekat / Gelap';
+    default:
+      return 'Standar / Normal';
+  }
+};
+
+const getDensityShortLabel = (density) => {
+  switch (density) {
+    case 'light':
+    case 'terang':
+      return 'Terang';
+    case 'dark':
+    case 'pekat':
+      return 'Pekat';
+    default:
+      return 'Standar';
+  }
+};
 
 // Formulir Pengaturan Printer (Khusus Admin)
 const adminPrinterForm = useForm({
@@ -84,6 +113,7 @@ const submitUploadAndPreview = async () => {
   const formData = new FormData();
   formData.append('document_title', uploadForm.document_title);
   formData.append('file', uploadForm.file);
+  formData.append('print_density', uploadForm.print_density);
 
   try {
     const response = await axios.post(route('printing.upload'), formData, {
@@ -99,10 +129,12 @@ const submitUploadAndPreview = async () => {
 
     previewJob.value = data.job;
     previewUrl.value = data.preview_url;
+    selectedPreviewDensity.value = data.job.print_density || uploadForm.print_density || 'normal';
     isPreviewModalOpen.value = true;
 
     // Reset formulir unggah
     uploadForm.reset();
+    uploadForm.print_density = 'normal';
     selectedFileName.value = '';
     selectedFileSize.value = '';
 
@@ -125,7 +157,9 @@ const submitUploadAndPreview = async () => {
 const confirmPrintDocument = () => {
   if (!previewJob.value) return;
 
-  router.post(route('printing.confirm', previewJob.value.id), {}, {
+  router.post(route('printing.confirm', previewJob.value.id), {
+    print_density: selectedPreviewDensity.value,
+  }, {
     preserveScroll: true,
     onSuccess: () => {
       isPreviewModalOpen.value = false;
@@ -361,9 +395,14 @@ onUnmounted(() => {
                 Job ID #{{ currentActiveJob.id }}
               </span>
             </div>
-            <span class="text-xs font-black text-amber-300 uppercase">
-              Mode: Hitam Putih (Monochrome)
-            </span>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-black text-amber-300 uppercase">
+                Mode: Hitam Putih (Monochrome)
+              </span>
+              <span class="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-white/20 text-white border border-white/30">
+                Kepekatan: {{ getDensityShortLabel(currentActiveJob.print_density) }}
+              </span>
+            </div>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
@@ -466,6 +505,59 @@ onUnmounted(() => {
                 <span class="px-2 py-1 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase shrink-0">
                   SIAP DIPROSES
                 </span>
+              </div>
+            </div>
+
+            <!-- Pilihan Tingkat Kepekatan Cetak -->
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between">
+                <label class="block text-[10px] font-extrabold text-slate-700 uppercase">
+                  Tingkat Kepekatan Cetak
+                </label>
+                <span class="text-[9px] font-bold text-blue-600">
+                  {{ getDensityLabel(uploadForm.print_density) }}
+                </span>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2">
+                <button 
+                  type="button"
+                  @click="uploadForm.print_density = 'light'"
+                  :class="uploadForm.print_density === 'light' ? 'bg-blue-50 border-blue-600 text-blue-900 ring-2 ring-blue-500/20 shadow-xs' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'"
+                  class="p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between"
+                >
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-black uppercase">Terang</span>
+                    <span :class="uploadForm.print_density === 'light' ? 'bg-blue-600' : 'bg-slate-300'" class="w-2 h-2 rounded-full"></span>
+                  </div>
+                  <span class="text-[9px] text-slate-500 font-medium leading-tight">Hemat toner, draft bacaan</span>
+                </button>
+
+                <button 
+                  type="button"
+                  @click="uploadForm.print_density = 'normal'"
+                  :class="uploadForm.print_density === 'normal' ? 'bg-blue-50 border-blue-600 text-blue-900 ring-2 ring-blue-500/20 shadow-xs' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'"
+                  class="p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between"
+                >
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-black uppercase">Standar</span>
+                    <span :class="uploadForm.print_density === 'normal' ? 'bg-blue-600' : 'bg-slate-300'" class="w-2 h-2 rounded-full"></span>
+                  </div>
+                  <span class="text-[9px] text-slate-500 font-medium leading-tight">Keseimbangan normal</span>
+                </button>
+
+                <button 
+                  type="button"
+                  @click="uploadForm.print_density = 'dark'"
+                  :class="uploadForm.print_density === 'dark' ? 'bg-blue-50 border-blue-600 text-blue-900 ring-2 ring-blue-500/20 shadow-xs' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'"
+                  class="p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between"
+                >
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-black uppercase">Pekat</span>
+                    <span :class="uploadForm.print_density === 'dark' ? 'bg-blue-600' : 'bg-slate-300'" class="w-2 h-2 rounded-full"></span>
+                  </div>
+                  <span class="text-[9px] text-slate-500 font-medium leading-tight">Hitam tebal naskah dinas</span>
+                </button>
               </div>
             </div>
 
@@ -628,6 +720,9 @@ onUnmounted(() => {
                       <span>{{ job.total_pages }} Hal Dokumen</span>
                       <span>+ 1 Kertas Pemisah</span>
                       <span class="text-slate-600 font-bold">= {{ job.total_sheets }} Lembar</span>
+                      <span class="px-2 py-0.5 rounded bg-slate-200 text-slate-700 font-bold uppercase text-[9px]">
+                        {{ getDensityShortLabel(job.print_density) }}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -669,6 +764,7 @@ onUnmounted(() => {
                     <th class="p-3">Waktu</th>
                     <th class="p-3">Naskah Dokumen</th>
                     <th class="p-3">Pemohon</th>
+                    <th class="p-3">Kepekatan</th>
                     <th class="p-3">Jumlah Lembar</th>
                     <th class="p-3">Status</th>
                   </tr>
@@ -684,6 +780,18 @@ onUnmounted(() => {
                     </td>
                     <td class="p-3 text-slate-600">
                       {{ job.user?.name || '-' }}
+                    </td>
+                    <td class="p-3 whitespace-nowrap">
+                      <span 
+                        class="px-2 py-0.5 rounded-md text-[9px] font-bold uppercase"
+                        :class="{
+                          'bg-sky-50 text-sky-700 border border-sky-200': job.print_density === 'light' || job.print_density === 'terang',
+                          'bg-slate-100 text-slate-700 border border-slate-200': !job.print_density || job.print_density === 'normal',
+                          'bg-indigo-50 text-indigo-700 border border-indigo-200': job.print_density === 'dark' || job.print_density === 'pekat'
+                        }"
+                      >
+                        {{ getDensityShortLabel(job.print_density) }}
+                      </span>
                     </td>
                     <td class="p-3 whitespace-nowrap">
                       <span class="font-extrabold text-slate-900">{{ job.printed_sheets || job.total_sheets }} Lembar</span>
@@ -772,6 +880,43 @@ onUnmounted(() => {
           ></iframe>
           <div v-else class="text-white text-xs font-bold">
             Memuat Pratinjau Berkas...
+          </div>
+        </div>
+
+        <!-- Pilihan Tingkat Kepekatan di Modal Pratinjau -->
+        <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+          <div>
+            <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Tingkat Kepekatan Hasil Cetak</span>
+            <div class="text-xs font-black text-slate-800 uppercase flex items-center gap-1.5">
+              <span>Opsi Terpilih:</span>
+              <span class="text-blue-600">{{ getDensityLabel(selectedPreviewDensity) }}</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5 self-start sm:self-center">
+            <button 
+              type="button" 
+              @click="selectedPreviewDensity = 'light'"
+              :class="selectedPreviewDensity === 'light' ? 'bg-blue-600 text-white font-black shadow-xs' : 'bg-white text-slate-700 border border-slate-200 font-bold hover:bg-slate-100'"
+              class="px-3 py-1.5 rounded-xl text-[10px] uppercase transition cursor-pointer"
+            >
+              Terang
+            </button>
+            <button 
+              type="button" 
+              @click="selectedPreviewDensity = 'normal'"
+              :class="selectedPreviewDensity === 'normal' ? 'bg-blue-600 text-white font-black shadow-xs' : 'bg-white text-slate-700 border border-slate-200 font-bold hover:bg-slate-100'"
+              class="px-3 py-1.5 rounded-xl text-[10px] uppercase transition cursor-pointer"
+            >
+              Standar
+            </button>
+            <button 
+              type="button" 
+              @click="selectedPreviewDensity = 'dark'"
+              :class="selectedPreviewDensity === 'dark' ? 'bg-blue-600 text-white font-black shadow-xs' : 'bg-white text-slate-700 border border-slate-200 font-bold hover:bg-slate-100'"
+              class="px-3 py-1.5 rounded-xl text-[10px] uppercase transition cursor-pointer"
+            >
+              Pekat
+            </button>
           </div>
         </div>
 

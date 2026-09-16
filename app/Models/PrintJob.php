@@ -24,6 +24,7 @@ class PrintJob extends Model
         'printed_sheets',
         'copies',
         'color_mode',
+        'print_density',
         'printer_ip',
         'status',
         'error_message',

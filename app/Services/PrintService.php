@@ -153,12 +153,20 @@ class PrintService
         $fileContent = file_get_contents($filePath);
         $totalBytes = strlen($fileContent);
 
-        // Header & Footer PJL Brother (Memaksa cetak Hitam Putih / Monochrome)
+        // Header & Footer PJL Brother (Memaksa cetak Hitam Putih / Monochrome & Kontrol Kepekatan)
         $cleanDocTitle = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $job->document_title ?: 'SINDEN_DOC');
+
+        $densityLines = match($job->print_density) {
+            'light', 'terang' => "@PJL SET TONERSAVE = ON\r\n@PJL SET DENSITY = 1\r\n",
+            'dark', 'pekat'   => "@PJL SET TONERSAVE = OFF\r\n@PJL SET DENSITY = 5\r\n",
+            default           => "@PJL SET TONERSAVE = OFF\r\n@PJL SET DENSITY = 3\r\n",
+        };
+
         $pjlHeader = "\x1B%-12345X@PJL\r\n"
             . "@PJL JOB NAME = \"SINDEN_{$job->id}_{$cleanDocTitle}\"\r\n"
             . "@PJL SET COLORMODE = MONO\r\n"
             . "@PJL SET RENDERMODE = GRAYSCALE\r\n"
+            . $densityLines
             . "@PJL ENTER LANGUAGE = PDF\r\n";
         $pjlFooter = "\r\n\x1B%-12345X@PJL EOJ\r\n\x1B%-12345X\r\n";
 

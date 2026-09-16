@@ -71,11 +71,13 @@ class PrintServiceController extends Controller
         $request->validate([
             'document_title' => 'required|string|max:255',
             'file' => 'required|file|mimes:pdf,docx,doc|max:51200', // Maksimal 50MB
+            'print_density' => 'nullable|string|in:normal,light,dark,terang,pekat',
         ]);
 
         $file = $request->file('file');
         $originalFilename = $file->getClientOriginalName();
         $fileType = strtolower($file->getClientOriginalExtension());
+        $printDensity = $request->input('print_density', 'normal');
 
         // Simpan berkas asli
         $storedPath = $file->store('print_jobs/originals', 'local');
@@ -111,6 +113,7 @@ class PrintServiceController extends Controller
                 'printed_sheets' => 0,
                 'copies' => 1,
                 'color_mode' => 'monochrome',
+                'print_density' => $printDensity,
                 'printer_ip' => $printerIp,
                 'status' => 'draft',
             ]);
@@ -168,7 +171,10 @@ class PrintServiceController extends Controller
             return back()->with('error', 'Dokumen ini sudah pernah diproses.');
         }
 
+        $density = $request->input('print_density', $job->print_density ?: 'normal');
+
         $job->update([
+            'print_density' => $density,
             'status' => 'queued',
             'error_message' => null
         ]);
