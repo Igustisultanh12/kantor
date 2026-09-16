@@ -330,6 +330,18 @@ class PrintService
             ];
         }
 
+        // Diagnostik tambahan khusus Canon: cek apakah web port 80 merespons untuk memastikan perangkat hidup di IP tersebut
+        if ($target === 'canon') {
+            $webSock = @fsockopen($printerIp, 80, $wErrno, $wErrstr, 2);
+            if ($webSock) {
+                fclose($webSock);
+                return [
+                    'success' => false,
+                    'message' => "Perangkat Canon pada IP {$printerIp} TERDETEKSI HIDUP (Port Web 80 Merespons), namun Port {$printerPort} tertutup. Buka http://{$printerIp} di browser untuk mengecek konfigurasi port printer atau gunakan antrean driver CUPS."
+                ];
+            }
+        }
+
         return [
             'success' => false,
             'message' => "Tidak dapat terhubung ke {$printerName} pada {$printerIp}:{$printerPort} (OFFLINE). Error ({$errno}): {$errstr}"
@@ -420,6 +432,34 @@ class PrintService
             throw new \Exception("Berkas siap cetak tidak ditemukan di server: {$filePath}");
         }
 
+        // Prioritas 1: Jika server Linux memiliki CUPS (lp) dan printer terdaftar
+        if (function_exists('shell_exec') && !str_starts_with(strtoupper(PHP_OS), 'WIN')) {
+            $lpBin = trim((string)@shell_exec('which lp 2>/dev/null'));
+            if ($lpBin) {
+                $cupsPrinters = (string)@shell_exec('lpstat -p 2>/dev/null');
+                $targetPrinter = null;
+                if (preg_match('/printer\s+([a-zA-Z0-9_\-]+canon[a-zA-Z0-9_\-]*)/i', $cupsPrinters, $m)) {
+                    $targetPrinter = $m[1];
+                } elseif (preg_match('/printer\s+([a-zA-Z0-9_\-]+g3010[a-zA-Z0-9_\-]*)/i', $cupsPrinters, $m)) {
+                    $targetPrinter = $m[1];
+                }
+
+                if ($targetPrinter) {
+                    $paperOpt = match(strtoupper($job->paper_size ?? 'A4')) {
+                        'F4', 'FOLIO' => 'media=Folio',
+                        'LETTER'      => 'media=Letter',
+                        'LEGAL'       => 'media=Legal',
+                        default       => 'media=A4',
+                    };
+                    $cmd = "lp -d " . escapeshellarg($targetPrinter) . " -o {$paperOpt} -o ColorModel=RGB " . escapeshellarg($filePath) . " 2>&1";
+                    $output = shell_exec($cmd);
+                    Log::info("Mencetak dokumen ke Canon via CUPS ({$targetPrinter}): {$cmd} - Output: {$output}");
+                    return true;
+                }
+            }
+        }
+
+        // Prioritas 2: Transmisi langsung via TCP Socket RAW Port 9100
         $fileContent = file_get_contents($filePath);
         $cleanDocTitle = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $job->document_title ?: 'SINDEN_CANON_DOC');
 
@@ -451,7 +491,7 @@ class PrintService
 
         if (!$socket) {
             Log::warning("Koneksi soket ke Printer Canon G3010 offline pada {$printerIp}:{$printerPort}. ({$errno}) {$errstr}");
-            return true;
+            throw new \Exception("Tidak dapat terhubung ke Printer Canon pada {$printerIp}:{$printerPort} ({$errstr}). Pastikan printer menyala, IP benar, dan port 9100 atau CUPS aktif.");
         }
 
         $chunkSize = 65536; // 64KB per chunk
