@@ -169,6 +169,7 @@ class SkhppController extends Controller
             $komandan = User::where('role', 'komandan')->whereNotNull('phone')->first() 
                      ?? User::where('role', 'admin')->whereNotNull('phone')->first();
             $katName = ($skhpp->kategori_personel === 'perusahaan') ? 'SKHPP-P (Mitra Kerja/Perusahaan)' : 'SKHPP-D (Dinas Militer & PNS)';
+            $directUrl = url('/signature-requests?open_skhpp=' . $skhpp->id . '&tab=skhpp');
             $pesanKomandan = " *SI SINDEN: PENGAJUAN SKHPP BARU*\n\n" .
                              "Mohon izin Komandan, terdapat pengajuan penerbitan SKHPP baru:\n\n" .
                              " *Nama:* {$skhpp->nama}\n" .
@@ -176,7 +177,7 @@ class SkhppController extends Controller
                              " *Kategori:* {$katName}\n" .
                              " *Peruntukan:* {$skhpp->peruntukan}\n" .
                              " *Operator Pengaju:* {$user->name}\n\n" .
-                             "Mohon izin untuk memeriksa berkas di Laman : https://sisinden.my.id/signature-requests";
+                             "Mohon izin untuk memeriksa & menyetujui berkas langsung di: {$directUrl}";
 
             AppNotification::notify(
                 $komandan?->id,
@@ -184,7 +185,7 @@ class SkhppController extends Controller
                 'Pengajuan SKHPP Baru',
                 "Pengajuan SKHPP baru atas nama {$skhpp->nama} ({$katName}) oleh {$user->name}.",
                 'primary',
-                '/signature-requests',
+                '/signature-requests?open_skhpp=' . $skhpp->id . '&tab=skhpp',
                 $pesanKomandan,
                 $komandan?->phone
             );
@@ -311,6 +312,7 @@ class SkhppController extends Controller
                      ?? User::where('role', 'admin')->whereNotNull('phone')->first();
             if ($komandan && $komandan->phone) {
                 $katName = ($skhpp->kategori_personel === 'perusahaan') ? 'SKHPP-P (Mitra Kerja/Perusahaan)' : 'SKHPP-D (Dinas Militer & PNS)';
+                $directUrl = url('/signature-requests?open_skhpp=' . $skhpp->id . '&tab=skhpp');
                 $pesanKomandan = " *SI SINDEN: PERBAIKAN & PENGAJUAN ULANG SKHPP*\n\n" .
                                  "Mohon izin Komandan, terdapat perbaikan data SKHPP oleh Operator yang diajukan ulang:\n\n" .
                                  " *Nama:* {$skhpp->nama}\n" .
@@ -318,7 +320,7 @@ class SkhppController extends Controller
                                  " *Kategori:* {$katName}\n" .
                                  " *Peruntukan:* {$skhpp->peruntukan}\n" .
                                  " *Operator:* {$user->name}\n\n" .
-                                 "Mohon izin untuk memeriksa berkas di Laman : https://sisinden.my.id/signature-requests";
+                                 "Mohon izin untuk memeriksa & menyetujui berkas langsung di: {$directUrl}";
 
                 WhatsappService::sendMessage($komandan->phone, $pesanKomandan);
             }
@@ -825,6 +827,7 @@ class SkhppController extends Controller
             $komandan = User::where('role', 'komandan')->whereNotNull('phone')->first() 
                      ?? User::where('role', 'admin')->whereNotNull('phone')->first();
             $katName = ($skhpp->kategori_personel === 'perusahaan') ? 'SKHPP-P (Mitra Kerja/Perusahaan)' : 'SKHPP-D (Dinas Militer & PNS)';
+            $directUrl = url('/signature-requests?open_skhpp=' . $skhpp->id . '&tab=skhpp');
             $pesan = " *SI SINDEN: PENGAJUAN ULANG TTE SKHPP*\n\n" .
                      "Mohon izin Komandan, terdapat permohonan SKHPP yang DIAJUKAN ULANG oleh Admin untuk otorisasi TTE Komandan:\n\n" .
                      " *Nama:* {$skhpp->nama}\n" .
@@ -832,7 +835,7 @@ class SkhppController extends Controller
                      " *Kategori:* {$katName}\n" .
                      " *Peruntukan:* {$skhpp->peruntukan}\n" .
                      " *Pengaju (Admin):* {$user->name}\n\n" .
-                     "Mohon izin untuk memeriksa & menyetujui berkas di Laman : https://sisinden.my.id/signature-requests";
+                     "Mohon izin untuk memeriksa & menyetujui berkas langsung di: {$directUrl}";
             
             AppNotification::notify(
                 $komandan?->id,
@@ -840,7 +843,7 @@ class SkhppController extends Controller
                 'Pengajuan Ulang TTE SKHPP',
                 "Admin {$user->name} mengajukan ulang TTE SKHPP atas nama {$skhpp->nama} ke Komandan.",
                 'primary',
-                '/signature-requests',
+                '/signature-requests?open_skhpp=' . $skhpp->id . '&tab=skhpp',
                 $pesan,
                 $komandan?->phone
             );

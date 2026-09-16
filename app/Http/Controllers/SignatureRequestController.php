@@ -17,7 +17,7 @@ use setasign\Fpdi\Fpdi;
 
 class SignatureRequestController extends Controller
 {
-    public function index() {
+    public function index(Request $request) {
         $user = auth()->user();
         
         $sigQuery = SignatureRequest::with('user');
@@ -31,9 +31,21 @@ class SignatureRequestController extends Controller
         $requests = $sigQuery->latest()->paginate(15)->withQueryString();
         $skhppRequests = $skhppQuery->latest()->paginate(15)->withQueryString();
 
+        $targetDoc = null;
+        if ($request->filled('open_id') || $request->filled('id')) {
+            $targetDoc = SignatureRequest::with('user')->find($request->open_id ?: $request->id);
+        }
+
+        $targetSkhpp = null;
+        if ($request->filled('open_skhpp') || $request->filled('skhpp_id')) {
+            $targetSkhpp = \App\Models\Skhpp::with(['submitter', 'approver', 'members'])->find($request->open_skhpp ?: $request->skhpp_id);
+        }
+
         return Inertia::render('Signature/Index', [
             'requests' => $requests,
-            'skhppRequests' => $skhppRequests
+            'skhppRequests' => $skhppRequests,
+            'targetDoc' => $targetDoc,
+            'targetSkhpp' => $targetSkhpp,
         ]);
     }
 
@@ -82,11 +94,12 @@ class SignatureRequestController extends Controller
 
             $komandan = User::where('role', 'komandan')->whereNotNull('phone')->first() 
                      ?? User::where('role', 'admin')->whereNotNull('phone')->first();
+            $directUrl = url('/signature-requests?open_id=' . $signatureRequest->id . '&tab=pdf');
             $pesan = " *SI SINDEN: PEMBERITAHUAN*\n\n" .
                      "Mohon izin Komandan, terdapat pengajuan berkas baru:\n\n" .
                      " *Perihal:* {$request->subject}\n" .
                      " *Pengaju:* " . auth()->user()->name . "\n\n" .
-                     "Mohon izin untuk memeriksa berkas di Laman : https://sisinden.my.id/signature-requests";
+                     "Mohon izin untuk memeriksa & memvalidasi berkas langsung di: {$directUrl}";
 
             AppNotification::notify(
                 $komandan?->id,
@@ -94,7 +107,7 @@ class SignatureRequestController extends Controller
                 'Pengajuan TTD Digital PDF Baru',
                 "Pengajuan berkas PDF perihal \"{$request->subject}\" diajukan oleh " . auth()->user()->name . ".",
                 'primary',
-                '/signature-requests',
+                '/signature-requests?open_id=' . $signatureRequest->id . '&tab=pdf',
                 $pesan,
                 $komandan?->phone
             );
@@ -293,10 +306,12 @@ class SignatureRequestController extends Controller
             $statusMsg = $isApproved ? " *TELAH DISAHKAN*" : " *DITOLAK / PERLU REVISI*";
             $ket = $isApproved ? "Silakan unduh berkas Anda." : "Alasan: _" . ($request->note ?? '-') . "_";
             
+            $directUrl = url('/signature-requests?open_id=' . $signatureRequest->id . '&tab=pdf');
             $pesanWA = " *SI SINDEN: STATUS BERKAS*\n\n" .
                        "Berkas: *{$signatureRequest->subject}*\n" .
                        "Status: {$statusMsg}\n\n" .
-                       " {$ket}";
+                       " {$ket}\n\n" .
+                       "Tautan Berkas: {$directUrl}";
 
             AppNotification::notify(
                 $signatureRequest->user_id,
@@ -306,7 +321,7 @@ class SignatureRequestController extends Controller
                     ? "Berkas \"{$signatureRequest->subject}\" telah disahkan & ditandatangani Komandan."
                     : "Berkas \"{$signatureRequest->subject}\" dikembalikan Komandan: \"{$request->note}\".",
                 $isApproved ? 'success' : 'warning',
-                '/signature-requests',
+                '/signature-requests?open_id=' . $signatureRequest->id . '&tab=pdf',
                 $pesanWA,
                 $targetUser?->phone
             );

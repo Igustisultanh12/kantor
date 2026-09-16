@@ -12,7 +12,9 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs
 
 const props = defineProps({ 
   requests: Object,
-  skhppRequests: Object
+  skhppRequests: Object,
+  targetDoc: Object,
+  targetSkhpp: Object
 });
 
 const page = usePage();
@@ -29,6 +31,7 @@ const isPreviewOpen = ref(false);
 const isSkhppPreviewOpen = ref(false);
 
 const selectedReqId = ref(null);
+const selectedReq = ref(null);
 const selectedSkhpp = ref(null);
 
 const isAdjusting = ref(false);
@@ -76,14 +79,97 @@ const decisionForm = useForm({
   _method: 'PATCH' 
 });
 
-// --- LOGIKA AUTO REFRESH TABEL ---
+// --- LOGIKA DIRECT LINK DOKUMEN KOMANDAN ---
+const fallbackCopy = (text) => {
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.style.position = "fixed";
+  textArea.style.left = "-999999px";
+  textArea.style.top = "-999999px";
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+  try {
+    document.execCommand('copy');
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: 'Link Direct Disalin',
+      text: 'Tautan dokumen langsung siap dikirim ke Komandan',
+      showConfirmButton: false,
+      timer: 2000
+    });
+  } catch (err) {
+    window.prompt("Salin Link Direct Komandan berikut:", text);
+  }
+  document.body.removeChild(textArea);
+};
+
+const copyDirectLink = (type, item) => {
+  if (!item || !item.id) return;
+  const baseUrl = window.location.origin;
+  const url = type === 'skhpp'
+    ? `${baseUrl}/signature-requests?open_skhpp=${item.id}&tab=skhpp`
+    : `${baseUrl}/signature-requests?open_id=${item.id}&tab=pdf`;
+
+  const copySuccess = () => {
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: 'Link Direct Disalin',
+      text: 'Tautan dokumen langsung siap dikirim ke Komandan',
+      showConfirmButton: false,
+      timer: 2000
+    });
+  };
+
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(url).then(copySuccess).catch(() => {
+      fallbackCopy(url);
+    });
+  } else {
+    fallbackCopy(url);
+  }
+};
+
+// --- LOGIKA AUTO REFRESH TABEL & AUTO OPEN DIRECT LINK ---
 let refreshTimer = null;
 const autoRefreshData = () => {
   if (!isPreviewOpen.value && !isSkhppPreviewOpen.value && !isModalOpen.value && !isRevisionModalOpen.value && !form.processing && !decisionForm.processing) {
     router.reload({ only: ['requests', 'skhppRequests'], preserveScroll: true, preserveState: true });
   }
 };
-onMounted(() => { refreshTimer = setInterval(autoRefreshData, 1000); });
+
+onMounted(() => { 
+  refreshTimer = setInterval(autoRefreshData, 1000);
+
+  // Periksa apakah ada direct link dokumen untuk Komandan
+  nextTick(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    const openDocId = urlParams.get('open_id') || urlParams.get('id');
+    const openSkhppId = urlParams.get('open_skhpp') || urlParams.get('skhpp_id');
+
+    if (openDocId || props.targetDoc) {
+      activeTab.value = 'pdf';
+      const target = props.targetDoc || props.requests?.data?.find(r => r.id == openDocId);
+      if (target) {
+        openPdfPreview(target);
+      }
+    } else if (openSkhppId || props.targetSkhpp) {
+      activeTab.value = 'skhpp';
+      const target = props.targetSkhpp || props.skhppRequests?.data?.find(s => s.id == openSkhppId);
+      if (target) {
+        openSkhppPreviewModal(target);
+      }
+    } else if (tabParam === 'pdf') {
+      activeTab.value = 'pdf';
+    }
+  });
+});
+
 onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer); });
 
 // --- LOGIKA SKHPP APPROVE / REJECT ---
@@ -363,6 +449,7 @@ const closeOperatorPosPicker = () => {
 };
 
 const openPdfPreview = async (req) => {
+  selectedReq.value = req;
   selectedReqId.value = req.id;
   isOperatorConfiguring.value = false;
   isPreviewOpen.value = true;
@@ -621,9 +708,24 @@ const getStatusClass = (status) => {
             <tbody class="divide-y divide-slate-100 uppercase font-bold text-slate-800 text-[11px]">
               <tr v-for="skhpp in skhppRequests.data" :key="skhpp.id" class="hover:bg-slate-50/50 transition">
                 <td class="p-4 text-slate-400 font-mono">{{ new Date(skhpp.created_at).toLocaleDateString('id-ID') }}</td>
-                <td class="p-4 font-black text-slate-900">
-                  {{ skhpp.nama }}
+                <td class="p-4">
+                  <button 
+                    type="button" 
+                    @click="openSkhppPreviewModal(skhpp)" 
+                    class="text-left font-black text-slate-900 hover:text-blue-600 transition block cursor-pointer">
+                    {{ skhpp.nama }}
+                  </button>
                   <span v-if="skhpp.kategori_personel" class="block text-[9px] text-blue-600 font-semibold">{{ skhpp.kategori_personel.toUpperCase() }}</span>
+                  <div class="flex items-center gap-1.5 mt-1">
+                    <button 
+                      type="button" 
+                      @click.stop="copyDirectLink('skhpp', skhpp)" 
+                      class="inline-flex items-center gap-1 text-[9px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2 py-0.5 rounded-lg transition cursor-pointer"
+                      title="Salin Link Langsung Komandan">
+                      <svg class="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                      <span>Direct Link Komandan</span>
+                    </button>
+                  </div>
                 </td>
                 <td class="p-4 text-slate-600 font-mono">{{ skhpp.pangkat_korps_nrp || skhpp.nik || '-' }}</td>
                 <td class="p-4 text-slate-500 normal-case max-w-[200px] truncate" :title="skhpp.peruntukan">{{ skhpp.peruntukan }}</td>
@@ -634,18 +736,27 @@ const getStatusClass = (status) => {
                 </td>
                 <td class="p-4 text-right">
                   <div class="flex justify-end gap-2 items-center">
-                    <button @click="openSkhppPreviewModal(skhpp)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase"> Lihat SKHPP
+                    <button @click="openSkhppPreviewModal(skhpp)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase cursor-pointer"> Lihat SKHPP
+                    </button>
+                    
+                    <button 
+                      type="button" 
+                      @click="copyDirectLink('skhpp', skhpp)" 
+                      class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2.5 py-1.5 rounded-xl text-[9px] font-black uppercase flex items-center gap-1 transition cursor-pointer"
+                      title="Salin Link Direct Komandan">
+                      <svg class="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                      <span>Salin Link</span>
                     </button>
                     
                     <template v-if="user.role === 'admin' || user.role === 'komandan'">
-                      <button v-if="skhpp.status === 'pending'" @click="approveSkhpp(skhpp)" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-[9px] font-black uppercase shadow-sm"> Setujui & TTD
+                      <button v-if="skhpp.status === 'pending'" @click="approveSkhpp(skhpp)" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-[9px] font-black uppercase shadow-sm cursor-pointer"> Setujui & TTD
                       </button>
-                      <button v-if="skhpp.status === 'pending'" @click="rejectSkhpp(skhpp)" class="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase"> Tolak
+                      <button v-if="skhpp.status === 'pending'" @click="rejectSkhpp(skhpp)" class="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase cursor-pointer"> Tolak
                       </button>
                     </template>
 
-                    <button v-if="user.role === 'admin' || user.id === skhpp.user_id" @click="deleteSkhpp(skhpp.id)" class="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white px-2.5 py-1.5 rounded-xl text-[9px] font-black uppercase" title="Hapus & Cabut Validasi QR">
-                      
+                    <button v-if="user.role === 'admin' || user.id === skhpp.user_id" @click="deleteSkhpp(skhpp.id)" class="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white px-2.5 py-1.5 rounded-xl text-[9px] font-black uppercase flex items-center justify-center transition cursor-pointer" title="Hapus & Cabut Validasi QR">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                     </button>
                   </div>
                 </td>
@@ -655,6 +766,26 @@ const getStatusClass = (status) => {
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- Pagination Links SKHPP -->
+        <div v-if="skhppRequests?.links && skhppRequests.links.length > 3" class="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <span class="text-slate-500 font-medium">
+            Menampilkan {{ skhppRequests.from || 0 }} - {{ skhppRequests.to || 0 }} dari {{ skhppRequests.total || 0 }} berkas SKHPP
+          </span>
+          <div class="flex items-center gap-1 flex-wrap">
+            <Link 
+              v-for="(lnk, lIdx) in skhppRequests.links" 
+              :key="'skhpp-lnk-' + lIdx"
+              :href="lnk.url ? (lnk.url + '&tab=skhpp') : '#'"
+              :class="[
+                lnk.active ? 'bg-blue-600 text-white font-black shadow-xs' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 font-bold',
+                !lnk.url ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'cursor-pointer'
+              ]"
+              class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs transition flex items-center justify-center min-w-[32px]"
+              v-html="lnk.label"
+            ></Link>
+          </div>
         </div>
       </div>
 
@@ -675,8 +806,27 @@ const getStatusClass = (status) => {
               <tr v-for="req in requests.data" :key="req.id" class="hover:bg-slate-50/50 transition">
                 <td class="p-4 text-slate-400 font-mono">{{ new Date(req.created_at).toLocaleString('id-ID') }}</td>
                 <td class="p-4">
-                  <div class="font-black text-slate-900">{{ req.subject }}</div>
+                  <button 
+                    type="button" 
+                    @click="openPdfPreview(req)" 
+                    class="text-left font-black text-slate-900 hover:text-blue-600 transition block cursor-pointer">
+                    {{ req.subject }}
+                  </button>
                   <div v-if="req.note" class="text-[9px] text-rose-500 font-normal italic mt-0.5">Alasan: {{ req.note }}</div>
+                  <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                    <button 
+                      type="button" 
+                      @click.stop="copyDirectLink('pdf', req)" 
+                      class="inline-flex items-center gap-1 text-[9px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2 py-0.5 rounded-lg transition cursor-pointer"
+                      title="Salin Link Direct Komandan">
+                      <svg class="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                      <span>Direct Link Komandan</span>
+                    </button>
+                    <a :href="'/storage/' + req.file_path" target="_blank" class="inline-flex items-center gap-1 text-[9px] font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-lg border border-slate-200 transition" title="Buka PDF Asli di Tab Baru">
+                      <svg class="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                      <span>PDF Asli</span>
+                    </a>
+                  </div>
                 </td>
                 <td class="p-4 text-slate-600 text-xs">{{ req.user?.name || 'Operator' }}</td>
                 <td class="p-4 text-center">
@@ -686,12 +836,23 @@ const getStatusClass = (status) => {
                 </td>
                 <td class="p-4 text-right">
                   <div class="flex justify-end gap-2 items-center">
-                    <button @click="openPdfPreview(req)" class="bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 px-3.5 py-1.5 rounded-xl text-[9px] font-black uppercase"> Periksa & Atur TTD
+                    <button @click="openPdfPreview(req)" class="bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 px-3.5 py-1.5 rounded-xl text-[9px] font-black uppercase cursor-pointer"> Periksa & Atur TTD
                     </button>
-                    <button v-if="req.status === 'approved'" @click="downloadFile(req.file_path, req.subject)" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-xl text-[9px] font-black uppercase shadow-sm"> Unduh
+                    
+                    <button 
+                      type="button" 
+                      @click="copyDirectLink('pdf', req)" 
+                      class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-xl text-[9px] font-black uppercase flex items-center gap-1 transition cursor-pointer"
+                      title="Salin Link Direct Komandan">
+                      <svg class="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                      <span>Salin Link</span>
                     </button>
-                    <button v-if="user.role === 'admin' || user.id === req.user_id" @click="deleteRequest(req.id)" class="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white px-2.5 py-1.5 rounded-xl text-[9px] font-black uppercase">
-                      
+
+                    <button v-if="req.status === 'approved'" @click="downloadFile(req.file_path, req.subject)" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-xl text-[9px] font-black uppercase shadow-sm cursor-pointer"> Unduh
+                    </button>
+
+                    <button v-if="user.role === 'admin' || user.id === req.user_id" @click="deleteRequest(req.id)" class="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white px-2.5 py-1.5 rounded-xl text-[9px] font-black uppercase flex items-center justify-center transition cursor-pointer" title="Hapus Berkas">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                     </button>
                   </div>
                 </td>
@@ -701,6 +862,26 @@ const getStatusClass = (status) => {
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- Pagination Links PDF Berkas Lain -->
+        <div v-if="requests?.links && requests.links.length > 3" class="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <span class="text-slate-500 font-medium">
+            Menampilkan {{ requests.from || 0 }} - {{ requests.to || 0 }} dari {{ requests.total || 0 }} berkas PDF
+          </span>
+          <div class="flex items-center gap-1 flex-wrap">
+            <Link 
+              v-for="(lnk, lIdx) in requests.links" 
+              :key="'pdf-lnk-' + lIdx"
+              :href="lnk.url ? (lnk.url + '&tab=pdf') : '#'"
+              :class="[
+                lnk.active ? 'bg-blue-600 text-white font-black shadow-xs' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 font-bold',
+                !lnk.url ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'cursor-pointer'
+              ]"
+              class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs transition flex items-center justify-center min-w-[32px]"
+              v-html="lnk.label"
+            ></Link>
+          </div>
         </div>
       </div>
 
@@ -718,18 +899,28 @@ const getStatusClass = (status) => {
           </div>
 
           <div class="flex items-center gap-1.5 flex-wrap w-full sm:w-auto">
+            <button 
+              type="button" 
+              @click="copyDirectLink('skhpp', selectedSkhpp)" 
+              class="flex-1 sm:flex-none bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase shadow-xs flex items-center justify-center gap-1 transition cursor-pointer"
+              title="Salin Link Direct Dokumen Ini">
+              <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+              <span>Salin Link Direct</span>
+            </button>
+
             <Link :href="`/skhpp/${selectedSkhpp.id}/edit`" class="flex-1 sm:flex-none bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase shadow-sm text-center flex items-center justify-center gap-1"> Koreksi
             </Link>
 
             <template v-if="(user.role === 'admin' || user.role === 'komandan') && selectedSkhpp.status === 'pending'">
-              <button @click="approveSkhpp(selectedSkhpp)" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase shadow-md text-center flex items-center justify-center gap-1"> Setujui
+              <button @click="approveSkhpp(selectedSkhpp)" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase shadow-md text-center flex items-center justify-center gap-1 cursor-pointer"> Setujui
               </button>
-              <button @click="rejectSkhpp(selectedSkhpp)" class="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white px-3 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase shadow-sm text-center flex items-center justify-center gap-1"> Tolak
+              <button @click="rejectSkhpp(selectedSkhpp)" class="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white px-3 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase shadow-sm text-center flex items-center justify-center gap-1 cursor-pointer"> Tolak
               </button>
             </template>
 
-            <button @click="isSkhppPreviewOpen = false" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase">
-              
+            <button type="button" @click="isSkhppPreviewOpen = false" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase flex items-center gap-1 cursor-pointer" title="Tutup">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              <span>Tutup</span>
             </button>
           </div>
         </div>
@@ -960,6 +1151,17 @@ const getStatusClass = (status) => {
         </div>
 
         <div class="flex items-center gap-2 shrink-0">
+          <button 
+            v-if="selectedReq" 
+            type="button" 
+            @click="copyDirectLink('pdf', selectedReq)" 
+            class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-1 transition cursor-pointer"
+            title="Salin Link Direct Dokumen Ini">
+            <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+            <span class="hidden sm:inline">Salin Link Direct</span>
+            <span class="sm:hidden">Link</span>
+          </button>
+
           <button v-if="isAdjusting && isCurrentPageActive" @click="removeCurrentPageSignature" class="bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl text-xs font-black uppercase shadow-md"> Hapus TTD di Hal. {{ currentPage }}
           </button>
           <button v-else-if="isAdjusting && !isCurrentPageActive" @click="addCurrentPageSignature" class="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-black uppercase shadow-md">
