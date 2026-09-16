@@ -68,14 +68,182 @@ class PrintService
     }
 
     /**
+     * Normalisasi berkas PDF versi tinggi (PDF 1.5+ / Compressed Object Streams / Cross-Reference Streams)
+     * menjadi PDF 1.4 standar agar FPDI dapat membaca tanpa kendala keterbatasan parser gratis.
+     */
+    public function normalizePdfForFpdi(string $inputPath): string
+    {
+        if (!file_exists($inputPath)) {
+            return $inputPath;
+        }
+
+        $normDir = Storage::disk('local')->path('print_jobs/normalized');
+        if (!file_exists($normDir)) {
+            @mkdir($normDir, 0777, true);
+        }
+
+        $outputPath = $normDir . '/norm_' . uniqid() . '.pdf';
+        $prefix = (PHP_OS_FAMILY !== 'Windows') ? 'export HOME=/tmp && ' : '';
+
+        // 1. Coba konversi via Ghostscript (gs / gswin64c)
+        $gsBinary = 'gs';
+        if (PHP_OS_FAMILY === 'Windows') {
+            $gsCandidates = ['gswin64c', 'gswin32c', 'gs'];
+            foreach ($gsCandidates as $c) {
+                @exec("where {$c} 2>NUL", $wOut, $wRet);
+                if ($wRet === 0) {
+                    $gsBinary = $c;
+                    break;
+                }
+            }
+        }
+
+        $cmdGs = "{$prefix}{$gsBinary} -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/printer -dNOPAUSE -dQUIET -dBATCH -sOutputFile=" . escapeshellarg($outputPath) . " " . escapeshellarg($inputPath) . " 2>&1";
+        @exec($cmdGs, $outGs, $codeGs);
+
+        if (file_exists($outputPath) && filesize($outputPath) > 100 && $codeGs === 0) {
+            Log::info("Normalisasi PDF via Ghostscript ({$gsBinary}) Berhasil: " . $outputPath);
+            return $outputPath;
+        }
+
+        // 2. Coba konversi via qpdf
+        $cmdQpdf = "{$prefix}qpdf --qdf --object-streams=disable " . escapeshellarg($inputPath) . " " . escapeshellarg($outputPath) . " 2>&1";
+        @exec($cmdQpdf, $outQpdf, $codeQpdf);
+
+        if (file_exists($outputPath) && filesize($outputPath) > 100 && $codeQpdf === 0) {
+            Log::info("Normalisasi PDF via qpdf Berhasil: " . $outputPath);
+            return $outputPath;
+        }
+
+        // 3. Coba konversi via pdftk
+        $cmdPdftk = "{$prefix}pdftk " . escapeshellarg($inputPath) . " output " . escapeshellarg($outputPath) . " uncompress 2>&1";
+        @exec($cmdPdftk, $outPdftk, $codePdftk);
+
+        if (file_exists($outputPath) && filesize($outputPath) > 100 && $codePdftk === 0) {
+            Log::info("Normalisasi PDF via pdftk Berhasil: " . $outputPath);
+            return $outputPath;
+        }
+
+        return $inputPath;
+    }
+
+    /**
+     * Hitung total halaman dokumen PDF secara aman tanpa ketergantungan FPDI parser
+     */
+    public function countPdfPagesSafely(string $pdfPath): int
+    {
+        $prefix = (PHP_OS_FAMILY !== 'Windows') ? 'export HOME=/tmp && ' : '';
+
+        // 1. Coba via pdfinfo
+        @exec("{$prefix}pdfinfo " . escapeshellarg($pdfPath) . " 2>&1", $infoOut, $infoRet);
+        if ($infoRet === 0 && !empty($infoOut)) {
+            foreach ($infoOut as $line) {
+                if (preg_match('/Pages:\s*(\d+)/i', $line, $m)) {
+                    return max(1, (int)$m[1]);
+                }
+            }
+        }
+
+        // 2. Coba via qpdf --show-npages
+        @exec("{$prefix}qpdf --show-npages " . escapeshellarg($pdfPath) . " 2>&1", $qOut, $qRet);
+        if ($qRet === 0 && !empty($qOut) && is_numeric(trim($qOut[0]))) {
+            return max(1, (int)trim($qOut[0]));
+        }
+
+        // 3. Coba deteksi objek halaman dari stream biner PDF
+        if (file_exists($pdfPath)) {
+            $content = @file_get_contents($pdfPath);
+            if ($content) {
+                if (preg_match_all("/\/Type\s*\/Page\b[^\/]/", $content, $matches)) {
+                    $c = count($matches[0]);
+                    if ($c > 0) return $c;
+                }
+                if (preg_match("/\/Count\s+(\d+)/", $content, $m)) {
+                    return max(1, (int)$m[1]);
+                }
+            }
+        }
+
+        return 1;
+    }
+
+    /**
+     * Fallback cerdas jika FPDI parser tidak mendukung kompresi berkas:
+     * Menghasilkan berkas siap cetak dengan menyisipkan lembar pemisah secara eksternal.
+     */
+    protected function preparePrintablePdfFallback(string $pdfPath, array $dimensions, string $paperSize): array
+    {
+        $pageCount = $this->countPdfPagesSafely($pdfPath);
+        $printableDir = Storage::disk('local')->path('print_jobs/printable');
+        if (!file_exists($printableDir)) {
+            @mkdir($printableDir, 0777, true);
+        }
+        $printablePath = $printableDir . '/printable_' . uniqid() . '.pdf';
+
+        // Buat 1 lembar halaman kosong menggunakan FPDF murni (FPDF tidak membaca berkas luar sehingga bebas kendala)
+        $blankPdf = new \FPDF('P', 'mm', [$dimensions[0], $dimensions[1]]);
+        $blankPdf->AddPage('P', [$dimensions[0], $dimensions[1]]);
+        $blankPdfPath = $printableDir . '/blank_' . uniqid() . '.pdf';
+        $blankPdf->Output($blankPdfPath, 'F');
+
+        $merged = false;
+        $prefix = (PHP_OS_FAMILY !== 'Windows') ? 'export HOME=/tmp && ' : '';
+
+        // 1. Coba gabungkan berkas asli + lembar kosong via Ghostscript
+        $cmdGs = "{$prefix}gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -sOutputFile=" . escapeshellarg($printablePath) . " " . escapeshellarg($pdfPath) . " " . escapeshellarg($blankPdfPath) . " 2>&1";
+        @exec($cmdGs, $outGs, $codeGs);
+        if (file_exists($printablePath) && filesize($printablePath) > 100 && $codeGs === 0) {
+            $merged = true;
+        }
+
+        // 2. Coba gabungkan via qpdf jika belum berhasil
+        if (!$merged) {
+            $cmdQpdf = "{$prefix}qpdf --empty --pages " . escapeshellarg($pdfPath) . " " . escapeshellarg($blankPdfPath) . " -- " . escapeshellarg($printablePath) . " 2>&1";
+            @exec($cmdQpdf, $outQpdf, $codeQpdf);
+            if (file_exists($printablePath) && filesize($printablePath) > 100 && $codeQpdf === 0) {
+                $merged = true;
+            }
+        }
+
+        // 3. Coba gabungkan via pdftk jika belum berhasil
+        if (!$merged) {
+            $cmdPdftk = "{$prefix}pdftk " . escapeshellarg($pdfPath) . " " . escapeshellarg($blankPdfPath) . " cat output " . escapeshellarg($printablePath) . " 2>&1";
+            @exec($cmdPdftk, $outPdftk, $codePdftk);
+            if (file_exists($printablePath) && filesize($printablePath) > 100 && $codePdftk === 0) {
+                $merged = true;
+            }
+        }
+
+        // Bersihkan berkas blank sementara
+        if (file_exists($blankPdfPath)) {
+            @unlink($blankPdfPath);
+        }
+
+        // Jika semua CLI tool merge tidak ada, salin berkas PDF langsung sebagai printable
+        if (!$merged || !file_exists($printablePath)) {
+            copy($pdfPath, $printablePath);
+        }
+
+        return [
+            'total_pages' => $pageCount,
+            'separator_pages' => 1,
+            'total_sheets' => $pageCount + 1,
+            'printable_pdf_path' => $printablePath,
+            'paper_size' => strtoupper($paperSize),
+            'preview_pdf_path' => $pdfPath,
+        ];
+    }
+
+    /**
      * Hitung total halaman dokumen asli dan siapkan PDF siap cetak
      * dengan menyisipkan 1 lembar kosong di akhir sebagai pemisah otomatis
-     * serta menyesuaikan ukuran kertas yang dipilih (A4, F4/Folio, Letter, Legal)
+     * serta menyesuaikan ukuran kertas yang dipilih (A4, F4/Folio, Letter, Legal).
+     * Mendukung auto-normalisasi berkas PDF terkompresi / modern.
      */
     public function preparePrintablePdf(string $sourcePdfPath, string $paperSize = 'A4'): array
     {
-        $pdf = new Fpdi();
-        $pageCount = $pdf->setSourceFile($sourcePdfPath);
+        // 1. Normalisasi berkas PDF agar FPDI tidak menolak object streams / kompresi PDF 1.5+
+        $workingPdfPath = $this->normalizePdfForFpdi($sourcePdfPath);
 
         // Dimensi lembar target (dalam milimeter)
         $dimensions = match(strtoupper($paperSize)) {
@@ -85,37 +253,47 @@ class PrintService
             default       => [210, 297], // A4
         };
 
-        // Salin seluruh halaman dokumen asli dan sesuaikan ukuran lembar target
-        for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
-            $templateId = $pdf->importPage($pageNo);
-            $size = $pdf->getTemplateSize($templateId);
+        // 2. Coba proses melalui FPDI
+        try {
+            $pdf = new Fpdi();
+            $pageCount = $pdf->setSourceFile($workingPdfPath);
 
-            $orientation = ($size['width'] > $size['height']) ? 'L' : 'P';
-            $pageWidth = ($orientation === 'P') ? $dimensions[0] : $dimensions[1];
-            $pageHeight = ($orientation === 'P') ? $dimensions[1] : $dimensions[0];
+            // Salin seluruh halaman dokumen asli dan sesuaikan ukuran lembar target
+            for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
+                $templateId = $pdf->importPage($pageNo);
+                $size = $pdf->getTemplateSize($templateId);
 
-            $pdf->AddPage($orientation, [$pageWidth, $pageHeight]);
-            $pdf->useTemplate($templateId, 0, 0, $pageWidth, $pageHeight, true);
+                $orientation = ($size['width'] > $size['height']) ? 'L' : 'P';
+                $pageWidth = ($orientation === 'P') ? $dimensions[0] : $dimensions[1];
+                $pageHeight = ($orientation === 'P') ? $dimensions[1] : $dimensions[0];
+
+                $pdf->AddPage($orientation, [$pageWidth, $pageHeight]);
+                $pdf->useTemplate($templateId, 0, 0, $pageWidth, $pageHeight, true);
+            }
+
+            // Sisipkan 1 lembar kosong di akhir dokumen sebagai pemisah (dengan ukuran kertas yang sama)
+            $pdf->AddPage('P', [$dimensions[0], $dimensions[1]]);
+
+            $printableDir = Storage::disk('local')->path('print_jobs/printable');
+            if (!file_exists($printableDir)) {
+                @mkdir($printableDir, 0777, true);
+            }
+
+            $printablePath = $printableDir . '/printable_' . uniqid() . '.pdf';
+            $pdf->Output($printablePath, 'F');
+
+            return [
+                'total_pages' => $pageCount,
+                'separator_pages' => 1,
+                'total_sheets' => $pageCount + 1,
+                'printable_pdf_path' => $printablePath,
+                'paper_size' => strtoupper($paperSize),
+                'preview_pdf_path' => $workingPdfPath,
+            ];
+        } catch (\Throwable $e) {
+            Log::warning("FPDI parser gagal membaca berkas ({$e->getMessage()}), mengaktifkan fallback cerdas tanpa FPDI parser.");
+            return $this->preparePrintablePdfFallback($workingPdfPath, $dimensions, $paperSize);
         }
-
-        // Sisipkan 1 lembar kosong di akhir dokumen sebagai pemisah (dengan ukuran kertas yang sama)
-        $pdf->AddPage('P', [$dimensions[0], $dimensions[1]]);
-
-        $printableDir = Storage::disk('local')->path('print_jobs/printable');
-        if (!file_exists($printableDir)) {
-            @mkdir($printableDir, 0777, true);
-        }
-
-        $printablePath = $printableDir . '/printable_' . uniqid() . '.pdf';
-        $pdf->Output($printablePath, 'F');
-
-        return [
-            'total_pages' => $pageCount,
-            'separator_pages' => 1,
-            'total_sheets' => $pageCount + 1,
-            'printable_pdf_path' => $printablePath,
-            'paper_size' => strtoupper($paperSize),
-        ];
     }
 
     /**

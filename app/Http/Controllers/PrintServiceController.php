@@ -110,6 +110,9 @@ class PrintServiceController extends Controller
 
             // 2. Siapkan berkas siap cetak dengan menyisipkan 1 lembar kosong pemisah & ukuran kertas target
             $prepResult = $this->printService->preparePrintablePdf($previewPdfPath, $paperSize);
+            if (!empty($prepResult['preview_pdf_path'])) {
+                $previewPdfPath = $prepResult['preview_pdf_path'];
+            }
 
             // 3. Tentukan IP Printer tujuan
             $printerIp = ($printerBrand === 'canon')
