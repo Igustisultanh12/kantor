@@ -7,6 +7,8 @@ use App\Models\Setting;
 use App\Services\PrintService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -231,31 +233,39 @@ class PrintServiceController extends Controller
     }
 
     /**
-     * Batalkan dokumen dari antrean
+     * Batalkan dokumen dari antrean atau proses cetak
      */
     public function cancelJob($id)
     {
-        $job = PrintJob::findOrFail($id);
+        try {
+            $job = PrintJob::findOrFail($id);
 
-        if ($job->user_id !== Auth::id() && Auth::user()->role !== 'admin') {
-            abort(403, 'Akses tidak diizinkan.');
-        }
+            if ($job->user_id !== Auth::id() && Auth::user()->role !== 'admin') {
+                abort(403, 'Akses tidak diizinkan.');
+            }
 
-        if ($job->status === 'queued' || $job->status === 'draft' || $job->status === 'printing') {
-            $this->printService->cleanupPhysicalFiles($job);
-            $job->update([
-                'status' => 'cancelled',
-                'completed_at' => now(),
+            if ($job->status === 'queued' || $job->status === 'draft' || $job->status === 'printing') {
+                $this->printService->cleanupPhysicalFiles($job);
+                $job->update([
+                    'status' => 'cancelled',
+                    'completed_at' => now(),
+                ]);
+
+                // Jika yang dibatalkan adalah job yang sedang dicetak, lepaskan lock dan proses antrean berikutnya
+                Cache::forget('print_service_queue_lock');
+                $this->printService->processQueue();
+
+                return back()->with('success', 'Pengajuan cetak dokumen berhasil dibatalkan dan berkas fisik dibersihkan.');
+            }
+
+            return back()->with('error', 'Dokumen yang telah selesai tidak dapat dibatalkan.');
+        } catch (\Throwable $e) {
+            Log::error('Gagal membatalkan dokumen cetak: ' . $e->getMessage(), [
+                'job_id' => $id,
+                'trace' => $e->getTraceAsString(),
             ]);
-
-            // Jika yang dibatalkan adalah job yang sedang dicetak, lepaskan lock dan proses antrean berikutnya
-            Cache::forget('print_service_queue_lock');
-            $this->printService->processQueue();
-
-            return back()->with('success', 'Pengajuan cetak dokumen berhasil dibatalkan dan berkas fisik dibersihkan.');
+            return back()->with('error', 'Gagal membatalkan dokumen: ' . $e->getMessage());
         }
-
-        return back()->with('error', 'Dokumen yang telah selesai tidak dapat dibatalkan.');
     }
 
     /**
