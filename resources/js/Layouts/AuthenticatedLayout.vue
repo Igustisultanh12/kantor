@@ -357,6 +357,16 @@ onUnmounted(() => {
                                 <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                 <span>Tanda Tangan Digital</span>
                             </Link>
+
+                            <Link 
+                                :href="route('printing.index')" 
+                                @click="isMobileMenuOpen = false"
+                                :class="route().current('printing.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"
+                                class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
+                            >
+                                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                                <span>Layanan Printing</span>
+                            </Link>
                         </div>
 
                         <!-- LOGISTIK & FINANSIAL -->
@@ -641,6 +651,15 @@ onUnmounted(() => {
                         >
                             <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-purple-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                             <span>Tanda Tangan Digital</span>
+                        </Link>
+
+                        <Link 
+                            :href="route('printing.index')" 
+                            :class="route().current('printing.*') ? 'bg-[#2563EB]/5 text-[#2563EB] font-bold shadow-sm shadow-blue-500/[0.02]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"
+                            class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
+                        >
+                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                            <span>Layanan Printing</span>
                         </Link>
                     </div>
 

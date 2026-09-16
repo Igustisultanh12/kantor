@@ -36,6 +36,7 @@ use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\PublicTrackingController;
 use App\Http\Controllers\ScSubmissionController;
 use App\Http\Controllers\SystemCheckController;
+use App\Http\Controllers\PrintServiceController;
 use App\Models\User;
 use App\Models\LetterLog;
 use App\Models\Letter;
@@ -257,6 +258,18 @@ Route::middleware('auth')->group(function () {
     Route::patch('/otoritas-stempel/eksekusi', [StampController::class, 'apply'])->name('signature.apply-stamp');
     Route::post('/otoritas-stempel/upload-manual', [StampController::class, 'uploadManual'])->name('stamp.upload-manual');
     Route::get('/settings/stamp-config', [StampController::class, 'setting'])->name('stamp.setting');
+
+    // =========================================================================
+    // MODUL LAYANAN PRINTING JARINGAN (PRINTER BROTHER IP)
+    // =========================================================================
+    Route::get('/layanan-printing', [PrintServiceController::class, 'index'])->name('printing.index');
+    Route::post('/layanan-printing/upload', [PrintServiceController::class, 'uploadAndPreview'])->name('printing.upload');
+    Route::post('/layanan-printing/{id}/confirm', [PrintServiceController::class, 'confirmPrint'])->name('printing.confirm');
+    Route::delete('/layanan-printing/{id}/cancel', [PrintServiceController::class, 'cancelJob'])->name('printing.cancel');
+    Route::get('/layanan-printing/queue-status', [PrintServiceController::class, 'getQueueStatus'])->name('printing.queue-status');
+    Route::get('/layanan-printing/preview/{id}', [PrintServiceController::class, 'streamPreviewPdf'])->name('printing.preview');
+    Route::post('/layanan-printing/admin/test-connection', [PrintServiceController::class, 'testPrinterConnection'])->name('printing.test-connection');
+    Route::post('/layanan-printing/admin/settings', [PrintServiceController::class, 'updatePrinterSettings'])->name('printing.update-settings');
 
     // =========================================================================
     // MODUL PELANGGARAN DISIPLIN PRAJURIT (URUTAN STRATEGIS PASUKAN)
