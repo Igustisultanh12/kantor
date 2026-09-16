@@ -79,7 +79,13 @@ class PrintServiceController extends Controller
 
         // Simpan berkas asli
         $storedPath = $file->store('print_jobs/originals', 'local');
-        $originalFullPath = storage_path('app/' . $storedPath);
+        $originalFullPath = Storage::disk('local')->path($storedPath);
+        if (!file_exists($originalFullPath)) {
+            $fallbackPath = storage_path('app/' . $storedPath);
+            if (file_exists($fallbackPath)) {
+                $originalFullPath = $fallbackPath;
+            }
+        }
 
         try {
             // 1. Dapatkan berkas PDF untuk pratinjau (konversi jika DOCX / DOC)

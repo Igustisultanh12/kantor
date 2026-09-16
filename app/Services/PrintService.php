@@ -6,6 +6,7 @@ use App\Models\PrintJob;
 use App\Models\Setting;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use setasign\Fpdi\Fpdi;
 
 class PrintService
@@ -19,7 +20,7 @@ class PrintService
             return $sourcePath;
         }
 
-        $tempOutDir = storage_path('app/print_jobs/converted_' . uniqid());
+        $tempOutDir = Storage::disk('local')->path('print_jobs/converted_' . uniqid());
         if (!file_exists($tempOutDir)) {
             @mkdir($tempOutDir, 0777, true);
         }
@@ -86,7 +87,7 @@ class PrintService
         // Sisipkan 1 lembar kosong di akhir dokumen sebagai pemisah
         $pdf->AddPage();
 
-        $printableDir = storage_path('app/print_jobs/printable');
+        $printableDir = Storage::disk('local')->path('print_jobs/printable');
         if (!file_exists($printableDir)) {
             @mkdir($printableDir, 0777, true);
         }
