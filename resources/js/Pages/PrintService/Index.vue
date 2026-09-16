@@ -245,11 +245,19 @@ const confirmPrintDocument = () => {
   });
 };
 
-// Batalkan Dokumen yang Sedang Antre
-const cancelQueueJob = (job) => {
+// Bersihkan Berkas Terpilih pada Formulir Unggah
+const clearSelectedFile = () => {
+  uploadForm.file = null;
+  selectedFileName.value = '';
+  selectedFileSize.value = '';
+};
+
+// Batalkan Dokumen (Antrean atau Sedang Proses Cetak)
+const cancelPrintJob = (job) => {
+  const isPrinting = job.status === 'printing';
   Swal.fire({
-    title: 'BATALKAN ANTREAN CETAK?',
-    text: `Dokumen "${job.document_title}" akan dibatalkan dari antrean printer.`,
+    title: isPrinting ? 'BATALKAN CETAK AKTIF?' : 'BATALKAN ANTREAN CETAK?',
+    text: `Dokumen "${job.document_title}" akan dibatalkan ${isPrinting ? 'dari proses cetak aktif printer' : 'dari antrean printer'}.`,
     icon: 'warning',
     showCancelButton: true,
     confirmButtonText: 'YA, BATALKAN',
@@ -263,7 +271,7 @@ const cancelQueueJob = (job) => {
         onSuccess: () => {
           Swal.fire({
             title: 'DIBATALKAN',
-            text: 'Antrean dokumen berhasil dibatalkan.',
+            text: isPrinting ? 'Proses cetak aktif berhasil dihentikan dan dibatalkan.' : 'Antrean dokumen berhasil dibatalkan.',
             icon: 'success',
             timer: 2000,
             showConfirmButton: false,
@@ -273,6 +281,23 @@ const cancelQueueJob = (job) => {
       });
     }
   });
+};
+
+// Batalkan Pratinjau dan Bersihkan Berkas Draft
+const cancelPreviewModal = () => {
+  if (previewJob.value) {
+    router.delete(route('printing.cancel', previewJob.value.id), {
+      preserveScroll: true,
+      onFinish: () => {
+        isPreviewModalOpen.value = false;
+        previewJob.value = null;
+        previewUrl.value = null;
+        fetchQueueStatus();
+      }
+    });
+  } else {
+    isPreviewModalOpen.value = false;
+  }
 };
 
 // Tes Koneksi Soket IP Printer (Brother atau Canon G3010)
@@ -494,7 +519,7 @@ onUnmounted(() => {
 
         <div class="relative z-10 space-y-3">
           <div class="flex items-center justify-between flex-wrap gap-2">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-wrap">
               <span class="px-3 py-1 rounded-full bg-emerald-500 text-white text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
                 <span class="w-2 h-2 rounded-full bg-white animate-ping"></span>
                 <span>SEDANG PROSES CETAK</span>
@@ -502,6 +527,17 @@ onUnmounted(() => {
               <span class="text-[10px] font-bold text-blue-200">
                 Job ID #{{ currentActiveJob.id }}
               </span>
+
+              <!-- Tombol Batalkan Cetak Aktif -->
+              <button 
+                v-if="currentActiveJob.user_id === user?.id || isAdmin"
+                type="button" 
+                @click="cancelPrintJob(currentActiveJob)"
+                class="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white px-2.5 py-1 rounded-full text-[10px] font-black uppercase shadow-xs transition cursor-pointer flex items-center gap-1 border border-rose-400"
+                title="Batalkan Dokumen yang Sedang Dicetak"
+              >
+                BATALKAN CETAK
+              </button>
             </div>
 
             <!-- Lencana Mesin, Kertas, & Mode -->
@@ -640,9 +676,19 @@ onUnmounted(() => {
                   <p class="text-xs font-black text-slate-800 truncate">{{ selectedFileName }}</p>
                   <span class="text-[10px] text-slate-500 font-semibold">{{ selectedFileSize }}</span>
                 </div>
-                <span class="px-2 py-1 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase shrink-0">
-                  SIAP DIPROSES
-                </span>
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <span class="px-2 py-1 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase">
+                    SIAP DIPROSES
+                  </span>
+                  <button 
+                    type="button" 
+                    @click="clearSelectedFile"
+                    class="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[9px] font-black uppercase transition cursor-pointer"
+                    title="Batalkan Pilihan Berkas"
+                  >
+                    BATALKAN
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1042,7 +1088,7 @@ onUnmounted(() => {
                   <button 
                     v-if="job.user_id === user?.id || isAdmin"
                     type="button" 
-                    @click="cancelQueueJob(job)"
+                    @click="cancelPrintJob(job)"
                     class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase border border-rose-200 transition cursor-pointer"
                     title="Batalkan Dokumen dari Antrean"
                   >
@@ -1176,9 +1222,9 @@ onUnmounted(() => {
 
           <button 
             type="button" 
-            @click="isPreviewModalOpen = false" 
+            @click="cancelPreviewModal" 
             class="text-slate-400 hover:text-slate-600 font-bold p-1 text-2xl leading-none transition cursor-pointer"
-            title="Tutup Pratinjau"
+            title="Tutup & Batalkan Pratinjau"
           >
             &times;
           </button>
@@ -1330,7 +1376,7 @@ onUnmounted(() => {
           <div class="flex items-center gap-2 w-full sm:w-auto">
             <button 
               type="button" 
-              @click="isPreviewModalOpen = false" 
+              @click="cancelPreviewModal" 
               class="flex-1 sm:flex-initial bg-slate-100 hover:bg-slate-200 text-slate-600 px-5 py-3 rounded-xl font-black text-xs uppercase border border-slate-200 transition cursor-pointer text-center"
             >
               BATALKAN

@@ -241,16 +241,21 @@ class PrintServiceController extends Controller
             abort(403, 'Akses tidak diizinkan.');
         }
 
-        if ($job->status === 'queued' || $job->status === 'draft') {
+        if ($job->status === 'queued' || $job->status === 'draft' || $job->status === 'printing') {
             $this->printService->cleanupPhysicalFiles($job);
             $job->update([
                 'status' => 'cancelled',
                 'completed_at' => now(),
             ]);
+
+            // Jika yang dibatalkan adalah job yang sedang dicetak, lepaskan lock dan proses antrean berikutnya
+            Cache::forget('print_service_queue_lock');
+            $this->printService->processQueue();
+
             return back()->with('success', 'Pengajuan cetak dokumen berhasil dibatalkan dan berkas fisik dibersihkan.');
         }
 
-        return back()->with('error', 'Dokumen yang sedang dicetak atau telah selesai tidak dapat dibatalkan.');
+        return back()->with('error', 'Dokumen yang telah selesai tidak dapat dibatalkan.');
     }
 
     /**
