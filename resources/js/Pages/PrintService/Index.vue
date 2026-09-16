@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, router, usePage } from '@inertiajs/vue3';
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 
@@ -18,10 +18,24 @@ const user = computed(() => page.props.auth.user);
 const isAdmin = computed(() => user.value?.role === 'admin');
 
 // Status antrean dokumen
-const currentActiveJob = ref(props.activeJob);
+const currentActiveJob = ref(props.activeJob || null);
 const currentQueuedJobs = ref(props.queuedJobs || []);
 const currentRecentJobs = ref(props.recentJobs || []);
 const currentStats = ref(props.stats || { total_queued: 0, total_today: 0, sheets_today: 0 });
+
+// Sinkronisasi otomatis jika props Inertia diperbarui (misal saat batal cetak / reload)
+watch(() => props.activeJob, (val) => {
+  currentActiveJob.value = val || null;
+}, { immediate: true });
+watch(() => props.queuedJobs, (val) => {
+  currentQueuedJobs.value = val || [];
+}, { immediate: true });
+watch(() => props.recentJobs, (val) => {
+  currentRecentJobs.value = val || [];
+}, { immediate: true });
+watch(() => props.stats, (val) => {
+  if (val) currentStats.value = val;
+}, { immediate: true });
 
 // Modal Pratinjau & Konfirmasi Cetak
 const isPreviewModalOpen = ref(false);
@@ -269,6 +283,10 @@ const cancelPrintJob = (job) => {
       router.delete(route('printing.cancel', job.id), {
         preserveScroll: true,
         onSuccess: () => {
+          if (isPrinting || currentActiveJob.value?.id === job.id) {
+            currentActiveJob.value = null;
+          }
+          currentQueuedJobs.value = currentQueuedJobs.value.filter(j => j.id !== job.id);
           Swal.fire({
             title: 'DIBATALKAN',
             text: isPrinting ? 'Proses cetak aktif berhasil dihentikan dan dibatalkan.' : 'Antrean dokumen berhasil dibatalkan.',
@@ -364,7 +382,7 @@ const fetchQueueStatus = async () => {
     const res = await axios.get(route('printing.queue-status'));
     if (res.status === 200 && res.data) {
       const data = res.data;
-      currentActiveJob.value = data.active_job;
+      currentActiveJob.value = data.active_job || null;
       currentQueuedJobs.value = data.queued_jobs || [];
       currentRecentJobs.value = data.recent_jobs || [];
       if (data.stats) {
