@@ -207,6 +207,10 @@ class PrintService
             'error_message' => null
         ]);
 
+        // Hapus berkas fisik dari server untuk menghemat ruang penyimpanan
+        // sementara catatan riwayat, nama naskah, dan pemohon tetap dipertahankan
+        $this->cleanupPhysicalFiles($job);
+
         return true;
     }
 
@@ -271,5 +275,46 @@ class PrintService
         if ($remainingQueued) {
             $this->processQueue();
         }
+    }
+
+    /**
+     * Hapus berkas fisik dokumen dari penyimpanan server setelah proses cetak selesai
+     * atau dibatalkan untuk menghemat ruang disk, dengan tetap mempertahankan data
+     * riwayat personel, nama berkas, dan waktu cetak di database.
+     */
+    public function cleanupPhysicalFiles(PrintJob $job): void
+    {
+        $filesToDelete = array_filter([
+            $job->original_file_path,
+            $job->preview_pdf_path,
+            $job->printable_pdf_path,
+        ]);
+
+        foreach ($filesToDelete as $filePath) {
+            if ($filePath && file_exists($filePath)) {
+                @unlink($filePath);
+            }
+        }
+
+        // Hapus direktori sementara konversi jika ada
+        if ($job->preview_pdf_path) {
+            $parentDir = dirname($job->preview_pdf_path);
+            if (str_contains($parentDir, 'converted_') && is_dir($parentDir)) {
+                $remFiles = glob($parentDir . '/*');
+                if (is_array($remFiles)) {
+                    foreach ($remFiles as $rf) {
+                        @unlink($rf);
+                    }
+                }
+                @rmdir($parentDir);
+            }
+        }
+
+        // Kosongkan path fisik pada database agar terverifikasi bersih dari disk
+        $job->update([
+            'original_file_path' => null,
+            'preview_pdf_path' => null,
+            'printable_pdf_path' => null,
+        ]);
     }
 }

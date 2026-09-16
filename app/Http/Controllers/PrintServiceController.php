@@ -185,18 +185,19 @@ class PrintServiceController extends Controller
         }
 
         if ($job->status === 'queued' || $job->status === 'draft') {
+            $this->printService->cleanupPhysicalFiles($job);
             $job->update([
                 'status' => 'cancelled',
                 'completed_at' => now(),
             ]);
-            return back()->with('success', 'Pengajuan cetak dokumen berhasil dibatalkan.');
+            return back()->with('success', 'Pengajuan cetak dokumen berhasil dibatalkan dan berkas fisik dibersihkan.');
         }
 
         return back()->with('error', 'Dokumen yang sedang dicetak atau telah selesai tidak dapat dibatalkan.');
     }
 
     /**
-     * Endpoint data real-time antrean untuk polling klien setiap 2 detik
+     * Endpoint data status antrean untuk pembaruan latar belakang secara berkala
      */
     public function getQueueStatus()
     {

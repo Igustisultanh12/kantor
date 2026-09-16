@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('document_title');
             $table->string('original_filename');
             $table->string('file_type', 10); // pdf, docx, doc
-            $table->string('original_file_path');
+            $table->string('original_file_path')->nullable();
             $table->string('preview_pdf_path')->nullable();
             $table->string('printable_pdf_path')->nullable();
             $table->integer('total_pages')->default(1);

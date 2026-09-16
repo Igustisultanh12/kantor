@@ -16,7 +16,7 @@ const page = usePage();
 const user = computed(() => page.props.auth.user);
 const isAdmin = computed(() => user.value?.role === 'admin');
 
-// Data Real-Time State
+// Status antrean dokumen
 const currentActiveJob = ref(props.activeJob);
 const currentQueuedJobs = ref(props.queuedJobs || []);
 const currentRecentJobs = ref(props.recentJobs || []);
@@ -230,7 +230,7 @@ const savePrinterSettings = () => {
   });
 };
 
-// Polling Real-Time Status Antrean Setiap 2.5 Detik
+// Pembaruan status antrean berkala otomatis tanpa refresh (2000ms)
 let pollingTimer = null;
 const fetchQueueStatus = async () => {
   try {
@@ -252,7 +252,7 @@ const fetchQueueStatus = async () => {
 };
 
 onMounted(() => {
-  pollingTimer = setInterval(fetchQueueStatus, 2500);
+  pollingTimer = setInterval(fetchQueueStatus, 2000);
 });
 
 onUnmounted(() => {
@@ -416,7 +416,7 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- MAIN SECTION: DUA KOLOM (UNGGAH DOKUMEN & ANTREAN REAL-TIME) -->
+      <!-- MAIN SECTION: DUA KOLOM (UNGGAH DOKUMEN & ANTREAN BERKAS) -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
         <!-- KOLOM KIRI: FORMULIR UNGGAH DOKUMEN (4 Kolom pada LG) -->
@@ -686,8 +686,9 @@ onUnmounted(() => {
                     <td class="p-3 text-[11px] text-slate-500 whitespace-nowrap">
                       {{ new Date(job.completed_at || job.updated_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }} WIB
                     </td>
-                    <td class="p-3 font-bold text-slate-900 uppercase">
-                      {{ job.document_title }}
+                    <td class="p-3 text-slate-900">
+                      <div class="font-bold uppercase leading-tight">{{ job.document_title }}</div>
+                      <span class="text-[10px] text-slate-400 font-medium normal-case block truncate max-w-xs">{{ job.original_filename }}</span>
                     </td>
                     <td class="p-3 text-slate-600">
                       {{ job.user?.name || '-' }}
@@ -720,6 +721,12 @@ onUnmounted(() => {
                   </tr>
                 </tbody>
               </table>
+
+              <!-- Keterangan Otomatisasi Hemat Penyimpanan Server -->
+              <div class="mt-3 pt-3 border-t border-slate-200 text-[10px] text-slate-500 font-semibold flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-blue-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span>Berkas fisik otomatis dibersihkan dari server setelah cetak selesai untuk efisiensi penyimpanan, seluruh riwayat pemohon dan identitas dokumen tetap tersimpan di buku riwayat.</span>
+              </div>
             </div>
           </div>
         </div>
