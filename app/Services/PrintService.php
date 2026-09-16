@@ -183,14 +183,18 @@ class PrintService
         // Buat 1 lembar halaman kosong menggunakan FPDF murni (FPDF tidak membaca berkas luar sehingga bebas kendala)
         $blankPdf = new \FPDF('P', 'mm', [$dimensions[0], $dimensions[1]]);
         $blankPdf->AddPage('P', [$dimensions[0], $dimensions[1]]);
+        // Tambahkan konten mikro transparan agar RIP mesin langsung memicu showpage tanpa jeda buffer
+        $blankPdf->SetFont('Helvetica', '', 1);
+        $blankPdf->SetTextColor(255, 255, 255);
+        $blankPdf->Text(10, 10, ' ');
         $blankPdfPath = $printableDir . '/blank_' . uniqid() . '.pdf';
         $blankPdf->Output($blankPdfPath, 'F');
 
         $merged = false;
         $prefix = (PHP_OS_FAMILY !== 'Windows') ? 'export HOME=/tmp && ' : '';
 
-        // 1. Coba gabungkan berkas asli + lembar kosong via Ghostscript
-        $cmdGs = "{$prefix}gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -sOutputFile=" . escapeshellarg($printablePath) . " " . escapeshellarg($pdfPath) . " " . escapeshellarg($blankPdfPath) . " 2>&1";
+        // 1. Coba gabungkan berkas asli + lembar kosong via Ghostscript (linearisasi & flattening)
+        $cmdGs = "{$prefix}gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/printer -dFastWebView=true -sOutputFile=" . escapeshellarg($printablePath) . " " . escapeshellarg($pdfPath) . " " . escapeshellarg($blankPdfPath) . " 2>&1";
         @exec($cmdGs, $outGs, $codeGs);
         if (file_exists($printablePath) && filesize($printablePath) > 100 && $codeGs === 0) {
             $merged = true;
@@ -198,7 +202,7 @@ class PrintService
 
         // 2. Coba gabungkan via qpdf jika belum berhasil
         if (!$merged) {
-            $cmdQpdf = "{$prefix}qpdf --empty --pages " . escapeshellarg($pdfPath) . " " . escapeshellarg($blankPdfPath) . " -- " . escapeshellarg($printablePath) . " 2>&1";
+            $cmdQpdf = "{$prefix}qpdf --linearize --empty --pages " . escapeshellarg($pdfPath) . " " . escapeshellarg($blankPdfPath) . " -- " . escapeshellarg($printablePath) . " 2>&1";
             @exec($cmdQpdf, $outQpdf, $codeQpdf);
             if (file_exists($printablePath) && filesize($printablePath) > 100 && $codeQpdf === 0) {
                 $merged = true;
@@ -232,6 +236,35 @@ class PrintService
             'paper_size' => strtoupper($paperSize),
             'preview_pdf_path' => $pdfPath,
         ];
+    }
+
+    /**
+     * Optimasi dan linearisasi berkas PDF menggunakan Ghostscript (pdfwrite)
+     * untuk menghilangkan overhead XObject FPDI sehingga printer Brother dapat mencetak nonstop tanpa jeda
+     */
+    public function optimizePdfWithGhostscript(string $inputPath, string $outputPath): bool
+    {
+        if (!file_exists($inputPath)) {
+            return false;
+        }
+
+        $prefix = (PHP_OS_FAMILY !== 'Windows') ? 'export HOME=/tmp && ' : '';
+        $gsBinary = 'gs';
+        if (PHP_OS_FAMILY === 'Windows') {
+            $gsCandidates = ['gswin64c', 'gswin32c', 'gs'];
+            foreach ($gsCandidates as $c) {
+                @exec("where {$c} 2>NUL", $wOut, $wRet);
+                if ($wRet === 0) {
+                    $gsBinary = $c;
+                    break;
+                }
+            }
+        }
+
+        $cmd = "{$prefix}{$gsBinary} -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/printer -dFastWebView=true -sOutputFile=" . escapeshellarg($outputPath) . " " . escapeshellarg($inputPath) . " 2>&1";
+        @exec($cmd, $out, $ret);
+
+        return ($ret === 0 && file_exists($outputPath) && filesize($outputPath) > 100);
     }
 
     /**
@@ -273,14 +306,27 @@ class PrintService
 
             // Sisipkan 1 lembar kosong di akhir dokumen sebagai pemisah (dengan ukuran kertas yang sama)
             $pdf->AddPage('P', [$dimensions[0], $dimensions[1]]);
+            // Tambahkan elemen mikro transparan agar RIP mesin langsung memicu showpage tanpa jeda buffer
+            $pdf->SetFont('Helvetica', '', 1);
+            $pdf->SetTextColor(255, 255, 255);
+            $pdf->Text(10, 10, ' ');
 
             $printableDir = Storage::disk('local')->path('print_jobs/printable');
             if (!file_exists($printableDir)) {
                 @mkdir($printableDir, 0777, true);
             }
 
-            $printablePath = $printableDir . '/printable_' . uniqid() . '.pdf';
-            $pdf->Output($printablePath, 'F');
+            $rawPrintablePath = $printableDir . '/printable_' . uniqid() . '.pdf';
+            $pdf->Output($rawPrintablePath, 'F');
+
+            // Optimalkan berkas PDF via Ghostscript (linearisasi & flattening) agar printer laser Brother membaca tanpa jeda
+            $optimizedPath = $printableDir . '/opt_' . uniqid() . '.pdf';
+            if ($this->optimizePdfWithGhostscript($rawPrintablePath, $optimizedPath)) {
+                @unlink($rawPrintablePath);
+                $printablePath = $optimizedPath;
+            } else {
+                $printablePath = $rawPrintablePath;
+            }
 
             return [
                 'total_pages' => $pageCount,
@@ -358,10 +404,37 @@ class PrintService
         $printerPort = (int)(Setting::where('key', 'printer_brother_port')->value('value') ?: 9100);
 
         $filePath = $job->printable_pdf_path ?: $job->preview_pdf_path;
-        if (!file_exists($filePath)) {
-            throw new \Exception("Berkas siap cetak tidak ditemukan di server: {$filePath}");
+        // Prioritas 1: Jika server Linux memiliki CUPS (lp) dan printer Brother terdaftar di CUPS
+        if (function_exists('shell_exec') && !str_starts_with(strtoupper(PHP_OS), 'WIN')) {
+            $lpBin = trim((string)@shell_exec('which lp 2>/dev/null'));
+            if ($lpBin) {
+                $cupsPrinters = (string)@shell_exec('lpstat -p 2>/dev/null');
+                $targetPrinter = null;
+                if (preg_match('/printer\s+([a-zA-Z0-9_\-]+brother[a-zA-Z0-9_\-]*)/i', $cupsPrinters, $m)) {
+                    $targetPrinter = $m[1];
+                }
+
+                if ($targetPrinter) {
+                    $paperOpt = match(strtoupper($job->paper_size ?? 'A4')) {
+                        'F4', 'FOLIO' => 'media=Folio',
+                        'LETTER'      => 'media=Letter',
+                        'LEGAL'       => 'media=Legal',
+                        default       => 'media=A4',
+                    };
+                    $densityOpt = match($job->print_density) {
+                        'light', 'terang' => '-o print-density=1',
+                        'dark', 'pekat'   => '-o print-density=5',
+                        default           => '-o print-density=3',
+                    };
+                    $cmd = "lp -d " . escapeshellarg($targetPrinter) . " -o {$paperOpt} -o ColorModel=Gray {$densityOpt} " . escapeshellarg($filePath) . " 2>&1";
+                    $output = shell_exec($cmd);
+                    Log::info("Mencetak dokumen ke Brother via CUPS ({$targetPrinter}): {$cmd} - Output: {$output}");
+                    return true;
+                }
+            }
         }
 
+        // Prioritas 2: Transmisi langsung via TCP Socket RAW Port 9100
         $fileContent = file_get_contents($filePath);
         $cleanDocTitle = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $job->document_title ?: 'SINDEN_DOC');
 
@@ -385,7 +458,8 @@ class PrintService
             . "@PJL SET PAPER = {$paperPjl}\r\n"
             . $densityLines
             . "@PJL ENTER LANGUAGE = PDF\r\n";
-        $pjlFooter = "\r\n\x1B%-12345X@PJL EOJ\r\n\x1B%-12345X\r\n";
+        // \x0C (Form Feed) memaksa mekanik printer langsung mengeluarkan lembar pemisah tanpa jeda timeout buffer
+        $pjlFooter = "\r\n\x0C\x1B%-12345X@PJL EOJ\r\n\x1B%-12345X\r\n";
 
         $dataStream = $pjlHeader . $fileContent . $pjlFooter;
         $streamLength = strlen($dataStream);
@@ -565,20 +639,53 @@ class PrintService
         }
 
         $elapsed = now()->diffInSeconds($activeJob->started_at);
-        // Durasi mekanik cetak per lembar:
-        // Canon G3010 Warna Kualitas Tinggi (~8 detik/lembar)
-        // Brother Monokrom Laser (~3.5 detik/lembar)
-        $secondsPerSheet = ($activeJob->color_mode === 'color' || $activeJob->printer_brand === 'canon') ? 8 : 4;
-        $totalSheets = max(1, $activeJob->total_sheets);
+        $isCanon = ($activeJob->color_mode === 'color' || $activeJob->printer_brand === 'canon');
 
-        $currentSheet = min($totalSheets, 1 + (int)floor($elapsed / $secondsPerSheet));
+        // Parameter kecepatan mekanik printer yang sebenarnya:
+        // Waktu spooling & pemanasan mekanik printer sebelum lembar pertama ditarik:
+        $warmupSeconds = $isCanon ? 10 : 4;
+        
+        // Durasi cetak per halaman naskah:
+        // Canon G3010 Warna Kualitas Tinggi (~25 detik/lembar)
+        // Brother Laser Monokrom (~3.0 detik/lembar setelah dioptimalkan Ghostscript)
+        $secondsPerPage = $isCanon ? 25 : 3;
+
+        // Durasi lembar pemisah kosong (sangat cepat karena tidak ada proses cetak/tinta):
+        $secondsSeparator = $isCanon ? 4 : 2;
+
+        $totalPages = max(1, (int)$activeJob->total_pages);
+        $totalSheets = max(1, (int)$activeJob->total_sheets);
+
+        if ($elapsed < $warmupSeconds) {
+            $currentSheet = 1;
+        } else {
+            $printElapsed = $elapsed - $warmupSeconds;
+            $pagesPrinted = (int)floor($printElapsed / $secondsPerPage);
+
+            if ($pagesPrinted < $totalPages) {
+                $currentSheet = min($totalPages, 1 + $pagesPrinted);
+            } else {
+                // Seluruh halaman naskah selesai, sekarang tahap mengeluarkan lembar pemisah kosong
+                $currentSheet = $totalSheets;
+            }
+        }
 
         if ($currentSheet > $activeJob->printed_sheets) {
             $activeJob->update(['printed_sheets' => $currentSheet]);
         }
 
-        // Jika seluruh lembar telah terlewati ditambah jeda finalisasi 2 detik
-        $totalDuration = ($totalSheets * $secondsPerSheet) + 2;
+        // Total durasi proses cetak dari awal sampai lembar pemisah keluar
+        $totalDuration = $warmupSeconds + ($totalPages * $secondsPerPage) + $secondsSeparator + 2;
+
+        // Jika printer terdaftar di CUPS Linux, pantau apakah spooler CUPS masih memproses data
+        if (function_exists('shell_exec') && !str_starts_with(strtoupper(PHP_OS), 'WIN')) {
+            $cupsActive = (string)@shell_exec('lpstat -o 2>/dev/null');
+            // Jika antrean CUPS masih memproses kiriman dokumen ke printer fisik
+            if (!empty(trim($cupsActive)) && $elapsed < ($totalDuration * 2)) {
+                return;
+            }
+        }
+
         if ($elapsed >= $totalDuration) {
             $activeJob->update([
                 'printed_sheets' => $totalSheets,

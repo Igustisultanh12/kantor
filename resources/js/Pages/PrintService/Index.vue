@@ -602,11 +602,14 @@ onUnmounted(() => {
                   <span class="text-[10px] font-bold text-blue-200 block">Status Pencetakan Lembar:</span>
                   <span class="font-black text-amber-300 text-xs uppercase block">
                     <template v-if="currentActiveJob.printed_sheets <= currentActiveJob.total_pages">
-                      Mencetak Halaman {{ currentActiveJob.printed_sheets }} dari {{ currentActiveJob.total_pages }}
+                      Mencetak Halaman {{ currentActiveJob.printed_sheets }} dari {{ currentActiveJob.total_pages }} Naskah
                     </template>
                     <template v-else>
-                      Mencetak 1 Lembar Kertas Pemisah Kosong
+                      Mengeluarkan 1 Lembar Kertas Pemisah Kosong
                     </template>
+                  </span>
+                  <span class="text-[10px] text-blue-200 block font-semibold mt-0.5">
+                    {{ currentActiveJob.color_mode === 'color' || currentActiveJob.printer_brand === 'canon' ? 'Canon G3010: Mode Cetak Warna Kualitas Tinggi' : 'Brother Laser: Mode Cetak Hitam Putih' }}
                   </span>
                 </div>
                 <div class="text-right">
