@@ -283,6 +283,16 @@ const changePdfPage = async (delta) => {
   }
 };
 
+const goToPdfPage = async (pageNumber) => {
+  if (pageNumber === currentPage.value) return;
+  saveCurrentPagePos();
+  if (pageNumber >= 1 && pageNumber <= totalPages.value) {
+    currentPage.value = pageNumber;
+    await renderPdfPage(currentPage.value);
+    loadPagePos();
+  }
+};
+
 const onOperatorFileSelect = async (e) => {
   const file = e.target.files[0];
   if (!file) return;
@@ -899,22 +909,66 @@ const getStatusClass = (status) => {
           <span class="text-blue-600 text-[10px] font-black uppercase tracking-widest">VERIFIKASI PDF MULTI-HALAMAN</span>
           
           <!-- Page Controls (Halaman Lebih Dari Satu) -->
-          <div v-if="totalPages > 1" class="flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-xl border border-slate-200 text-xs">
-            <button @click="changePdfPage(-1)" :disabled="currentPage <= 1" class="px-2 py-0.5 rounded bg-white font-bold text-slate-700 disabled:opacity-30 hover:bg-slate-200"></button>
-            <span class="font-bold text-slate-800">Halaman {{ currentPage }} / {{ totalPages }}</span>
-            <button @click="changePdfPage(1)" :disabled="currentPage >= totalPages" class="px-2 py-0.5 rounded bg-white font-bold text-slate-700 disabled:opacity-30 hover:bg-slate-200"></button>
-            <span v-if="activePagesList.length > 0" class="ml-1 px-2.5 py-0.5 bg-blue-600 text-white rounded-md text-[10px] font-extrabold uppercase shadow-xs"> TTD Terpasang di {{ activePagesList.length }} Hal: (Hal. {{ activePagesList.join(', ') }})
+          <div v-if="totalPages > 1" class="flex items-center gap-1.5 sm:gap-2 bg-slate-100 p-1 sm:p-1.5 rounded-2xl border border-slate-200 text-xs shadow-inner flex-wrap">
+            <!-- Tombol Halaman Sebelumnya -->
+            <button 
+              type="button"
+              @click="changePdfPage(-1)" 
+              :disabled="currentPage <= 1" 
+              class="px-2.5 py-1.5 rounded-xl bg-white font-black text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-200 border border-slate-200 flex items-center gap-1 transition shadow-xs cursor-pointer text-xs"
+              title="Ke Halaman Sebelumnya">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+              <span class="hidden sm:inline">Sebelumnya</span>
+            </button>
+
+            <!-- Indikator Halaman -->
+            <span class="font-extrabold text-slate-800 px-1 sm:px-2 whitespace-nowrap text-xs">
+              Halaman <span class="text-blue-600 text-sm font-black">{{ currentPage }}</span> / {{ totalPages }}
+            </span>
+
+            <!-- Tombol Halaman Berikutnya (Menuju Halaman 2, 3, dst) -->
+            <button 
+              type="button"
+              @click="changePdfPage(1)" 
+              :disabled="currentPage >= totalPages" 
+              class="px-2.5 py-1.5 rounded-xl bg-blue-600 text-white font-black hover:bg-blue-700 disabled:bg-white disabled:text-slate-400 disabled:border-slate-200 disabled:opacity-30 disabled:cursor-not-allowed border border-blue-600 flex items-center gap-1 transition shadow-xs cursor-pointer text-xs"
+              title="Ke Halaman Berikutnya">
+              <span class="hidden sm:inline">Berikutnya</span>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+            </button>
+
+            <!-- Pilihan Cepat Nomor Halaman Langsung (Direct Page Selector) -->
+            <div class="flex items-center gap-1 border-l border-slate-300 pl-1.5 sm:pl-2 ml-1">
+              <button 
+                v-for="p in totalPages" 
+                :key="'p-btn-' + p"
+                type="button"
+                @click="goToPdfPage(p)"
+                :class="currentPage === p ? 'bg-blue-600 text-white font-black shadow-xs ring-2 ring-blue-300' : 'bg-white text-slate-700 hover:bg-slate-200 font-bold border border-slate-200'"
+                class="px-2.5 py-1 rounded-lg text-xs transition cursor-pointer flex items-center gap-1">
+                <span>Hal {{ p }}</span>
+                <span v-if="pageSignatures && pageSignatures[p]" class="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Ada TTD"></span>
+              </button>
+            </div>
+
+            <!-- Badge TTD Terpasang -->
+            <span v-if="activePagesList.length > 0" class="ml-1 px-2.5 py-1 bg-emerald-700 text-white rounded-xl text-[10px] font-black uppercase shadow-xs flex items-center gap-1 shrink-0">
+              <svg class="w-3 h-3 text-emerald-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>TTD di {{ activePagesList.length }} Hal: (Hal {{ activePagesList.join(', ') }})</span>
             </span>
           </div>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 shrink-0">
           <button v-if="isAdjusting && isCurrentPageActive" @click="removeCurrentPageSignature" class="bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl text-xs font-black uppercase shadow-md"> Hapus TTD di Hal. {{ currentPage }}
           </button>
           <button v-else-if="isAdjusting && !isCurrentPageActive" @click="addCurrentPageSignature" class="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-black uppercase shadow-md">
             + Pasang TTD di Hal. {{ currentPage }}
           </button>
-          <button @click="closeOperatorPosPicker" class="bg-rose-50 text-rose-600 px-3 py-2 rounded-xl text-xs font-black uppercase border border-rose-100"></button>
+          <button type="button" @click="closeOperatorPosPicker" class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-3 py-2 rounded-xl text-xs font-black uppercase border border-rose-200 flex items-center gap-1 transition cursor-pointer" title="Tutup Pratinjau">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            <span class="hidden sm:inline">Tutup</span>
+          </button>
         </div>
       </div>
 
@@ -950,8 +1004,21 @@ const getStatusClass = (status) => {
       </div>
 
       <!-- Banner Petunjuk Multi-Halaman -->
-      <div v-if="totalPages > 1" class="bg-blue-50 border-t border-b border-blue-100 px-4 py-2.5 text-center text-xs font-bold text-blue-900 shrink-0 flex items-center justify-center gap-2 flex-wrap">
-        <span>Dokumen ini memiliki <strong>{{ totalPages }} Halaman</strong>. Buka halaman tempat TTD berada menggunakan tombol   di atas, lalu pilih halaman mana saja yang ingin dipasang atau dihapus TTD-nya.</span>
+      <div v-if="totalPages > 1" class="bg-blue-50 border-t border-b border-blue-100 px-4 py-2.5 text-center text-xs font-bold text-blue-900 shrink-0 flex items-center justify-center gap-3 flex-wrap">
+        <span>Dokumen ini memiliki <strong>{{ totalPages }} Halaman</strong>. Buka halaman target TTD:</span>
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <button 
+            v-for="p in totalPages" 
+            :key="'bottom-p-' + p"
+            type="button"
+            @click="goToPdfPage(p)"
+            :class="currentPage === p ? 'bg-blue-600 text-white font-black shadow-xs ring-2 ring-blue-300' : 'bg-white text-blue-900 border border-blue-200 hover:bg-blue-100 font-bold'"
+            class="px-3 py-1.5 rounded-xl text-xs transition cursor-pointer flex items-center gap-1.5 shadow-2xs">
+            <span>Ke Halaman {{ p }}</span>
+            <span v-if="pageSignatures && pageSignatures[p]" class="px-1.5 py-0.2 bg-emerald-600 text-white text-[9px] rounded font-black uppercase">Ada TTD</span>
+            <span v-else class="text-[9px] text-slate-400 font-normal">Tanpa TTD</span>
+          </button>
+        </div>
       </div>
 
       <!-- Bottom Bar untuk Operator (Save Position Only) -->
@@ -985,7 +1052,7 @@ const getStatusClass = (status) => {
               <span class="text-[9px] font-black text-blue-600 uppercase tracking-widest block">REGISTRASI BERKAS & METADATA PUBLIC VERIFY</span>
               <h3 class="font-black text-sm sm:text-base text-slate-900 uppercase leading-tight">Unggah Berkas Dinas (PDF)</h3>
             </div>
-            <button @click="isModalOpen = false" class="text-slate-400 hover:text-slate-600 font-bold p-1"></button>
+            <button type="button" @click="isModalOpen = false" class="text-slate-400 hover:text-slate-600 font-bold p-1 text-2xl leading-none transition cursor-pointer" title="Tutup">&times;</button>
           </div>
 
           <form @submit.prevent="submitRequest" class="space-y-4 overflow-y-auto custom-scrollbar pr-1 flex-1">

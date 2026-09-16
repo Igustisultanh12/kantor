@@ -179,7 +179,7 @@
       <div class="bg-white max-w-xl w-full p-6 rounded-2xl shadow-xl space-y-4 border border-gray-200 text-left transition-all">
         <div class="flex justify-between items-center border-b border-gray-200 pb-3">
           <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest">Verifikasi Berkas Lampiran</h3>
-          <button @click="activeModal = null" class="text-slate-400 hover:text-slate-600 font-bold text-lg"></button>
+          <button type="button" @click="activeModal = null" class="text-slate-400 hover:text-slate-600 font-bold text-2xl leading-none transition cursor-pointer" title="Tutup">&times;</button>
         </div>
         
         <div class="bg-slate-50 p-4 rounded-xl border border-gray-200 text-xs text-slate-700 space-y-3">
@@ -222,7 +222,7 @@
       <div class="bg-white max-w-md w-full p-6 rounded-2xl shadow-xl space-y-4 border border-gray-200 text-left">
         <div class="flex justify-between items-center border-b border-gray-200 pb-3">
           <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest">Penjadwalan Wawancara Pemohon</h3>
-          <button @click="activeModal = null" class="text-slate-400 hover:text-slate-600 font-bold text-lg"></button>
+          <button type="button" @click="activeModal = null" class="text-slate-400 hover:text-slate-600 font-bold text-2xl leading-none transition cursor-pointer" title="Tutup">&times;</button>
         </div>
         <div class="space-y-3">
           <div>
@@ -252,7 +252,7 @@
       <div class="bg-white max-w-md w-full p-6 rounded-2xl shadow-xl space-y-4 border border-gray-200 text-left">
         <div class="flex justify-between items-center border-b border-gray-200 pb-3">
           <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest">Unggah Hasil Format SKHPP</h3>
-          <button @click="activeModal = null" class="text-slate-400 hover:text-slate-600 font-bold text-lg"></button>
+          <button type="button" @click="activeModal = null" class="text-slate-400 hover:text-slate-600 font-bold text-2xl leading-none transition cursor-pointer" title="Tutup">&times;</button>
         </div>
         <div class="space-y-3">
           <div>
@@ -278,7 +278,7 @@
       <div class="bg-white max-w-md w-full p-6 rounded-2xl shadow-xl space-y-4 border border-gray-200 text-left">
         <div class="flex justify-between items-center border-b border-gray-200 pb-3">
           <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest">Koreksi Data Primer Personel</h3>
-          <button @click="activeModal = null" class="text-slate-400 hover:text-slate-600 font-bold text-lg"></button>
+          <button type="button" @click="activeModal = null" class="text-slate-400 hover:text-slate-600 font-bold text-2xl leading-none transition cursor-pointer" title="Tutup">&times;</button>
         </div>
         <div class="space-y-3">
           <div>
