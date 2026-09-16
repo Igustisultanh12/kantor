@@ -620,12 +620,5 @@ class PrintService
                 @rmdir($parentDir);
             }
         }
-
-        // Kosongkan path fisik pada database agar terverifikasi bersih dari disk
-        $job->update([
-            'original_file_path' => null,
-            'preview_pdf_path' => null,
-            'printable_pdf_path' => null,
-        ]);
     }
 }
