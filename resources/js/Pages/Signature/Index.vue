@@ -20,6 +20,7 @@ const props = defineProps({
 const page = usePage();
 const user = computed(() => page.props.auth.user);
 const commanderSignature = computed(() => page.props.settings?.commander_signature || 'signatures/komandan_ttd.png');
+const isCommander = computed(() => user.value?.role === 'komandan');
 
 // State Active Tab
 const activeTab = ref('skhpp'); // 'skhpp' | 'pdf'
@@ -498,8 +499,18 @@ const openPdfPreview = async (req) => {
 
 const enableDrag = () => {
   isAdjusting.value = true;
-  saveCurrentPagePos();
+  if (!isCommander.value) {
+    saveCurrentPagePos();
+  }
   nextTick(() => {
+    // Khusus Komandan: Posisi QR terkunci, tidak dapat digeser atau diubah ukurannya
+    if (isCommander.value) {
+      try {
+        interact('.drag-signature').unset();
+      } catch (e) {}
+      return;
+    }
+
     const canvas = document.getElementById('pdf-render-canvas');
     if (canvas) {
       if (signaturePos.value.x <= 50 || signaturePos.value.y <= 100) {
@@ -538,26 +549,31 @@ const enableDrag = () => {
 const handlePdfDecision = (status, applyAll = false) => {
   if (status === 'rejected') {
     Swal.fire({
-      title: 'Tolak Berkas PDF',
-      text: "Berikan alasan penolakan untuk staf:",
+      title: 'TOLAK PENGAJUAN BERKAS',
+      text: "Tuliskan alasan penolakan atau catatan revisi untuk staf pemohon:",
       input: 'textarea',
+      inputPlaceholder: 'Tuliskan alasan penolakan...',
       showCancelButton: true,
-      confirmButtonText: 'Kirim Penolakan',
+      confirmButtonText: 'KIRIM PENOLAKAN',
       confirmButtonColor: '#e11d48',
-      inputValidator: (value) => { if (!value) return 'Alasan wajib diisi!' }
+      cancelButtonText: 'BATAL',
+      cancelButtonColor: '#94a3b8',
+      inputValidator: (value) => { if (!value) return 'Alasan penolakan wajib diisi!' }
     }).then((result) => {
       if (result.isConfirmed) {
         decisionForm.status = 'rejected';
         decisionForm.note = result.value;
         decisionForm.patch(route('signature.update', selectedReqId.value), {
-          onSuccess: () => { isPreviewOpen.value = false; Swal.fire('Berhasil', 'Berkas ditolak.', 'success'); }
+          onSuccess: () => { isPreviewOpen.value = false; Swal.fire('BERHASIL', 'Pengajuan berkas ditolak.', 'success'); }
         });
       }
     });
     return;
   }
 
-  saveCurrentPagePos();
+  if (!isCommander.value) {
+    saveCurrentPagePos();
+  }
   const canvas = document.getElementById('pdf-render-canvas');
   const configuredCount = Object.keys(pageSignatures.value).length;
   
@@ -570,17 +586,17 @@ const handlePdfDecision = (status, applyAll = false) => {
   decisionForm.apply_to_all = applyAll;
   decisionForm.pages_data = configuredCount > 0 ? JSON.stringify(pageSignatures.value) : null;
   
-  let textMsg = `TTD Terpasang Presisi pada Halaman ${currentPage.value}`;
+  let textMsg = `Tanda Tangan Elektronik Komandan berhasil dibubuhkan pada Halaman ${currentPage.value}`;
   if (configuredCount > 1 && !applyAll) {
-    textMsg = `TTD Terpasang Presisi pada ${configuredCount} Halaman Berbeda dengan Letak Custom!`;
+    textMsg = `Tanda Tangan Elektronik Komandan berhasil dibubuhkan pada ${configuredCount} Halaman Dokumen!`;
   } else if (applyAll) {
-    textMsg = `TTD Terpasang Presisi pada SELURUH HALAMAN (1 s.d. ${totalPages.value})`;
+    textMsg = `Tanda Tangan Elektronik Komandan berhasil dibubuhkan pada SELURUH HALAMAN (1 s.d. ${totalPages.value})`;
   }
 
   decisionForm.patch(route('signature.update', selectedReqId.value), {
     onSuccess: () => { 
       isPreviewOpen.value = false; 
-      Swal.fire({ icon: 'success', title: 'Berhasil', text: textMsg, timer: 2500, showConfirmButton: false }); 
+      Swal.fire({ icon: 'success', title: 'BERHASIL', text: textMsg, timer: 2500, showConfirmButton: false }); 
     }
   });
 };
@@ -836,7 +852,8 @@ const getStatusClass = (status) => {
                 </td>
                 <td class="p-4 text-right">
                   <div class="flex justify-end gap-2 items-center">
-                    <button @click="openPdfPreview(req)" class="bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 px-3.5 py-1.5 rounded-xl text-[9px] font-black uppercase cursor-pointer"> Periksa & Atur TTD
+                    <button @click="openPdfPreview(req)" class="bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 px-3.5 py-1.5 rounded-xl text-[9px] font-black uppercase cursor-pointer">
+                      {{ isCommander ? 'Periksa & Bubuhkan TTE' : 'Periksa & Atur TTD' }}
                     </button>
                     
                     <button 
@@ -1162,11 +1179,14 @@ const getStatusClass = (status) => {
             <span class="sm:hidden">Link</span>
           </button>
 
-          <button v-if="isAdjusting && isCurrentPageActive" @click="removeCurrentPageSignature" class="bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl text-xs font-black uppercase shadow-md"> Hapus TTD di Hal. {{ currentPage }}
-          </button>
-          <button v-else-if="isAdjusting && !isCurrentPageActive" @click="addCurrentPageSignature" class="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-black uppercase shadow-md">
-            + Pasang TTD di Hal. {{ currentPage }}
-          </button>
+          <!-- Opsi atur TTD per halaman hanya untuk selain Komandan -->
+          <template v-if="!isCommander">
+            <button v-if="isAdjusting && isCurrentPageActive" @click="removeCurrentPageSignature" class="bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl text-xs font-black uppercase shadow-md"> Hapus TTD di Hal. {{ currentPage }}
+            </button>
+            <button v-else-if="isAdjusting && !isCurrentPageActive" @click="addCurrentPageSignature" class="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-black uppercase shadow-md">
+              + Pasang TTD di Hal. {{ currentPage }}
+            </button>
+          </template>
           <button type="button" @click="closeOperatorPosPicker" class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-3 py-2 rounded-xl text-xs font-black uppercase border border-rose-200 flex items-center gap-1 transition cursor-pointer" title="Tutup Pratinjau">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             <span class="hidden sm:inline">Tutup</span>
@@ -1183,12 +1203,24 @@ const getStatusClass = (status) => {
         <div class="relative bg-white shadow-2xl overflow-hidden rounded-sm" style="line-height: 0;">
           <canvas id="pdf-render-canvas"></canvas>
 
-          <!-- Draggable Signature Box (Presisi 1:1 e-Materai TTD Digital) -->
-          <div v-if="isAdjusting && isCurrentPageActive" class="drag-signature absolute z-[200] cursor-move border-2 border-blue-600 bg-white shadow-2xl flex items-center justify-center touch-none text-center p-0.5"
+          <!-- Signature Box (Khusus Komandan: Posisi Terkunci / Read-Only; Operator: Draggable & Resizable) -->
+          <div v-if="isAdjusting && isCurrentPageActive" 
+               :class="isCommander 
+                 ? 'border-2 border-emerald-600 bg-white/95 shadow-xl select-none cursor-default' 
+                 : 'drag-signature cursor-move border-2 border-blue-600 bg-white shadow-2xl touch-none'"
+               class="absolute z-[200] flex items-center justify-center text-center p-0.5"
                :style="{ left: signaturePos.x + 'px', top: signaturePos.y + 'px', width: signatureSize.width + 'px', height: signatureSize.height + 'px' }">
             <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=SINDEN_PREVIEW" class="w-full h-full object-contain pointer-events-none" alt="QR Code TTD Digital" />
-            <div class="absolute -bottom-2 -right-2 w-6 h-6 bg-blue-600 rounded-full border-2 border-white shadow-lg cursor-se-resize flex items-center justify-center">
+            
+            <!-- Resize handle hanya untuk Operator / Non-Komandan -->
+            <div v-if="!isCommander" class="absolute -bottom-2 -right-2 w-6 h-6 bg-blue-600 rounded-full border-2 border-white shadow-lg cursor-se-resize flex items-center justify-center">
               <div class="w-1.5 h-1.5 bg-white rounded-full"></div>
+            </div>
+
+            <!-- Badge Posisi TTE Digital untuk Komandan -->
+            <div v-if="isCommander" class="absolute -top-6 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded shadow-sm whitespace-nowrap flex items-center gap-1 pointer-events-none">
+              <svg class="w-2.5 h-2.5 text-emerald-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+              <span>POSISI TTE DIGITAL</span>
             </div>
           </div>
 
@@ -1197,7 +1229,7 @@ const getStatusClass = (status) => {
             <div class="bg-white/95 p-5 rounded-2xl shadow-2xl border border-slate-200 max-w-xs space-y-2">
               <span class="text-xs font-black uppercase text-slate-500 block">Halaman {{ currentPage }} Tanpa TTD</span>
               <p class="text-[10px] text-slate-600 font-medium">Halaman ini dibuat tanpa tanda tangan Komandan.</p>
-              <button type="button" @click="addCurrentPageSignature" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-xl text-xs font-black uppercase shadow-md">
+              <button v-if="!isCommander" type="button" @click="addCurrentPageSignature" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-xl text-xs font-black uppercase shadow-md">
                 + Pasang TTD di Halaman {{ currentPage }}
               </button>
             </div>
@@ -1231,8 +1263,38 @@ const getStatusClass = (status) => {
         </button>
       </div>
 
-      <!-- Bottom Confirm / Reject Bar untuk Komandan & Admin -->
-      <div v-else-if="user.role === 'komandan' || user.role === 'admin'" class="bg-white border-t p-4 flex flex-wrap justify-center gap-3 shrink-0 shadow-2xl">
+      <!-- Bottom Bar Khusus Komandan: Hanya Bubuhkan TTE / Tolak dengan Alasan -->
+      <div v-else-if="isCommander" class="bg-white border-t px-6 py-4 flex flex-wrap justify-center items-center gap-3 sm:gap-4 shrink-0 shadow-2xl">
+        <button 
+          type="button"
+          @click="handlePdfDecision('approved', false)" 
+          :disabled="decisionForm.processing" 
+          class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white px-8 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg shadow-emerald-600/30 flex items-center gap-2 transition cursor-pointer"
+          title="Bubuhkan Tanda Tangan Elektronik Komandan">
+          <svg class="w-4 h-4 text-emerald-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+          <span>BUBUHKAN TTE</span>
+        </button>
+
+        <button 
+          type="button"
+          @click="handlePdfDecision('rejected')" 
+          :disabled="decisionForm.processing" 
+          class="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white px-7 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg shadow-rose-600/30 flex items-center gap-2 transition cursor-pointer"
+          title="Tolak Pengajuan Dokumen dengan Alasan">
+          <svg class="w-4 h-4 text-rose-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+          <span>TOLAK DENGAN ALASAN</span>
+        </button>
+
+        <button 
+          type="button" 
+          @click="isPreviewOpen = false" 
+          class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-6 py-3.5 rounded-2xl font-black text-xs uppercase border border-slate-200 transition cursor-pointer">
+          BATAL
+        </button>
+      </div>
+
+      <!-- Bottom Confirm / Reject Bar untuk Admin -->
+      <div v-else-if="user.role === 'admin'" class="bg-white border-t p-4 flex flex-wrap justify-center gap-3 shrink-0 shadow-2xl">
         <button v-if="isAdjusting" @click="handlePdfDecision('approved', false)" :disabled="decisionForm.processing" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg"> SETUJUI & STAMP TTD DIGITAL ( PADA {{ activePagesList.length }} HALAMAN TERPILIH )
         </button>
         <button v-if="isAdjusting && totalPages > 1" @click="handlePdfDecision('approved', true)" :disabled="decisionForm.processing" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase shadow-lg"> SETUJUI DI SEMUA HALAMAN (1 s.d. {{ totalPages }})
