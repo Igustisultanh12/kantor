@@ -42,11 +42,19 @@ class PrintServiceController extends Controller
             ->get();
 
         $printerSettings = [
+            'brother_ip' => Setting::where('key', 'printer_brother_ip')->value('value') ?: '192.168.1.200',
+            'brother_port' => (int)(Setting::where('key', 'printer_brother_port')->value('value') ?: 9100),
+            'brother_name' => Setting::where('key', 'printer_brother_name')->value('value') ?: 'Brother Network Printer',
+
+            'canon_ip' => Setting::where('key', 'printer_canon_ip')->value('value') ?: '192.168.1.201',
+            'canon_port' => (int)(Setting::where('key', 'printer_canon_port')->value('value') ?: 9100),
+            'canon_name' => Setting::where('key', 'printer_canon_name')->value('value') ?: 'Canon PIXMA G3010 Series',
+            'canon_quality' => Setting::where('key', 'printer_canon_quality')->value('value') ?: 'very_high',
+
+            // Legacy keys untuk kompatibilitas
             'printer_ip' => Setting::where('key', 'printer_brother_ip')->value('value') ?: '192.168.1.200',
             'printer_port' => (int)(Setting::where('key', 'printer_brother_port')->value('value') ?: 9100),
             'printer_name' => Setting::where('key', 'printer_brother_name')->value('value') ?: 'Brother Network Printer',
-            'color_mode' => 'monochrome',
-            'warning_notice' => 'Layanan ini hanya tersedia warna Hitam putih saja',
         ];
 
         return Inertia::render('PrintService/Index', [
@@ -71,13 +79,20 @@ class PrintServiceController extends Controller
         $request->validate([
             'document_title' => 'required|string|max:255',
             'file' => 'required|file|mimes:pdf,docx,doc|max:51200', // Maksimal 50MB
+            'color_mode' => 'nullable|string|in:monochrome,color',
+            'paper_size' => 'nullable|string|in:A4,F4,FOLIO,Folio,Letter,Legal',
             'print_density' => 'nullable|string|in:normal,light,dark,terang,pekat',
         ]);
 
         $file = $request->file('file');
         $originalFilename = $file->getClientOriginalName();
         $fileType = strtolower($file->getClientOriginalExtension());
+        $colorMode = $request->input('color_mode', 'monochrome');
+        $paperSize = strtoupper($request->input('paper_size', 'A4'));
+        if ($paperSize === 'FOLIO') $paperSize = 'F4';
         $printDensity = $request->input('print_density', 'normal');
+        $printerBrand = ($colorMode === 'color') ? 'canon' : 'brother';
+        $printQuality = ($colorMode === 'color') ? 'very_high' : 'normal';
 
         // Simpan berkas asli
         $storedPath = $file->store('print_jobs/originals', 'local');
@@ -93,11 +108,13 @@ class PrintServiceController extends Controller
             // 1. Dapatkan berkas PDF untuk pratinjau (konversi jika DOCX / DOC)
             $previewPdfPath = $this->printService->convertToPdf($originalFullPath, $fileType);
 
-            // 2. Siapkan berkas siap cetak dengan menyisipkan 1 lembar kosong pemisah
-            $prepResult = $this->printService->preparePrintablePdf($previewPdfPath);
+            // 2. Siapkan berkas siap cetak dengan menyisipkan 1 lembar kosong pemisah & ukuran kertas target
+            $prepResult = $this->printService->preparePrintablePdf($previewPdfPath, $paperSize);
 
-            // 3. Simpan entitas PrintJob berstatus 'draft'
-            $printerIp = Setting::where('key', 'printer_brother_ip')->value('value') ?: '192.168.1.200';
+            // 3. Tentukan IP Printer tujuan
+            $printerIp = ($printerBrand === 'canon')
+                ? (Setting::where('key', 'printer_canon_ip')->value('value') ?: '192.168.1.201')
+                : (Setting::where('key', 'printer_brother_ip')->value('value') ?: '192.168.1.200');
 
             $job = PrintJob::create([
                 'user_id' => Auth::id(),
@@ -112,7 +129,10 @@ class PrintServiceController extends Controller
                 'total_sheets' => $prepResult['total_sheets'],
                 'printed_sheets' => 0,
                 'copies' => 1,
-                'color_mode' => 'monochrome',
+                'color_mode' => $colorMode,
+                'paper_size' => $paperSize,
+                'printer_brand' => $printerBrand,
+                'print_quality' => $printQuality,
                 'print_density' => $printDensity,
                 'printer_ip' => $printerIp,
                 'status' => 'draft',
@@ -171,10 +191,32 @@ class PrintServiceController extends Controller
             return back()->with('error', 'Dokumen ini sudah pernah diproses.');
         }
 
+        $colorMode = $request->input('color_mode', $job->color_mode ?: 'monochrome');
+        $paperSize = strtoupper($request->input('paper_size', $job->paper_size ?: 'A4'));
+        if ($paperSize === 'FOLIO') $paperSize = 'F4';
         $density = $request->input('print_density', $job->print_density ?: 'normal');
+        $printerBrand = ($colorMode === 'color') ? 'canon' : 'brother';
+        $printQuality = ($colorMode === 'color') ? 'very_high' : 'normal';
+
+        $printerIp = ($printerBrand === 'canon')
+            ? (Setting::where('key', 'printer_canon_ip')->value('value') ?: '192.168.1.201')
+            : (Setting::where('key', 'printer_brother_ip')->value('value') ?: '192.168.1.200');
+
+        // Jika ukuran kertas disesuaikan ulang saat konfirmasi pratinjau, perbarui printable pdf
+        $printablePath = $job->printable_pdf_path;
+        if ($paperSize !== $job->paper_size && $job->preview_pdf_path && file_exists($job->preview_pdf_path)) {
+            $prepResult = $this->printService->preparePrintablePdf($job->preview_pdf_path, $paperSize);
+            $printablePath = $prepResult['printable_pdf_path'];
+        }
 
         $job->update([
+            'color_mode' => $colorMode,
+            'paper_size' => $paperSize,
+            'printer_brand' => $printerBrand,
+            'print_quality' => $printQuality,
             'print_density' => $density,
+            'printer_ip' => $printerIp,
+            'printable_pdf_path' => $printablePath,
             'status' => 'queued',
             'error_message' => null
         ]);
@@ -213,6 +255,9 @@ class PrintServiceController extends Controller
      */
     public function getQueueStatus()
     {
+        // Perbarui progres lembar cetak aktif secara bertahap
+        $this->printService->tickActiveJobProgress();
+
         $activeJob = PrintJob::with('user')
             ->where('status', 'printing')
             ->first();
@@ -228,12 +273,6 @@ class PrintServiceController extends Controller
             ->take(10)
             ->get();
 
-        // Jika tidak ada job yang sedang dicetak namun masih ada antrean yang menunggu,
-        // picu proses antrean untuk menjaga kestabilan
-        if (!$activeJob && $queuedJobs->isNotEmpty()) {
-            $this->printService->processQueue();
-        }
-
         return response()->json([
             'active_job' => $activeJob,
             'queued_jobs' => $queuedJobs,
@@ -247,7 +286,7 @@ class PrintServiceController extends Controller
     }
 
     /**
-     * Tes koneksi soket IP Printer Brother (Khusus Admin)
+     * Tes koneksi soket IP Printer (Brother atau Canon G3010) (Khusus Admin)
      */
     public function testPrinterConnection(Request $request)
     {
@@ -255,15 +294,16 @@ class PrintServiceController extends Controller
             return response()->json(['success' => false, 'message' => 'Otoritas ditolak.'], 403);
         }
 
+        $target = $request->input('target', 'brother');
         $ip = $request->input('ip');
         $port = (int)$request->input('port', 9100);
 
-        $result = $this->printService->testPrinterConnection($ip, $port);
+        $result = $this->printService->testPrinterConnection($ip, $port, $target);
         return response()->json($result);
     }
 
     /**
-     * Pembaruan pengaturan IP Printer Brother (Khusus Admin)
+     * Pembaruan pengaturan IP Printer Jaringan Brother & Canon G3010 (Khusus Admin)
      */
     public function updatePrinterSettings(Request $request)
     {
@@ -272,17 +312,44 @@ class PrintServiceController extends Controller
         }
 
         $request->validate([
-            'printer_ip' => 'required|string|max:100',
-            'printer_port' => 'required|integer|min:1|max:65535',
+            'target' => 'nullable|string|in:brother,canon,both',
+            'brother_ip' => 'nullable|string|max:100',
+            'brother_port' => 'nullable|integer|min:1|max:65535',
+            'brother_name' => 'nullable|string|max:100',
+            'canon_ip' => 'nullable|string|max:100',
+            'canon_port' => 'nullable|integer|min:1|max:65535',
+            'canon_name' => 'nullable|string|max:100',
+            'printer_ip' => 'nullable|string|max:100',
+            'printer_port' => 'nullable|integer|min:1|max:65535',
             'printer_name' => 'nullable|string|max:100',
         ]);
 
-        Setting::updateOrCreate(['key' => 'printer_brother_ip'], ['value' => trim($request->printer_ip)]);
-        Setting::updateOrCreate(['key' => 'printer_brother_port'], ['value' => (string)$request->printer_port]);
-        if ($request->filled('printer_name')) {
-            Setting::updateOrCreate(['key' => 'printer_brother_name'], ['value' => trim($request->printer_name)]);
+        // Brother settings
+        $brotherIp = $request->input('brother_ip', $request->input('printer_ip'));
+        $brotherPort = $request->input('brother_port', $request->input('printer_port'));
+        $brotherName = $request->input('brother_name', $request->input('printer_name'));
+
+        if ($brotherIp) {
+            Setting::updateOrCreate(['key' => 'printer_brother_ip'], ['value' => trim($brotherIp)]);
+        }
+        if ($brotherPort) {
+            Setting::updateOrCreate(['key' => 'printer_brother_port'], ['value' => (string)$brotherPort]);
+        }
+        if ($brotherName) {
+            Setting::updateOrCreate(['key' => 'printer_brother_name'], ['value' => trim($brotherName)]);
         }
 
-        return back()->with('success', 'Konfigurasi Printer Brother berhasil diperbarui.');
+        // Canon settings
+        if ($request->filled('canon_ip')) {
+            Setting::updateOrCreate(['key' => 'printer_canon_ip'], ['value' => trim($request->canon_ip)]);
+        }
+        if ($request->filled('canon_port')) {
+            Setting::updateOrCreate(['key' => 'printer_canon_port'], ['value' => (string)$request->canon_port]);
+        }
+        if ($request->filled('canon_name')) {
+            Setting::updateOrCreate(['key' => 'printer_canon_name'], ['value' => trim($request->canon_name)]);
+        }
+
+        return back()->with('success', 'Konfigurasi Printer Jaringan (Brother & Canon G3010) berhasil diperbarui.');
     }
 }

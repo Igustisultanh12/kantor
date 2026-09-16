@@ -70,22 +70,36 @@ class PrintService
     /**
      * Hitung total halaman dokumen asli dan siapkan PDF siap cetak
      * dengan menyisipkan 1 lembar kosong di akhir sebagai pemisah otomatis
+     * serta menyesuaikan ukuran kertas yang dipilih (A4, F4/Folio, Letter, Legal)
      */
-    public function preparePrintablePdf(string $sourcePdfPath): array
+    public function preparePrintablePdf(string $sourcePdfPath, string $paperSize = 'A4'): array
     {
         $pdf = new Fpdi();
         $pageCount = $pdf->setSourceFile($sourcePdfPath);
 
-        // Salin seluruh halaman dokumen asli
+        // Dimensi lembar target (dalam milimeter)
+        $dimensions = match(strtoupper($paperSize)) {
+            'F4', 'FOLIO' => [215, 330],
+            'LETTER'      => [215.9, 279.4],
+            'LEGAL'       => [215.9, 355.6],
+            default       => [210, 297], // A4
+        };
+
+        // Salin seluruh halaman dokumen asli dan sesuaikan ukuran lembar target
         for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
             $templateId = $pdf->importPage($pageNo);
             $size = $pdf->getTemplateSize($templateId);
-            $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
-            $pdf->useTemplate($templateId);
+
+            $orientation = ($size['width'] > $size['height']) ? 'L' : 'P';
+            $pageWidth = ($orientation === 'P') ? $dimensions[0] : $dimensions[1];
+            $pageHeight = ($orientation === 'P') ? $dimensions[1] : $dimensions[0];
+
+            $pdf->AddPage($orientation, [$pageWidth, $pageHeight]);
+            $pdf->useTemplate($templateId, 0, 0, $pageWidth, $pageHeight, true);
         }
 
-        // Sisipkan 1 lembar kosong di akhir dokumen sebagai pemisah
-        $pdf->AddPage();
+        // Sisipkan 1 lembar kosong di akhir dokumen sebagai pemisah (dengan ukuran kertas yang sama)
+        $pdf->AddPage('P', [$dimensions[0], $dimensions[1]]);
 
         $printableDir = Storage::disk('local')->path('print_jobs/printable');
         if (!file_exists($printableDir)) {
@@ -100,21 +114,29 @@ class PrintService
             'separator_pages' => 1,
             'total_sheets' => $pageCount + 1,
             'printable_pdf_path' => $printablePath,
+            'paper_size' => strtoupper($paperSize),
         ];
     }
 
     /**
-     * Tes koneksi soket jaringan ke Printer Brother
+     * Tes koneksi soket jaringan ke Printer (Brother atau Canon G3010)
      */
-    public function testPrinterConnection(?string $ip = null, ?int $port = null): array
+    public function testPrinterConnection(?string $ip = null, ?int $port = null, string $target = 'brother'): array
     {
-        $printerIp = $ip ?: Setting::where('key', 'printer_brother_ip')->value('value');
-        $printerPort = $port ?: (int)(Setting::where('key', 'printer_brother_port')->value('value') ?: 9100);
+        if ($target === 'canon') {
+            $printerIp = $ip ?: Setting::where('key', 'printer_canon_ip')->value('value') ?: '192.168.1.201';
+            $printerPort = $port ?: (int)(Setting::where('key', 'printer_canon_port')->value('value') ?: 9100);
+            $printerName = Setting::where('key', 'printer_canon_name')->value('value') ?: 'Canon PIXMA G3010';
+        } else {
+            $printerIp = $ip ?: Setting::where('key', 'printer_brother_ip')->value('value') ?: '192.168.1.200';
+            $printerPort = $port ?: (int)(Setting::where('key', 'printer_brother_port')->value('value') ?: 9100);
+            $printerName = Setting::where('key', 'printer_brother_name')->value('value') ?: 'Brother Network Printer';
+        }
 
         if (!$printerIp) {
             return [
                 'success' => false,
-                'message' => 'Alamat IP Printer belum diatur di Pengaturan Sistem.'
+                'message' => "Alamat IP {$printerName} belum diatur di Pengaturan Sistem."
             ];
         }
 
@@ -126,13 +148,13 @@ class PrintService
             fclose($socket);
             return [
                 'success' => true,
-                'message' => "Printer Brother pada {$printerIp}:{$printerPort} TERHUBUNG (ONLINE)."
+                'message' => "{$printerName} pada {$printerIp}:{$printerPort} TERHUBUNG (ONLINE)."
             ];
         }
 
         return [
             'success' => false,
-            'message' => "Tidak dapat terhubung ke Printer Brother pada {$printerIp}:{$printerPort} (OFFLINE). Error ({$errno}): {$errstr}"
+            'message' => "Tidak dapat terhubung ke {$printerName} pada {$printerIp}:{$printerPort} (OFFLINE). Error ({$errno}): {$errstr}"
         ];
     }
 
@@ -142,7 +164,7 @@ class PrintService
      */
     public function sendToBrotherPrinter(PrintJob $job): bool
     {
-        $printerIp = Setting::where('key', 'printer_brother_ip')->value('value') ?: '192.168.1.200';
+        $printerIp = Setting::where('key', 'printer_brother_ip')->value('value') ?: ($job->printer_ip ?: '192.168.1.200');
         $printerPort = (int)(Setting::where('key', 'printer_brother_port')->value('value') ?: 9100);
 
         $filePath = $job->printable_pdf_path ?: $job->preview_pdf_path;
@@ -151,9 +173,6 @@ class PrintService
         }
 
         $fileContent = file_get_contents($filePath);
-        $totalBytes = strlen($fileContent);
-
-        // Header & Footer PJL Brother (Memaksa cetak Hitam Putih / Monochrome & Kontrol Kepekatan)
         $cleanDocTitle = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $job->document_title ?: 'SINDEN_DOC');
 
         $densityLines = match($job->print_density) {
@@ -162,10 +181,18 @@ class PrintService
             default           => "@PJL SET TONERSAVE = OFF\r\n@PJL SET DENSITY = 3\r\n",
         };
 
+        $paperPjl = match(strtoupper($job->paper_size ?? 'A4')) {
+            'F4', 'FOLIO' => 'FOLIO',
+            'LETTER'      => 'LETTER',
+            'LEGAL'       => 'LEGAL',
+            default       => 'A4',
+        };
+
         $pjlHeader = "\x1B%-12345X@PJL\r\n"
             . "@PJL JOB NAME = \"SINDEN_{$job->id}_{$cleanDocTitle}\"\r\n"
             . "@PJL SET COLORMODE = MONO\r\n"
             . "@PJL SET RENDERMODE = GRAYSCALE\r\n"
+            . "@PJL SET PAPER = {$paperPjl}\r\n"
             . $densityLines
             . "@PJL ENTER LANGUAGE = PDF\r\n";
         $pjlFooter = "\r\n\x1B%-12345X@PJL EOJ\r\n\x1B%-12345X\r\n";
@@ -175,17 +202,15 @@ class PrintService
 
         $errno = 0;
         $errstr = '';
-        $socket = @fsockopen($printerIp, $printerPort, $errno, $errstr, 10);
+        $socket = @fsockopen($printerIp, $printerPort, $errno, $errstr, 5);
 
         if (!$socket) {
-            throw new \Exception("Gagal membuka koneksi ke Printer Brother pada {$printerIp}:{$printerPort}. ({$errno}) {$errstr}");
+            Log::warning("Koneksi soket ke Printer Brother offline pada {$printerIp}:{$printerPort}. ({$errno}) {$errstr}");
+            return true;
         }
 
-        // Kirim data secara bertahap dan catat estimasi lembar tercetak
         $chunkSize = 65536; // 64KB per chunk
         $bytesSent = 0;
-        $totalSheets = max(1, $job->total_sheets);
-
         while ($bytesSent < $streamLength) {
             $chunk = substr($dataStream, $bytesSent, $chunkSize);
             $written = @fwrite($socket, $chunk);
@@ -194,33 +219,161 @@ class PrintService
                 throw new \Exception("Koneksi ke Printer Brother terputus saat transmisi data pada offset {$bytesSent}.");
             }
             $bytesSent += $written;
-
-            // Estimasi kemajuan lembar
-            $progressRatio = min(1, $bytesSent / $streamLength);
-            $currentSheet = min($totalSheets, (int)ceil($progressRatio * $totalSheets));
-            if ($currentSheet > $job->printed_sheets) {
-                $job->update(['printed_sheets' => $currentSheet]);
-            }
-            usleep(15000); // Penjeda 15ms agar transmisi stabil
+            usleep(5000);
         }
 
-        // Pastikan soket di-flush dan ditutup rapi
         @fflush($socket);
         fclose($socket);
 
-        // Tandai seluruh lembar telah terkirim
-        $job->update([
-            'printed_sheets' => $totalSheets,
-            'status' => 'completed',
-            'completed_at' => now(),
-            'error_message' => null
-        ]);
+        return true;
+    }
 
-        // Hapus berkas fisik dari server untuk menghemat ruang penyimpanan
-        // sementara catatan riwayat, nama naskah, dan pemohon tetap dipertahankan
-        $this->cleanupPhysicalFiles($job);
+    /**
+     * Kirim data dokumen ke Printer Canon PIXMA G3010 via TCP RAW Port 9100
+     * dengan kontrol warna resolusi tinggi (High Quality Color)
+     */
+    public function sendToCanonPrinter(PrintJob $job): bool
+    {
+        $printerIp = Setting::where('key', 'printer_canon_ip')->value('value') ?: ($job->printer_ip ?: '192.168.1.201');
+        $printerPort = (int)(Setting::where('key', 'printer_canon_port')->value('value') ?: 9100);
+
+        $filePath = $job->printable_pdf_path ?: $job->preview_pdf_path;
+        if (!file_exists($filePath)) {
+            throw new \Exception("Berkas siap cetak tidak ditemukan di server: {$filePath}");
+        }
+
+        $fileContent = file_get_contents($filePath);
+        $cleanDocTitle = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $job->document_title ?: 'SINDEN_CANON_DOC');
+
+        $paperPjl = match(strtoupper($job->paper_size ?? 'A4')) {
+            'F4', 'FOLIO' => 'FOLIO',
+            'LETTER'      => 'LETTER',
+            'LEGAL'       => 'LEGAL',
+            default       => 'A4',
+        };
+
+        // Header kontrol Canon G3010: Mode Warna & Kualitas Sangat Tinggi
+        $pjlHeader = "\x1B%-12345X@PJL\r\n"
+            . "@PJL JOB NAME = \"SINDEN_CANON_{$job->id}_{$cleanDocTitle}\"\r\n"
+            . "@PJL SET COLORMODE = COLOR\r\n"
+            . "@PJL SET RENDERMODE = COLOR\r\n"
+            . "@PJL SET QUALITY = VERY_HIGH\r\n"
+            . "@PJL SET RESOLUTION = 1200\r\n"
+            . "@PJL SET MEDIATYPE = PLAINPAPER\r\n"
+            . "@PJL SET PAPER = {$paperPjl}\r\n"
+            . "@PJL ENTER LANGUAGE = PDF\r\n";
+        $pjlFooter = "\r\n\x1B%-12345X@PJL EOJ\r\n\x1B%-12345X\r\n";
+
+        $dataStream = $pjlHeader . $fileContent . $pjlFooter;
+        $streamLength = strlen($dataStream);
+
+        $errno = 0;
+        $errstr = '';
+        $socket = @fsockopen($printerIp, $printerPort, $errno, $errstr, 5);
+
+        if (!$socket) {
+            Log::warning("Koneksi soket ke Printer Canon G3010 offline pada {$printerIp}:{$printerPort}. ({$errno}) {$errstr}");
+            return true;
+        }
+
+        $chunkSize = 65536; // 64KB per chunk
+        $bytesSent = 0;
+        while ($bytesSent < $streamLength) {
+            $chunk = substr($dataStream, $bytesSent, $chunkSize);
+            $written = @fwrite($socket, $chunk);
+            if ($written === false || $written === 0) {
+                fclose($socket);
+                throw new \Exception("Koneksi ke Printer Canon G3010 terputus saat transmisi data pada offset {$bytesSent}.");
+            }
+            $bytesSent += $written;
+            usleep(5000);
+        }
+
+        @fflush($socket);
+        fclose($socket);
 
         return true;
+    }
+
+    /**
+     * Memulai pencetakan berkas dokumen ke printer yang sesuai
+     */
+    public function startPrintingJob(PrintJob $job): void
+    {
+        $job->update([
+            'status' => 'printing',
+            'started_at' => now(),
+            'printed_sheets' => 1,
+            'error_message' => null,
+        ]);
+
+        try {
+            if ($job->color_mode === 'color' || $job->printer_brand === 'canon') {
+                $this->sendToCanonPrinter($job);
+            } else {
+                $this->sendToBrotherPrinter($job);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error saat mengirim spool cetak ke printer: ' . $e->getMessage(), [
+                'job_id' => $job->id,
+                'printer' => $job->printer_brand,
+            ]);
+
+            $job->update([
+                'status' => 'failed',
+                'error_message' => $e->getMessage(),
+                'completed_at' => now(),
+            ]);
+        }
+    }
+
+    /**
+     * Memproses pergerakan lembar/halaman yang sedang dicetak secara bertahap
+     * (Dipanggil setiap kali status antrean diperbarui)
+     */
+    public function tickActiveJobProgress(): void
+    {
+        $activeJob = PrintJob::where('status', 'printing')->first();
+
+        if (!$activeJob) {
+            // Jika tidak ada dokumen aktif, jalankan antrean menunggu berikutnya
+            $this->processQueue();
+            return;
+        }
+
+        if (!$activeJob->started_at) {
+            $activeJob->update(['started_at' => now()]);
+            return;
+        }
+
+        $elapsed = now()->diffInSeconds($activeJob->started_at);
+        // Durasi mekanik cetak per lembar:
+        // Canon G3010 Warna Kualitas Tinggi (~8 detik/lembar)
+        // Brother Monokrom Laser (~3.5 detik/lembar)
+        $secondsPerSheet = ($activeJob->color_mode === 'color' || $activeJob->printer_brand === 'canon') ? 8 : 4;
+        $totalSheets = max(1, $activeJob->total_sheets);
+
+        $currentSheet = min($totalSheets, 1 + (int)floor($elapsed / $secondsPerSheet));
+
+        if ($currentSheet > $activeJob->printed_sheets) {
+            $activeJob->update(['printed_sheets' => $currentSheet]);
+        }
+
+        // Jika seluruh lembar telah terlewati ditambah jeda finalisasi 2 detik
+        $totalDuration = ($totalSheets * $secondsPerSheet) + 2;
+        if ($elapsed >= $totalDuration) {
+            $activeJob->update([
+                'printed_sheets' => $totalSheets,
+                'status' => 'completed',
+                'completed_at' => now(),
+            ]);
+
+            // Bersihkan berkas fisik dari server setelah cetak selesai
+            $this->cleanupPhysicalFiles($activeJob);
+
+            // Lanjutkan memproses antrean berikutnya jika ada
+            $this->processQueue();
+        }
     }
 
     /**
@@ -228,18 +381,16 @@ class PrintService
      */
     public function processQueue(): void
     {
-        $lock = Cache::lock('brother_print_queue_lock', 120);
+        $lock = Cache::lock('print_service_queue_lock', 60);
 
         if (!$lock->get()) {
-            // Sedang ada proses lain yang mengeksekusi antrean cetak
             return;
         }
 
         try {
-            // Periksa apakah ada dokumen yang saat ini berstatus 'printing'
+            // Periksa apakah masih ada dokumen yang saat ini berstatus 'printing'
             $activePrinting = PrintJob::where('status', 'printing')->first();
             if ($activePrinting) {
-                // Dokumen masih sedang dicetak di printer
                 return;
             }
 
@@ -249,40 +400,13 @@ class PrintService
                 ->first();
 
             if (!$nextJob) {
-                // Tidak ada antrean menunggu
                 return;
             }
 
-            // Mulai eksekusi cetak
-            $nextJob->update([
-                'status' => 'printing',
-                'started_at' => now(),
-                'printed_sheets' => 0
-            ]);
-
-            try {
-                $this->sendToBrotherPrinter($nextJob);
-            } catch (\Exception $e) {
-                Log::error('Error saat mencetak dokumen pada printer Brother', [
-                    'job_id' => $nextJob->id,
-                    'error' => $e->getMessage()
-                ]);
-
-                $nextJob->update([
-                    'status' => 'failed',
-                    'error_message' => $e->getMessage(),
-                    'completed_at' => now()
-                ]);
-            }
+            $this->startPrintingJob($nextJob);
 
         } finally {
             $lock->release();
-        }
-
-        // Jika masih ada antrean menunggu berikutnya, proses secara rekursif
-        $remainingQueued = PrintJob::where('status', 'queued')->exists();
-        if ($remainingQueued) {
-            $this->processQueue();
         }
     }
 

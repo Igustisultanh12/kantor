@@ -27,6 +27,8 @@ const currentStats = ref(props.stats || { total_queued: 0, total_today: 0, sheet
 const isPreviewModalOpen = ref(false);
 const previewJob = ref(null);
 const previewUrl = ref(null);
+const selectedPreviewColorMode = ref('monochrome');
+const selectedPreviewPaperSize = ref('A4');
 const selectedPreviewDensity = ref('normal');
 const isUploading = ref(false);
 const uploadProgress = ref(0);
@@ -35,10 +37,12 @@ const uploadProgress = ref(0);
 const uploadForm = useForm({
   document_title: '',
   file: null,
+  color_mode: 'monochrome', // 'monochrome' (Brother) atau 'color' (Canon G3010)
+  paper_size: 'A4', // 'A4', 'F4', 'Letter', 'Legal'
   print_density: 'normal',
 });
 
-// Helper label kepekatan cetak
+// Helper label kepekatan cetak (Brother)
 const getDensityLabel = (density) => {
   switch (density) {
     case 'light':
@@ -65,15 +69,59 @@ const getDensityShortLabel = (density) => {
   }
 };
 
-// Formulir Pengaturan Printer (Khusus Admin)
+// Helper label ukuran kertas
+const getPaperSizeLabel = (size) => {
+  switch (size?.toUpperCase()) {
+    case 'F4':
+    case 'FOLIO':
+      return 'F4 / Folio (215 x 330 mm)';
+    case 'LETTER':
+      return 'Letter (215.9 x 279.4 mm)';
+    case 'LEGAL':
+      return 'Legal (215.9 x 355.6 mm)';
+    default:
+      return 'A4 (210 x 297 mm)';
+  }
+};
+
+const getPaperSizeShort = (size) => {
+  switch (size?.toUpperCase()) {
+    case 'F4':
+    case 'FOLIO':
+      return 'F4';
+    case 'LETTER':
+      return 'Letter';
+    case 'LEGAL':
+      return 'Legal';
+    default:
+      return 'A4';
+  }
+};
+
+// Helper label merek & tipe printer
+const getPrinterBrandLabel = (job) => {
+  if (job?.color_mode === 'color' || job?.printer_brand === 'canon') {
+    return 'Canon PIXMA G3010 (Warna)';
+  }
+  return 'Brother Laser (Hitam Putih)';
+};
+
+// Formulir Pengaturan Printer (Khusus Admin: Brother & Canon G3010)
+const adminPrinterTab = ref('brother'); // 'brother' atau 'canon'
 const adminPrinterForm = useForm({
-  printer_ip: props.printerSettings?.printer_ip || '192.168.1.200',
-  printer_port: props.printerSettings?.printer_port || 9100,
-  printer_name: props.printerSettings?.printer_name || 'Brother Network Printer',
+  target: 'both',
+  brother_ip: props.printerSettings?.brother_ip || props.printerSettings?.printer_ip || '192.168.1.200',
+  brother_port: props.printerSettings?.brother_port || props.printerSettings?.printer_port || 9100,
+  brother_name: props.printerSettings?.brother_name || props.printerSettings?.printer_name || 'Brother Network Printer',
+  canon_ip: props.printerSettings?.canon_ip || '192.168.1.201',
+  canon_port: props.printerSettings?.canon_port || 9100,
+  canon_name: props.printerSettings?.canon_name || 'Canon PIXMA G3010 Series',
 });
 
-const isTestingConnection = ref(false);
-const testConnectionResult = ref(null);
+const isTestingBrother = ref(false);
+const testResultBrother = ref(null);
+const isTestingCanon = ref(false);
+const testResultCanon = ref(null);
 
 // Tab Antrean & Riwayat
 const activeTab = ref('queue'); // 'queue' atau 'history'
@@ -113,6 +161,8 @@ const submitUploadAndPreview = async () => {
   const formData = new FormData();
   formData.append('document_title', uploadForm.document_title);
   formData.append('file', uploadForm.file);
+  formData.append('color_mode', uploadForm.color_mode);
+  formData.append('paper_size', uploadForm.paper_size);
   formData.append('print_density', uploadForm.print_density);
 
   try {
@@ -129,11 +179,15 @@ const submitUploadAndPreview = async () => {
 
     previewJob.value = data.job;
     previewUrl.value = data.preview_url;
+    selectedPreviewColorMode.value = data.job.color_mode || uploadForm.color_mode || 'monochrome';
+    selectedPreviewPaperSize.value = data.job.paper_size || uploadForm.paper_size || 'A4';
     selectedPreviewDensity.value = data.job.print_density || uploadForm.print_density || 'normal';
     isPreviewModalOpen.value = true;
 
     // Reset formulir unggah
     uploadForm.reset();
+    uploadForm.color_mode = 'monochrome';
+    uploadForm.paper_size = 'A4';
     uploadForm.print_density = 'normal';
     selectedFileName.value = '';
     selectedFileSize.value = '';
@@ -158,16 +212,21 @@ const confirmPrintDocument = () => {
   if (!previewJob.value) return;
 
   router.post(route('printing.confirm', previewJob.value.id), {
+    color_mode: selectedPreviewColorMode.value,
+    paper_size: selectedPreviewPaperSize.value,
     print_density: selectedPreviewDensity.value,
   }, {
     preserveScroll: true,
     onSuccess: () => {
+      const isColor = selectedPreviewColorMode.value === 'color';
       isPreviewModalOpen.value = false;
       previewJob.value = null;
       previewUrl.value = null;
       Swal.fire({
         title: 'BERHASIL MASUK ANTREAN',
-        text: 'Dokumen berhasil dimasukkan ke dalam antrean cetak Printer Brother.',
+        text: isColor 
+          ? 'Dokumen berhasil dimasukkan ke antrean Printer Canon PIXMA G3010 (Warna - Kualitas Sangat Tinggi).' 
+          : 'Dokumen berhasil dimasukkan ke antrean Printer Brother (Hitam Putih).',
         icon: 'success',
         timer: 2500,
         showConfirmButton: false,
@@ -216,25 +275,44 @@ const cancelQueueJob = (job) => {
   });
 };
 
-// Tes Koneksi Soket IP Printer (Khusus Admin)
-const testPrinterConnection = async () => {
-  isTestingConnection.value = true;
-  testConnectionResult.value = null;
-
-  try {
-    const res = await axios.post(route('printing.test-connection'), {
-      ip: adminPrinterForm.printer_ip,
-      port: adminPrinterForm.printer_port,
-    });
-
-    testConnectionResult.value = res.data;
-  } catch (err) {
-    testConnectionResult.value = {
-      success: false,
-      message: err.response?.data?.message || 'Gagal mengirim permintaan tes koneksi: ' + (err.message || 'Error jaringan'),
-    };
-  } finally {
-    isTestingConnection.value = false;
+// Tes Koneksi Soket IP Printer (Brother atau Canon G3010)
+const testPrinterConnection = async (target = 'brother') => {
+  if (target === 'canon') {
+    isTestingCanon.value = true;
+    testResultCanon.value = null;
+    try {
+      const res = await axios.post(route('printing.test-connection'), {
+        target: 'canon',
+        ip: adminPrinterForm.canon_ip,
+        port: adminPrinterForm.canon_port,
+      });
+      testResultCanon.value = res.data;
+    } catch (err) {
+      testResultCanon.value = {
+        success: false,
+        message: err.response?.data?.message || 'Gagal tes koneksi Canon: ' + (err.message || 'Error jaringan'),
+      };
+    } finally {
+      isTestingCanon.value = false;
+    }
+  } else {
+    isTestingBrother.value = true;
+    testResultBrother.value = null;
+    try {
+      const res = await axios.post(route('printing.test-connection'), {
+        target: 'brother',
+        ip: adminPrinterForm.brother_ip,
+        port: adminPrinterForm.brother_port,
+      });
+      testResultBrother.value = res.data;
+    } catch (err) {
+      testResultBrother.value = {
+        success: false,
+        message: err.response?.data?.message || 'Gagal tes koneksi Brother: ' + (err.message || 'Error jaringan'),
+      };
+    } finally {
+      isTestingBrother.value = false;
+    }
   }
 };
 
@@ -245,7 +323,7 @@ const savePrinterSettings = () => {
     onSuccess: () => {
       Swal.fire({
         title: 'BERHASIL DISIMPAN',
-        text: 'Konfigurasi Printer Brother berhasil diperbarui.',
+        text: 'Konfigurasi Printer Jaringan (Brother & Canon G3010) berhasil diperbarui.',
         icon: 'success',
         timer: 2000,
         showConfirmButton: false,
@@ -302,39 +380,69 @@ onUnmounted(() => {
           </p>
         </div>
 
-        <!-- Info Perangkat Printer -->
-        <div class="flex items-center gap-3 bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-2xl shrink-0">
-          <div class="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700 shrink-0">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
-            </svg>
+        <!-- Info Perangkat Printer (Brother & Canon G3010) -->
+        <div class="flex flex-wrap items-center gap-2.5">
+          <div class="flex items-center gap-2.5 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-2xl shrink-0">
+            <div class="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700 shrink-0 font-black text-xs">
+              B
+            </div>
+            <div>
+              <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Brother (Hitam Putih)</span>
+              <span class="text-xs font-black text-slate-800 uppercase block leading-none">
+                {{ adminPrinterForm.brother_name || 'Brother Laser' }}
+              </span>
+              <span class="text-[10px] font-bold text-blue-600 block leading-tight mt-0.5">
+                IP: {{ adminPrinterForm.brother_ip }}:{{ adminPrinterForm.brother_port }}
+              </span>
+            </div>
           </div>
-          <div>
-            <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Printer Jaringan</span>
-            <span class="text-xs font-black text-slate-800 uppercase block">
-              {{ printerSettings?.printer_name || 'Brother Network Printer' }}
-            </span>
-            <span class="text-[10px] font-bold text-blue-600 block">
-              IP: {{ printerSettings?.printer_ip }}:{{ printerSettings?.printer_port }}
-            </span>
+
+          <div class="flex items-center gap-2.5 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-2xl shrink-0">
+            <div class="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center text-purple-700 shrink-0 font-black text-xs">
+              C
+            </div>
+            <div>
+              <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Canon G3010 (Warna)</span>
+              <span class="text-xs font-black text-slate-800 uppercase block leading-none">
+                {{ adminPrinterForm.canon_name || 'Canon PIXMA G3010' }}
+              </span>
+              <span class="text-[10px] font-bold text-purple-600 block leading-tight mt-0.5">
+                IP: {{ adminPrinterForm.canon_ip }}:{{ adminPrinterForm.canon_port }}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- SPANDUK PERINGATAN WAJIB (HITAM PUTIH SAJA) -->
-      <div class="bg-amber-500 text-slate-950 p-4 sm:p-5 rounded-2xl shadow-sm border-2 border-amber-600 flex items-center gap-3.5 sm:gap-4">
-        <div class="w-10 h-10 rounded-xl bg-slate-950 text-amber-400 flex items-center justify-center shrink-0 shadow-md">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-          </svg>
+      <!-- SPANDUK PERINGATAN DINAMIS -->
+      <!-- SPANDUK 1: MODE HITAM PUTIH (BROTHER) -->
+      <div v-if="uploadForm.color_mode === 'monochrome'" class="bg-amber-500 text-slate-950 p-4 sm:p-5 rounded-2xl shadow-sm border-2 border-amber-600 flex items-center gap-3.5 sm:gap-4 transition">
+        <div class="w-10 h-10 rounded-xl bg-slate-950 text-amber-400 flex items-center justify-center shrink-0 shadow-md font-black text-xs">
+          HP
         </div>
         <div class="flex-1">
-          <span class="text-[10px] font-black tracking-widest uppercase text-slate-900 block">PERHATIAN PENTING SEBELUM MENCETAK</span>
+          <span class="text-[10px] font-black tracking-widest uppercase text-slate-900 block">MODE CETAK HITAM PUTIH (PRINTER BROTHER)</span>
           <p class="text-xs sm:text-sm font-black uppercase text-slate-950 leading-tight mt-0.5">
-            Layanan ini hanya tersedia warna Hitam putih saja
+            Layanan ini menggunakan Printer Brother monokrom (Hitam putih)
           </p>
           <p class="text-[10px] sm:text-[11px] font-semibold text-slate-900 mt-1">
-            Seluruh berkas dokumen yang diunggah akan otomatis diproses dan dicetak dalam mode monokrom (hitam-putih). Kertas pemisah kosong (1 lembar) otomatis dikeluarkan di akhir setiap dokumen.
+            Seluruh berkas dokumen yang diunggah akan diproses dalam mode monokrom. Kertas pemisah kosong (1 lembar) otomatis dikeluarkan di akhir setiap dokumen.
+          </p>
+        </div>
+      </div>
+
+      <!-- SPANDUK 2: MODE BERWARNA (CANON G3010) -->
+      <div v-else class="bg-indigo-600 text-white p-4 sm:p-5 rounded-2xl shadow-sm border-2 border-indigo-700 flex items-center gap-3.5 sm:gap-4 transition">
+        <div class="w-10 h-10 rounded-xl bg-white text-indigo-700 flex items-center justify-center shrink-0 shadow-md font-black text-xs">
+          CLR
+        </div>
+        <div class="flex-1">
+          <span class="text-[10px] font-black tracking-widest uppercase text-indigo-200 block">MODE CETAK BERWARNA (PRINTER CANON PIXMA G3010)</span>
+          <p class="text-xs sm:text-sm font-black uppercase text-white leading-tight mt-0.5">
+            Dicetak pada Printer Canon G3010 dengan Kualitas Sangat Tinggi
+          </p>
+          <p class="text-[10px] sm:text-[11px] font-medium text-indigo-100 mt-1">
+            Sistem mengoptimalkan resolusi penuh (High / Fine Quality) untuk dokumen dinas bergambar, diagram, dan bagan berwarna. Kertas pemisah kosong otomatis disisipkan.
           </p>
         </div>
       </div>
@@ -378,7 +486,7 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- KARTU AKTIF: SEDANG DICETAK (LIVE PROGRESS) -->
+      <!-- KARTU AKTIF: SEDANG DICETAK (PROGRES HALAMAN AKTUAL) -->
       <div v-if="currentActiveJob" class="bg-gradient-to-r from-blue-900 to-indigo-950 text-white p-5 sm:p-6 rounded-3xl shadow-xl border-2 border-blue-500 relative overflow-hidden animate-in fade-in duration-300">
         <div class="absolute -right-10 -bottom-10 opacity-10 text-white pointer-events-none">
           <svg class="w-64 h-64" fill="currentColor" viewBox="0 0 24 24"><path d="M19 8h-1V3H6v5H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zM8 5h8v3H8V5zm8 14H8v-4h8v4zm2-4v-2H6v2H4v-4c0-.55.45-1 1-1h14c.55 0 1 .45 1 1v4h-2z"/></svg>
@@ -389,17 +497,32 @@ onUnmounted(() => {
             <div class="flex items-center gap-2">
               <span class="px-3 py-1 rounded-full bg-emerald-500 text-white text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
                 <span class="w-2 h-2 rounded-full bg-white animate-ping"></span>
-                <span>SEDANG DICETAK PADA PRINTER</span>
+                <span>SEDANG PROSES CETAK</span>
               </span>
               <span class="text-[10px] font-bold text-blue-200">
                 Job ID #{{ currentActiveJob.id }}
               </span>
             </div>
-            <div class="flex items-center gap-2">
-              <span class="text-xs font-black text-amber-300 uppercase">
-                Mode: Hitam Putih (Monochrome)
+
+            <!-- Lencana Mesin, Kertas, & Mode -->
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span 
+                class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border"
+                :class="currentActiveJob.color_mode === 'color' || currentActiveJob.printer_brand === 'canon' 
+                  ? 'bg-purple-600/60 text-purple-100 border-purple-400' 
+                  : 'bg-blue-600/60 text-blue-100 border-blue-400'"
+              >
+                {{ getPrinterBrandLabel(currentActiveJob) }}
               </span>
-              <span class="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-white/20 text-white border border-white/30">
+
+              <span class="px-2 py-0.5 rounded-full bg-white/20 text-white border border-white/30 text-[10px] font-bold uppercase">
+                Kertas: {{ currentActiveJob.paper_size || 'A4' }}
+              </span>
+
+              <span v-if="currentActiveJob.color_mode === 'color'" class="px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-[10px] uppercase">
+                Kualitas Sangat Tinggi
+              </span>
+              <span v-else class="px-2 py-0.5 rounded-full bg-white/20 text-white border border-white/30 text-[10px] font-bold uppercase">
                 Kepekatan: {{ getDensityShortLabel(currentActiveJob.print_density) }}
               </span>
             </div>
@@ -414,29 +537,44 @@ onUnmounted(() => {
                 Pemohon: <strong class="text-white font-black">{{ currentActiveJob.user?.name || 'Personel' }}</strong> ({{ currentActiveJob.user?.pangkat || 'Personel' }} / NRP {{ currentActiveJob.user?.nrp || '-' }})
               </p>
               <p class="text-[11px] text-blue-300 mt-0.5">
-                Berkas Asli: {{ currentActiveJob.original_filename }} ({{ currentActiveJob.total_pages }} Halaman Dokumen + 1 Lembar Pemisah Kosong)
+                Berkas Asli: {{ currentActiveJob.original_filename }} ({{ currentActiveJob.total_pages }} Halaman Dokumen + 1 Kertas Pemisah)
               </p>
             </div>
 
-            <!-- Progress Lembar Tercetak -->
+            <!-- Progress Lembar & Halaman Tercetak Secara Bertahap -->
             <div class="bg-white/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/20 space-y-2">
               <div class="flex justify-between items-center text-xs">
-                <span class="font-bold text-blue-100">Status Pengiriman Kertas:</span>
-                <span class="font-black text-white text-sm">
-                  Lembar {{ currentActiveJob.printed_sheets }} dari {{ currentActiveJob.total_sheets }}
-                </span>
+                <div>
+                  <span class="text-[10px] font-bold text-blue-200 block">Status Pencetakan Lembar:</span>
+                  <span class="font-black text-amber-300 text-xs uppercase block">
+                    <template v-if="currentActiveJob.printed_sheets <= currentActiveJob.total_pages">
+                      Mencetak Halaman {{ currentActiveJob.printed_sheets }} dari {{ currentActiveJob.total_pages }}
+                    </template>
+                    <template v-else>
+                      Mencetak 1 Lembar Kertas Pemisah Kosong
+                    </template>
+                  </span>
+                </div>
+                <div class="text-right">
+                  <span class="font-black text-white text-sm">
+                    Lembar {{ currentActiveJob.printed_sheets }} / {{ currentActiveJob.total_sheets }}
+                  </span>
+                  <span class="text-[9px] text-blue-200 block">
+                    {{ Math.round((currentActiveJob.printed_sheets / currentActiveJob.total_sheets) * 100) }}%
+                  </span>
+                </div>
               </div>
               
               <!-- Progress Bar -->
               <div class="w-full bg-white/20 rounded-full h-3 overflow-hidden p-0.5">
                 <div 
-                  class="bg-gradient-to-r from-blue-400 to-emerald-400 h-full rounded-full transition-all duration-300"
-                  :style="{ width: Math.max(8, (currentActiveJob.printed_sheets / currentActiveJob.total_sheets) * 100) + '%' }"
+                  class="bg-gradient-to-r from-blue-400 via-amber-300 to-emerald-400 h-full rounded-full transition-all duration-500"
+                  :style="{ width: Math.max(10, (currentActiveJob.printed_sheets / currentActiveJob.total_sheets) * 100) + '%' }"
                 ></div>
               </div>
 
               <span class="text-[10px] text-blue-200 block text-right font-medium">
-                Pencegah Tabrakan Aktif: Dokumen lain menunggu hingga proses ini selesai.
+                Pencegah Tabrakan Aktif: Dokumen lain menunggu hingga seluruh lembar selesai keluar.
               </span>
             </div>
           </div>
@@ -446,7 +584,7 @@ onUnmounted(() => {
       <!-- MAIN SECTION: DUA KOLOM (UNGGAH DOKUMEN & ANTREAN BERKAS) -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-        <!-- KOLOM KIRI: FORMULIR UNGGAH DOKUMEN (4 Kolom pada LG) -->
+        <!-- KOLOM KIRI: FORMULIR UNGGAH DOKUMEN (5 Kolom pada LG) -->
         <div class="lg:col-span-5 bg-white p-5 sm:p-7 rounded-3xl shadow-xs border border-[#E2E8F0] space-y-5">
           <div class="border-b pb-3">
             <span class="text-[10px] font-black uppercase tracking-wider text-blue-600 block">Formulir Cetak Dokumen</span>
@@ -508,11 +646,75 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <!-- Pilihan Tingkat Kepekatan Cetak -->
+            <!-- 1. Pilihan Mode Warna (Hitam Putih vs Berwarna) -->
+            <div class="space-y-1.5">
+              <label class="block text-[10px] font-extrabold text-slate-700 uppercase">
+                Pilih Mode Cetak & Mesin Printer
+              </label>
+
+              <div class="grid grid-cols-2 gap-2">
+                <!-- Opsi Hitam Putih (Brother) -->
+                <button 
+                  type="button"
+                  @click="uploadForm.color_mode = 'monochrome'"
+                  :class="uploadForm.color_mode === 'monochrome' ? 'bg-blue-50 border-blue-600 text-blue-950 ring-2 ring-blue-500/20 shadow-xs' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'"
+                  class="p-3 rounded-2xl border text-left transition cursor-pointer flex flex-col justify-between"
+                >
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-black uppercase">Hitam Putih</span>
+                    <span :class="uploadForm.color_mode === 'monochrome' ? 'bg-blue-600' : 'bg-slate-300'" class="w-2.5 h-2.5 rounded-full"></span>
+                  </div>
+                  <span class="text-[9px] font-bold text-slate-600 uppercase block">Printer Brother Laser</span>
+                  <span class="text-[9px] text-slate-400 font-medium leading-tight">Cepat, hemat, persuratan dinas</span>
+                </button>
+
+                <!-- Opsi Berwarna (Canon G3010) -->
+                <button 
+                  type="button"
+                  @click="uploadForm.color_mode = 'color'"
+                  :class="uploadForm.color_mode === 'color' ? 'bg-purple-50 border-purple-600 text-purple-950 ring-2 ring-purple-500/20 shadow-xs' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'"
+                  class="p-3 rounded-2xl border text-left transition cursor-pointer flex flex-col justify-between"
+                >
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-black uppercase text-purple-900">Berwarna</span>
+                    <span :class="uploadForm.color_mode === 'color' ? 'bg-purple-600' : 'bg-slate-300'" class="w-2.5 h-2.5 rounded-full"></span>
+                  </div>
+                  <span class="text-[9px] font-bold text-purple-700 uppercase block">Canon PIXMA G3010</span>
+                  <span class="text-[9px] text-slate-400 font-medium leading-tight">Kualitas Sangat Tinggi (Fine Color)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 2. Pilihan Ukuran Kertas (A4, F4, Letter, Legal) -->
             <div class="space-y-1.5">
               <div class="flex items-center justify-between">
                 <label class="block text-[10px] font-extrabold text-slate-700 uppercase">
-                  Tingkat Kepekatan Cetak
+                  Ukuran Kertas Dokumen
+                </label>
+                <span class="text-[9px] font-bold text-blue-600">
+                  {{ getPaperSizeLabel(uploadForm.paper_size) }}
+                </span>
+              </div>
+
+              <div class="grid grid-cols-4 gap-1.5">
+                <button 
+                  v-for="size in ['A4', 'F4', 'Letter', 'Legal']" 
+                  :key="size"
+                  type="button"
+                  @click="uploadForm.paper_size = size"
+                  :class="uploadForm.paper_size === size ? 'bg-slate-900 text-white font-black shadow-xs' : 'bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 font-bold'"
+                  class="py-2 px-1 rounded-xl text-[10px] uppercase transition cursor-pointer text-center"
+                >
+                  {{ size }}
+                </button>
+              </div>
+            </div>
+
+            <!-- 3. Pilihan Tingkat Kepekatan (Hanya Muncul Jika Hitam Putih) -->
+            <div v-if="uploadForm.color_mode === 'monochrome'" class="space-y-1.5 animate-in fade-in duration-200">
+              <div class="flex items-center justify-between">
+                <label class="block text-[10px] font-extrabold text-slate-700 uppercase">
+                  Tingkat Kepekatan Cetak (Brother)
                 </label>
                 <span class="text-[9px] font-bold text-blue-600">
                   {{ getDensityLabel(uploadForm.print_density) }}
@@ -530,7 +732,7 @@ onUnmounted(() => {
                     <span class="text-xs font-black uppercase">Terang</span>
                     <span :class="uploadForm.print_density === 'light' ? 'bg-blue-600' : 'bg-slate-300'" class="w-2 h-2 rounded-full"></span>
                   </div>
-                  <span class="text-[9px] text-slate-500 font-medium leading-tight">Hemat toner, draft bacaan</span>
+                  <span class="text-[9px] text-slate-500 font-medium leading-tight">Hemat toner, draft</span>
                 </button>
 
                 <button 
@@ -543,7 +745,7 @@ onUnmounted(() => {
                     <span class="text-xs font-black uppercase">Standar</span>
                     <span :class="uploadForm.print_density === 'normal' ? 'bg-blue-600' : 'bg-slate-300'" class="w-2 h-2 rounded-full"></span>
                   </div>
-                  <span class="text-[9px] text-slate-500 font-medium leading-tight">Keseimbangan normal</span>
+                  <span class="text-[9px] text-slate-500 font-medium leading-tight">Normal seimbang</span>
                 </button>
 
                 <button 
@@ -556,9 +758,20 @@ onUnmounted(() => {
                     <span class="text-xs font-black uppercase">Pekat</span>
                     <span :class="uploadForm.print_density === 'dark' ? 'bg-blue-600' : 'bg-slate-300'" class="w-2 h-2 rounded-full"></span>
                   </div>
-                  <span class="text-[9px] text-slate-500 font-medium leading-tight">Hitam tebal naskah dinas</span>
+                  <span class="text-[9px] text-slate-500 font-medium leading-tight">Hitam tebal dinas</span>
                 </button>
               </div>
+            </div>
+
+            <!-- Keterangan Khusus Mode Berwarna (Canon G3010) -->
+            <div v-else class="bg-purple-50 p-3 rounded-xl border border-purple-200 text-[11px] text-purple-950 space-y-1 animate-in fade-in duration-200">
+              <div class="font-extrabold text-purple-900 text-[10px] uppercase flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-purple-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span>PROFIL KUALITAS SANGAT TINGGI (CANON G3010)</span>
+              </div>
+              <p class="text-[10px] leading-relaxed text-purple-800">
+                Dokumen akan diproses dengan saturasi warna maksimal (1200 DPI Fine Quality) khusus printer Canon G3010 untuk memastikan grafis, bagan, dan kop surat tercetak jernih.
+              </p>
             </div>
 
             <!-- Catatan Kertas Pemisah Otomatis -->
@@ -568,7 +781,7 @@ onUnmounted(() => {
                 <span>SISTEM PEMISAH LEMBAR OTOMATIS</span>
               </div>
               <p class="text-[10px] leading-relaxed">
-                Server secara otomatis menambahkan <strong>1 lembar kertas kosong</strong> di akhir berkas sebagai pemisah antar dokumen personel di baki printer.
+                Server secara otomatis menambahkan <strong>1 lembar kertas kosong</strong> di akhir berkas pada ukuran <strong>{{ uploadForm.paper_size }}</strong> sebagai pemisah antar dokumen personel di baki printer.
               </p>
             </div>
 
@@ -586,22 +799,43 @@ onUnmounted(() => {
             </button>
           </form>
 
-          <!-- KARTU PENGATURAN PRINTER IP (KHUSUS ADMIN) -->
+          <!-- KARTU PENGATURAN PRINTER IP (KHUSUS ADMIN: BROTHER & CANON) -->
           <div v-if="isAdmin" class="mt-6 pt-5 border-t border-slate-200 space-y-4">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <div class="w-6 h-6 rounded-lg bg-slate-800 text-white flex items-center justify-center text-xs font-black">A</div>
-                <span class="text-xs font-black text-slate-900 uppercase">Pengaturan IP Printer Brother</span>
+                <span class="text-xs font-black text-slate-900 uppercase">Pengaturan IP Printer Jaringan</span>
               </div>
               <span class="text-[9px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-black uppercase">Admin Only</span>
             </div>
 
-            <div class="space-y-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+            <!-- Navigasi Tab Pengaturan Printer Admin -->
+            <div class="flex border-b border-slate-200 gap-2">
+              <button 
+                type="button" 
+                @click="adminPrinterTab = 'brother'"
+                :class="adminPrinterTab === 'brother' ? 'border-blue-600 text-blue-600 font-black' : 'border-transparent text-slate-500 font-bold hover:text-slate-700'"
+                class="py-2 px-3 border-b-2 text-[10px] uppercase transition cursor-pointer"
+              >
+                Printer Brother (Hitam Putih)
+              </button>
+              <button 
+                type="button" 
+                @click="adminPrinterTab = 'canon'"
+                :class="adminPrinterTab === 'canon' ? 'border-purple-600 text-purple-600 font-black' : 'border-transparent text-slate-500 font-bold hover:text-slate-700'"
+                class="py-2 px-3 border-b-2 text-[10px] uppercase transition cursor-pointer"
+              >
+                Printer Canon G3010 (Warna)
+              </button>
+            </div>
+
+            <!-- Form Tab 1: Brother Printer -->
+            <div v-if="adminPrinterTab === 'brother'" class="space-y-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200 animate-in fade-in duration-200">
               <div class="grid grid-cols-3 gap-2">
                 <div class="col-span-2">
-                  <label class="block text-[9px] font-bold text-slate-600 uppercase mb-1">IP Address</label>
+                  <label class="block text-[9px] font-bold text-slate-600 uppercase mb-1">IP Address Brother</label>
                   <input 
-                    v-model="adminPrinterForm.printer_ip" 
+                    v-model="adminPrinterForm.brother_ip" 
                     type="text" 
                     class="w-full text-xs font-bold p-2 bg-white rounded-lg border border-slate-300"
                     placeholder="192.168.1.200"
@@ -610,7 +844,7 @@ onUnmounted(() => {
                 <div>
                   <label class="block text-[9px] font-bold text-slate-600 uppercase mb-1">Port RAW</label>
                   <input 
-                    v-model="adminPrinterForm.printer_port" 
+                    v-model="adminPrinterForm.brother_port" 
                     type="number" 
                     class="w-full text-xs font-bold p-2 bg-white rounded-lg border border-slate-300"
                     placeholder="9100"
@@ -618,43 +852,95 @@ onUnmounted(() => {
                 </div>
               </div>
 
-              <p class="text-[9px] text-slate-500 font-medium leading-relaxed">
-                Port 9100 adalah port standar bawaan pabrik printer Brother (protokol RAW / JetDirect) untuk menerima cetak langsung via jaringan router lokal. Cukup masukkan IP Printer (misal 192.168.1.9), port 9100 biarkan standar.
-              </p>
-
               <div>
-                <label class="block text-[9px] font-bold text-slate-600 uppercase mb-1">Nama / Tipe Printer</label>
+                <label class="block text-[9px] font-bold text-slate-600 uppercase mb-1">Nama / Tipe Printer Brother</label>
                 <input 
-                  v-model="adminPrinterForm.printer_name" 
+                  v-model="adminPrinterForm.brother_name" 
                   type="text" 
                   class="w-full text-xs font-bold p-2 bg-white rounded-lg border border-slate-300 uppercase"
                   placeholder="Brother Laser Series"
                 />
               </div>
 
-              <!-- Hasil Diagnostik Tes Koneksi -->
-              <div v-if="testConnectionResult" :class="testConnectionResult.success ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-rose-50 text-rose-800 border-rose-300'" class="p-2.5 rounded-xl border text-[10px] font-bold">
-                {{ testConnectionResult.message }}
+              <!-- Hasil Diagnostik Tes Koneksi Brother -->
+              <div v-if="testResultBrother" :class="testResultBrother.success ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-rose-50 text-rose-800 border-rose-300'" class="p-2.5 rounded-xl border text-[10px] font-bold">
+                {{ testResultBrother.message }}
               </div>
 
-              <div class="flex items-center gap-2 pt-1">
+              <div class="pt-1">
                 <button 
                   type="button" 
-                  @click="testPrinterConnection" 
-                  :disabled="isTestingConnection"
-                  class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 py-2 px-3 rounded-lg text-[10px] font-black uppercase transition cursor-pointer text-center"
+                  @click="testPrinterConnection('brother')" 
+                  :disabled="isTestingBrother"
+                  class="w-full bg-slate-200 hover:bg-slate-300 text-slate-800 py-2 px-3 rounded-lg text-[10px] font-black uppercase transition cursor-pointer text-center"
                 >
-                  {{ isTestingConnection ? 'MENGUJI...' : 'TES KONEKSI' }}
-                </button>
-                <button 
-                  type="button" 
-                  @click="savePrinterSettings" 
-                  class="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-2 px-3 rounded-lg text-[10px] font-black uppercase transition cursor-pointer text-center"
-                >
-                  SIMPAN PENGATURAN
+                  {{ isTestingBrother ? 'MENGUJI KONEKSI BROTHER...' : 'TES KONEKSI PRINTER BROTHER' }}
                 </button>
               </div>
             </div>
+
+            <!-- Form Tab 2: Canon G3010 Printer -->
+            <div v-else class="space-y-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200 animate-in fade-in duration-200">
+              <div class="grid grid-cols-3 gap-2">
+                <div class="col-span-2">
+                  <label class="block text-[9px] font-bold text-slate-600 uppercase mb-1">IP Address Canon G3010</label>
+                  <input 
+                    v-model="adminPrinterForm.canon_ip" 
+                    type="text" 
+                    class="w-full text-xs font-bold p-2 bg-white rounded-lg border border-slate-300"
+                    placeholder="192.168.1.201"
+                  />
+                </div>
+                <div>
+                  <label class="block text-[9px] font-bold text-slate-600 uppercase mb-1">Port RAW</label>
+                  <input 
+                    v-model="adminPrinterForm.canon_port" 
+                    type="number" 
+                    class="w-full text-xs font-bold p-2 bg-white rounded-lg border border-slate-300"
+                    placeholder="9100"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-[9px] font-bold text-slate-600 uppercase mb-1">Nama / Tipe Printer Canon</label>
+                <input 
+                  v-model="adminPrinterForm.canon_name" 
+                  type="text" 
+                  class="w-full text-xs font-bold p-2 bg-white rounded-lg border border-slate-300 uppercase"
+                  placeholder="Canon PIXMA G3010 Series"
+                />
+              </div>
+
+              <div class="bg-purple-50 p-2.5 rounded-xl border border-purple-200 text-[10px] font-semibold text-purple-900">
+                Mode Kualitas: <strong>Sangat Tinggi (High Resolution Fine Color)</strong> aktif otomatis saat personel mencetak dalam mode warna.
+              </div>
+
+              <!-- Hasil Diagnostik Tes Koneksi Canon -->
+              <div v-if="testResultCanon" :class="testResultCanon.success ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-rose-50 text-rose-800 border-rose-300'" class="p-2.5 rounded-xl border text-[10px] font-bold">
+                {{ testResultCanon.message }}
+              </div>
+
+              <div class="pt-1">
+                <button 
+                  type="button" 
+                  @click="testPrinterConnection('canon')" 
+                  :disabled="isTestingCanon"
+                  class="w-full bg-purple-100 hover:bg-purple-200 text-purple-900 py-2 px-3 rounded-lg text-[10px] font-black uppercase transition cursor-pointer text-center"
+                >
+                  {{ isTestingCanon ? 'MENGUJI KONEKSI CANON...' : 'TES KONEKSI PRINTER CANON G3010' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Tombol Simpan Konfigurasi Kedua Printer -->
+            <button 
+              type="button" 
+              @click="savePrinterSettings" 
+              class="w-full bg-slate-900 hover:bg-slate-800 text-white py-2.5 px-4 rounded-xl text-xs font-black uppercase shadow-sm transition cursor-pointer text-center"
+            >
+              SIMPAN PENGATURAN KEDUA PRINTER
+            </button>
           </div>
         </div>
 
@@ -716,13 +1002,33 @@ onUnmounted(() => {
                     <p class="text-[11px] text-slate-500 font-medium">
                       Pemohon: <strong class="text-slate-700">{{ job.user?.name || 'Personel' }}</strong> ({{ job.user?.pangkat || 'TNI AL' }})
                     </p>
-                    <div class="flex items-center gap-2 text-[10px] text-slate-400 font-semibold mt-1">
-                      <span>{{ job.total_pages }} Hal Dokumen</span>
-                      <span>+ 1 Kertas Pemisah</span>
-                      <span class="text-slate-600 font-bold">= {{ job.total_sheets }} Lembar</span>
-                      <span class="px-2 py-0.5 rounded bg-slate-200 text-slate-700 font-bold uppercase text-[9px]">
+                    <div class="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500 font-semibold mt-1.5">
+                      <span 
+                        class="px-2 py-0.5 rounded-md text-[9px] font-extrabold uppercase border"
+                        :class="job.color_mode === 'color' || job.printer_brand === 'canon' 
+                          ? 'bg-purple-50 text-purple-700 border-purple-200' 
+                          : 'bg-blue-50 text-blue-700 border-blue-200'"
+                      >
+                        {{ job.color_mode === 'color' || job.printer_brand === 'canon' ? 'Canon G3010 (Warna)' : 'Brother (Hitam Putih)' }}
+                      </span>
+                      <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 text-[9px] font-bold uppercase">
+                        Kertas: {{ getPaperSizeShort(job.paper_size) }}
+                      </span>
+                      <span 
+                        v-if="job.color_mode === 'color' || job.printer_brand === 'canon'"
+                        class="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-[9px] font-bold uppercase"
+                      >
+                        Kualitas Sangat Tinggi
+                      </span>
+                      <span 
+                        v-else
+                        class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 text-[9px] font-bold uppercase"
+                      >
                         {{ getDensityShortLabel(job.print_density) }}
                       </span>
+                      <span class="text-slate-300">|</span>
+                      <span>{{ job.total_pages }} Hal + 1 Pemisah</span>
+                      <span class="text-slate-800 font-bold">= {{ job.total_sheets }} Lembar</span>
                     </div>
                   </div>
                 </div>
@@ -764,8 +1070,9 @@ onUnmounted(() => {
                     <th class="p-3">Waktu</th>
                     <th class="p-3">Naskah Dokumen</th>
                     <th class="p-3">Pemohon</th>
-                    <th class="p-3">Kepekatan</th>
-                    <th class="p-3">Jumlah Lembar</th>
+                    <th class="p-3">Printer & Mode</th>
+                    <th class="p-3">Kertas</th>
+                    <th class="p-3">Lembar</th>
                     <th class="p-3">Status</th>
                   </tr>
                 </thead>
@@ -782,15 +1089,32 @@ onUnmounted(() => {
                       {{ job.user?.name || '-' }}
                     </td>
                     <td class="p-3 whitespace-nowrap">
-                      <span 
-                        class="px-2 py-0.5 rounded-md text-[9px] font-bold uppercase"
-                        :class="{
-                          'bg-sky-50 text-sky-700 border border-sky-200': job.print_density === 'light' || job.print_density === 'terang',
-                          'bg-slate-100 text-slate-700 border border-slate-200': !job.print_density || job.print_density === 'normal',
-                          'bg-indigo-50 text-indigo-700 border border-indigo-200': job.print_density === 'dark' || job.print_density === 'pekat'
-                        }"
-                      >
-                        {{ getDensityShortLabel(job.print_density) }}
+                      <div class="flex flex-col gap-0.5">
+                        <span 
+                          class="px-2 py-0.5 rounded-md text-[9px] font-extrabold uppercase border w-fit"
+                          :class="job.color_mode === 'color' || job.printer_brand === 'canon' 
+                            ? 'bg-purple-50 text-purple-700 border-purple-200' 
+                            : 'bg-blue-50 text-blue-700 border-blue-200'"
+                        >
+                          {{ job.color_mode === 'color' || job.printer_brand === 'canon' ? 'Canon G3010 (Warna)' : 'Brother (Hitam Putih)' }}
+                        </span>
+                        <span 
+                          v-if="job.color_mode === 'color' || job.printer_brand === 'canon'"
+                          class="text-[9px] font-bold text-amber-700 uppercase"
+                        >
+                          Kualitas Sangat Tinggi
+                        </span>
+                        <span 
+                          v-else
+                          class="text-[9px] font-medium text-slate-500 uppercase"
+                        >
+                          Kepekatan: {{ getDensityShortLabel(job.print_density) }}
+                        </span>
+                      </div>
+                    </td>
+                    <td class="p-3 whitespace-nowrap">
+                      <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold uppercase text-[9px] border border-slate-200">
+                        {{ getPaperSizeShort(job.paper_size) }}
                       </span>
                     </td>
                     <td class="p-3 whitespace-nowrap">
@@ -861,12 +1185,20 @@ onUnmounted(() => {
         </div>
 
         <!-- PERINGATAN WAJIB DI DALAM MODAL -->
-        <div class="bg-amber-50 border border-amber-300 p-3 rounded-xl text-amber-950 flex items-center gap-2.5 shrink-0">
+        <div v-if="selectedPreviewColorMode === 'monochrome'" class="bg-amber-50 border border-amber-300 p-3 rounded-xl text-amber-950 flex items-center gap-2.5 shrink-0">
           <svg class="w-5 h-5 text-amber-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
           </svg>
           <div class="text-xs font-black uppercase leading-tight">
             Layanan ini hanya tersedia warna Hitam putih saja
+          </div>
+        </div>
+        <div v-else class="bg-purple-50 border border-purple-300 p-3 rounded-xl text-purple-950 flex items-center gap-2.5 shrink-0">
+          <svg class="w-5 h-5 text-purple-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <div class="text-xs font-black uppercase leading-tight">
+            Mode Cetak Warna: Dicetak di Printer Canon PIXMA G3010 Kualitas Sangat Tinggi
           </div>
         </div>
 
@@ -883,40 +1215,96 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- Pilihan Tingkat Kepekatan di Modal Pratinjau -->
-        <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
-          <div>
-            <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Tingkat Kepekatan Hasil Cetak</span>
-            <div class="text-xs font-black text-slate-800 uppercase flex items-center gap-1.5">
-              <span>Opsi Terpilih:</span>
-              <span class="text-blue-600">{{ getDensityLabel(selectedPreviewDensity) }}</span>
+        <!-- PENGATURAN CETAK DI MODAL: MODE WARNA, KERTAS, & KEPEKATAN -->
+        <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-3 shrink-0">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <!-- Pilihan Mode Warna -->
+            <div>
+              <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 block mb-1.5">Mode Warna & Printer</span>
+              <div class="grid grid-cols-2 gap-1.5">
+                <button 
+                  type="button" 
+                  @click="selectedPreviewColorMode = 'monochrome'"
+                  :class="selectedPreviewColorMode === 'monochrome' ? 'bg-blue-600 text-white font-black shadow-xs' : 'bg-white text-slate-700 border border-slate-200 font-bold hover:bg-slate-100'"
+                  class="p-2 rounded-xl text-[10px] uppercase transition cursor-pointer text-center"
+                >
+                  Hitam Putih (Brother)
+                </button>
+                <button 
+                  type="button" 
+                  @click="selectedPreviewColorMode = 'color'"
+                  :class="selectedPreviewColorMode === 'color' ? 'bg-purple-600 text-white font-black shadow-xs' : 'bg-white text-slate-700 border border-slate-200 font-bold hover:bg-slate-100'"
+                  class="p-2 rounded-xl text-[10px] uppercase transition cursor-pointer text-center"
+                >
+                  Berwarna (Canon G3010)
+                </button>
+              </div>
+            </div>
+
+            <!-- Pilihan Ukuran Kertas -->
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Ukuran Kertas</span>
+                <span class="text-[9px] font-bold text-blue-600">{{ getPaperSizeShort(selectedPreviewPaperSize) }}</span>
+              </div>
+              <div class="grid grid-cols-4 gap-1.5">
+                <button 
+                  v-for="size in ['A4', 'F4', 'Letter', 'Legal']" 
+                  :key="'modal-' + size"
+                  type="button" 
+                  @click="selectedPreviewPaperSize = size"
+                  :class="selectedPreviewPaperSize === size ? 'bg-slate-900 text-white font-black shadow-xs' : 'bg-white text-slate-700 border border-slate-200 font-bold hover:bg-slate-100'"
+                  class="py-2 rounded-xl text-[10px] uppercase transition cursor-pointer text-center"
+                >
+                  {{ size }}
+                </button>
+              </div>
             </div>
           </div>
-          <div class="flex items-center gap-1.5 self-start sm:self-center">
-            <button 
-              type="button" 
-              @click="selectedPreviewDensity = 'light'"
-              :class="selectedPreviewDensity === 'light' ? 'bg-blue-600 text-white font-black shadow-xs' : 'bg-white text-slate-700 border border-slate-200 font-bold hover:bg-slate-100'"
-              class="px-3 py-1.5 rounded-xl text-[10px] uppercase transition cursor-pointer"
-            >
-              Terang
-            </button>
-            <button 
-              type="button" 
-              @click="selectedPreviewDensity = 'normal'"
-              :class="selectedPreviewDensity === 'normal' ? 'bg-blue-600 text-white font-black shadow-xs' : 'bg-white text-slate-700 border border-slate-200 font-bold hover:bg-slate-100'"
-              class="px-3 py-1.5 rounded-xl text-[10px] uppercase transition cursor-pointer"
-            >
-              Standar
-            </button>
-            <button 
-              type="button" 
-              @click="selectedPreviewDensity = 'dark'"
-              :class="selectedPreviewDensity === 'dark' ? 'bg-blue-600 text-white font-black shadow-xs' : 'bg-white text-slate-700 border border-slate-200 font-bold hover:bg-slate-100'"
-              class="px-3 py-1.5 rounded-xl text-[10px] uppercase transition cursor-pointer"
-            >
-              Pekat
-            </button>
+
+          <!-- Tingkat Kepekatan (Monokrom) atau Notifikasi Kualitas Sangat Tinggi (Warna) -->
+          <div v-if="selectedPreviewColorMode === 'monochrome'" class="pt-2 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Tingkat Kepekatan Cetak (Brother)</span>
+              <div class="text-xs font-black text-slate-800 uppercase flex items-center gap-1.5">
+                <span>Pilihan:</span>
+                <span class="text-blue-600">{{ getDensityLabel(selectedPreviewDensity) }}</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button 
+                type="button" 
+                @click="selectedPreviewDensity = 'light'"
+                :class="selectedPreviewDensity === 'light' ? 'bg-blue-600 text-white font-black shadow-xs' : 'bg-white text-slate-700 border border-slate-200 font-bold hover:bg-slate-100'"
+                class="px-3 py-1.5 rounded-xl text-[10px] uppercase transition cursor-pointer"
+              >
+                Terang
+              </button>
+              <button 
+                type="button" 
+                @click="selectedPreviewDensity = 'normal'"
+                :class="selectedPreviewDensity === 'normal' ? 'bg-blue-600 text-white font-black shadow-xs' : 'bg-white text-slate-700 border border-slate-200 font-bold hover:bg-slate-100'"
+                class="px-3 py-1.5 rounded-xl text-[10px] uppercase transition cursor-pointer"
+              >
+                Standar
+              </button>
+              <button 
+                type="button" 
+                @click="selectedPreviewDensity = 'dark'"
+                :class="selectedPreviewDensity === 'dark' ? 'bg-blue-600 text-white font-black shadow-xs' : 'bg-white text-slate-700 border border-slate-200 font-bold hover:bg-slate-100'"
+                class="px-3 py-1.5 rounded-xl text-[10px] uppercase transition cursor-pointer"
+              >
+                Pekat
+              </button>
+            </div>
+          </div>
+
+          <div v-else class="pt-2 border-t border-purple-200 flex items-center justify-between gap-2 text-purple-900 text-[10px] font-bold">
+            <span class="flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-purple-600"></span>
+              Printer Canon PIXMA G3010: Profil Kualitas Sangat Tinggi (1200 DPI Fine Color)
+            </span>
+            <span class="px-2 py-0.5 rounded bg-purple-100 text-purple-800 uppercase font-black text-[9px]">Otomatis Aktif</span>
           </div>
         </div>
 
@@ -930,7 +1318,7 @@ onUnmounted(() => {
             </div>
             <div class="border-l pl-4">
               <span class="text-[9px] font-bold text-slate-400 uppercase block">Kertas Pemisah</span>
-              <span class="font-black text-emerald-600">+1 Lembar Kosong</span>
+              <span class="font-black text-emerald-600">+1 Lembar Kosong ({{ selectedPreviewPaperSize }})</span>
             </div>
             <div class="border-l pl-4">
               <span class="text-[9px] font-bold text-slate-400 uppercase block">Total Keluar Printer</span>
