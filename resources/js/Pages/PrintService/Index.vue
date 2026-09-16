@@ -2,6 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import axios from 'axios';
 import Swal from 'sweetalert2';
 
 const props = defineProps({
@@ -85,17 +86,14 @@ const submitUploadAndPreview = async () => {
   formData.append('file', uploadForm.file);
 
   try {
-    const response = await fetch(route('printing.upload'), {
-      method: 'POST',
-      body: formData,
+    const response = await axios.post(route('printing.upload'), formData, {
       headers: {
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-        'Accept': 'application/json',
+        'Content-Type': 'multipart/form-data',
       },
     });
 
-    const data = await response.json();
-    if (!response.ok || !data.success) {
+    const data = response.data;
+    if (!data.success) {
       throw new Error(data.message || 'Gagal memproses dokumen.');
     }
 
@@ -109,9 +107,10 @@ const submitUploadAndPreview = async () => {
     selectedFileSize.value = '';
 
   } catch (error) {
+    const errorMsg = error.response?.data?.message || error.message || 'Terjadi kesalahan sistem saat mengonversi berkas dokumen.';
     Swal.fire({
       title: 'GAGAL MEMPROSES DOKUMEN',
-      text: error.message || 'Terjadi kesalahan sistem saat mengonversi berkas dokumen.',
+      text: errorMsg,
       icon: 'error',
       confirmButtonText: 'TUTUP',
       confirmButtonColor: '#e11d48',
@@ -189,25 +188,16 @@ const testPrinterConnection = async () => {
   testConnectionResult.value = null;
 
   try {
-    const res = await fetch(route('printing.test-connection'), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({
-        ip: adminPrinterForm.printer_ip,
-        port: adminPrinterForm.printer_port,
-      }),
+    const res = await axios.post(route('printing.test-connection'), {
+      ip: adminPrinterForm.printer_ip,
+      port: adminPrinterForm.printer_port,
     });
 
-    const data = await res.json();
-    testConnectionResult.value = data;
+    testConnectionResult.value = res.data;
   } catch (err) {
     testConnectionResult.value = {
       success: false,
-      message: 'Gagal mengirim permintaan tes koneksi: ' + err.message,
+      message: err.response?.data?.message || 'Gagal mengirim permintaan tes koneksi: ' + (err.message || 'Error jaringan'),
     };
   } finally {
     isTestingConnection.value = false;
@@ -234,11 +224,9 @@ const savePrinterSettings = () => {
 let pollingTimer = null;
 const fetchQueueStatus = async () => {
   try {
-    const res = await fetch(route('printing.queue-status'), {
-      headers: { 'Accept': 'application/json' }
-    });
-    if (res.ok) {
-      const data = await res.json();
+    const res = await axios.get(route('printing.queue-status'));
+    if (res.status === 200 && res.data) {
+      const data = res.data;
       currentActiveJob.value = data.active_job;
       currentQueuedJobs.value = data.queued_jobs || [];
       currentRecentJobs.value = data.recent_jobs || [];
@@ -537,6 +525,10 @@ onUnmounted(() => {
                   />
                 </div>
               </div>
+
+              <p class="text-[9px] text-slate-500 font-medium leading-relaxed">
+                Port 9100 adalah port standar bawaan pabrik printer Brother (protokol RAW / JetDirect) untuk menerima cetak langsung via jaringan router lokal. Cukup masukkan IP Printer (misal 192.168.1.9), port 9100 biarkan standar.
+              </p>
 
               <div>
                 <label class="block text-[9px] font-bold text-slate-600 uppercase mb-1">Nama / Tipe Printer</label>
