@@ -153,6 +153,7 @@ class UserController extends Controller
                 'activation_token' => $activationToken,
                 'is_active' => false,
                 'must_change_password' => true,
+                'mfa_enabled' => $request->boolean('mfa_enabled', false),
             ]);
 
             AuditLog::create([
@@ -583,6 +584,10 @@ class UserController extends Controller
             $updateData['must_change_password'] = false;
         }
 
+        if ($request->has('mfa_enabled')) {
+            $updateData['mfa_enabled'] = (bool)$request->mfa_enabled;
+        }
+
         $user->update($updateData);
 
         AuditLog::create([
@@ -691,6 +696,34 @@ class UserController extends Controller
         ]);
 
         return back()->with('message', 'Hak akses Rekening Ibu Beti berhasil diperbarui.');
+    }
+
+    /**
+     * TOGGLE HAK AKSES M2F OTP WHATSAPP
+     */
+    public function toggleMfa(User $user)
+    {
+        $newStatus = !$user->mfa_enabled;
+        $user->update(['mfa_enabled' => $newStatus]);
+
+        AuditLog::create([
+            'user_id'          => auth()->id(),
+            'admin_name'       => auth()->user()->name,
+            'action'           => 'UPDATE M2F OTP WHATSAPP',
+            'target_personnel' => $user->name,
+            'description'      => "Mengubah status M2F OTP WhatsApp untuk {$user->name} ({$user->nrp}) menjadi " . ($newStatus ? 'Aktif' : 'Nonaktif'),
+            'ip_address'       => request()->ip(),
+        ]);
+
+        if (request()->wantsJson() || request()->ajax()) {
+            return response()->json([
+                'success' => true,
+                'mfa_enabled' => $newStatus,
+                'message' => 'Status M2F OTP WhatsApp berhasil diperbarui.'
+            ]);
+        }
+
+        return back()->with('message', 'Status M2F OTP WhatsApp berhasil diperbarui.');
     }
 
 }

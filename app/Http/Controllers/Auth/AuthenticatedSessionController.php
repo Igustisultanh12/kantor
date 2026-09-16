@@ -96,9 +96,8 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
-        // OTORITAS KEAMANAN: 2FA WhatsApp untuk Pimpinan (Komandan, Pasops) atau MFA Aktif (Admin dikecualikan untuk kemudahan administrasi)
-        $leadershipRoles = ['komandan', 'pasops'];
-        $requiresMfa = (in_array(strtolower($user->role), $leadershipRoles) || (bool)$user->mfa_enabled);
+        // OTORITAS KEAMANAN: 2FA WhatsApp ditentukan oleh status mfa_enabled pada akun personel (dikelola oleh Admin)
+        $requiresMfa = (bool)$user->mfa_enabled;
 
         // Ambil target pengalihan awal dari form post, query string, atau session
         $targetRedirect = $request->input('redirect') 
@@ -261,6 +260,7 @@ class AuthenticatedSessionController extends Controller
         Auth::login($user);
         session()->forget(['mfa_user_id', 'mfa_otp', 'mfa_expires_at', 'mfa_attempts']);
         $request->session()->regenerate();
+        session(['mfa_verified' => true]);
 
         \App\Models\AuditLog::create([
             'user_id' => $user->id,

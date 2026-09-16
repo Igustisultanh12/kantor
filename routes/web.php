@@ -367,6 +367,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/users/{id}/toggle-technical-cash-access', [TechnicalUnitCashController::class, 'toggleUserAccess'])->name('users.toggle-technical-cash-access');
         Route::post('/users/{user}/toggle-koperasi-access', [UserController::class, 'toggleKoperasiAccess'])->name('users.toggle-koperasi-access');
         Route::post('/users/{user}/toggle-ibu-beti-access', [UserController::class, 'toggleIbuBetiAccess'])->name('users.toggle-ibu-beti-access');
+        Route::post('/users/{user}/toggle-mfa', [UserController::class, 'toggleMfa'])->name('users.toggle-mfa');
 
         // Kategori Arsip Surat Mako V
         Route::resource('categories', CategoryController::class);

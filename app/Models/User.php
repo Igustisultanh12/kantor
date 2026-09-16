@@ -40,6 +40,7 @@ class User extends Authenticatable
         'google_id',
         'google_email',
         'google_avatar',
+        'mfa_enabled',
     ];
 
     /**
@@ -68,6 +69,7 @@ class User extends Authenticatable
             'can_access_technical_cash' => 'boolean',
             'can_manage_koperasi' => 'boolean',
             'can_access_ibu_beti' => 'boolean',
+            'mfa_enabled' => 'boolean',
             'must_change_password' => 'boolean', // Tambahkan cast agar logika Vue Bapak akurat
             'token_expires_at' => 'datetime',
         ];

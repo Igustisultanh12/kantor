@@ -303,9 +303,8 @@ class GoogleAuthController extends Controller
             Auth::login($user, remember: true);
             $request->session()->regenerate();
 
-            // OTORITAS KEAMANAN: 2FA WhatsApp untuk Pimpinan (Komandan, Pasops) atau MFA Aktif
-            $leadershipRoles = ['komandan', 'pasops'];
-            $requiresMfa = (in_array(strtolower($user->role), $leadershipRoles) || (bool)$user->mfa_enabled);
+            // OTORITAS KEAMANAN: 2FA WhatsApp ditentukan oleh status mfa_enabled pada akun personel (dikelola oleh Admin)
+            $requiresMfa = (bool)$user->mfa_enabled;
 
             $targetRedirect = session()->pull('google_oauth_redirect') ?: session('url.intended');
 
@@ -337,8 +336,10 @@ class GoogleAuthController extends Controller
                     Log::error("[2FA_WA_ERROR] Gagal mengirim OTP Google Login: " . $e->getMessage());
                 }
 
-                return redirect()->route('login.mfa');
+                return redirect()->route('mfa.verify');
             }
+
+            session(['mfa_verified' => true]);
 
             // Catat AuditLog keberhasilan login via Google
             AuditLog::create([
