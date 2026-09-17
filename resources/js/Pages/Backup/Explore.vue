@@ -907,56 +907,140 @@ const processUploadQueue = async () => {
 
         uploadAbortController = new AbortController();
         const startTime = Date.now();
+        const file = nextItem.file;
 
-        const formData = new FormData();
-        formData.append('pc_id', props.pc.id);
-        formData.append('file', nextItem.file);
-        if (props.currentFolderId) {
-            formData.append('parent_id', props.currentFolderId);
-        }
+        // Ambang batas pemotongan: berkas di atas 20 MB otomatis dipotong per 8 MB (lolos batas 100 MB Cloudflare)
+        const CHUNK_SIZE = 8 * 1024 * 1024; // 8 MB per keping
+        const CHUNK_THRESHOLD = 20 * 1024 * 1024; // 20 MB
 
         try {
-            const res = await axios.post(route('backup.store'), formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                    'Accept': 'application/json',
-                },
-                signal: uploadAbortController.signal,
-                onUploadProgress: (progressEvent) => {
-                    if (progressEvent.total) {
-                        const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                        nextItem.progress = percent;
-                        currentUploadProgress.value = percent;
+            if (file.size > CHUNK_THRESHOLD) {
+                // --- METODE 1: CHUNKED UPLOAD BERKAS BESAR (ANTI-LIMIT CLOUDFLARE 100MB) ---
+                const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+                const uploadId = 'chk_' + props.pc.id + '_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
+                nextItem.uploadId = uploadId;
 
-                        const now = Date.now();
-                        const elapsedSec = (now - startTime) / 1000;
-                        if (elapsedSec > 0.3) {
-                            const bytesPerSec = progressEvent.loaded / elapsedSec;
-                            if (bytesPerSec > 1024 * 1024) {
-                                currentUploadSpeed.value = (bytesPerSec / (1024 * 1024)).toFixed(2) + ' MB/s';
-                            } else {
-                                currentUploadSpeed.value = (bytesPerSec / 1024).toFixed(1) + ' KB/s';
+                let lastResponse = null;
+
+                for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+                    if (uploadAbortController.signal.aborted) {
+                        throw new Error('Dibatalkan pengguna');
+                    }
+
+                    const start = chunkIndex * CHUNK_SIZE;
+                    const end = Math.min(file.size, start + CHUNK_SIZE);
+                    const chunkBlob = file.slice(start, end);
+
+                    const chunkFormData = new FormData();
+                    chunkFormData.append('upload_id', uploadId);
+                    chunkFormData.append('chunk_index', chunkIndex);
+                    chunkFormData.append('total_chunks', totalChunks);
+                    chunkFormData.append('file_name', file.name);
+                    chunkFormData.append('file_size', file.size);
+                    chunkFormData.append('pc_id', props.pc.id);
+                    if (props.currentFolderId) {
+                        chunkFormData.append('parent_id', props.currentFolderId);
+                    }
+                    chunkFormData.append('chunk_file', chunkBlob, file.name);
+
+                    // Kirim kepingan saat ini ke endpoint chunk
+                    const chunkRes = await axios.post(route('backup.upload-chunk'), chunkFormData, {
+                        headers: {
+                            'Content-Type': 'multipart/form-data',
+                            'Accept': 'application/json',
+                        },
+                        signal: uploadAbortController.signal,
+                        onUploadProgress: (progressEvent) => {
+                            if (progressEvent.total) {
+                                const currentChunkLoaded = progressEvent.loaded;
+                                const totalUploadedBytes = (chunkIndex * CHUNK_SIZE) + currentChunkLoaded;
+                                const overallPercent = Math.min(99, Math.round((totalUploadedBytes * 100) / file.size));
+
+                                nextItem.progress = overallPercent;
+                                currentUploadProgress.value = overallPercent;
+
+                                const elapsedSec = (Date.now() - startTime) / 1000;
+                                if (elapsedSec > 0.3) {
+                                    const bytesPerSec = totalUploadedBytes / elapsedSec;
+                                    if (bytesPerSec > 1024 * 1024) {
+                                        currentUploadSpeed.value = (bytesPerSec / (1024 * 1024)).toFixed(2) + ' MB/s';
+                                    } else {
+                                        currentUploadSpeed.value = (bytesPerSec / 1024).toFixed(1) + ' KB/s';
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    lastResponse = chunkRes;
+                }
+
+                // Setelah seluruh kepingan terkirim dan digabungkan di server
+                if (lastResponse?.data?.status === 'success') {
+                    nextItem.status = 'completed';
+                    nextItem.progress = 100;
+                    anySuccess = true;
+                } else {
+                    nextItem.status = 'error';
+                    nextItem.error = lastResponse?.data?.message || 'Gagal menyatukan kepingan berkas.';
+                }
+
+            } else {
+                // --- METODE 2: SINGLE STREAM UNTUK BERKAS KECIL (<= 20 MB) ---
+                const formData = new FormData();
+                formData.append('pc_id', props.pc.id);
+                formData.append('file', file);
+                if (props.currentFolderId) {
+                    formData.append('parent_id', props.currentFolderId);
+                }
+
+                const res = await axios.post(route('backup.store'), formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                        'Accept': 'application/json',
+                    },
+                    signal: uploadAbortController.signal,
+                    onUploadProgress: (progressEvent) => {
+                        if (progressEvent.total) {
+                            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                            nextItem.progress = percent;
+                            currentUploadProgress.value = percent;
+
+                            const elapsedSec = (Date.now() - startTime) / 1000;
+                            if (elapsedSec > 0.3) {
+                                const bytesPerSec = progressEvent.loaded / elapsedSec;
+                                if (bytesPerSec > 1024 * 1024) {
+                                    currentUploadSpeed.value = (bytesPerSec / (1024 * 1024)).toFixed(2) + ' MB/s';
+                                } else {
+                                    currentUploadSpeed.value = (bytesPerSec / 1024).toFixed(1) + ' KB/s';
+                                }
                             }
                         }
                     }
-                }
-            });
+                });
 
-            if (res.data?.status === 'success') {
-                nextItem.status = 'completed';
-                nextItem.progress = 100;
-                anySuccess = true;
-            } else {
-                nextItem.status = 'error';
-                nextItem.error = res.data?.message || 'Gagal menyimpan berkas.';
+                if (res.data?.status === 'success') {
+                    nextItem.status = 'completed';
+                    nextItem.progress = 100;
+                    anySuccess = true;
+                } else {
+                    nextItem.status = 'error';
+                    nextItem.error = res.data?.message || 'Gagal menyimpan berkas.';
+                }
             }
         } catch (err) {
-            if (axios.isCancel(err) || err.name === 'CanceledError' || err.name === 'AbortError') {
+            if (axios.isCancel(err) || err.name === 'CanceledError' || err.name === 'AbortError' || err.message === 'Dibatalkan pengguna') {
                 nextItem.status = 'cancelled';
                 nextItem.error = 'Dibatalkan pengguna';
+                // Bersihkan kepingan di server jika ada
+                if (nextItem.uploadId) {
+                    try {
+                        axios.post(route('backup.cancel-upload'), { upload_id: nextItem.uploadId });
+                    } catch (e) {}
+                }
             } else if (err.response?.status === 413) {
                 nextItem.status = 'error';
-                nextItem.error = 'Batas 100 MB Cloudflare/Nginx terlampaui. Gunakan IP lokal server atau set Cloudflare ke DNS Only untuk berkas > 100 MB.';
+                nextItem.error = 'Batas ukuran web server terlampaui (Error 413).';
             } else {
                 nextItem.status = 'error';
                 nextItem.error = err.response?.data?.message || err.message || 'Koneksi terputus.';
@@ -1006,6 +1090,11 @@ const processUploadQueue = async () => {
 const cancelSingleUpload = (item) => {
     if (item.status === 'uploading' && uploadAbortController) {
         uploadAbortController.abort();
+        if (item.uploadId) {
+            try {
+                axios.post(route('backup.cancel-upload'), { upload_id: item.uploadId });
+            } catch (e) {}
+        }
     } else if (item.status === 'pending') {
         item.status = 'cancelled';
         item.error = 'Dibatalkan';

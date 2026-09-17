@@ -137,6 +137,8 @@ Route::middleware(['auth', 'office.only'])->group(function () {
     // Jalur Manajemen File
     Route::get('/pc-backup/explore/{id}', [BackupController::class, 'explore'])->name('backup.explore');
     Route::post('/pc-backup/store', [BackupController::class, 'store'])->name('backup.store');
+    Route::post('/pc-backup/upload-chunk', [BackupController::class, 'uploadChunk'])->name('backup.upload-chunk');
+    Route::post('/pc-backup/cancel-upload', [BackupController::class, 'cancelUploadChunk'])->name('backup.cancel-upload');
     Route::get('/pc-backup/download/{id}', [BackupController::class, 'download'])->name('backup.download');
     Route::delete('/pc-backup/destroy/{id}', [BackupController::class, 'destroyBackup'])->name('backup.destroy');
 

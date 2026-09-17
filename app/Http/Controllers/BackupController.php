@@ -1042,6 +1042,242 @@ class BackupController extends Controller
         return back()->with('success', 'Berkas berhasil diamankan.');
     }
 
+    /**
+     * UNGGAH BERKAS BESAR DENGAN CHUNK / KEPINGAN (ANTI-LIMIT 100MB CLOUDFLARE)
+     * Mendukung pemecahan berkas berukuran hingga 20 GB dengan enkripsi streaming dan validasi keamanan.
+     */
+    public function uploadChunk(Request $request)
+    {
+        // 1. Validasi Input Parameter
+        $validated = $request->validate([
+            'upload_id'    => 'required|string|regex:/^[a-zA-Z0-9_\-]+$/|max:100',
+            'chunk_index'  => 'required|integer|min:0',
+            'total_chunks' => 'required|integer|min:1',
+            'file_name'    => 'required|string|max:255',
+            'file_size'    => 'required|integer|min:1|max:21474836480', // Maksimal 20 GB
+            'pc_id'        => 'required|exists:pcs,id',
+            'parent_id'    => 'nullable',
+            'chunk_file'   => 'required|file|max:20480', // Tiap kepingan maksimal 20 MB (normalnya 8-10 MB)
+        ]);
+
+        $user = Auth::user();
+        $uploadId = $validated['upload_id'];
+        $chunkIndex = (int)$validated['chunk_index'];
+        $totalChunks = (int)$validated['total_chunks'];
+        $totalFileSize = (int)$validated['file_size'];
+        $cleanFileName = basename($validated['file_name']);
+
+        // 2. Proteksi Path Traversal pada nama berkas
+        if ($cleanFileName !== $validated['file_name'] || str_contains($validated['file_name'], '..') || str_contains($validated['file_name'], "\0")) {
+            Log::critical("SECURITY ALERT [Path Traversal in Chunk Upload Filename]: {$validated['file_name']}");
+            return response()->json(['status' => 'error', 'message' => 'Nama berkas memuat karakter terlarang.'], 422);
+        }
+
+        // 3. Cek awal ekstensi terlarang pada chunk pertama (hemat bandwidth)
+        $ext = strtolower(pathinfo($cleanFileName, PATHINFO_EXTENSION));
+        $blacklistedExtensions = [
+            'php', 'php3', 'php4', 'php5', 'php7', 'php8', 'phtml', 'phar', 'phps', 'pht',
+            'inc', 'exe', 'bat', 'cmd', 'sh', 'bash', 'zsh', 'vbs', 'vbe', 'js', 'jse', 
+            'wsf', 'wsh', 'scr', 'ps1', 'ps2', 'psc1', 'cgi', 'pl', 'py', 'pyc', 'dll', 
+            'jar', 'so', 'htaccess', 'htpasswd', 'ini', 'conf', 'asp', 'aspx', 'jsp', 'jspx'
+        ];
+        if (in_array($ext, $blacklistedExtensions, true)) {
+            Log::critical("SECURITY ALERT [Blocked Chunk Upload Extension]: {$cleanFileName}");
+            return response()->json(['status' => 'error', 'message' => "Ekstensi berkas .{$ext} dilarang keras demi alasan keamanan."], 422);
+        }
+
+        // 4. Verifikasi Kuota Penyimpanan PC
+        $pc = Pc::findOrFail($validated['pc_id']);
+        if (($pc->current_usage + $totalFileSize) > $pc->max_quota) {
+            $msg = 'Penyimpanan Penuh! Kapasitas ' . $this->formatBytes($pc->max_quota) . ' terlampaui.';
+            return response()->json(['status' => 'error', 'message' => $msg], 422);
+        }
+
+        // 5. Direktori Penyimpanan Sementara Kepingan Terisolasi (Non-Publik)
+        $chunkDir = storage_path('app/chunks/' . $user->id . '/' . $uploadId);
+        if (!file_exists($chunkDir)) {
+            @mkdir($chunkDir, 0775, true);
+        }
+
+        // Jalankan pembersihan kepingan lama (>24 jam) secara berkala
+        $this->cleanupStaleChunks();
+
+        // 6. Simpan Kepingan Saat Ini
+        $chunkPartPath = $chunkDir . '/chunk_' . sprintf('%05d', $chunkIndex) . '.part';
+        $uploadedChunk = $request->file('chunk_file');
+        
+        if (!move_uploaded_file($uploadedChunk->getRealPath(), $chunkPartPath)) {
+            copy($uploadedChunk->getRealPath(), $chunkPartPath);
+        }
+
+        // Jika belum kepingan terakhir, kembalikan status sukses penyimpanan kepingan
+        if ($chunkIndex < ($totalChunks - 1)) {
+            return response()->json([
+                'status' => 'chunk_saved',
+                'chunk_index' => $chunkIndex,
+                'total_chunks' => $totalChunks,
+                'progress' => round((($chunkIndex + 1) / $totalChunks) * 100, 1),
+            ]);
+        }
+
+        // --- TAHAP FINAL: SELURUH KEPINGAN TELAH TIBA, GABUNGKAN SECARA STREAMING ---
+        $lock = Cache::lock('chunk_assemble_' . $uploadId, 180);
+        if (!$lock->get()) {
+            return response()->json(['status' => 'processing', 'message' => 'Berkas sedang dalam proses penggabungan.'], 200);
+        }
+
+        try {
+            // Verifikasi seluruh kepingan dari 0 sampai totalChunks - 1 lengkap
+            for ($i = 0; $i < $totalChunks; $i++) {
+                $expectedPart = $chunkDir . '/chunk_' . sprintf('%05d', $i) . '.part';
+                if (!file_exists($expectedPart)) {
+                    return response()->json([
+                        'status' => 'error', 
+                        'message' => "Kepingan berkas ke-{$i} hilang atau transmisi terputus. Silakan coba unggah ulang."
+                    ], 422);
+                }
+            }
+
+            // Gabungkan kepingan secara streaming (hemat RAM)
+            $assembledTempPath = $chunkDir . '/assembled_' . uniqid() . '.tmp';
+            $outHandle = fopen($assembledTempPath, 'wb');
+            if (!$outHandle) {
+                throw new \Exception('Gagal membuka buffer penyatuan berkas sementara di server.');
+            }
+
+            for ($i = 0; $i < $totalChunks; $i++) {
+                $partPath = $chunkDir . '/chunk_' . sprintf('%05d', $i) . '.part';
+                $inHandle = fopen($partPath, 'rb');
+                if ($inHandle) {
+                    while (!feof($inHandle)) {
+                        $buffer = fread($inHandle, 1048576); // 1 MB buffer
+                        if ($buffer !== false) {
+                            fwrite($outHandle, $buffer);
+                        }
+                    }
+                    fclose($inHandle);
+                }
+            }
+            fclose($outHandle);
+
+            // Verifikasi ukuran berkas gabungan terhadap file_size
+            $assembledSize = filesize($assembledTempPath);
+            if ($assembledSize !== $totalFileSize) {
+                @unlink($assembledTempPath);
+                throw new \Exception("Integritas berkas tidak cocok. Ukuran aktual {$assembledSize} byte tidak sesuai {$totalFileSize} byte.");
+            }
+
+            // Validasi Keamanan Berlapis (Anti-Malware, Magic Bytes, Double Extension, Anti-Polyglot)
+            $remainingQuota = $pc->max_quota - $pc->current_usage;
+            FileSecurityService::validateFileSafety($assembledTempPath, $cleanFileName, $remainingQuota);
+
+            // Siapkan path penyimpanan aman terenkripsi
+            $uniquePrefix = time() . '_' . substr(uniqid(), -6);
+            $relativeSubPath = 'backups/' . $pc->id . '/' . $uniquePrefix . '_' . $cleanFileName;
+            $destFullPath = FileSecurityService::verifySafeStoragePath($relativeSubPath);
+
+            // Enkripsi berkas fisik pada level disk
+            FileSecurityService::encryptAndStoreFile($assembledTempPath, $destFullPath, $remainingQuota);
+
+            // Hapus berkas gabungan sementara
+            if (file_exists($assembledTempPath)) {
+                @unlink($assembledTempPath);
+            }
+
+            // Bersihkan seluruh kepingan sementara dari direktori
+            $this->removeChunkDirectory($chunkDir);
+
+            // Simpan ke Database
+            $backup = Backup::create([
+                'pc_id' => $pc->id,
+                'parent_id' => $validated['parent_id'] ?? null,
+                'file_name' => $cleanFileName,
+                'file_path' => $relativeSubPath,
+                'file_size' => $assembledSize,
+                'is_folder' => false,
+                'file_type' => $ext,
+            ]);
+
+            $pc->increment('current_usage', $assembledSize);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Berkas ' . $cleanFileName . ' berhasil diunggah secara utuh dan diamankan.',
+                'item' => [
+                    'id' => $backup->id,
+                    'file_name' => $backup->file_name,
+                    'file_size' => $backup->file_size,
+                    'size_human' => $this->formatBytes($backup->file_size),
+                    'date_human' => Carbon::now()->format('d M Y H:i'),
+                ],
+                'pc' => [
+                    'current_usage' => $pc->current_usage,
+                    'usage_percentage' => round(($pc->current_usage / $pc->max_quota) * 100, 2),
+                ]
+            ]);
+
+        } catch (\Throwable $e) {
+            $this->removeChunkDirectory($chunkDir);
+            Log::error("Gagal menggabungkan kepingan berkas pada PC ID {$pc->id}: " . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 422);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * Batalkan unggahan kepingan dan bersihkan direktori sementara
+     */
+    public function cancelUploadChunk(Request $request)
+    {
+        $validated = $request->validate([
+            'upload_id' => 'required|string|regex:/^[a-zA-Z0-9_\-]+$/|max:100',
+        ]);
+
+        $chunkDir = storage_path('app/chunks/' . Auth::id() . '/' . $validated['upload_id']);
+        $this->removeChunkDirectory($chunkDir);
+
+        return response()->json(['status' => 'success', 'message' => 'Kepingan berkas berhasil dibatalkan dan dibersihkan.']);
+    }
+
+    /**
+     * Hapus direktori kepingan sementara beserta isinya
+     */
+    protected function removeChunkDirectory(string $dir): void
+    {
+        if (!is_dir($dir)) return;
+        $files = glob($dir . '/*');
+        if (is_array($files)) {
+            foreach ($files as $file) {
+                @unlink($file);
+            }
+        }
+        @rmdir($dir);
+    }
+
+    /**
+     * Pembersihan berkas kepingan yang berumur lebih dari 24 jam (Garbage Collector)
+     */
+    protected function cleanupStaleChunks(): void
+    {
+        try {
+            $baseChunkDir = storage_path('app/chunks/' . Auth::id());
+            if (!is_dir($baseChunkDir)) return;
+
+            $dirs = glob($baseChunkDir . '/*', GLOB_ONLYDIR);
+            if (!is_array($dirs)) return;
+
+            $now = time();
+            foreach ($dirs as $dir) {
+                if (($now - filemtime($dir)) > 86400) { // Lebih dari 24 jam
+                    $this->removeChunkDirectory($dir);
+                }
+            }
+        } catch (\Throwable $e) {
+            // Silent catch
+        }
+    }
+
     public function download($id)
     {
         try {
