@@ -954,6 +954,9 @@ const processUploadQueue = async () => {
             if (axios.isCancel(err) || err.name === 'CanceledError' || err.name === 'AbortError') {
                 nextItem.status = 'cancelled';
                 nextItem.error = 'Dibatalkan pengguna';
+            } else if (err.response?.status === 413) {
+                nextItem.status = 'error';
+                nextItem.error = 'Batas 100 MB Cloudflare/Nginx terlampaui. Gunakan IP lokal server atau set Cloudflare ke DNS Only untuk berkas > 100 MB.';
             } else {
                 nextItem.status = 'error';
                 nextItem.error = err.response?.data?.message || err.message || 'Koneksi terputus.';
