@@ -678,6 +678,23 @@ const downloadSelectedZip = () => {
     pcInput.value = props.pc.id;
     form.appendChild(pcInput);
 
+    if (props.currentFolderId) {
+        const folderIdInput = document.createElement('input');
+        folderIdInput.type = 'hidden';
+        folderIdInput.name = 'folder_id';
+        folderIdInput.value = props.currentFolderId;
+        form.appendChild(folderIdInput);
+
+        const currentFolderName = props.breadcrumbs?.[props.breadcrumbs.length - 1]?.name;
+        if (currentFolderName) {
+            const folderNameInput = document.createElement('input');
+            folderNameInput.type = 'hidden';
+            folderNameInput.name = 'folder_name';
+            folderNameInput.value = currentFolderName;
+            form.appendChild(folderNameInput);
+        }
+    }
+
     selectedItemIds.value.forEach(id => {
         const idInput = document.createElement('input');
         idInput.type = 'hidden';
@@ -1563,6 +1580,18 @@ const downloadItem = (item) => {
         idInput.name = 'ids[]';
         idInput.value = item.id;
         form.appendChild(idInput);
+
+        const folderIdInput = document.createElement('input');
+        folderIdInput.type = 'hidden';
+        folderIdInput.name = 'folder_id';
+        folderIdInput.value = item.id;
+        form.appendChild(folderIdInput);
+
+        const folderNameInput = document.createElement('input');
+        folderNameInput.type = 'hidden';
+        folderNameInput.name = 'folder_name';
+        folderNameInput.value = item.file_name;
+        form.appendChild(folderNameInput);
 
         document.body.appendChild(form);
         form.submit();

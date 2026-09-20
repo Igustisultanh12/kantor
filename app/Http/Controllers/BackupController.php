@@ -1714,7 +1714,53 @@ class BackupController extends Controller
             return back()->with('error', 'Tidak ada berkas yang dipilih untuk dikompresi.');
         }
 
-        $zipFileName = 'PAKET_TERPILIH_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $pc->pc_name) . '_' . date('Ymd_His') . '.zip';
+        // Tentukan nama paket ZIP berdasarkan folder yang dipilih atau folder aktif saat ini
+        $folderTitle = null;
+
+        // 1. Jika pengguna memilih 1 folder tunggal
+        if ($items->count() === 1 && $items->first()->is_folder) {
+            $folderTitle = $items->first()->file_name;
+        }
+
+        // 2. Jika ID folder aktif dikirimkan dari peramban
+        if (!$folderTitle && $request->filled('folder_id')) {
+            $currentFolder = Backup::where('id', $request->folder_id)->where('pc_id', $pc->id)->first();
+            if ($currentFolder) {
+                $folderTitle = $currentFolder->file_name;
+            }
+        }
+
+        // 3. Jika nama folder aktif dikirimkan dari breadcrumb peramban
+        if (!$folderTitle && $request->filled('folder_name')) {
+            $folderTitle = $request->folder_name;
+        }
+
+        // 4. Jika seluruh item terpilih berada di dalam subfolder yang sama
+        if (!$folderTitle) {
+            $firstParentId = $items->first()->parent_id;
+            if ($firstParentId) {
+                $allSameParent = $items->every(fn($i) => $i->parent_id == $firstParentId);
+                if ($allSameParent) {
+                    $parentFolder = Backup::where('id', $firstParentId)->where('pc_id', $pc->id)->first();
+                    if ($parentFolder) {
+                        $folderTitle = $parentFolder->file_name;
+                    }
+                }
+            }
+        }
+
+        // 5. Cadangan jika di root pangkalan
+        if (!$folderTitle) {
+            $folderTitle = $pc->pc_name;
+        }
+
+        $cleanTitle = trim(preg_replace('/[^A-Za-z0-9_\-]/', '_', $folderTitle), '_');
+        $cleanTitle = preg_replace('/_+/', '_', $cleanTitle);
+        if ($cleanTitle === '') {
+            $cleanTitle = 'ARSIP_BERKAS';
+        }
+
+        $zipFileName = $cleanTitle . '_' . date('Ymd_His') . '.zip';
 
         return response()->stream(function () use ($items) {
             set_time_limit(0);
