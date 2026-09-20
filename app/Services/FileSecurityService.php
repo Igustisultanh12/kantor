@@ -595,6 +595,55 @@ class FileSecurityService
     }
 
     /**
+     * Alirkan data terdekripsi langsung ke fungsi konsumen per keping (RAM buffer),
+     * tanpa membuat berkas fisik temporer di penyimpanan disk server.
+     *
+     * @param string $fullPath Jalur fisik berkas terenkripsi
+     * @param callable $chunkConsumer Callback bertipe function(string $chunk)
+     */
+    public static function streamDecryptedChunks(string $fullPath, callable $chunkConsumer): void
+    {
+        if (!file_exists($fullPath)) return;
+
+        $fp = @fopen($fullPath, 'rb');
+        if (!$fp) return;
+
+        if (!self::isEncrypted($fullPath)) {
+            while (!feof($fp)) {
+                if (connection_aborted()) break;
+                $data = fread($fp, 65536);
+                if ($data === false || $data === '') break;
+                $chunkConsumer($data);
+            }
+            fclose($fp);
+            return;
+        }
+
+        fseek($fp, self::HEADER_LEN);
+        $key = self::getKey();
+
+        while (!feof($fp)) {
+            if (connection_aborted()) break;
+
+            $iv = fread($fp, 16);
+            if (strlen($iv) < 16) break;
+
+            $lenBytes = fread($fp, 4);
+            if (strlen($lenBytes) < 4) break;
+
+            $encLen = unpack('N', $lenBytes)[1];
+            $encData = fread($fp, $encLen);
+
+            $plain = openssl_decrypt($encData, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv);
+            if ($plain !== false && $plain !== '') {
+                $chunkConsumer($plain);
+            }
+        }
+
+        fclose($fp);
+    }
+
+    /**
      * Dapatkan file sementara terdekripsi (digunakan saat perlu path fisik lokal, misal kompresi ZIP atau konversi)
      */
     public static function createDecryptedTempFile(string $fullPath): ?string

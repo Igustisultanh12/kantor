@@ -9,6 +9,7 @@ use App\Models\BackupShareGuest;
 use App\Models\BackupShareAccessLog;
 use App\Services\ArwService;
 use App\Services\FileSecurityService;
+use App\Services\StreamingZipService;
 use App\Services\ThumbnailService;
 use App\Services\WhatsappService;
 use Illuminate\Http\Request;
@@ -994,7 +995,8 @@ class BackupShareController extends Controller
     }
 
     /**
-     * Fitur Tambahan Google Drive: Unduh Seluruh Isi Folder Menjadi Paket ZIP
+     * Unduh Seluruh Isi Folder Menjadi Paket ZIP64 Streaming
+     * Dialirkan langsung ke respons peramban menggunakan metode STORE tanpa membuat berkas fisik temporer di disk.
      */
     public function downloadFolderZip($token, Request $request)
     {
@@ -1011,55 +1013,82 @@ class BackupShareController extends Controller
             }
         }
 
-        // Ambil seluruh berkas non-folder di dalam target folder
-        $files = Backup::where('pc_id', $share->pc_id)
+        // Ambil seluruh item (berkas dan subfolder) di dalam target folder
+        $items = Backup::where('pc_id', $share->pc_id)
             ->where('parent_id', $targetFolderId)
-            ->where('is_folder', false)
             ->get();
 
-        if ($files->isEmpty()) {
+        if ($items->isEmpty()) {
             return back()->with('error', 'Tidak ada berkas yang dapat dikompresi di folder ini.');
         }
 
         $folderTitle = $targetFolder ? $targetFolder->file_name : ($share->share_name ?: 'BERKAS_BAGIKAN');
         $zipFileName = 'UNDUHAN_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $folderTitle) . '_' . date('Ymd_His') . '.zip';
-        $zipTempPath = storage_path('app/public/temp_' . $zipFileName);
 
-        $zip = new ZipArchive();
-        $createdTempFiles = [];
+        return response()->stream(function () use ($items, $share) {
+            set_time_limit(0);
+            @ini_set('max_execution_time', '0');
+            @ini_set('memory_limit', '512M');
 
-        if ($zip->open($zipTempPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
-            foreach ($files as $file) {
-                $fullPath = FileSecurityService::verifySafeStoragePath($file->file_path);
-                if (file_exists($fullPath)) {
-                    if (FileSecurityService::isEncrypted($fullPath)) {
-                        $tmp = FileSecurityService::createDecryptedTempFile($fullPath);
-                        if ($tmp) {
-                            $createdTempFiles[] = $tmp;
-                            $zip->addFile($tmp, $file->file_name);
-                        }
-                    } else {
-                        $zip->addFile($fullPath, $file->file_name);
-                    }
-                }
-            }
-            $zip->close();
-
-            // Bersihkan file sementara yang dibuat untuk zip
-            foreach ($createdTempFiles as $tmp) {
-                @unlink($tmp);
+            while (ob_get_level() > 0) {
+                @ob_end_clean();
             }
 
-            if (file_exists($zipTempPath)) {
-                return response()->download($zipTempPath, $zipFileName)->deleteFileAfterSend(true);
-            }
-        }
+            $out = fopen('php://output', 'wb');
+            if (!$out) return;
 
-        abort(500, 'Gagal mengompresi berkas ke dalam ZIP.');
+            $zipStream = new StreamingZipService($out);
+
+            foreach ($items as $item) {
+                $this->streamSharedItemToZip($item, $zipStream, '', $share);
+            }
+
+            $zipStream->finish();
+            fclose($out);
+        }, 200, [
+            'Content-Type' => 'application/zip',
+            'Content-Disposition' => 'attachment; filename="' . $zipFileName . '"',
+            'X-Accel-Buffering' => 'no',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ]);
     }
 
     /**
-     * Endpoint API Khusus Admin: Menampilkan Log Siapa Saja yang Mengakses Share Folder Secara Realtime
+     * Alirkan item berbagi ke ZIP stream secara rekursif
+     */
+    private function streamSharedItemToZip($item, StreamingZipService $zipStream, string $zipSubDir, BackupShare $share): void
+    {
+        if (connection_aborted()) {
+            return;
+        }
+
+        if ($item->is_folder) {
+            $newDir = $zipSubDir ? $zipSubDir . '/' . $item->file_name : $item->file_name;
+            $zipStream->addEmptyDir($newDir);
+            $children = Backup::where('parent_id', $item->id)->where('pc_id', $share->pc_id)->get();
+            foreach ($children as $child) {
+                if (connection_aborted()) {
+                    break;
+                }
+                $this->streamSharedItemToZip($child, $zipStream, $newDir, $share);
+            }
+        } else {
+            $fullPath = FileSecurityService::verifySafeStoragePath($item->file_path);
+            if (file_exists($fullPath)) {
+                $entryPath = $zipSubDir ? $zipSubDir . '/' . $item->file_name : $item->file_name;
+                $timestamp = $item->updated_at ? $item->updated_at->timestamp : time();
+
+                $zipStream->addFileStream($entryPath, function ($writeChunk) use ($fullPath) {
+                    FileSecurityService::streamDecryptedChunks($fullPath, $writeChunk);
+                }, $timestamp);
+            }
+        }
+    }
+
+    /**
+     * Endpoint API Khusus Admin: Menampilkan Log Siapa Saja yang Mengakses Share Folder Secara Langsung
      */
     public function getAccessLogs(Request $request)
     {

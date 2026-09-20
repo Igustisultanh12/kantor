@@ -653,8 +653,12 @@ const deleteSelectedItems = () => {
     });
 };
 
+const isDownloadingZip = ref(false);
+
 const downloadSelectedZip = () => {
-    if (selectedCount.value === 0) return;
+    if (selectedCount.value === 0 || isDownloadingZip.value) return;
+
+    isDownloadingZip.value = true;
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = route('backup.bulk-download-zip');
@@ -685,6 +689,10 @@ const downloadSelectedZip = () => {
     document.body.appendChild(form);
     form.submit();
     document.body.removeChild(form);
+
+    setTimeout(() => {
+        isDownloadingZip.value = false;
+    }, 4000);
 };
 
 // --- STATE ZOOM, ROTATE, PAN & SECURE BLOB PREVIEW ---
@@ -2767,9 +2775,10 @@ onUnmounted(() => {
                     </button>
 
                     <!-- Tombol Unduh ZIP -->
-                    <button @click="downloadSelectedZip" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95" title="Unduh semua item terpilih sebagai arsip ZIP">
-                        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                        <span>Unduh ZIP</span>
+                    <button @click="downloadSelectedZip" :disabled="isDownloadingZip" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed" :title="isDownloadingZip ? 'Sedang mengalirkan paket ZIP...' : 'Unduh semua item terpilih sebagai arsip ZIP'">
+                        <svg v-if="!isDownloadingZip" class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        <svg v-else class="w-4 h-4 text-emerald-400 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span>{{ isDownloadingZip ? 'Mengalirkan ZIP...' : 'Unduh ZIP' }}</span>
                     </button>
 
                     <!-- Tombol Hapus -->
@@ -2903,9 +2912,11 @@ onUnmounted(() => {
                 <!-- OPSI UNDUH BULK ZIP JIKA ADA ITEM TERPILIH -->
                 <div v-if="selectedItemIds.length > 0"
                      @click="downloadSelectedZip()"
+                     :class="{'opacity-60 cursor-not-allowed': isDownloadingZip}"
                      class="px-4 py-2 bg-emerald-50 text-emerald-900 hover:bg-emerald-600 hover:text-white cursor-pointer flex items-center gap-3 transition font-black">
-                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                    <span>UNDUH {{ selectedItemIds.length }} ITEM TERPILIH (ZIP)</span>
+                    <svg v-if="!isDownloadingZip" class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    <svg v-else class="w-4 h-4 text-emerald-600 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span>{{ isDownloadingZip ? 'MENGALIRKAN ARSIP ZIP...' : `UNDUH ${selectedItemIds.length} ITEM TERPILIH (ZIP)` }}</span>
                 </div>
 
                 <div v-if="clipboard.items.length > 0" class="border-t my-1 border-slate-100"></div>

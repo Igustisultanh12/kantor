@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\BackupShare;
 use App\Services\ArwService;
 use App\Services\FileSecurityService;
+use App\Services\StreamingZipService;
 use App\Services\ThumbnailService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -1689,7 +1690,10 @@ class BackupController extends Controller
     }
 
     /**
-     * UNDUH BANYAK ITEM TERPILIH SEBAGAI PAKET ZIP
+     * UNDUH BANYAK ITEM TERPILIH SEBAGAI PAKET ZIP64 STREAMING
+     *
+     * Dialirkan langsung ke output HTTP peramban menggunakan metode STORE tanpa membuat
+     * berkas temporer di disk server (zero disk overhead) dan meloloskan batas 100 detik Cloudflare.
      */
     public function bulkDownloadZip(Request $request)
     {
@@ -1711,27 +1715,35 @@ class BackupController extends Controller
         }
 
         $zipFileName = 'PAKET_TERPILIH_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $pc->pc_name) . '_' . date('Ymd_His') . '.zip';
-        $zipTempPath = storage_path('app/public/temp_' . $zipFileName);
 
-        $zip = new ZipArchive();
-        $createdTempFiles = [];
+        return response()->stream(function () use ($items) {
+            set_time_limit(0);
+            @ini_set('max_execution_time', '0');
+            @ini_set('memory_limit', '512M');
 
-        if ($zip->open($zipTempPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
+            while (ob_get_level() > 0) {
+                @ob_end_clean();
+            }
+
+            $out = fopen('php://output', 'wb');
+            if (!$out) return;
+
+            $zipStream = new StreamingZipService($out);
+
             foreach ($items as $item) {
-                $this->addBackupToZip($item, $zip, '', $createdTempFiles);
-            }
-            $zip->close();
-
-            foreach ($createdTempFiles as $tmp) {
-                @unlink($tmp);
+                $this->streamBackupItemToZip($item, $zipStream, '');
             }
 
-            if (file_exists($zipTempPath)) {
-                return response()->download($zipTempPath, $zipFileName)->deleteFileAfterSend(true);
-            }
-        }
-
-        return back()->with('error', 'Gagal memproses pembuatan paket ZIP.');
+            $zipStream->finish();
+            fclose($out);
+        }, 200, [
+            'Content-Type' => 'application/zip',
+            'Content-Disposition' => 'attachment; filename="' . $zipFileName . '"',
+            'X-Accel-Buffering' => 'no',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ]);
     }
 
     /**
@@ -1834,30 +1846,33 @@ class BackupController extends Controller
     }
 
     /**
-     * Tambahkan item ke ZIP secara rekursif
+     * Tambahkan item ke ZIP stream secara rekursif tanpa berkas temporer
      */
-    private function addBackupToZip($item, ZipArchive $zip, $zipSubDir, array &$createdTempFiles)
+    private function streamBackupItemToZip($item, StreamingZipService $zipStream, string $zipSubDir): void
     {
+        if (connection_aborted()) {
+            return;
+        }
+
         if ($item->is_folder) {
             $newDir = $zipSubDir ? $zipSubDir . '/' . $item->file_name : $item->file_name;
-            $zip->addEmptyDir($newDir);
+            $zipStream->addEmptyDir($newDir);
             $children = Backup::where('parent_id', $item->id)->where('pc_id', $item->pc_id)->get();
             foreach ($children as $child) {
-                $this->addBackupToZip($child, $zip, $newDir, $createdTempFiles);
+                if (connection_aborted()) {
+                    break;
+                }
+                $this->streamBackupItemToZip($child, $zipStream, $newDir);
             }
         } else {
             $fullPath = FileSecurityService::verifySafeStoragePath($item->file_path);
             if (file_exists($fullPath)) {
                 $entryPath = $zipSubDir ? $zipSubDir . '/' . $item->file_name : $item->file_name;
-                if (FileSecurityService::isEncrypted($fullPath)) {
-                    $tmp = FileSecurityService::createDecryptedTempFile($fullPath);
-                    if ($tmp) {
-                        $createdTempFiles[] = $tmp;
-                        $zip->addFile($tmp, $entryPath);
-                    }
-                } else {
-                    $zip->addFile($fullPath, $entryPath);
-                }
+                $timestamp = $item->updated_at ? $item->updated_at->timestamp : time();
+
+                $zipStream->addFileStream($entryPath, function ($writeChunk) use ($fullPath) {
+                    FileSecurityService::streamDecryptedChunks($fullPath, $writeChunk);
+                }, $timestamp);
             }
         }
     }
