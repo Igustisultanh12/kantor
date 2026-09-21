@@ -37,6 +37,7 @@ use App\Http\Controllers\PublicTrackingController;
 use App\Http\Controllers\ScSubmissionController;
 use App\Http\Controllers\SystemCheckController;
 use App\Http\Controllers\PrintServiceController;
+use App\Http\Controllers\Chat\LiveChatController;
 use App\Models\User;
 use App\Models\LetterLog;
 use App\Models\Letter;
@@ -210,6 +211,26 @@ Route::get('/shared-folder/{token}/download-arw-jpg/{fileId}', [BackupShareContr
 
 // --- AKSES TERPROTEKSI (AUTH) ---
 Route::middleware('auth')->group(function () {
+    // --- MODUL KOMUNIKASI DINAS & PANGGILAN VIDEO (LIVE CHAT & WEBRTC VC) ---
+    Route::get('/live-chat', [LiveChatController::class, 'index'])->name('chat.index');
+    Route::get('/live-chat/sync', [LiveChatController::class, 'sync'])->name('chat.sync');
+    Route::get('/live-chat/search-users', [LiveChatController::class, 'searchUsers'])->name('chat.search-users');
+    Route::post('/live-chat/start', [LiveChatController::class, 'startChat'])->name('chat.start');
+    Route::get('/live-chat/attachment/download', [LiveChatController::class, 'downloadAttachment'])->name('chat.attachment.download');
+    Route::get('/live-chat/ice-servers', [LiveChatController::class, 'getIceServers'])->name('chat.ice-servers');
+    Route::get('/live-chat/{uuid}/messages', [LiveChatController::class, 'getMessages'])->name('chat.messages');
+    Route::post('/live-chat/{uuid}/send', [LiveChatController::class, 'sendMessage'])->name('chat.send');
+    Route::post('/live-chat/{uuid}/typing', [LiveChatController::class, 'typing'])->name('chat.typing');
+    Route::post('/live-chat/{uuid}/status', [LiveChatController::class, 'toggleStatus'])->name('chat.status');
+    Route::delete('/live-chat/{uuid}', [LiveChatController::class, 'destroy'])->name('chat.destroy');
+
+    // Sinyal Panggilan Video & Suara (WebRTC P2P Signaling & Agora)
+    Route::post('/live-chat/{uuid}/call/initiate', [LiveChatController::class, 'initiateCall'])->name('chat.call.initiate');
+    Route::get('/live-chat/{uuid}/call/signal', [LiveChatController::class, 'getCallSignal'])->name('chat.call.signal');
+    Route::post('/live-chat/{uuid}/call/signal', [LiveChatController::class, 'sendCallSignal'])->name('chat.call.send-signal');
+    Route::post('/live-chat/{uuid}/call/end', [LiveChatController::class, 'endCall'])->name('chat.call.end');
+    Route::get('/live-chat/{uuid}/call/agora-token', [LiveChatController::class, 'getAgoraToken'])->name('chat.call.agora-token');
+
     // PRATINJAU DOKUMEN & MEDIA TEROTENTIKASI (STREAMING DEKRIPSI ON-THE-FLY)
     Route::get('/pc-backup/preview-file/{id}', [BackupController::class, 'previewFile'])->name('backup.preview-file');
     Route::get('/pc-backup/thumbnail/{id}', [BackupController::class, 'thumbnail'])->name('backup.thumbnail');
