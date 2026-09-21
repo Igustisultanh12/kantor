@@ -21,6 +21,8 @@ const form = useForm({
     google_client_id: props.settings.google_client_id || '',
     google_client_secret: props.settings.google_client_secret || '',
     google_login_enabled: props.settings.google_login_enabled !== undefined ? String(props.settings.google_login_enabled) : '1',
+    agora_app_id: props.settings.agora_app_id || '19daeb63b0ec46f2b02197c9fbbe81d6',
+    agora_app_certificate: props.settings.agora_app_certificate || '',
     logo: null,
     login_background: null,
     signature_file: null,
@@ -29,6 +31,7 @@ const form = useForm({
 });
 
 const showClientSecret = ref(false);
+const showAgoraCertificate = ref(false);
 const copiedCallback = ref(false);
 
 const callbackUrl = computed(() => {
@@ -463,6 +466,98 @@ onUnmounted(() => { if (waInterval) clearInterval(waInterval); });
                                         <li>Klik <b>Save</b>. Kredensial yang disimpan pada form ini langsung aktif seketika tanpa perlu restart server atau edit file .env di VPS!</li>
                                     </ol>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- INTEGRASI VICON & PANGGILAN VIDEO (AGORA RTC) -->
+                    <div class="pt-8 border-t border-slate-100 space-y-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shrink-0">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-xs font-black text-slate-900 uppercase tracking-wider">INTEGRASI VICON & PANGGILAN VIDEO (AGORA RTC)</h3>
+                                    <p class="text-[10px] text-slate-500 font-semibold">Atur Kredensial Agora App ID dan Primary Certificate untuk Panggilan Video & Suara Kedinasan</p>
+                                </div>
+                            </div>
+                            <span class="text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full uppercase tracking-wider">
+                                Vicon Engine
+                            </span>
+                        </div>
+
+                        <div class="bg-gradient-to-br from-slate-50 to-blue-50/30 p-6 rounded-3xl border border-slate-200 space-y-6">
+                            <!-- Input App ID & Certificate -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider ms-1 flex items-center gap-1.5">
+                                        <span>Agora App ID</span>
+                                        <span class="text-[9px] text-rose-500 font-black">*</span>
+                                    </label>
+                                    <input 
+                                        v-model="form.agora_app_id" 
+                                        type="text" 
+                                        class="w-full rounded-2xl border-slate-200 bg-white focus:ring-blue-500 focus:border-blue-600 font-mono text-xs font-semibold px-4 py-3 text-slate-800 transition" 
+                                        placeholder="contoh: 19daeb63b0ec46f2b02197c9fbbe81d6"
+                                    />
+                                    <p class="text-[9px] text-slate-400 font-medium ms-1">App ID resmi yang diperoleh dari proyek Agora Developer Console.</p>
+                                </div>
+
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider ms-1 flex items-center justify-between">
+                                        <div class="flex items-center gap-1.5">
+                                            <span>Agora App Certificate</span>
+                                            <span class="text-[9px] text-slate-400 font-normal">(Opsional)</span>
+                                        </div>
+                                        <button 
+                                            type="button" 
+                                            @click="showAgoraCertificate = !showAgoraCertificate"
+                                            class="text-[9px] font-bold text-blue-600 hover:text-blue-800 transition uppercase cursor-pointer"
+                                        >
+                                            {{ showAgoraCertificate ? 'Sembunyikan' : 'Tampilkan' }}
+                                        </button>
+                                    </label>
+                                    <div class="relative">
+                                        <input 
+                                            v-model="form.agora_app_certificate" 
+                                            :type="showAgoraCertificate ? 'text' : 'password'" 
+                                            class="w-full rounded-2xl border-slate-200 bg-white focus:ring-blue-500 focus:border-blue-600 font-mono text-xs font-semibold px-4 py-3 text-slate-800 transition pr-10" 
+                                            placeholder="contoh: f20e73efeed44842b2d861723549f8ea"
+                                        />
+                                        <button 
+                                            type="button" 
+                                            @click="showAgoraCertificate = !showAgoraCertificate"
+                                            class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                                        >
+                                            <svg v-if="!showAgoraCertificate" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <p class="text-[9px] text-slate-400 font-medium ms-1">Primary Certificate untuk enkripsi token keamanan. Kosongkan jika proyek Agora menggunakan mode App ID tanpa certificate.</p>
+                                </div>
+                            </div>
+
+                            <!-- Petunjuk Konfigurasi Agora -->
+                            <div class="p-4 bg-white rounded-2xl border border-blue-100 shadow-xs space-y-2">
+                                <div class="flex items-center gap-2 font-bold text-blue-900 text-xs">
+                                    <svg class="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span>Panduan Konfigurasi Agora RTC:</span>
+                                </div>
+                                <ul class="list-disc list-inside space-y-1 text-[10px] text-slate-600 font-medium pl-1">
+                                    <li><b>Mode App ID Saja</b>: Jika proyek Agora Anda dibuat tanpa mengaktifkan App Certificate, cukup isi kolom <b>Agora App ID</b> dan kosongkan <b>Agora App Certificate</b>.</li>
+                                    <li><b>Mode Token Terenkripsi</b>: Jika App Certificate diaktifkan di Agora Console, isi kedua kolom di atas. Server SINDEN akan secara otomatis membangkitkan token keamanan dinamis saat sesi panggilan dimulai.</li>
+                                    <li>Perubahan yang disimpan langsung berlaku seketika pada bilik panggilan video tanpa perlu memuat ulang atau menyetel ulang server.</li>
+                                </ul>
                             </div>
                         </div>
                     </div>

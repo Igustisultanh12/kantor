@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\LiveChatThread;
 use App\Models\LiveChatMessage;
 use App\Models\User;
+use App\Models\Setting;
+use App\Services\AgoraTokenService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -851,11 +853,14 @@ class LiveChatController extends Controller
         $channelName = 'SINDEN_' . preg_replace('/[^a-zA-Z0-9]/', '', $thread->uuid);
         $uid = (int) ($request->input('uid') ?: ($user->id ?? 1));
 
+        $appId = Setting::where('key', 'agora_app_id')->value('value') ?: env('AGORA_APP_ID', '19daeb63b0ec46f2b02197c9fbbe81d6');
+        $token = AgoraTokenService::generateToken($channelName, $uid);
+
         return response()->json([
             'success' => true,
-            'appId' => env('AGORA_APP_ID', '19daeb63b0ec46f2b02197c9fbbe81d6'),
+            'appId' => $appId,
             'channel' => $channelName,
-            'token' => null,
+            'token' => $token,
             'uid' => $uid,
         ]);
     }

@@ -30,17 +30,20 @@ class SettingController extends Controller
             'google_client_id' => 'nullable|string|max:500',
             'google_client_secret' => 'nullable|string|max:500',
             'google_login_enabled' => 'nullable|in:0,1',
+            'agora_app_id' => 'nullable|string|max:100',
+            'agora_app_certificate' => 'nullable|string|max:100',
             'logo' => 'nullable|image|max:2048', 
             'login_background' => 'nullable|image|max:5120', // Background login (Maks 5MB)
             'signature_file' => 'nullable|image|mimes:png|max:2048', // Validasi khusus PNG
             'favicon' => 'nullable|image|mimes:ico,png,jpg,jpeg|max:1024', // Tambahan validasi favicon (Maks 1MB)
         ]);
 
-        // 1. Update pengaturan teks & integrasi (agency_name, copyright, google oauth, mobile api, wa)
+        // 1. Update pengaturan teks & integrasi (agency_name, copyright, google oauth, mobile api, wa, agora)
         $textFields = [
             'agency_name', 'copyright', 'start_number', 'wa_notifications_enabled', 
             'mobile_api_base_url', 'mobile_apk_download_url', 'mobile_api_status', 'mobile_min_version',
-            'google_client_id', 'google_client_secret', 'google_login_enabled'
+            'google_client_id', 'google_client_secret', 'google_login_enabled',
+            'agora_app_id', 'agora_app_certificate'
         ];
         foreach ($request->only($textFields) as $key => $value) {
             if ($value !== null) {
