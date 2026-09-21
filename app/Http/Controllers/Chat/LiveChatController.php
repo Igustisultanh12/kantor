@@ -741,8 +741,20 @@ class LiveChatController extends Controller
         $isAdmin = $user->role === 'admin' || $user->name === 'I Gusti Sultan H.A, A.Md.Kom';
         $senderRole = $isAdmin ? 'ADMIN' : 'USER';
 
-        // 1. Perbarui status panggilan jika ada
+        $action = $request->input('action');
         $newStatus = $request->input('status');
+
+        if (!$newStatus && $action) {
+            if ($action === 'accept') {
+                $newStatus = 'ACCEPTED';
+            } elseif ($action === 'connected') {
+                $newStatus = 'CONNECTED';
+            } elseif ($action === 'reject') {
+                $newStatus = 'REJECTED';
+            }
+        }
+
+        // 1. Perbarui status panggilan jika ada
         if ($newStatus) {
             $callData['status'] = $newStatus;
             if ($newStatus === 'CONNECTED' && empty($callData['started_at'])) {

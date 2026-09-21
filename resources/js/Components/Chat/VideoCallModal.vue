@@ -361,6 +361,7 @@ const remoteVideoContainerRef = ref(null);
 
 // Objek Agora RTC
 let agoraClient = null;
+let isInitializingAgora = false;
 let localAudioTrack = null;
 let localVideoTrack = null;
 let signalingTimer = null;
@@ -444,36 +445,45 @@ const loadAgoraScript = () => {
 // 2. INISIASI & PENGHUBUNGAN AGORA RTC
 // ==========================================
 const initAgoraRoom = async () => {
-  if (agoraClient) {
+  if (agoraClient || isInitializingAgora) {
     return;
   }
 
+  isInitializingAgora = true;
   connectionStatusText.value = 'Mempersiapkan jalur audio video...';
   await nextTick();
 
   try {
     const AgoraRTC = await loadAgoraScript();
 
+    // Pastikan modal masih terbuka dan panggilan belum dibatalkan
+    if (!props.show || callStatus.value === 'IDLE' || callStatus.value === 'ENDED') {
+      return;
+    }
+
     // Mode komunikasi terarah (RTC) dengan codec VP8 yang didukung seluruh peramban
-    agoraClient = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+    const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+    agoraClient = client;
 
     // Dengarkan peristiwa saat lawan bicara mempublikasikan video atau audio
-    agoraClient.on('user-published', async (user, mediaType) => {
+    client.on('user-published', async (user, mediaType) => {
       try {
-        await agoraClient.subscribe(user, mediaType);
+        await client.subscribe(user, mediaType);
 
         if (mediaType === 'video') {
           isRemoteMediaActive.value = true;
           isRemoteVideoOff.value = false;
           await nextTick();
-          if (remoteVideoContainerRef.value) {
+          if (remoteVideoContainerRef.value && user.videoTrack) {
             user.videoTrack.play(remoteVideoContainerRef.value);
           }
           handleConnected();
         }
 
         if (mediaType === 'audio') {
-          user.audioTrack.play();
+          if (user.audioTrack) {
+            user.audioTrack.play();
+          }
           handleConnected();
         }
       } catch (subErr) {
@@ -482,19 +492,19 @@ const initAgoraRoom = async () => {
     });
 
     // Tangani saat lawan bicara mematikan kamera
-    agoraClient.on('user-unpublished', (user, mediaType) => {
+    client.on('user-unpublished', (user, mediaType) => {
       if (mediaType === 'video') {
         isRemoteVideoOff.value = true;
       }
     });
 
     // Tangani saat lawan bicara keluar dari bilik panggilan
-    agoraClient.on('user-left', () => {
+    client.on('user-left', () => {
       hangUpCall();
     });
 
     // Masuk ke saluran Agora RTC
-    const uid = props.currentUser?.id || Math.floor(Math.random() * 900000) + 100000;
+    const uid = Number(props.currentUser?.id) || Math.floor(Math.random() * 900000) + 100000;
     let token = null;
     let appId = AGORA_APP_ID;
 
@@ -510,7 +520,18 @@ const initAgoraRoom = async () => {
       console.debug('Pengambilan token dinas fallback ke mode App ID:', tokenErr);
     }
 
-    await agoraClient.join(appId, channelName.value, token, uid);
+    // Periksa apakah panggilan dibatalkan/ditutup selama menunggu token
+    if (!props.show || !agoraClient || agoraClient !== client || callStatus.value === 'IDLE' || callStatus.value === 'ENDED') {
+      try { client.leave(); } catch (e) {}
+      return;
+    }
+
+    await client.join(appId, channelName.value, token, uid);
+
+    if (!props.show || !agoraClient || agoraClient !== client || callStatus.value === 'IDLE' || callStatus.value === 'ENDED') {
+      try { client.leave(); } catch (e) {}
+      return;
+    }
 
     // Buat aliran mikrofon dan kamera lokal pengguna
     try {
@@ -534,13 +555,21 @@ const initAgoraRoom = async () => {
       isCameraOff.value = true;
     }
 
+    // Batalkan aliran jika panggilan ditutup saat meminta izin mic/kamera
+    if (!props.show || !agoraClient || agoraClient !== client || callStatus.value === 'IDLE' || callStatus.value === 'ENDED') {
+      if (localAudioTrack) { try { localAudioTrack.close(); } catch (e) {} localAudioTrack = null; }
+      if (localVideoTrack) { try { localVideoTrack.close(); } catch (e) {} localVideoTrack = null; }
+      try { client.leave(); } catch (e) {}
+      return;
+    }
+
     // Publikasikan aliran lokal ke jaringan Agora SD-RTN
     const tracksToPublish = [];
     if (localAudioTrack) tracksToPublish.push(localAudioTrack);
     if (localVideoTrack) tracksToPublish.push(localVideoTrack);
 
-    if (tracksToPublish.length > 0) {
-      await agoraClient.publish(tracksToPublish);
+    if (tracksToPublish.length > 0 && client) {
+      await client.publish(tracksToPublish);
     }
 
     // Mainkan tampilan video lokal di elemen miniatur PiP
@@ -559,6 +588,8 @@ const initAgoraRoom = async () => {
   } catch (err) {
     console.error('Gagal menginisialisasi Agora RTC:', err);
     connectionStatusText.value = 'Kendala Inisialisasi';
+  } finally {
+    isInitializingAgora = false;
   }
 };
 
@@ -575,6 +606,7 @@ const handleConnected = () => {
     // Beritahu backend bahwa sesi panggilan telah aktif terhubung
     axios.post(`${baseUrl.value}/signal`, {
       action: 'connected',
+      status: 'CONNECTED',
     }).catch(() => {});
   }
 };
@@ -707,6 +739,7 @@ const acceptIncomingCall = async () => {
   try {
     await axios.post(`${baseUrl.value}/signal`, {
       action: 'accept',
+      status: 'ACCEPTED',
       sender: 'callee',
     });
 
@@ -805,7 +838,9 @@ const resumeActiveCall = async (callData) => {
     startConnectingTimer();
   }
 
-  await initAgoraRoom();
+  if (!agoraClient && !isInitializingAgora) {
+    await initAgoraRoom();
+  }
   startSignalingPoll();
 };
 
@@ -847,7 +882,7 @@ const startSignalingPoll = () => {
         stopOutgoingDialRing();
         stopOutgoingTimeout();
         callStatus.value = 'CONNECTING';
-        if (!agoraClient) {
+        if (!agoraClient && !isInitializingAgora) {
           await initAgoraRoom();
         }
       }
@@ -874,6 +909,7 @@ const stopSignalingPoll = () => {
 // 7. PEMBERSIHAN SUMBER DAYA & EVENT SIKLUS
 // ==========================================
 const cleanupMedia = () => {
+  isInitializingAgora = false;
   stopSignalingPoll();
   stopOutgoingTimeout();
   stopConnectingTimer();
