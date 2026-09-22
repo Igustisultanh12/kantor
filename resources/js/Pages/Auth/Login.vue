@@ -71,7 +71,7 @@ onMounted(() => {
 });
 
 const isLockingGPS = ref(false);
-const gpsError = ref(null);
+const gpsWarning = ref(null);
 
 const form = useForm({
     email: '',
@@ -83,22 +83,34 @@ const form = useForm({
 });
 
 /**
- * FUNGSI INTI: Validasi GPS Wajib & Deteksi Fake GPS
+ * FUNGSI: Deteksi GPS Kedinasan & Penanganan Lokasi Belum Aktif
  */
 const lockLocation = () => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         isLockingGPS.value = true;
-        gpsError.value = null;
+        gpsWarning.value = null;
 
         if (!navigator.geolocation) {
-            Swal.fire({
-                icon: 'error',
-                title: 'SISTEM TIDAK DIDUKUNG',
-                text: 'Browser Anda tidak mendukung fitur GPS.',
-                confirmButtonColor: '#2563eb',
-            });
             isLockingGPS.value = false;
-            reject();
+            form.latitude = null;
+            form.longitude = null;
+            gpsWarning.value = "anda belum mengaktifkan Lokasi anda";
+
+            Swal.fire({
+                icon: 'warning',
+                title: 'PERINGATAN LOKASI',
+                text: 'anda belum mengaktifkan Lokasi anda',
+                confirmButtonText: 'LANJUTKAN MASUK',
+                confirmButtonColor: '#f59e0b',
+                background: 'rgba(15, 23, 42, 0.95)',
+                color: '#ffffff',
+                customClass: {
+                    popup: 'swal2-dark-glass border border-white/10 shadow-2xl rounded-[2rem]',
+                    confirmButton: 'bg-amber-500 hover:bg-amber-600 text-white font-black text-xs uppercase tracking-widest px-8 py-3 rounded-xl shadow-lg shadow-amber-500/20'
+                },
+            }).then(() => {
+                resolve();
+            });
             return;
         }
 
@@ -114,10 +126,15 @@ const lockLocation = () => {
                         title: 'DETEKSI MANIPULASI',
                         text: 'SISTEM MENDETEKSI PENGGUNAAN LOKASI PALSU. MATIKAN APLIKASI FAKE GPS ANDA!',
                         confirmButtonColor: '#dc2626',
+                        background: 'rgba(15, 23, 42, 0.95)',
+                        color: '#ffffff',
+                        customClass: {
+                            popup: 'swal2-dark-glass border border-white/10 shadow-2xl rounded-[2rem]',
+                            confirmButton: 'bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest px-8 py-3 rounded-xl shadow-lg shadow-red-500/20'
+                        },
                     });
-                    gpsError.value = "MANIPULASI LOKASI TERDETEKSI.";
+                    gpsWarning.value = "MANIPULASI LOKASI TERDETEKSI.";
                     isLockingGPS.value = false;
-                    reject();
                     return;
                 }
 
@@ -128,21 +145,27 @@ const lockLocation = () => {
             },
             (error) => {
                 isLockingGPS.value = false;
-                
+                form.latitude = null;
+                form.longitude = null;
+                gpsWarning.value = "anda belum mengaktifkan Lokasi anda";
+
                 Swal.fire({
                     icon: 'warning',
-                    title: 'AKSES DIBATALKAN',
-                    text: 'MAAF ANDA TIDAK BISA LOGIN, SILAHKAN AKTIFKAN LOKASI ANDA!',
-                    confirmButtonText: 'KEMBALI KE HALAMAN LOGIN',
-                    confirmButtonColor: '#dc2626',
-                    background: '#ffffff',
-                    allowOutsideClick: false
+                    title: 'PERINGATAN LOKASI',
+                    text: 'anda belum mengaktifkan Lokasi anda',
+                    confirmButtonText: 'LANJUTKAN MASUK',
+                    confirmButtonColor: '#f59e0b',
+                    background: 'rgba(15, 23, 42, 0.95)',
+                    color: '#ffffff',
+                    customClass: {
+                        popup: 'swal2-dark-glass border border-white/10 shadow-2xl rounded-[2rem]',
+                        confirmButton: 'bg-amber-500 hover:bg-amber-600 text-white font-black text-xs uppercase tracking-widest px-8 py-3 rounded-xl shadow-lg shadow-amber-500/20'
+                    },
+                }).then(() => {
+                    resolve();
                 });
-
-                gpsError.value = "IZIN LOKASI DITOLAK.";
-                reject();
             },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
         );
     });
 };
@@ -162,7 +185,7 @@ const submit = async () => {
             onFinish: () => form.reset('password'),
         });
     } catch (e) {
-        console.warn("Autentikasi dihentikan: Koordinat GPS diperlukan.");
+        console.warn("Autentikasi dihentikan:", e);
     }
 };
 </script>
@@ -307,20 +330,20 @@ const submit = async () => {
 
                     <!-- Status GPS Verification Widget -->
                     <div class="mt-4 p-3 rounded-xl border transition-all flex items-center gap-3"
-                         :class="form.latitude ? 'bg-emerald-950/40 border-emerald-500/40' : 'bg-slate-800/50 border-slate-700/50'">
+                         :class="form.latitude ? 'bg-emerald-950/40 border-emerald-500/40' : (gpsWarning ? 'bg-amber-950/30 border-amber-500/30' : 'bg-slate-800/50 border-slate-700/50')">
                         <div class="h-2.5 w-2.5 rounded-full shrink-0 transition-all" 
                             :class="[
-                                form.latitude ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'bg-rose-400', 
+                                form.latitude ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' : (gpsWarning ? 'bg-amber-400' : 'bg-slate-400'), 
                                 isLockingGPS ? 'animate-ping' : ''
                             ]"
                         ></div>
                         <div class="flex flex-col overflow-hidden text-left">
                             <p class="text-[10px] font-bold uppercase leading-tight" 
-                               :class="form.latitude ? 'text-emerald-300' : 'text-slate-300'">
-                                {{ form.latitude ? 'GPS Presisi Terkunci' : (gpsError ? 'Akses Terblokir' : 'Verifikasi GPS Sistem') }}
+                               :class="form.latitude ? 'text-emerald-300' : (gpsWarning ? 'text-amber-300' : 'text-slate-300')">
+                                {{ form.latitude ? 'GPS Presisi Terkunci' : (gpsWarning ? 'Peringatan Lokasi' : 'Verifikasi GPS Sistem') }}
                             </p>
                             <p class="text-[9px] text-slate-400 uppercase mt-0.5 tracking-tight truncate">
-                                {{ gpsError || (form.latitude ? `Koordinat: ${form.latitude.toFixed(4)}, ${form.longitude.toFixed(4)}` : 'Lokasi GPS Wajib Aktif') }}
+                                {{ gpsWarning || (form.latitude ? `Koordinat: ${form.latitude.toFixed(4)}, ${form.longitude.toFixed(4)}` : 'Disarankan Mengaktifkan GPS') }}
                             </p>
                         </div>
                     </div>

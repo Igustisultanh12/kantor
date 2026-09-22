@@ -28,61 +28,7 @@ const openGlobalCommandPalette = () => {
 };
 
 /**
- * PROTOKOL KEAMANAN: BATAS WAKTU SESI TIDAK AKTIF (INACTIVITY TIMEOUT)
- * Sesi tidak aktif 20 menit: Peringatan muncul di menit ke-18 (sisa 120 detik).
- */
-const showInactivityWarning = ref(false);
-const inactivitySecondsLeft = ref(120);
-let inactivityTimer = null;
-let countdownTimer = null;
-
-const INACTIVITY_LIMIT_MS = 18 * 60 * 1000; // 18 menit
-
-const resetInactivityTimer = () => {
-    if (showInactivityWarning.value) return;
-    if (inactivityTimer) clearTimeout(inactivityTimer);
-    inactivityTimer = setTimeout(() => {
-        triggerInactivityWarning();
-    }, INACTIVITY_LIMIT_MS);
-};
-
-const triggerInactivityWarning = () => {
-    showInactivityWarning.value = true;
-    inactivitySecondsLeft.value = 120; // 2 menit countdown
-
-    if (countdownTimer) clearInterval(countdownTimer);
-    countdownTimer = setInterval(() => {
-        inactivitySecondsLeft.value--;
-        if (inactivitySecondsLeft.value <= 0) {
-            clearInterval(countdownTimer);
-            executeAutoLogout();
-        }
-    }, 1000);
-};
-
-const extendSession = () => {
-    showInactivityWarning.value = false;
-    if (countdownTimer) clearInterval(countdownTimer);
-    resetInactivityTimer();
-    // Ping backend agar session PHP tetap hidup
-    fetch(route('api.ping'), { headers: { 'X-Requested-With': 'XMLHttpRequest' } }).catch(() => {});
-};
-
-const executeAutoLogout = () => {
-    showInactivityWarning.value = false;
-    if (countdownTimer) clearInterval(countdownTimer);
-    if (inactivityTimer) clearTimeout(inactivityTimer);
-    router.post(route('logout'), {}, {
-        onFinish: () => {
-            window.location.href = '/login';
-        }
-    });
-};
-
-const userActivityEvents = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
-
-/**
- * SISTEM NOTIFIKASI REAL-TIME & IN-APP BELL
+ * SISTEM NOTIFIKASI KEDINASAN & IN-APP BELL
  */
 import { router } from '@inertiajs/vue3';
 
@@ -211,11 +157,6 @@ const checkMobile = () => {
 let notifTimer = null;
 
 onMounted(() => {
-    // Daftarkan listener aktivitas personel untuk deteksi batas waktu sesi
-    userActivityEvents.forEach(evt => {
-        window.addEventListener(evt, resetInactivityTimer, { passive: true });
-    });
-    resetInactivityTimer();
     checkMobile();
     window.addEventListener('resize', checkMobile);
 
@@ -224,11 +165,6 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-    userActivityEvents.forEach(evt => {
-        window.removeEventListener(evt, resetInactivityTimer);
-    });
-    if (inactivityTimer) clearTimeout(inactivityTimer);
-    if (countdownTimer) clearInterval(countdownTimer);
     window.removeEventListener('resize', checkMobile);
     if (notifTimer) clearInterval(notifTimer);
 });
@@ -970,45 +906,6 @@ onUnmounted(() => {
 
         </div>
 
-    </div>
-
-    <!-- MODAL PERINGATAN KEDINASAN: INACTIVITY TIMEOUT -->
-    <div v-if="showInactivityWarning" class="fixed inset-0 z-[250] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-700/80 rounded-[2.5rem] shadow-2xl p-6 sm:p-8 max-w-md w-full text-white text-center space-y-5 animate-in zoom-in duration-200">
-            <div class="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center mx-auto shadow-inner">
-                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-            </div>
-            <div class="space-y-1.5">
-                <span class="text-[10px] font-black uppercase text-amber-400 tracking-widest block">Protokol Keamanan Intelijen</span>
-                <h3 class="text-base font-black uppercase text-white">Peringatan Sesi Tidak Aktif</h3>
-                <p class="text-xs text-slate-300 leading-relaxed">
-                    Sistem mendeteksi tidak ada aktivitas personel selama 18 menit. Demi kerahasiaan dokumen kedinasan, sesi Anda akan diputus otomatis dalam:
-                </p>
-            </div>
-            <div class="p-3 bg-slate-950/80 rounded-2xl border border-slate-800">
-                <span class="text-3xl font-mono font-black text-amber-400 tracking-widest">
-                    {{ String(Math.floor(inactivitySecondsLeft / 60)).padStart(2, '0') }}:{{ String(inactivitySecondsLeft % 60).padStart(2, '0') }}
-                </span>
-            </div>
-            <div class="flex items-center gap-2 pt-2">
-                <button 
-                    type="button"
-                    @click="executeAutoLogout"
-                    class="w-1/2 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs uppercase rounded-xl transition cursor-pointer"
-                >
-                    Keluar Sekarang
-                </button>
-                <button 
-                    type="button"
-                    @click="extendSession"
-                    class="w-1/2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-indigo-600/30 transition cursor-pointer"
-                >
-                    Lanjutkan Sesi
-                </button>
-            </div>
-        </div>
     </div>
 
     <!-- GLOBAL COMMAND PALETTE MODAL (CTRL + K) -->
