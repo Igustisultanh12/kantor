@@ -83,87 +83,70 @@ const form = useForm({
 });
 
 /**
- * FUNGSI: Deteksi GPS Kedinasan & Penanganan Lokasi Belum Aktif
+ * FUNGSI: Deteksi GPS Kedinasan & Peringatan Lokasi
  */
+const showLocationWarning = (resolve, lat = null, lng = null) => {
+    isLockingGPS.value = false;
+    form.latitude = lat;
+    form.longitude = lng;
+    gpsWarning.value = "Anda belum mengaktifkan lokasi";
+
+    Swal.fire({
+        icon: 'warning',
+        title: 'PERINGATAN LOKASI',
+        text: 'Anda belum mengaktifkan lokasi',
+        showCancelButton: true,
+        confirmButtonText: 'Lanjutkan',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#f59e0b',
+        cancelButtonColor: '#475569',
+        background: 'rgba(15, 23, 42, 0.95)',
+        color: '#ffffff',
+        customClass: {
+            popup: 'swal2-dark-glass border border-white/10 shadow-2xl rounded-[2rem]',
+            confirmButton: 'bg-amber-500 hover:bg-amber-600 text-white font-black text-xs uppercase tracking-widest px-6 py-3 rounded-xl shadow-lg shadow-amber-500/20',
+            cancelButton: 'bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs uppercase tracking-wider px-6 py-3 rounded-xl'
+        },
+    }).then((result) => {
+        if (result.isConfirmed) {
+            resolve();
+        } else {
+            form.latitude = null;
+            form.longitude = null;
+        }
+    });
+};
+
 const lockLocation = () => {
     return new Promise((resolve) => {
         isLockingGPS.value = true;
         gpsWarning.value = null;
 
         if (!navigator.geolocation) {
-            isLockingGPS.value = false;
-            form.latitude = null;
-            form.longitude = null;
-            gpsWarning.value = "anda belum mengaktifkan Lokasi anda";
-
-            Swal.fire({
-                icon: 'warning',
-                title: 'PERINGATAN LOKASI',
-                text: 'anda belum mengaktifkan Lokasi anda',
-                confirmButtonText: 'LANJUTKAN MASUK',
-                confirmButtonColor: '#f59e0b',
-                background: 'rgba(15, 23, 42, 0.95)',
-                color: '#ffffff',
-                customClass: {
-                    popup: 'swal2-dark-glass border border-white/10 shadow-2xl rounded-[2rem]',
-                    confirmButton: 'bg-amber-500 hover:bg-amber-600 text-white font-black text-xs uppercase tracking-widest px-8 py-3 rounded-xl shadow-lg shadow-amber-500/20'
-                },
-            }).then(() => {
-                resolve();
-            });
+            showLocationWarning(resolve);
             return;
         }
 
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                // DETEKSI FAKE GPS: Cek akurasi dan properti mocked
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
                 const accuracy = position.coords.accuracy;
                 const isMocked = position.mocked || (position.coords && position.coords.isMocked);
 
-                if (isMocked || accuracy > 250) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'DETEKSI MANIPULASI',
-                        text: 'SISTEM MENDETEKSI PENGGUNAAN LOKASI PALSU. MATIKAN APLIKASI FAKE GPS ANDA!',
-                        confirmButtonColor: '#dc2626',
-                        background: 'rgba(15, 23, 42, 0.95)',
-                        color: '#ffffff',
-                        customClass: {
-                            popup: 'swal2-dark-glass border border-white/10 shadow-2xl rounded-[2rem]',
-                            confirmButton: 'bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest px-8 py-3 rounded-xl shadow-lg shadow-red-500/20'
-                        },
-                    });
-                    gpsWarning.value = "MANIPULASI LOKASI TERDETEKSI.";
-                    isLockingGPS.value = false;
+                // Jika terdeteksi mocked eksplisit atau akurasi perkiraan kasar (> 250m seperti di PC/laptop)
+                if (isMocked || accuracy > 250 || !lat || !lng) {
+                    showLocationWarning(resolve, lat, lng);
                     return;
                 }
 
-                form.latitude = position.coords.latitude;
-                form.longitude = position.coords.longitude;
+                form.latitude = lat;
+                form.longitude = lng;
                 isLockingGPS.value = false;
                 resolve();
             },
             (error) => {
-                isLockingGPS.value = false;
-                form.latitude = null;
-                form.longitude = null;
-                gpsWarning.value = "anda belum mengaktifkan Lokasi anda";
-
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'PERINGATAN LOKASI',
-                    text: 'anda belum mengaktifkan Lokasi anda',
-                    confirmButtonText: 'LANJUTKAN MASUK',
-                    confirmButtonColor: '#f59e0b',
-                    background: 'rgba(15, 23, 42, 0.95)',
-                    color: '#ffffff',
-                    customClass: {
-                        popup: 'swal2-dark-glass border border-white/10 shadow-2xl rounded-[2rem]',
-                        confirmButton: 'bg-amber-500 hover:bg-amber-600 text-white font-black text-xs uppercase tracking-widest px-8 py-3 rounded-xl shadow-lg shadow-amber-500/20'
-                    },
-                }).then(() => {
-                    resolve();
-                });
+                showLocationWarning(resolve);
             },
             { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
         );
