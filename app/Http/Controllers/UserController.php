@@ -104,6 +104,13 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
+        $rawNrp = preg_replace('/[^A-Za-z0-9]/', '', $request->nrp ?? '');
+        $autoEmail = !empty($rawNrp) ? (strtolower($rawNrp) . '@sinden.my.id') : null;
+
+        if (!$request->filled('email') && $autoEmail) {
+            $request->merge(['email' => $autoEmail]);
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'pangkat' => 'required|string',

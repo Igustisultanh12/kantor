@@ -79,6 +79,41 @@ const addForm = useForm({
     mfa_enabled: false,
 });
 
+// Fitur Autogenerate Email Personel
+const isEmailManuallyEdited = ref(false);
+
+const autoGenerateEmail = () => {
+    if (isEmailManuallyEdited.value && addForm.email) return;
+    const rawNrp = (addForm.nrp || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (rawNrp) {
+        addForm.email = `${rawNrp}@sinden.my.id`;
+    } else if (addForm.name) {
+        const cleanName = (addForm.name || '')
+            .toLowerCase()
+            .trim()
+            .replace(/['`]/g, '')
+            .replace(/[^a-z0-9]+/g, '.');
+        if (cleanName) {
+            addForm.email = `${cleanName}@sinden.my.id`;
+        }
+    }
+};
+
+watch(() => addForm.nrp, () => {
+    autoGenerateEmail();
+});
+
+watch(() => addForm.name, () => {
+    autoGenerateEmail();
+});
+
+watch(showAddModal, (newVal) => {
+    if (newVal) {
+        isEmailManuallyEdited.value = false;
+        autoGenerateEmail();
+    }
+});
+
 /**
  * FITUR BARU: LOGIKA CETAK METODE SULTAN (HTML2PDF)
  */
@@ -184,6 +219,7 @@ const submitAdd = () => {
         onSuccess: () => {
             showAddModal.value = false;
             addForm.reset();
+            isEmailManuallyEdited.value = false;
             Swal.fire({
                 title: 'BERHASIL',
                 text: 'Akun dibuat. Detail login dikirim via WhatsApp ke personel.',
@@ -925,8 +961,18 @@ onUnmounted(() => {
                         </div>
 
                         <div>
-                            <label class="text-[9px] font-black text-gray-400 uppercase ml-2">Email</label>
-                            <input v-model="addForm.email" type="email" placeholder="email@contoh.com" class="w-full bg-gray-50 border-none rounded-2xl p-4 text-[11px] font-bold focus:ring-2 focus:ring-indigo-600" required />
+                            <div class="flex items-center justify-between ml-2">
+                                <label class="text-[9px] font-black text-gray-400 uppercase">Email</label>
+                                <span class="text-[8px] font-extrabold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md uppercase tracking-wider">Otomatis Terisi</span>
+                            </div>
+                            <input 
+                                v-model="addForm.email" 
+                                @input="isEmailManuallyEdited = true"
+                                type="email" 
+                                placeholder="otomatis dari NRP/Nama" 
+                                class="w-full bg-gray-50 border-none rounded-2xl p-4 text-[11px] font-bold focus:ring-2 focus:ring-indigo-600" 
+                                required 
+                            />
                         </div>
                         <div>
                             <label class="text-[9px] font-black text-gray-400 uppercase ml-2">WhatsApp</label>
