@@ -1,8 +1,8 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, usePage, router, Link } from '@inertiajs/vue3';
-// PERBAIKAN: Menambahkan onMounted dan onUnmounted agar tidak error
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+// PERBAIKAN: Menambahkan watch, onMounted dan onUnmounted
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import axios from 'axios'; 
 import Swal from 'sweetalert2';
 import html2pdf from 'html2pdf.js'; // Library Sakti untuk Cetak Tanpa RAM Server
