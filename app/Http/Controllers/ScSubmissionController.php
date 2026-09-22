@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ScSubmissionController extends Controller
 {
@@ -33,8 +34,10 @@ class ScSubmissionController extends Controller
                     'at_denintel' => 0,
                     'at_sintel' => 0,
                     'completed' => 0,
+                    'sudah_diambil' => 0,
+                    'belum_diambil' => 0,
                 ],
-                'filters' => $request->only(['search', 'stage', 'status']),
+                'filters' => $request->only(['search', 'stage', 'status', 'pengambilan', 'sort']),
                 'stages' => array_values(ScSubmission::STAGES),
             ]);
         }
@@ -55,17 +58,22 @@ class ScSubmissionController extends Controller
             $relations[] = 'skhpp';
         }
 
-        $query = ScSubmission::with($relations)->orderBy('id', 'desc');
+        $query = ScSubmission::with($relations);
 
         if ($request->filled('search')) {
             $search = trim($request->search);
-            $cleanSearch = str_replace([' ', '-', '.'], '', $search);
+            $cleanSearch = preg_replace('/[^A-Za-z0-9]/', '', $search);
             $query->where(function ($q) use ($search, $cleanSearch) {
                 $q->where('nama', 'like', "%{$search}%")
                   ->orWhere('identifier_number', 'like', "%{$search}%")
-                  ->orWhereRaw("REPLACE(REPLACE(REPLACE(identifier_number, ' ', ''), '-', ''), '.', '') LIKE ?", ["%{$cleanSearch}%"])
                   ->orWhere('tracking_code', 'like', "%{$search}%")
-                  ->orWhere('kesatuan', 'like', "%{$search}%");
+                  ->orWhere('kesatuan', 'like', "%{$search}%")
+                  ->orWhere('keperluan', 'like', "%{$search}%");
+
+                if (!empty($cleanSearch)) {
+                    $q->orWhereRaw("REPLACE(REPLACE(REPLACE(identifier_number, ' ', ''), '-', ''), '/', '') LIKE ?", ["%{$cleanSearch}%"]);
+                }
+
                 if (Schema::hasColumn('sc_submissions', 'nomor_sc')) {
                     $q->orWhere('nomor_sc', 'like', "%{$search}%");
                 }
@@ -80,6 +88,42 @@ class ScSubmissionController extends Controller
             $query->where('status', $request->status);
         }
 
+        if ($request->filled('pengambilan') && $request->pengambilan !== 'all' && Schema::hasColumn('sc_submissions', 'is_taken')) {
+            if ($request->pengambilan === 'sudah_diambil') {
+                $query->where('is_taken', true);
+            } elseif ($request->pengambilan === 'belum_diambil') {
+                $query->where(function($q) {
+                    $q->where('is_taken', false)->orWhereNull('is_taken');
+                });
+            }
+        }
+
+        $sort = $request->input('sort', 'terbaru');
+        switch ($sort) {
+            case 'terlama':
+                $query->orderBy('id', 'asc');
+                break;
+            case 'nama_asc':
+                $query->orderBy('nama', 'asc');
+                break;
+            case 'nama_desc':
+                $query->orderBy('nama', 'desc');
+                break;
+            case 'nomor_sc':
+                $query->orderByRaw('CASE WHEN nomor_sc IS NULL OR nomor_sc = "" THEN 1 ELSE 0 END, nomor_sc asc');
+                break;
+            case 'tanggal_diambil':
+                $query->orderByRaw('CASE WHEN taken_at IS NULL THEN 1 ELSE 0 END, taken_at desc');
+                break;
+            case 'tanggal_sc':
+                $query->orderByRaw('CASE WHEN tanggal_sc IS NULL THEN 1 ELSE 0 END, tanggal_sc desc');
+                break;
+            case 'terbaru':
+            default:
+                $query->orderBy('id', 'desc');
+                break;
+        }
+
         $submissions = $query->paginate(15)->withQueryString();
 
         $stats = [
@@ -88,12 +132,14 @@ class ScSubmissionController extends Controller
             'at_denintel' => Schema::hasColumn('sc_submissions', 'current_stage') ? ScSubmission::where('current_stage', '<=', 5)->where('status', '!=', 'ditolak')->count() : 0,
             'at_sintel' => Schema::hasColumn('sc_submissions', 'current_stage') ? ScSubmission::whereBetween('current_stage', [6, 9])->where('status', '!=', 'ditolak')->count() : 0,
             'completed' => Schema::hasColumn('sc_submissions', 'current_stage') ? ScSubmission::where('current_stage', 10)->orWhere('status', 'selesai')->count() : 0,
+            'sudah_diambil' => Schema::hasColumn('sc_submissions', 'is_taken') ? ScSubmission::where('is_taken', true)->count() : 0,
+            'belum_diambil' => Schema::hasColumn('sc_submissions', 'is_taken') ? ScSubmission::where('is_taken', false)->orWhereNull('is_taken')->count() : 0,
         ];
 
         return Inertia::render('ScSubmission/Index', [
             'submissions' => $submissions,
             'stats' => $stats,
-            'filters' => $request->only(['search', 'stage', 'status']),
+            'filters' => $request->only(['search', 'stage', 'status', 'pengambilan', 'sort']),
             'stages' => array_values(ScSubmission::STAGES),
         ]);
     }
@@ -535,5 +581,179 @@ class ScSubmissionController extends Controller
         }
 
         return redirect()->back()->with('success', "Lapor! Sebanyak {$syncedCount} berkas SKHPP yang telah terbit berhasil disinkronkan ke sistem pelacakan SC.");
+    }
+
+    /**
+     * Cetak Laporan PDF Buku Agenda Pengambilan SC
+     * Format sesuai buku agenda surat dinas Denintel Kodaeral V
+     */
+    public function exportPdf(Request $request)
+    {
+        ScSubmission::ensureSchema();
+
+        $relations = ['creator'];
+        if (Schema::hasTable('sc_submission_logs')) {
+            $relations[] = 'logs';
+        }
+        if (Schema::hasColumn('sc_submissions', 'skhpp_id')) {
+            $relations[] = 'skhpp';
+        }
+
+        $query = ScSubmission::with($relations);
+
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $cleanSearch = preg_replace('/[^A-Za-z0-9]/', '', $search);
+            $query->where(function ($q) use ($search, $cleanSearch) {
+                $q->where('nama', 'like', "%{$search}%")
+                  ->orWhere('identifier_number', 'like', "%{$search}%")
+                  ->orWhere('tracking_code', 'like', "%{$search}%")
+                  ->orWhere('kesatuan', 'like', "%{$search}%")
+                  ->orWhere('keperluan', 'like', "%{$search}%");
+
+                if (!empty($cleanSearch)) {
+                    $q->orWhereRaw("REPLACE(REPLACE(REPLACE(identifier_number, ' ', ''), '-', ''), '/', '') LIKE ?", ["%{$cleanSearch}%"]);
+                }
+
+                if (Schema::hasColumn('sc_submissions', 'nomor_sc')) {
+                    $q->orWhere('nomor_sc', 'like', "%{$search}%");
+                }
+            });
+        }
+
+        if ($request->filled('stage') && $request->stage !== 'all' && Schema::hasColumn('sc_submissions', 'current_stage')) {
+            $query->where('current_stage', (int)$request->stage);
+        }
+
+        if ($request->filled('status') && $request->status !== 'all' && Schema::hasColumn('sc_submissions', 'status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('pengambilan') && $request->pengambilan !== 'all' && Schema::hasColumn('sc_submissions', 'is_taken')) {
+            if ($request->pengambilan === 'sudah_diambil') {
+                $query->where('is_taken', true);
+            } elseif ($request->pengambilan === 'belum_diambil') {
+                $query->where(function($q) {
+                    $q->where('is_taken', false)->orWhereNull('is_taken');
+                });
+            }
+        }
+
+        $sort = $request->input('sort', 'terbaru');
+        switch ($sort) {
+            case 'terlama':
+                $query->orderBy('id', 'asc');
+                break;
+            case 'nama_asc':
+                $query->orderBy('nama', 'asc');
+                break;
+            case 'nama_desc':
+                $query->orderBy('nama', 'desc');
+                break;
+            case 'nomor_sc':
+                $query->orderByRaw('CASE WHEN nomor_sc IS NULL OR nomor_sc = "" THEN 1 ELSE 0 END, nomor_sc asc');
+                break;
+            case 'tanggal_diambil':
+                $query->orderByRaw('CASE WHEN taken_at IS NULL THEN 1 ELSE 0 END, taken_at desc');
+                break;
+            case 'tanggal_sc':
+                $query->orderByRaw('CASE WHEN tanggal_sc IS NULL THEN 1 ELSE 0 END, tanggal_sc desc');
+                break;
+            case 'terbaru':
+            default:
+                $query->orderBy('id', 'desc');
+                break;
+        }
+
+        $submissions = $query->get();
+
+        $filterPengambilanText = match ($request->pengambilan) {
+            'sudah_diambil' => 'Sudah Diambil',
+            'belum_diambil' => 'Belum Diambil',
+            default => 'Semua Berkas',
+        };
+
+        $periodeText = null;
+        if ($request->filled('search')) {
+            $periodeText = "Pencarian: " . $request->search;
+        }
+
+        $pdf = Pdf::loadView('pdf.sc_submission_agenda', [
+            'submissions' => $submissions,
+            'filter_pengambilan' => $filterPengambilanText,
+            'periode_text' => $periodeText,
+            'filters' => [
+                'search' => $request->search,
+                'pengambilan' => $request->pengambilan,
+                'stage' => $request->stage,
+                'status' => $request->status,
+                'sort' => $sort,
+            ],
+            'printDate' => now()->locale('id')->isoFormat('D MMMM Y'),
+        ])->setPaper('a4', 'portrait');
+
+        $filename = 'BUKU_AGENDA_PENGAMBILAN_SC_' . date('Ymd_His') . '.pdf';
+        return $pdf->stream($filename);
+    }
+
+    /**
+     * Memperbarui status pengambilan SC (Sudah Diambil / Belum Diambil)
+     * Beserta tanggal SC, tanggal diambil, nomor SC, dan pengambil
+     */
+    public function toggleTaken(Request $request, $id)
+    {
+        ScSubmission::ensureSchema();
+
+        $submission = ScSubmission::findOrFail($id);
+
+        $validated = $request->validate([
+            'is_taken' => 'required|boolean',
+            'taken_at' => 'nullable|date',
+            'tanggal_sc' => 'nullable|date',
+            'nomor_sc' => 'nullable|string|max:100',
+            'taken_by' => 'nullable|string|max:255',
+            'catatan' => 'nullable|string|max:500',
+        ]);
+
+        $isTaken = (bool)$validated['is_taken'];
+        $takenAt = $isTaken ? ($validated['taken_at'] ?? now()) : null;
+        $takenBy = $isTaken ? ($validated['taken_by'] ?? $submission->nama) : null;
+
+        $submission->is_taken = $isTaken;
+        $submission->taken_at = $takenAt;
+        if (isset($validated['tanggal_sc'])) {
+            $submission->tanggal_sc = $validated['tanggal_sc'];
+        }
+        if (isset($validated['nomor_sc']) && !empty($validated['nomor_sc'])) {
+            $submission->nomor_sc = $validated['nomor_sc'];
+        }
+        $submission->taken_by = $takenBy;
+        $submission->save();
+
+        // Catat ke riwayat log
+        $statusText = $isTaken ? 'Sudah Diambil' : 'Belum Diambil / Batal Diambil';
+        $logNotes = "Status pengambilan SC diperbarui menjadi: {$statusText}.";
+        if ($isTaken) {
+            $logNotes .= " Pengambil: " . ($submission->taken_by ?: $submission->nama);
+            if ($submission->taken_at) {
+                $logNotes .= " pada " . \Carbon\Carbon::parse($submission->taken_at)->locale('id')->isoFormat('D MMMM Y, HH:mm') . " WIB.";
+            }
+        }
+        if (!empty($validated['catatan'])) {
+            $logNotes .= " Keterangan: " . $validated['catatan'];
+        }
+
+        if (Schema::hasTable('sc_submission_logs')) {
+            ScSubmissionLog::create([
+                'sc_submission_id' => $submission->id,
+                'stage' => $submission->current_stage,
+                'stage_title' => 'Pencatatan Pengambilan SC',
+                'notes' => $logNotes,
+                'user_id' => Auth::id(),
+                'user_name' => Auth::user()->name ?? 'Petugas Kedinasan',
+            ]);
+        }
+
+        return redirect()->back()->with('success', "Lapor! Status pengambilan berkas SC atas nama {$submission->nama} berhasil diperbarui.");
     }
 }

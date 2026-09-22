@@ -17,12 +17,16 @@ const isAdmin = computed(() => page.props.auth.user.role === 'admin');
 const searchQuery = ref(props.filters?.search || '');
 const selectedStage = ref(props.filters?.stage || 'all');
 const selectedStatus = ref(props.filters?.status || 'all');
+const selectedPengambilan = ref(props.filters?.pengambilan || 'all');
+const selectedSort = ref(props.filters?.sort || 'terbaru');
 
 const handleFilter = () => {
     router.get(route('sc-submissions.index'), {
         search: searchQuery.value,
         stage: selectedStage.value,
         status: selectedStatus.value,
+        pengambilan: selectedPengambilan.value,
+        sort: selectedSort.value,
     }, {
         preserveState: true,
         preserveScroll: true,
@@ -33,7 +37,81 @@ const resetFilter = () => {
     searchQuery.value = '';
     selectedStage.value = 'all';
     selectedStatus.value = 'all';
+    selectedPengambilan.value = 'all';
+    selectedSort.value = 'terbaru';
     handleFilter();
+};
+
+const getExportPdfUrl = () => {
+    const params = new URLSearchParams();
+    if (searchQuery.value) params.append('search', searchQuery.value);
+    if (selectedStage.value && selectedStage.value !== 'all') params.append('stage', selectedStage.value);
+    if (selectedStatus.value && selectedStatus.value !== 'all') params.append('status', selectedStatus.value);
+    if (selectedPengambilan.value && selectedPengambilan.value !== 'all') params.append('pengambilan', selectedPengambilan.value);
+    if (selectedSort.value) params.append('sort', selectedSort.value);
+    const qs = params.toString();
+    return route('sc-submissions.pdf') + (qs ? '?' + qs : '');
+};
+
+// Modal Pencatatan Pengambilan SC
+const isTakenModalOpen = ref(false);
+const isSubmittingTaken = ref(false);
+const activeSubmissionForTaken = ref(null);
+const takenForm = ref({
+    is_taken: 1,
+    taken_at: '',
+    tanggal_sc: '',
+    nomor_sc: '',
+    taken_by: '',
+    catatan: '',
+});
+
+const openTakenModal = (sub) => {
+    activeSubmissionForTaken.value = sub;
+    isSubmittingTaken.value = false;
+
+    const todayDate = new Date().toISOString().split('T')[0];
+    const nowLocal = new Date();
+    const localIso = new Date(nowLocal.getTime() - (nowLocal.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+
+    takenForm.value = {
+        is_taken: sub.is_taken ? 1 : 1,
+        taken_at: sub.taken_at ? new Date(sub.taken_at).toISOString().slice(0, 16) : localIso,
+        tanggal_sc: sub.tanggal_sc ? sub.tanggal_sc.slice(0, 10) : todayDate,
+        nomor_sc: sub.nomor_sc || '',
+        taken_by: sub.taken_by || sub.nama,
+        catatan: '',
+    };
+    isTakenModalOpen.value = true;
+};
+
+const submitToggleTaken = () => {
+    if (!activeSubmissionForTaken.value || isSubmittingTaken.value) return;
+    isSubmittingTaken.value = true;
+
+    router.post(route('sc-submissions.toggle-taken', activeSubmissionForTaken.value.id), takenForm.value, {
+        preserveScroll: true,
+        onSuccess: () => {
+            isTakenModalOpen.value = false;
+            Swal.fire({
+                title: 'Status Pengambilan Diperbarui',
+                text: 'Catatan pengambilan berkas SC berhasil disimpan.',
+                icon: 'success',
+                confirmButtonColor: '#2563eb',
+            });
+        },
+        onError: (err) => {
+            Swal.fire({
+                title: 'Gagal Memperbarui',
+                text: Object.values(err)[0] || 'Terjadi gangguan saat menyimpan status pengambilan.',
+                icon: 'error',
+                confirmButtonColor: '#dc2626',
+            });
+        },
+        onFinish: () => {
+            isSubmittingTaken.value = false;
+        }
+    });
 };
 
 // Sinkronisasi SKHPP Terbit Otomatis
@@ -450,6 +528,19 @@ const formatDateTime = (dateStr) => {
                         <span>Halaman Publik</span>
                     </a>
 
+                    <!-- Tombol Cetak Agenda SC (PDF) -->
+                    <a 
+                        :href="getExportPdfUrl()" 
+                        target="_blank"
+                        class="px-4 py-3 bg-red-700 hover:bg-red-800 text-white rounded-2xl font-extrabold text-xs uppercase tracking-wider transition shadow-md shadow-red-700/20 flex items-center gap-2 cursor-pointer"
+                        title="Cetak Buku Agenda Pengambilan SC format PDF dinas"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span>Cetak Agenda SC (PDF)</span>
+                    </a>
+
                     <!-- Tombol Sinkronisasi SKHPP Terbit -->
                     <button 
                         @click="syncSkhpp"
@@ -477,52 +568,66 @@ const formatDateTime = (dateStr) => {
             </div>
 
             <!-- Kartu Statistik Alur Berkas -->
-            <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                <div class="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1">
-                    <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">Total Pengajuan</span>
-                    <h3 class="text-2xl font-black text-slate-900">{{ stats.total || 0 }}</h3>
-                    <p class="text-[11px] text-slate-500 font-medium">Seluruh Berkas Terdaftar</p>
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                <div class="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1">
+                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 block">Total Pengajuan</span>
+                    <h3 class="text-xl font-black text-slate-900">{{ stats.total || 0 }}</h3>
+                    <p class="text-[10px] text-slate-500 font-medium truncate">Seluruh Berkas</p>
                 </div>
 
-                <div class="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1">
-                    <span class="text-[10px] font-extrabold uppercase tracking-wider text-blue-500 block">Sedang Berproses</span>
-                    <h3 class="text-2xl font-black text-blue-600">{{ stats.in_progress || 0 }}</h3>
-                    <p class="text-[11px] text-slate-500 font-medium">Dalam Rangkaian Tahapan</p>
+                <div class="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1">
+                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-blue-500 block">Proses</span>
+                    <h3 class="text-xl font-black text-blue-600">{{ stats.in_progress || 0 }}</h3>
+                    <p class="text-[10px] text-slate-500 font-medium truncate">Tahapan Aktif</p>
                 </div>
 
-                <div class="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1">
-                    <span class="text-[10px] font-extrabold uppercase tracking-wider text-amber-500 block">Di Denintel (Tahap 1-5)</span>
-                    <h3 class="text-2xl font-black text-amber-600">{{ stats.at_denintel || 0 }}</h3>
-                    <p class="text-[11px] text-slate-500 font-medium">Pemeriksaan & SKHPP</p>
+                <div class="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1">
+                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-amber-500 block">Di Denintel</span>
+                    <h3 class="text-xl font-black text-amber-600">{{ stats.at_denintel || 0 }}</h3>
+                    <p class="text-[10px] text-slate-500 font-medium truncate">Tahap 1 - 5</p>
                 </div>
 
-                <div class="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1">
-                    <span class="text-[10px] font-extrabold uppercase tracking-wider text-indigo-500 block">Di Sintel (Tahap 6-9)</span>
-                    <h3 class="text-2xl font-black text-indigo-600">{{ stats.at_sintel || 0 }}</h3>
-                    <p class="text-[11px] text-slate-500 font-medium">Validasi & TTD Asintel</p>
+                <div class="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1">
+                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-indigo-500 block">Di Sintel</span>
+                    <h3 class="text-xl font-black text-indigo-600">{{ stats.at_sintel || 0 }}</h3>
+                    <p class="text-[10px] text-slate-500 font-medium truncate">Tahap 6 - 9</p>
                 </div>
 
-                <div class="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1 col-span-2 lg:col-span-1">
-                    <span class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-500 block">SC Selesai (Tahap 10)</span>
-                    <h3 class="text-2xl font-black text-emerald-600">{{ stats.completed || 0 }}</h3>
-                    <p class="text-[11px] text-slate-500 font-medium">Siap Diambil di Mako</p>
+                <div class="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1">
+                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-emerald-500 block">SC Selesai</span>
+                    <h3 class="text-xl font-black text-emerald-600">{{ stats.completed || 0 }}</h3>
+                    <p class="text-[10px] text-slate-500 font-medium truncate">Tahap 10</p>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1">
+                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-teal-600 block">Sudah Diambil</span>
+                    <h3 class="text-xl font-black text-teal-600">{{ stats.sudah_diambil || 0 }}</h3>
+                    <p class="text-[10px] text-slate-500 font-medium truncate">Telah Diserahkan</p>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1">
+                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-rose-500 block">Belum Diambil</span>
+                    <h3 class="text-xl font-black text-rose-600">{{ stats.belum_diambil || 0 }}</h3>
+                    <p class="text-[10px] text-slate-500 font-medium truncate">Menunggu Personel</p>
                 </div>
             </div>
 
             <!-- Filter & Pencarian Bar -->
-            <div class="bg-white p-4 sm:p-5 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-                <div class="flex flex-col sm:flex-row gap-2 flex-1">
-                    <div class="relative flex-1">
+            <div class="bg-white p-4 sm:p-5 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 flex-1">
+                    <!-- Pencarian NIK / NIP / NRP / Nama -->
+                    <div class="relative sm:col-span-2 lg:col-span-1">
                         <input 
                             type="text" 
                             v-model="searchQuery"
                             @keyup.enter="handleFilter"
-                            placeholder="Cari Nama, NRP/NIP/NIK/NIM, Kode Tracking, Kesatuan..." 
+                            placeholder="Cari NIK / NIP / NRP atau Nama Pemohon, No. SC..." 
                             class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500"
                         />
                         <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                     </div>
 
+                    <!-- Filter Tahapan -->
                     <select 
                         v-model="selectedStage" 
                         @change="handleFilter"
@@ -534,25 +639,39 @@ const formatDateTime = (dateStr) => {
                         </option>
                     </select>
 
+                    <!-- Filter Pengambilan SC -->
                     <select 
-                        v-model="selectedStatus" 
+                        v-model="selectedPengambilan" 
                         @change="handleFilter"
                         class="text-xs font-semibold py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white"
                     >
-                        <option value="all">Semua Status</option>
-                        <option value="proses">Dalam Proses</option>
-                        <option value="selesai">Selesai Terbit</option>
-                        <option value="perbaikan">Perbaikan</option>
-                        <option value="ditolak">Ditolak</option>
+                        <option value="all">Semua Pengambilan</option>
+                        <option value="belum_diambil">Belum Diambil</option>
+                        <option value="sudah_diambil">Sudah Diambil</option>
+                    </select>
+
+                    <!-- Urutkan / Sort -->
+                    <select 
+                        v-model="selectedSort" 
+                        @change="handleFilter"
+                        class="text-xs font-semibold py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white"
+                    >
+                        <option value="terbaru">Urutan: Terbaru</option>
+                        <option value="terlama">Urutan: Terlama</option>
+                        <option value="nama_asc">Nama (A - Z)</option>
+                        <option value="nama_desc">Nama (Z - A)</option>
+                        <option value="nomor_sc">Nomor SC</option>
+                        <option value="tanggal_sc">Tanggal SC</option>
+                        <option value="tanggal_diambil">Tanggal Diambil</option>
                     </select>
                 </div>
 
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 shrink-0">
                     <button 
                         @click="handleFilter"
                         class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-extrabold uppercase tracking-wider transition cursor-pointer"
                     >
-                        Cari
+                        Terapkan
                     </button>
                     <button 
                         @click="resetFilter"
@@ -579,12 +698,13 @@ const formatDateTime = (dateStr) => {
                     <table class="w-full text-left text-xs border-collapse">
                         <thead>
                             <tr class="bg-slate-50/80 border-b border-slate-100 text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
-                                <th class="p-3.5 pl-5">Kode / Pemohon</th>
+                                <th class="p-3.5 pl-5">Kode / Pemohon / No. SC</th>
                                 <th class="p-3.5">Kesatuan & Keperluan</th>
                                 <th class="p-3.5">Tahapan Terkini (1-10)</th>
                                 <th class="p-3.5">Integrasi & Dokumen</th>
-                                <th class="p-3.5">Status</th>
-                                <th class="p-3.5">Tanggal</th>
+                                <th class="p-3.5">Status SC</th>
+                                <th class="p-3.5">Pengambilan</th>
+                                <th class="p-3.5">Tanggal Berkas</th>
                                 <th class="p-3.5 pr-5 text-right">Aksi Kedinasan</th>
                             </tr>
                         </thead>
@@ -592,16 +712,22 @@ const formatDateTime = (dateStr) => {
                             <tr v-for="sub in submissions.data" :key="sub.id" class="hover:bg-slate-50/70 transition">
                                 <!-- Kode & Pemohon -->
                                 <td class="p-3.5 pl-5">
-                                    <div class="flex items-center gap-2">
+                                    <div class="flex flex-wrap items-center gap-1.5">
                                         <span class="font-mono text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md">
                                             {{ sub.tracking_code }}
                                         </span>
+                                        <span v-if="sub.nomor_sc" class="font-mono text-[9px] font-extrabold px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md">
+                                            No. SC: {{ sub.nomor_sc }}
+                                        </span>
                                     </div>
-                                    <div class="font-extrabold text-slate-900 text-sm mt-0.5">
+                                    <div class="font-extrabold text-slate-900 text-sm mt-1">
                                         {{ sub.nama }}
                                     </div>
                                     <div class="text-[10px] text-slate-500 font-mono">
                                         {{ sub.pangkat_korps ? sub.pangkat_korps + ' - ' : '' }}{{ sub.identifier_type.toUpperCase() }}. {{ sub.identifier_number }}
+                                    </div>
+                                    <div v-if="sub.tanggal_sc" class="text-[9px] text-slate-400 font-mono mt-0.5">
+                                        Tgl SC: {{ sub.tanggal_sc_formatted || formatDate(sub.tanggal_sc) }}
                                     </div>
                                 </td>
 
@@ -668,7 +794,7 @@ const formatDateTime = (dateStr) => {
                                     </div>
                                 </td>
 
-                                <!-- Status -->
+                                <!-- Status SC -->
                                 <td class="p-3.5">
                                     <span :class="{
                                         'bg-emerald-100 text-emerald-800': sub.status === 'selesai' || sub.current_stage === 10,
@@ -680,7 +806,42 @@ const formatDateTime = (dateStr) => {
                                     </span>
                                 </td>
 
-                                <!-- Tanggal -->
+                                <!-- Status Pengambilan -->
+                                <td class="p-3.5">
+                                    <div v-if="sub.is_taken" class="space-y-1">
+                                        <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-teal-100 text-teal-800 inline-flex items-center gap-1">
+                                            <svg class="w-2.5 h-2.5 text-teal-700" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                            Sudah Diambil
+                                        </span>
+                                        <div class="text-[10px] text-slate-700 font-mono font-bold">
+                                            {{ sub.taken_at_formatted || formatDate(sub.taken_at) }}
+                                        </div>
+                                        <div v-if="sub.taken_by" class="text-[9px] text-slate-500 truncate max-w-[130px]">
+                                            Oleh: {{ sub.taken_by }}
+                                        </div>
+                                        <button 
+                                            @click="openTakenModal(sub)"
+                                            class="text-[9px] text-blue-600 hover:underline font-bold block cursor-pointer"
+                                        >
+                                            Ubah Catatan
+                                        </button>
+                                    </div>
+                                    <div v-else class="space-y-1.5">
+                                        <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-slate-100 text-slate-600 inline-block">
+                                            Belum Diambil
+                                        </span>
+                                        <button 
+                                            @click="openTakenModal(sub)"
+                                            class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-[9px] font-extrabold uppercase tracking-wider transition cursor-pointer flex items-center gap-1"
+                                            title="Catat pengambilan SC oleh pemohon"
+                                        >
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                            Tandai Diambil
+                                        </button>
+                                    </div>
+                                </td>
+
+                                <!-- Tanggal Berkas -->
                                 <td class="p-3.5 font-mono text-slate-500 text-[11px]">
                                     {{ formatDate(sub.created_at) }}
                                 </td>
@@ -695,6 +856,17 @@ const formatDateTime = (dateStr) => {
                                             title="Perbarui tahapan berkas"
                                         >
                                             Update Tahap
+                                        </button>
+
+                                        <!-- Catat Pengambilan -->
+                                        <button 
+                                            @click="openTakenModal(sub)"
+                                            class="p-1.5 bg-teal-50 hover:bg-teal-600 hover:text-white text-teal-700 border border-teal-200 rounded-xl transition cursor-pointer"
+                                            title="Pencatatan status pengambilan SC"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
                                         </button>
 
                                         <!-- Riwayat Log -->
@@ -735,7 +907,7 @@ const formatDateTime = (dateStr) => {
                             </tr>
 
                             <tr v-if="!submissions.data || submissions.data.length === 0">
-                                <td colspan="7" class="p-12 text-center text-xs text-slate-400 font-semibold italic">
+                                <td colspan="8" class="p-12 text-center text-xs text-slate-400 font-semibold italic">
                                     Belum ada berkas pengajuan Security Clearance yang terdaftar.
                                 </td>
                             </tr>
@@ -1373,6 +1545,133 @@ const formatDateTime = (dateStr) => {
                                 class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-extrabold text-xs uppercase tracking-wider shadow-md shadow-blue-600/20 transition cursor-pointer disabled:opacity-50"
                             >
                                 {{ isSubmittingEdit ? 'Menyimpan...' : 'Simpan Perubahan' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- MODAL PENCATATAN PENGAMBILAN SC -->
+        <Teleport to="body">
+            <div v-if="isTakenModalOpen && activeSubmissionForTaken" class="fixed inset-0 z-[160] bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
+                <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-100 overflow-hidden my-auto animate-in zoom-in-95 duration-150">
+                    <div class="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-teal-600 text-white flex items-center justify-center font-black shadow-xs">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <span class="text-[10px] font-black uppercase text-teal-600 tracking-wider block">Agenda Pengambilan Berkas</span>
+                                <h3 class="text-base font-extrabold text-slate-900">
+                                    {{ activeSubmissionForTaken.nama }}
+                                </h3>
+                                <span class="text-[10px] font-mono text-slate-400 block">{{ activeSubmissionForTaken.tracking_code }} - {{ activeSubmissionForTaken.identifier_number }}</span>
+                            </div>
+                        </div>
+                        <button @click="isTakenModalOpen = false" class="w-8 h-8 rounded-xl bg-slate-200/70 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-black transition cursor-pointer">
+                            &times;
+                        </button>
+                    </div>
+
+                    <form @submit.prevent="submitToggleTaken" class="p-5 sm:p-6 space-y-4 text-xs font-semibold">
+                        <!-- Pilihan Status Pengambilan: Sudah Diambil / Belum Diambil -->
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Status Pengambilan Berkas *</label>
+                            <div class="grid grid-cols-2 gap-3">
+                                <label 
+                                    :class="takenForm.is_taken ? 'bg-teal-600 text-white border-teal-600 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'"
+                                    class="p-3 rounded-2xl border text-center font-black text-xs cursor-pointer transition flex items-center justify-center gap-2"
+                                >
+                                    <input type="radio" :value="1" v-model.number="takenForm.is_taken" class="hidden" />
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                    <span>Sudah Diambil</span>
+                                </label>
+                                <label 
+                                    :class="!takenForm.is_taken ? 'bg-rose-600 text-white border-rose-600 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'"
+                                    class="p-3 rounded-2xl border text-center font-black text-xs cursor-pointer transition flex items-center justify-center gap-2"
+                                >
+                                    <input type="radio" :value="0" v-model.number="takenForm.is_taken" class="hidden" />
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    <span>Belum Diambil</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Data Nomor SC & Tanggal SC -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-700">Nomor Naskah SC</label>
+                                <input 
+                                    type="text" 
+                                    v-model="takenForm.nomor_sc" 
+                                    placeholder="Contoh: SC/123/IX/2026/Sintel"
+                                    class="w-full text-xs font-bold p-2.5 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-teal-500"
+                                />
+                            </div>
+
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-700">Tanggal Terbit SC</label>
+                                <input 
+                                    type="date" 
+                                    v-model="takenForm.tanggal_sc" 
+                                    class="w-full text-xs font-bold p-2.5 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-teal-500"
+                                />
+                            </div>
+                        </div>
+
+                        <!-- Form Detail Pengambilan (Hanya tampil jika Sudah Diambil) -->
+                        <div v-if="takenForm.is_taken" class="space-y-3 p-3.5 bg-teal-50/60 border border-teal-200 rounded-2xl">
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-black uppercase tracking-wider text-teal-950">Tanggal & Waktu Diambil *</label>
+                                <input 
+                                    type="datetime-local" 
+                                    v-model="takenForm.taken_at" 
+                                    required
+                                    class="w-full text-xs font-mono font-bold p-2.5 border border-teal-200 rounded-xl bg-white focus:ring-2 focus:ring-teal-500"
+                                />
+                            </div>
+
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-black uppercase tracking-wider text-teal-950">Nama Pengambil Berkas *</label>
+                                <input 
+                                    type="text" 
+                                    v-model="takenForm.taken_by" 
+                                    required
+                                    placeholder="Nama pemohon atau personel yang mewakili..."
+                                    class="w-full text-xs font-bold p-2.5 border border-teal-200 rounded-xl bg-white focus:ring-2 focus:ring-teal-500"
+                                />
+                                <span class="text-[10px] text-teal-700/80 block">Default: Nama pemohon. Dapat disesuaikan bila diwakilkan rekan satuan.</span>
+                            </div>
+                        </div>
+
+                        <!-- Catatan Tambahan -->
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Keterangan / Catatan Tambahan</label>
+                            <textarea 
+                                v-model="takenForm.catatan" 
+                                rows="2"
+                                placeholder="Keterangan dinas penyerahan berkas fisik..."
+                                class="w-full text-xs font-medium p-3 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-teal-500"
+                            ></textarea>
+                        </div>
+
+                        <div class="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
+                            <button 
+                                type="button" 
+                                @click="isTakenModalOpen = false" 
+                                class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 font-extrabold text-xs uppercase tracking-wider transition cursor-pointer"
+                            >
+                                Batal
+                            </button>
+                            <button 
+                                type="submit" 
+                                :disabled="isSubmittingTaken"
+                                class="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-extrabold text-xs uppercase tracking-wider shadow-md shadow-teal-600/20 transition cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                            >
+                                <span>{{ isSubmittingTaken ? 'Menyimpan...' : 'Simpan Status Pengambilan' }}</span>
                             </button>
                         </div>
                     </form>

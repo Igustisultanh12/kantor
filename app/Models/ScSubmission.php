@@ -14,6 +14,9 @@ class ScSubmission extends Model
 
     protected $casts = [
         'current_stage' => 'integer',
+        'is_taken' => 'boolean',
+        'taken_at' => 'datetime',
+        'tanggal_sc' => 'date',
         'sc_preview_uploaded_at' => 'datetime',
         'sc_preview_expired_at' => 'datetime',
     ];
@@ -27,6 +30,8 @@ class ScSubmission extends Model
         'sc_preview_remaining_hours',
         'file_skhpp_url',
         'file_sc_preview_url',
+        'tanggal_sc_formatted',
+        'taken_at_formatted',
     ];
 
     /**
@@ -222,6 +227,22 @@ class ScSubmission extends Model
         }
         return asset('storage/' . $this->file_sc_preview);
     }
+    public function getTanggalScFormattedAttribute(): string
+    {
+        if ($this->tanggal_sc) {
+            return \Illuminate\Support\Carbon::parse($this->tanggal_sc)->format('d/m/Y');
+        }
+        return $this->created_at ? $this->created_at->format('d/m/Y') : '-';
+    }
+
+    public function getTakenAtFormattedAttribute(): string
+    {
+        if ($this->is_taken && $this->taken_at) {
+            return \Illuminate\Support\Carbon::parse($this->taken_at)->format('d/m/Y');
+        }
+        return '-';
+    }
+
     /**
      * Memastikan skema basis data dan seluruh kolom tabel SC selalu siap (Self-Healing Schema)
      */
@@ -229,6 +250,28 @@ class ScSubmission extends Model
     {
         try {
             if (\Illuminate\Support\Facades\Schema::hasTable('sc_submissions')) {
+                // Pastikan kolom baru untuk status pengambilan dan tanggal SC selalu ada
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'is_taken')) {
+                    \Illuminate\Support\Facades\Schema::table('sc_submissions', function (\Illuminate\Database\Schema\Blueprint $table) {
+                        $table->boolean('is_taken')->default(false)->index();
+                    });
+                }
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'taken_at')) {
+                    \Illuminate\Support\Facades\Schema::table('sc_submissions', function (\Illuminate\Database\Schema\Blueprint $table) {
+                        $table->timestamp('taken_at')->nullable()->index();
+                    });
+                }
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'tanggal_sc')) {
+                    \Illuminate\Support\Facades\Schema::table('sc_submissions', function (\Illuminate\Database\Schema\Blueprint $table) {
+                        $table->date('tanggal_sc')->nullable()->index();
+                    });
+                }
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'taken_by')) {
+                    \Illuminate\Support\Facades\Schema::table('sc_submissions', function (\Illuminate\Database\Schema\Blueprint $table) {
+                        $table->string('taken_by')->nullable();
+                    });
+                }
+
                 // Bila tabel masih kosong (0 berkas), reset dan bangun ulang secara bersih sempurna
                 $count = 0;
                 try {
@@ -261,6 +304,10 @@ class ScSubmission extends Model
                     $table->string('keperluan')->nullable();
                     $table->unsignedTinyInteger('current_stage')->default(1)->index();
                     $table->string('status', 50)->default('proses')->index();
+                    $table->boolean('is_taken')->default(false)->index();
+                    $table->timestamp('taken_at')->nullable()->index();
+                    $table->date('tanggal_sc')->nullable()->index();
+                    $table->string('taken_by')->nullable();
                     $table->unsignedBigInteger('skhpp_id')->nullable();
                     $table->string('nomor_surat_rh')->nullable();
                     $table->string('nomor_skhpp')->nullable();

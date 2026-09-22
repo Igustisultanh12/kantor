@@ -242,9 +242,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/attendances', [AttendanceController::class, 'store'])->name('attendances.store');
 
     // --- FITUR MANAJEMEN PENGAJUAN SECURITY CLEARANCE (SC) ---
+    Route::get('sc-submissions/export-pdf', [ScSubmissionController::class, 'exportPdf'])->name('sc-submissions.pdf');
     Route::post('sc-submissions/sync-skhpp', [ScSubmissionController::class, 'syncFromApprovedSkhpp'])->name('sc-submissions.sync-skhpp');
-    Route::resource('sc-submissions', ScSubmissionController::class)->except(['create', 'edit', 'show']);
+    Route::post('sc-submissions/{id}/toggle-taken', [ScSubmissionController::class, 'toggleTaken'])->name('sc-submissions.toggle-taken');
     Route::post('sc-submissions/{id}/update-stage', [ScSubmissionController::class, 'updateStage'])->name('sc-submissions.update-stage');
+    Route::resource('sc-submissions', ScSubmissionController::class)->except(['create', 'edit', 'show']);
 
     // Fitur Profil Personel
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
