@@ -497,118 +497,129 @@ const formatDateTime = (dateStr) => {
     <Head title="Manajemen Pengajuan Security Clearance (SC) - SINDEN" />
 
     <AuthenticatedLayout>
-        <div class="space-y-6 sm:space-y-8 font-sans">
+        <div class="space-y-5 font-sans">
             
             <!-- Hero Header Banner -->
-            <div class="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2E8F0] shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                <div>
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="px-3 py-1 bg-blue-50 text-blue-600 font-extrabold text-[10px] uppercase rounded-full tracking-wider">Layanan Dokumen Intelijen</span>
-                        <span class="text-slate-400 text-xs font-semibold">10 Tahapan Operasional SC</span>
+            <div class="bg-white p-5 sm:p-6 rounded-3xl border border-[#E2E8F0] shadow-xs space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <span class="px-2.5 py-0.5 bg-blue-50 text-blue-600 font-extrabold text-[10px] uppercase rounded-full tracking-wider border border-blue-100">Layanan Dokumen Intelijen</span>
+                            <span class="text-slate-400 text-xs font-semibold">10 Tahapan Operasional SC</span>
+                        </div>
+                        <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                            Manajemen Pengajuan Security Clearance (SC)
+                        </h1>
+                        <p class="text-xs text-slate-500 font-medium leading-relaxed max-w-3xl">
+                            Pengelolaan alur berkas SC terpadu mulai dari Pengisian RH, Verifikasi Denintel, Integrasi SKHPP TTE/Basah, Proses Sintel, Petinjau Softfile (2x24 Jam), hingga Penerbitan Dokumen di Mako Kodaeral V.
+                        </p>
                     </div>
-                    <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                        Manajemen Pengajuan Security Clearance (SC)
-                    </h1>
-                    <p class="text-xs text-slate-500 font-medium mt-1 leading-relaxed max-w-2xl">
-                        Pengelolaan alur berkas SC terpadu mulai dari Pengisian RH, Verifikasi Denintel, Integrasi SKHPP TTE/Basah, Proses Sintel, Petinjau Softfile (2x24 Jam), hingga Penerbitan Dokumen di Mako Kodaeral V.
-                    </p>
+
+                    <!-- Tombol Utama Pendaftaran Berkas -->
+                    <div class="self-start sm:self-center shrink-0">
+                        <button 
+                            @click="openCreateModal"
+                            class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition shadow-md shadow-blue-500/20 flex items-center gap-2 cursor-pointer"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            <span>Daftarkan Berkas SC</span>
+                        </button>
+                    </div>
                 </div>
 
-                <div class="flex flex-wrap items-center gap-3 shrink-0">
-                    <!-- Halaman Publik Tanpa Login -->
-                    <a 
-                        :href="route('tracking-sc.index')" 
-                        target="_blank"
-                        class="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-extrabold text-xs uppercase tracking-wider transition flex items-center gap-2"
-                        title="Buka halaman tracking publik tanpa login"
-                    >
-                        <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                        <span>Halaman Publik</span>
-                    </a>
+                <!-- Bilah Aksi & Utilitas Terpadu -->
+                <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <!-- Halaman Publik Tanpa Login -->
+                        <a 
+                            :href="route('tracking-sc.index')" 
+                            target="_blank"
+                            class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs uppercase tracking-wider transition flex items-center gap-1.5 border border-slate-200/80"
+                            title="Buka halaman tracking publik tanpa login"
+                        >
+                            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                            <span>Halaman Publik</span>
+                        </a>
 
-                    <!-- Tombol Cetak Agenda SC (PDF) -->
-                    <a 
-                        :href="getExportPdfUrl()" 
-                        target="_blank"
-                        class="px-4 py-3 bg-red-700 hover:bg-red-800 text-white rounded-2xl font-extrabold text-xs uppercase tracking-wider transition shadow-md shadow-red-700/20 flex items-center gap-2 cursor-pointer"
-                        title="Cetak Buku Agenda Pengambilan SC format PDF dinas"
-                    >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <span>Cetak Agenda SC (PDF)</span>
-                    </a>
+                        <!-- Tombol Cetak Agenda SC (PDF) -->
+                        <a 
+                            :href="getExportPdfUrl()" 
+                            target="_blank"
+                            class="px-3.5 py-2 bg-red-700 hover:bg-red-800 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+                            title="Cetak Buku Agenda Pengambilan SC format PDF dinas"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span>Cetak Agenda SC (PDF)</span>
+                        </a>
 
-                    <!-- Tombol Sinkronisasi SKHPP Terbit -->
-                    <button 
-                        @click="syncSkhpp"
-                        :disabled="isSyncingSkhpp"
-                        class="px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-extrabold text-xs uppercase tracking-wider transition shadow-md shadow-emerald-500/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
-                        title="Tarik & sinkronkan data SKHPP yang telah disahkan Komandan Denintel (TTE)"
-                    >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        <span>{{ isSyncingSkhpp ? 'Menyinkronkan...' : 'Sinkronkan SKHPP Terbit' }}</span>
-                    </button>
+                        <!-- Tombol Sinkronisasi SKHPP Terbit -->
+                        <button 
+                            @click="syncSkhpp"
+                            :disabled="isSyncingSkhpp"
+                            class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            title="Tarik & sinkronkan data SKHPP yang telah disahkan Komandan Denintel (TTE)"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            <span>{{ isSyncingSkhpp ? 'Menyinkronkan...' : 'Sinkronkan SKHPP Terbit' }}</span>
+                        </button>
+                    </div>
 
-                    <!-- Tombol Pendaftaran Berkas Manual -->
-                    <button 
-                        @click="openCreateModal"
-                        class="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-extrabold text-xs uppercase tracking-wider transition shadow-md shadow-blue-500/20 flex items-center gap-2 cursor-pointer"
-                    >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
-                        </svg>
-                        <span>Daftarkan Berkas SC</span>
-                    </button>
+                    <div class="text-[11px] text-slate-400 font-semibold tracking-wide hidden sm:block">
+                        Detasemen Intelijen Kodaeral V
+                    </div>
                 </div>
             </div>
 
             <!-- Kartu Statistik Alur Berkas -->
-            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-                <div class="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1">
-                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 block">Total Pengajuan</span>
+            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 sm:gap-3">
+                <div class="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1">
+                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 block truncate">Total Berkas</span>
                     <h3 class="text-xl font-black text-slate-900">{{ stats.total || 0 }}</h3>
-                    <p class="text-[10px] text-slate-500 font-medium truncate">Seluruh Berkas</p>
+                    <p class="text-[10px] text-slate-500 font-medium truncate">Seluruh Pengajuan</p>
                 </div>
 
-                <div class="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1">
-                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-blue-500 block">Proses</span>
+                <div class="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1">
+                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-blue-500 block truncate">Proses</span>
                     <h3 class="text-xl font-black text-blue-600">{{ stats.in_progress || 0 }}</h3>
-                    <p class="text-[10px] text-slate-500 font-medium truncate">Tahapan Aktif</p>
+                    <p class="text-[10px] text-slate-500 font-medium truncate">Tahapan Berjalan</p>
                 </div>
 
-                <div class="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1">
-                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-amber-500 block">Di Denintel</span>
+                <div class="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1">
+                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-amber-500 block truncate">Di Denintel</span>
                     <h3 class="text-xl font-black text-amber-600">{{ stats.at_denintel || 0 }}</h3>
-                    <p class="text-[10px] text-slate-500 font-medium truncate">Tahap 1 - 5</p>
+                    <p class="text-[10px] text-slate-500 font-medium truncate">Tahap 1 s/d 5</p>
                 </div>
 
-                <div class="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1">
-                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-indigo-500 block">Di Sintel</span>
+                <div class="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1">
+                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-indigo-500 block truncate">Di Sintel</span>
                     <h3 class="text-xl font-black text-indigo-600">{{ stats.at_sintel || 0 }}</h3>
-                    <p class="text-[10px] text-slate-500 font-medium truncate">Tahap 6 - 9</p>
+                    <p class="text-[10px] text-slate-500 font-medium truncate">Tahap 6 s/d 9</p>
                 </div>
 
-                <div class="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1">
-                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-emerald-500 block">SC Selesai</span>
+                <div class="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1">
+                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-emerald-500 block truncate">SC Selesai</span>
                     <h3 class="text-xl font-black text-emerald-600">{{ stats.completed || 0 }}</h3>
-                    <p class="text-[10px] text-slate-500 font-medium truncate">Tahap 10</p>
+                    <p class="text-[10px] text-slate-500 font-medium truncate">Tahap 10 Terbit</p>
                 </div>
 
-                <div class="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1">
-                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-teal-600 block">Sudah Diambil</span>
-                    <h3 class="text-xl font-black text-teal-600">{{ stats.sudah_diambil || 0 }}</h3>
-                    <p class="text-[10px] text-slate-500 font-medium truncate">Telah Diserahkan</p>
+                <div class="bg-teal-50/40 p-3.5 sm:p-4 rounded-2xl border border-teal-200/80 shadow-xs space-y-1">
+                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-teal-700 block truncate">Sudah Diambil</span>
+                    <h3 class="text-xl font-black text-teal-700">{{ stats.sudah_diambil || 0 }}</h3>
+                    <p class="text-[10px] text-teal-600/80 font-medium truncate">Telah Diserahkan</p>
                 </div>
 
-                <div class="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-1">
-                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-rose-500 block">Belum Diambil</span>
+                <div class="bg-rose-50/40 p-3.5 sm:p-4 rounded-2xl border border-rose-200/80 shadow-xs space-y-1">
+                    <span class="text-[9px] font-extrabold uppercase tracking-wider text-rose-600 block truncate">Belum Diambil</span>
                     <h3 class="text-xl font-black text-rose-600">{{ stats.belum_diambil || 0 }}</h3>
-                    <p class="text-[10px] text-slate-500 font-medium truncate">Menunggu Personel</p>
+                    <p class="text-[10px] text-rose-600/80 font-medium truncate">Menunggu Personel</p>
                 </div>
             </div>
 
