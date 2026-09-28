@@ -32,6 +32,8 @@ class ScSubmission extends Model
         'file_sc_preview_url',
         'tanggal_sc_formatted',
         'taken_at_formatted',
+        'kategori_sc',
+        'kategori_sc_label',
     ];
 
     /**
@@ -243,6 +245,28 @@ class ScSubmission extends Model
         return '-';
     }
 
+    public function getKategoriScAttribute($value): string
+    {
+        if (!empty($value)) {
+            return strtolower($value) === 'perusahaan' ? 'perusahaan' : 'dinas';
+        }
+
+        // Deteksi cerdas dari relasi SKHPP atau nomor SKHPP
+        if ($this->skhpp && $this->skhpp->kategori_personel === 'perusahaan') {
+            return 'perusahaan';
+        }
+        if (!empty($this->nomor_skhpp) && str_contains($this->nomor_skhpp, 'SKHPP-P')) {
+            return 'perusahaan';
+        }
+
+        return 'dinas';
+    }
+
+    public function getKategoriScLabelAttribute(): string
+    {
+        return ($this->kategori_sc === 'perusahaan') ? 'SC Perusahaan (SKHPP-P)' : 'SC Dinas (SKHPP-D)';
+    }
+
     /**
      * Memastikan skema basis data dan seluruh kolom tabel SC selalu siap (Self-Healing Schema)
      */
@@ -250,6 +274,12 @@ class ScSubmission extends Model
     {
         try {
             if (\Illuminate\Support\Facades\Schema::hasTable('sc_submissions')) {
+                // Pastikan kolom kategori_sc selalu ada
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'kategori_sc')) {
+                    \Illuminate\Support\Facades\Schema::table('sc_submissions', function (\Illuminate\Database\Schema\Blueprint $table) {
+                        $table->string('kategori_sc', 20)->default('dinas')->index();
+                    });
+                }
                 // Pastikan kolom baru untuk status pengambilan dan tanggal SC selalu ada
                 if (!\Illuminate\Support\Facades\Schema::hasColumn('sc_submissions', 'is_taken')) {
                     \Illuminate\Support\Facades\Schema::table('sc_submissions', function (\Illuminate\Database\Schema\Blueprint $table) {
@@ -291,6 +321,7 @@ class ScSubmission extends Model
             if (!\Illuminate\Support\Facades\Schema::hasTable('sc_submissions')) {
                 \Illuminate\Support\Facades\Schema::create('sc_submissions', function (\Illuminate\Database\Schema\Blueprint $table) {
                     $table->id();
+                    $table->string('kategori_sc', 20)->default('dinas')->index();
                     $table->string('tracking_code')->nullable()->unique();
                     $table->string('nomor_resi')->nullable()->index();
                     $table->string('tipe_permohonan')->nullable()->default('baru');

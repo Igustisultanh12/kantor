@@ -18,7 +18,8 @@ const searchQuery = ref(props.filters?.search || '');
 const selectedStage = ref(props.filters?.stage || 'all');
 const selectedStatus = ref(props.filters?.status || 'all');
 const selectedPengambilan = ref(props.filters?.pengambilan || 'all');
-const selectedSort = ref(props.filters?.sort || 'terbaru');
+const selectedKategori = ref(props.filters?.kategori || 'all');
+const selectedSort = ref(props.filters?.sort || 'terlama');
 
 const handleFilter = () => {
     router.get(route('sc-submissions.index'), {
@@ -26,6 +27,7 @@ const handleFilter = () => {
         stage: selectedStage.value,
         status: selectedStatus.value,
         pengambilan: selectedPengambilan.value,
+        kategori: selectedKategori.value,
         sort: selectedSort.value,
     }, {
         preserveState: true,
@@ -33,12 +35,18 @@ const handleFilter = () => {
     });
 };
 
+const setKategoriTab = (kat) => {
+    selectedKategori.value = kat;
+    handleFilter();
+};
+
 const resetFilter = () => {
     searchQuery.value = '';
     selectedStage.value = 'all';
     selectedStatus.value = 'all';
     selectedPengambilan.value = 'all';
-    selectedSort.value = 'terbaru';
+    selectedKategori.value = 'all';
+    selectedSort.value = 'terlama';
     handleFilter();
 };
 
@@ -48,6 +56,7 @@ const getExportPdfUrl = () => {
     if (selectedStage.value && selectedStage.value !== 'all') params.append('stage', selectedStage.value);
     if (selectedStatus.value && selectedStatus.value !== 'all') params.append('status', selectedStatus.value);
     if (selectedPengambilan.value && selectedPengambilan.value !== 'all') params.append('pengambilan', selectedPengambilan.value);
+    if (selectedKategori.value && selectedKategori.value !== 'all') params.append('kategori', selectedKategori.value);
     if (selectedSort.value) params.append('sort', selectedSort.value);
     const qs = params.toString();
     return route('sc-submissions.pdf') + (qs ? '?' + qs : '');
@@ -160,6 +169,7 @@ const isCreateModalOpen = ref(false);
 const isSubmittingCreate = ref(false);
 const createFileInputRef = ref(null);
 const createForm = ref({
+    kategori_sc: 'dinas',
     nama: '',
     pangkat_korps: '',
     identifier_type: 'nrp',
@@ -179,6 +189,7 @@ const createForm = ref({
 
 const resetCreateForm = () => {
     createForm.value = {
+        kategori_sc: 'dinas',
         nama: '',
         pangkat_korps: '',
         identifier_type: 'nrp',
@@ -388,6 +399,7 @@ const openEditModal = (sub) => {
     isSubmittingEdit.value = false;
     editForm.value = {
         id: sub.id,
+        kategori_sc: sub.kategori_sc || 'dinas',
         nama: sub.nama,
         pangkat_korps: sub.pangkat_korps || '',
         identifier_type: sub.identifier_type,
@@ -625,7 +637,7 @@ const formatDateTime = (dateStr) => {
 
             <!-- Filter & Pencarian Bar -->
             <div class="bg-white p-4 sm:p-5 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 flex-1">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 flex-1">
                     <!-- Pencarian NIK / NIP / NRP / Nama -->
                     <div class="relative sm:col-span-2 lg:col-span-1">
                         <input 
@@ -637,6 +649,17 @@ const formatDateTime = (dateStr) => {
                         />
                         <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                     </div>
+
+                    <!-- Filter Kategori SC: Dinas (SKHPP-D) vs Perusahaan (SKHPP-P) -->
+                    <select 
+                        v-model="selectedKategori" 
+                        @change="handleFilter"
+                        class="text-xs font-semibold py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white"
+                    >
+                        <option value="all">Semua Kategori SC</option>
+                        <option value="dinas">SC Dinas (SKHPP-D)</option>
+                        <option value="perusahaan">SC Perusahaan (SKHPP-P)</option>
+                    </select>
 
                     <!-- Filter Tahapan -->
                     <select 
@@ -661,14 +684,14 @@ const formatDateTime = (dateStr) => {
                         <option value="sudah_diambil">Sudah Diambil</option>
                     </select>
 
-                    <!-- Urutkan / Sort -->
+                    <!-- Urutkan / Sort (Default: Terlama ke Terbaru) -->
                     <select 
                         v-model="selectedSort" 
                         @change="handleFilter"
                         class="text-xs font-semibold py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white"
                     >
-                        <option value="terbaru">Urutan: Terbaru</option>
-                        <option value="terlama">Urutan: Terlama</option>
+                        <option value="terlama">Urutan: Terlama ke Terbaru</option>
+                        <option value="terbaru">Urutan: Terbaru ke Terlama</option>
                         <option value="nama_asc">Nama (A - Z)</option>
                         <option value="nama_desc">Nama (Z - A)</option>
                         <option value="nomor_sc">Nomor SC</option>
@@ -694,47 +717,137 @@ const formatDateTime = (dateStr) => {
                 </div>
             </div>
 
+            <!-- Segment Tabs Kategori SC (SC Dinas SKHPP-D vs SC Perusahaan SKHPP-P) -->
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100/90 rounded-2xl border border-slate-200/80">
+                    <button 
+                        type="button"
+                        @click="setKategoriTab('all')"
+                        :class="[
+                            selectedKategori === 'all' 
+                                ? 'bg-white text-slate-900 shadow-xs font-black' 
+                                : 'text-slate-600 hover:text-slate-900 font-bold hover:bg-white/60'
+                        ]"
+                        class="px-3.5 py-2 rounded-xl text-xs uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer"
+                    >
+                        <span>Semua Pengajuan SC</span>
+                        <span 
+                            :class="selectedKategori === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-700'"
+                            class="px-2 py-0.5 rounded-full text-[10px] font-mono font-extrabold"
+                        >
+                            {{ stats.total || 0 }}
+                        </span>
+                    </button>
+
+                    <button 
+                        type="button"
+                        @click="setKategoriTab('dinas')"
+                        :class="[
+                            selectedKategori === 'dinas' 
+                                ? 'bg-blue-600 text-white shadow-xs font-black' 
+                                : 'text-slate-600 hover:text-slate-900 font-bold hover:bg-white/60'
+                        ]"
+                        class="px-3.5 py-2 rounded-xl text-xs uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer"
+                    >
+                        <span class="flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                            SC Dinas (SKHPP-D)
+                        </span>
+                        <span 
+                            :class="selectedKategori === 'dinas' ? 'bg-white text-blue-700' : 'bg-slate-200 text-slate-700'"
+                            class="px-2 py-0.5 rounded-full text-[10px] font-mono font-extrabold"
+                        >
+                            {{ stats.total_dinas || 0 }}
+                        </span>
+                    </button>
+
+                    <button 
+                        type="button"
+                        @click="setKategoriTab('perusahaan')"
+                        :class="[
+                            selectedKategori === 'perusahaan' 
+                                ? 'bg-indigo-600 text-white shadow-xs font-black' 
+                                : 'text-slate-600 hover:text-slate-900 font-bold hover:bg-white/60'
+                        ]"
+                        class="px-3.5 py-2 rounded-xl text-xs uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer"
+                    >
+                        <span class="flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                            SC Perusahaan (SKHPP-P)
+                        </span>
+                        <span 
+                            :class="selectedKategori === 'perusahaan' ? 'bg-white text-indigo-700' : 'bg-slate-200 text-slate-700'"
+                            class="px-2 py-0.5 rounded-full text-[10px] font-mono font-extrabold"
+                        >
+                            {{ stats.total_perusahaan || 0 }}
+                        </span>
+                    </button>
+                </div>
+
+                <div class="text-[11px] font-bold text-slate-500 hidden sm:block">
+                    Menampilkan: 
+                    <span class="text-slate-900 font-black">
+                        {{ selectedKategori === 'dinas' ? 'SC Dinas (SKHPP-D) - Personel Militer/PNS' : (selectedKategori === 'perusahaan' ? 'SC Perusahaan (SKHPP-P) - Rekanan/Swasta' : 'Semua Kategori Berkas SC') }}
+                    </span>
+                </div>
+            </div>
+
             <!-- Tabel Daftar Berkas Pengajuan SC -->
             <div class="bg-white rounded-3xl border border-[#E2E8F0] shadow-xs overflow-hidden">
                 <div class="p-5 border-b border-slate-100 flex items-center justify-between">
-                    <h3 class="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
-                        Daftar Berkas Pengajuan Security Clearance
-                    </h3>
+                    <div class="flex items-center gap-2.5">
+                        <h3 class="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
+                            Daftar Berkas Pengajuan Security Clearance
+                        </h3>
+                        <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-extrabold">
+                            {{ selectedKategori === 'dinas' ? 'SKHPP-D' : (selectedKategori === 'perusahaan' ? 'SKHPP-P' : 'Dinas & Perusahaan') }}
+                        </span>
+                    </div>
                     <span class="text-xs font-mono font-bold text-slate-400">
                         Total: {{ submissions.total || 0 }} Berkas
                     </span>
                 </div>
 
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left text-xs border-collapse">
+                    <table class="min-w-[1020px] w-full text-left text-xs border-collapse">
                         <thead>
                             <tr class="bg-slate-50/80 border-b border-slate-100 text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
-                                <th class="p-3.5 pl-5">Kode / Pemohon / No. SC</th>
-                                <th class="p-3.5">Kesatuan & Keperluan</th>
-                                <th class="p-3.5">Tahapan Terkini (1-10)</th>
-                                <th class="p-3.5">Integrasi & Dokumen</th>
-                                <th class="p-3.5">Status SC</th>
-                                <th class="p-3.5">Pengambilan</th>
-                                <th class="p-3.5">Tanggal Berkas</th>
-                                <th class="p-3.5 pr-5 text-right">Aksi Kedinasan</th>
+                                <th class="p-3.5 pl-5 w-[220px]">Kode / Pemohon / No. SC</th>
+                                <th class="p-3.5 w-[140px]">Kesatuan & Keperluan</th>
+                                <th class="p-3.5 w-[170px]">Tahapan Terkini (1-10)</th>
+                                <th class="p-3.5 w-[130px]">Integrasi Dokumen</th>
+                                <th class="p-3.5 w-[85px] text-center">Status SC</th>
+                                <th class="p-3.5 w-[125px]">Pengambilan</th>
+                                <th class="p-3.5 w-[85px]">Tanggal</th>
+                                <th class="p-3.5 pr-5 text-right sticky right-0 bg-slate-50/95 backdrop-blur-xs z-10 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.06)] min-w-[145px]">Aksi Kedinasan</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 font-semibold text-slate-700">
                             <tr v-for="sub in submissions.data" :key="sub.id" class="hover:bg-slate-50/70 transition">
-                                <!-- Kode & Pemohon -->
+                                <!-- Kode, Kategori & Pemohon -->
                                 <td class="p-3.5 pl-5">
-                                    <div class="flex flex-wrap items-center gap-1.5">
-                                        <span class="font-mono text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md">
+                                    <div class="flex flex-wrap items-center gap-1.5 mb-1">
+                                        <span class="font-mono text-[10px] font-bold px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded-md">
                                             {{ sub.tracking_code }}
                                         </span>
-                                        <span v-if="sub.nomor_sc" class="font-mono text-[9px] font-extrabold px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md">
-                                            No. SC: {{ sub.nomor_sc }}
+                                        <span v-if="sub.kategori_sc === 'perusahaan'" class="text-[9px] font-black px-1.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md" title="Security Clearance Perusahaan / Rekanan Swasta">
+                                            SC-P (Perusahaan)
+                                        </span>
+                                        <span v-else class="text-[9px] font-black px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md" title="Security Clearance Dinas Militer TNI AL / PNS">
+                                            SC-D (Dinas)
                                         </span>
                                     </div>
-                                    <div class="font-extrabold text-slate-900 text-sm mt-1">
+                                    <div v-if="sub.nomor_sc" class="font-mono text-[9px] font-extrabold px-1.5 py-0.5 bg-blue-50 text-blue-800 border border-blue-200 rounded-md inline-block mb-1">
+                                        No. SC: {{ sub.nomor_sc }}
+                                    </div>
+                                    <div class="font-extrabold text-slate-900 text-xs truncate max-w-[200px]" :title="sub.nama">
                                         {{ sub.nama }}
                                     </div>
-                                    <div class="text-[10px] text-slate-500 font-mono">
+                                    <div class="text-[10px] text-slate-500 font-mono truncate max-w-[200px]">
                                         {{ sub.pangkat_korps ? sub.pangkat_korps + ' - ' : '' }}{{ sub.identifier_type.toUpperCase() }}. {{ sub.identifier_number }}
                                     </div>
                                     <div v-if="sub.tanggal_sc" class="text-[9px] text-slate-400 font-mono mt-0.5">
@@ -744,18 +857,18 @@ const formatDateTime = (dateStr) => {
 
                                 <!-- Kesatuan & Keperluan -->
                                 <td class="p-3.5">
-                                    <span class="font-extrabold text-slate-800 block">{{ sub.kesatuan || '-' }}</span>
-                                    <span class="text-[10px] text-slate-500 block truncate max-w-[150px]">{{ sub.keperluan || 'Kedinasan' }}</span>
+                                    <span class="font-bold text-slate-800 text-[11px] block truncate max-w-[130px]" :title="sub.kesatuan">{{ sub.kesatuan || '-' }}</span>
+                                    <span class="text-[10px] text-slate-500 block truncate max-w-[130px]" :title="sub.keperluan">{{ sub.keperluan || 'Kedinasan' }}</span>
                                 </td>
 
                                 <!-- Tahapan Terkini -->
                                 <td class="p-3.5">
-                                    <div class="space-y-1 min-w-[190px]">
+                                    <div class="space-y-1 max-w-[165px]">
                                         <div class="flex items-center justify-between text-[10px]">
-                                            <span class="font-extrabold" :class="sub.current_stage === 10 ? 'text-emerald-700' : 'text-blue-700'">
+                                            <span class="font-extrabold truncate pr-1" :class="sub.current_stage === 10 ? 'text-emerald-700' : 'text-blue-700'" :title="`Tahap ${sub.current_stage}: ${sub.stage_title}`">
                                                 Tahap {{ sub.current_stage }}: {{ sub.stage_title }}
                                             </span>
-                                            <span class="font-mono font-bold text-slate-400">{{ sub.current_stage }}/10</span>
+                                            <span class="font-mono font-bold text-slate-400 shrink-0">{{ sub.current_stage }}/10</span>
                                         </div>
                                         <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                                             <div 
@@ -764,7 +877,7 @@ const formatDateTime = (dateStr) => {
                                                 class="h-full rounded-full transition-all duration-300"
                                             ></div>
                                         </div>
-                                        <span v-if="sub.catatan_petugas" class="text-[9px] text-slate-400 italic truncate block max-w-xs">
+                                        <span v-if="sub.catatan_petugas" class="text-[9px] text-slate-400 italic truncate block max-w-[160px]" :title="sub.catatan_petugas">
                                             "{{ sub.catatan_petugas }}"
                                         </span>
                                     </div>
@@ -773,46 +886,46 @@ const formatDateTime = (dateStr) => {
                                 <!-- Integrasi & Dokumen Terlampir -->
                                 <td class="p-3.5 space-y-1">
                                     <!-- Status SKHPP -->
-                                    <div class="flex items-center gap-1.5">
-                                        <span class="text-[10px] text-slate-400 font-bold uppercase">SKHPP:</span>
-                                        <span v-if="sub.skhpp_id" class="px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 font-extrabold text-[9px] flex items-center gap-1">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-[9px] text-slate-400 font-bold uppercase shrink-0">SKHPP:</span>
+                                        <span v-if="sub.skhpp_id" class="px-1.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 font-extrabold text-[9px] flex items-center gap-1 truncate">
+                                            <svg class="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
                                             TTE Otomatis
                                         </span>
-                                        <a v-else-if="sub.file_skhpp_url" :href="sub.file_skhpp_url" target="_blank" class="px-2 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-blue-700 font-extrabold text-[9px] hover:underline flex items-center gap-1">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                            TTD Basah (PDF)
+                                        <a v-else-if="sub.file_skhpp_url" :href="sub.file_skhpp_url" target="_blank" class="px-1.5 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-blue-700 font-extrabold text-[9px] hover:underline flex items-center gap-1 truncate">
+                                            <svg class="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                            TTD Basah
                                         </a>
-                                        <span v-else class="text-[10px] text-slate-400 font-medium">Belum Ada</span>
+                                        <span v-else class="text-[9px] text-slate-400 font-medium">Belum Ada</span>
                                     </div>
 
                                     <!-- Status Petinjau SC Sintel -->
-                                    <div class="flex items-center gap-1.5">
-                                        <span class="text-[10px] text-slate-400 font-bold uppercase">SC Sintel:</span>
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-[9px] text-slate-400 font-bold uppercase shrink-0">Sintel:</span>
                                         <button 
                                             v-if="sub.is_sc_preview_available"
                                             @click="openPreviewModal(sub)"
-                                            class="px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-700 font-extrabold text-[9px] hover:bg-indigo-600 hover:text-white transition flex items-center gap-1 cursor-pointer"
+                                            class="px-1.5 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-700 font-extrabold text-[9px] hover:bg-indigo-600 hover:text-white transition flex items-center gap-1 cursor-pointer truncate"
                                             title="Lihat Petinjau Dokumen SC Sintel"
                                         >
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                                            Petinjau ({{ sub.sc_preview_remaining_hours }} Jam)
+                                            <svg class="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                            Petinjau ({{ sub.sc_preview_remaining_hours }}j)
                                         </button>
                                         <span v-else-if="sub.sc_preview_expired_at" class="text-[9px] text-rose-500 font-bold">
-                                            Kadaluarsa (Terhapus)
+                                            Kadaluarsa
                                         </span>
-                                        <span v-else class="text-[10px] text-slate-400 font-medium">-</span>
+                                        <span v-else class="text-[9px] text-slate-400 font-medium">-</span>
                                     </div>
                                 </td>
 
                                 <!-- Status SC -->
-                                <td class="p-3.5">
+                                <td class="p-3.5 text-center">
                                     <span :class="{
                                         'bg-emerald-100 text-emerald-800': sub.status === 'selesai' || sub.current_stage === 10,
                                         'bg-blue-100 text-blue-800': sub.status === 'proses' && sub.current_stage < 10,
                                         'bg-amber-100 text-amber-800': sub.status === 'perbaikan',
                                         'bg-rose-100 text-rose-800': sub.status === 'ditolak',
-                                    }" class="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider inline-block">
+                                    }" class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider inline-block">
                                         {{ (sub.status || 'proses').toUpperCase() }}
                                     </span>
                                 </td>
@@ -827,17 +940,17 @@ const formatDateTime = (dateStr) => {
                                         <div class="text-[10px] text-slate-700 font-mono font-bold">
                                             {{ sub.taken_at_formatted || formatDate(sub.taken_at) }}
                                         </div>
-                                        <div v-if="sub.taken_by" class="text-[9px] text-slate-500 truncate max-w-[130px]">
+                                        <div v-if="sub.taken_by" class="text-[9px] text-slate-500 truncate max-w-[110px]" :title="sub.taken_by">
                                             Oleh: {{ sub.taken_by }}
                                         </div>
                                         <button 
                                             @click="openTakenModal(sub)"
                                             class="text-[9px] text-blue-600 hover:underline font-bold block cursor-pointer"
                                         >
-                                            Ubah Catatan
+                                            Ubah
                                         </button>
                                     </div>
-                                    <div v-else class="space-y-1.5">
+                                    <div v-else class="space-y-1">
                                         <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-slate-100 text-slate-600 inline-block">
                                             Belum Diambil
                                         </span>
@@ -846,36 +959,36 @@ const formatDateTime = (dateStr) => {
                                             class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-[9px] font-extrabold uppercase tracking-wider transition cursor-pointer flex items-center gap-1"
                                             title="Catat pengambilan SC oleh pemohon"
                                         >
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                                             Tandai Diambil
                                         </button>
                                     </div>
                                 </td>
 
                                 <!-- Tanggal Berkas -->
-                                <td class="p-3.5 font-mono text-slate-500 text-[11px]">
+                                <td class="p-3.5 font-mono text-slate-500 text-[10px]">
                                     {{ formatDate(sub.created_at) }}
                                 </td>
 
-                                <!-- Tombol Aksi -->
-                                <td class="p-3.5 pr-5 text-right">
-                                    <div class="flex items-center justify-end gap-1.5">
+                                <!-- Tombol Aksi (Sticky Right agar selalu terlihat) -->
+                                <td class="p-3.5 pr-5 text-right sticky right-0 bg-white/95 backdrop-blur-xs z-10 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.06)]">
+                                    <div class="flex items-center justify-end gap-1">
                                         <!-- Update Tahapan Cepat -->
                                         <button 
                                             @click="openUpdateStageModal(sub)"
-                                            class="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 border border-blue-200 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition cursor-pointer"
+                                            class="px-2 py-1.5 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 border border-blue-200 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition cursor-pointer"
                                             title="Perbarui tahapan berkas"
                                         >
-                                            Update Tahap
+                                            Update
                                         </button>
 
                                         <!-- Catat Pengambilan -->
                                         <button 
                                             @click="openTakenModal(sub)"
-                                            class="p-1.5 bg-teal-50 hover:bg-teal-600 hover:text-white text-teal-700 border border-teal-200 rounded-xl transition cursor-pointer"
+                                            class="p-1.5 bg-teal-50 hover:bg-teal-600 hover:text-white text-teal-700 border border-teal-200 rounded-lg transition cursor-pointer"
                                             title="Pencatatan status pengambilan SC"
                                         >
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
                                         </button>
@@ -883,10 +996,10 @@ const formatDateTime = (dateStr) => {
                                         <!-- Riwayat Log -->
                                         <button 
                                             @click="openLogsModal(sub)"
-                                            class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition cursor-pointer"
+                                            class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition cursor-pointer"
                                             title="Lihat riwayat linimasa berkas"
                                         >
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
                                         </button>
@@ -894,10 +1007,10 @@ const formatDateTime = (dateStr) => {
                                         <!-- Edit Data -->
                                         <button 
                                             @click="openEditModal(sub)"
-                                            class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition cursor-pointer"
+                                            class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition cursor-pointer"
                                             title="Edit data pemohon"
                                         >
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                             </svg>
                                         </button>
@@ -906,10 +1019,10 @@ const formatDateTime = (dateStr) => {
                                         <button 
                                             v-if="isAdmin"
                                             @click="deleteSubmission(sub)"
-                                            class="p-1.5 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 rounded-xl transition cursor-pointer"
+                                            class="p-1.5 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 rounded-lg transition cursor-pointer"
                                             title="Hapus berkas"
                                         >
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                             </svg>
                                         </button>
@@ -972,6 +1085,33 @@ const formatDateTime = (dateStr) => {
 
                     <form @submit.prevent="submitCreate" class="p-5 sm:p-6 space-y-4 text-xs font-semibold">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <!-- Kategori SC (Dinas vs Perusahaan) -->
+                            <div class="space-y-1 sm:col-span-2">
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Kategori Security Clearance *</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <label 
+                                        :class="createForm.kategori_sc === 'dinas' ? 'bg-blue-50 border-blue-500 text-blue-800 ring-2 ring-blue-500/20' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'"
+                                        class="p-2.5 rounded-xl border flex items-center gap-2.5 cursor-pointer transition"
+                                    >
+                                        <input type="radio" v-model="createForm.kategori_sc" value="dinas" class="text-blue-600 focus:ring-blue-500" />
+                                        <div>
+                                            <div class="font-extrabold text-xs">SC Dinas (SKHPP-D)</div>
+                                            <div class="text-[9px] text-slate-400">Militer TNI AL & ASN / PNS</div>
+                                        </div>
+                                    </label>
+                                    <label 
+                                        :class="createForm.kategori_sc === 'perusahaan' ? 'bg-indigo-50 border-indigo-500 text-indigo-800 ring-2 ring-indigo-500/20' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'"
+                                        class="p-2.5 rounded-xl border flex items-center gap-2.5 cursor-pointer transition"
+                                    >
+                                        <input type="radio" v-model="createForm.kategori_sc" value="perusahaan" class="text-indigo-600 focus:ring-indigo-500" />
+                                        <div>
+                                            <div class="font-extrabold text-xs">SC Perusahaan (SKHPP-P)</div>
+                                            <div class="text-[9px] text-slate-400">Mitra Kerja, Rekanan & Swasta</div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
                             <!-- Nama Lengkap -->
                             <div class="space-y-1 sm:col-span-2">
                                 <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Nama Lengkap Pemohon *</label>
@@ -1449,6 +1589,33 @@ const formatDateTime = (dateStr) => {
                     </div>
 
                     <form @submit.prevent="submitEdit" class="p-5 sm:p-6 space-y-4 text-xs font-semibold">
+                        <!-- Kategori SC (Dinas vs Perusahaan) -->
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Kategori Security Clearance *</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label 
+                                    :class="editForm.kategori_sc === 'dinas' ? 'bg-blue-50 border-blue-500 text-blue-800 ring-2 ring-blue-500/20' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'"
+                                    class="p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition"
+                                >
+                                    <input type="radio" v-model="editForm.kategori_sc" value="dinas" class="text-blue-600 focus:ring-blue-500" />
+                                    <div>
+                                        <div class="font-extrabold text-xs">SC Dinas (SKHPP-D)</div>
+                                        <div class="text-[9px] text-slate-400">Militer & ASN</div>
+                                    </div>
+                                </label>
+                                <label 
+                                    :class="editForm.kategori_sc === 'perusahaan' ? 'bg-indigo-50 border-indigo-500 text-indigo-800 ring-2 ring-indigo-500/20' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'"
+                                    class="p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition"
+                                >
+                                    <input type="radio" v-model="editForm.kategori_sc" value="perusahaan" class="text-indigo-600 focus:ring-indigo-500" />
+                                    <div>
+                                        <div class="font-extrabold text-xs">SC Perusahaan (SKHPP-P)</div>
+                                        <div class="text-[9px] text-slate-400">Mitra & Swasta</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
                         <div class="space-y-1">
                             <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Nama Lengkap *</label>
                             <input 

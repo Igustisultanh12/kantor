@@ -30,6 +30,8 @@ class ScSubmissionController extends Controller
                 'submissions' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15),
                 'stats' => [
                     'total' => 0,
+                    'total_dinas' => 0,
+                    'total_perusahaan' => 0,
                     'in_progress' => 0,
                     'at_denintel' => 0,
                     'at_sintel' => 0,
@@ -37,7 +39,7 @@ class ScSubmissionController extends Controller
                     'sudah_diambil' => 0,
                     'belum_diambil' => 0,
                 ],
-                'filters' => $request->only(['search', 'stage', 'status', 'pengambilan', 'sort']),
+                'filters' => $request->only(['search', 'stage', 'status', 'pengambilan', 'sort', 'kategori']),
                 'stages' => array_values(ScSubmission::STAGES),
             ]);
         }
@@ -59,6 +61,22 @@ class ScSubmissionController extends Controller
         }
 
         $query = ScSubmission::with($relations);
+
+        // Filter Kategori SC: Dinas (SKHPP-D) vs Perusahaan (SKHPP-P)
+        if ($request->filled('kategori') && $request->kategori !== 'all') {
+            if ($request->kategori === 'perusahaan') {
+                $query->where(function ($q) {
+                    $q->where('kategori_sc', 'perusahaan')
+                      ->orWhere('nomor_skhpp', 'like', '%SKHPP-P%');
+                });
+            } elseif ($request->kategori === 'dinas') {
+                $query->where(function ($q) {
+                    $q->where('kategori_sc', '!=', 'perusahaan')->orWhereNull('kategori_sc');
+                })->where(function ($q) {
+                    $q->whereNull('nomor_skhpp')->orWhere('nomor_skhpp', 'not like', '%SKHPP-P%');
+                });
+            }
+        }
 
         if ($request->filled('search')) {
             $search = trim($request->search);
@@ -98,10 +116,11 @@ class ScSubmissionController extends Controller
             }
         }
 
-        $sort = $request->input('sort', 'terbaru');
+        // Default urutan terlama ke terbaru (id asc) sesuai permintaan kedinasan
+        $sort = $request->input('sort', 'terlama');
         switch ($sort) {
-            case 'terlama':
-                $query->orderBy('id', 'asc');
+            case 'terbaru':
+                $query->orderBy('id', 'desc');
                 break;
             case 'nama_asc':
                 $query->orderBy('nama', 'asc');
@@ -118,9 +137,9 @@ class ScSubmissionController extends Controller
             case 'tanggal_sc':
                 $query->orderByRaw('CASE WHEN tanggal_sc IS NULL THEN 1 ELSE 0 END, tanggal_sc desc');
                 break;
-            case 'terbaru':
+            case 'terlama':
             default:
-                $query->orderBy('id', 'desc');
+                $query->orderBy('id', 'asc');
                 break;
         }
 
@@ -128,6 +147,14 @@ class ScSubmissionController extends Controller
 
         $stats = [
             'total' => ScSubmission::count(),
+            'total_dinas' => ScSubmission::where(function ($q) {
+                $q->where('kategori_sc', '!=', 'perusahaan')->orWhereNull('kategori_sc');
+            })->where(function ($q) {
+                $q->whereNull('nomor_skhpp')->orWhere('nomor_skhpp', 'not like', '%SKHPP-P%');
+            })->count(),
+            'total_perusahaan' => ScSubmission::where(function ($q) {
+                $q->where('kategori_sc', 'perusahaan')->orWhere('nomor_skhpp', 'like', '%SKHPP-P%');
+            })->count(),
             'in_progress' => Schema::hasColumn('sc_submissions', 'current_stage') ? ScSubmission::where('current_stage', '<', 10)->where('status', '!=', 'ditolak')->count() : 0,
             'at_denintel' => Schema::hasColumn('sc_submissions', 'current_stage') ? ScSubmission::where('current_stage', '<=', 5)->where('status', '!=', 'ditolak')->count() : 0,
             'at_sintel' => Schema::hasColumn('sc_submissions', 'current_stage') ? ScSubmission::whereBetween('current_stage', [6, 9])->where('status', '!=', 'ditolak')->count() : 0,
@@ -139,7 +166,7 @@ class ScSubmissionController extends Controller
         return Inertia::render('ScSubmission/Index', [
             'submissions' => $submissions,
             'stats' => $stats,
-            'filters' => $request->only(['search', 'stage', 'status', 'pengambilan', 'sort']),
+            'filters' => $request->only(['search', 'stage', 'status', 'pengambilan', 'sort', 'kategori']),
             'stages' => array_values(ScSubmission::STAGES),
         ]);
     }
@@ -154,6 +181,7 @@ class ScSubmissionController extends Controller
 
         $validated = $request->validate([
             'nama' => 'required|string|max:255',
+            'kategori_sc' => 'nullable|string|in:dinas,perusahaan',
             'pangkat_korps' => 'nullable|string|max:100',
             'identifier_type' => 'required|in:nrp,nip,nik,nim',
             'identifier_number' => 'required|string|max:50',
@@ -186,6 +214,7 @@ class ScSubmissionController extends Controller
             }
 
             $allFields = [
+                'kategori_sc' => $validated['kategori_sc'] ?? 'dinas',
                 'tracking_code' => $trackingCode,
                 'nomor_resi' => $trackingCode,
                 'nama' => $validated['nama'],
@@ -451,6 +480,7 @@ class ScSubmissionController extends Controller
 
         $validated = $request->validate([
             'nama' => 'required|string|max:255',
+            'kategori_sc' => 'nullable|string|in:dinas,perusahaan',
             'pangkat_korps' => 'nullable|string|max:100',
             'identifier_type' => 'required|in:nrp,nip,nik,nim',
             'identifier_number' => 'required|string|max:50',
@@ -541,8 +571,10 @@ class ScSubmissionController extends Controller
                 }
 
                 $trackingCode = 'SC-' . date('Ymd') . '-' . strtoupper(Str::random(5));
+                $kategoriSc = ($skhpp->kategori_personel === 'perusahaan' || str_contains($skhpp->nomor_skhpp ?? '', 'SKHPP-P')) ? 'perusahaan' : 'dinas';
                 $scSub = ScSubmission::create([
                     'skhpp_id' => $skhpp->id,
+                    'kategori_sc' => $kategoriSc,
                     'tracking_code' => $trackingCode,
                     'nama' => $skhpp->nama,
                     'pangkat_korps' => $skhpp->pangkat_korps_nrp,
@@ -601,6 +633,22 @@ class ScSubmissionController extends Controller
 
         $query = ScSubmission::with($relations);
 
+        // Filter Kategori SC: Dinas (SKHPP-D) vs Perusahaan (SKHPP-P)
+        if ($request->filled('kategori') && $request->kategori !== 'all') {
+            if ($request->kategori === 'perusahaan') {
+                $query->where(function ($q) {
+                    $q->where('kategori_sc', 'perusahaan')
+                      ->orWhere('nomor_skhpp', 'like', '%SKHPP-P%');
+                });
+            } elseif ($request->kategori === 'dinas') {
+                $query->where(function ($q) {
+                    $q->where('kategori_sc', '!=', 'perusahaan')->orWhereNull('kategori_sc');
+                })->where(function ($q) {
+                    $q->whereNull('nomor_skhpp')->orWhere('nomor_skhpp', 'not like', '%SKHPP-P%');
+                });
+            }
+        }
+
         if ($request->filled('search')) {
             $search = trim($request->search);
             $cleanSearch = preg_replace('/[^A-Za-z0-9]/', '', $search);
@@ -639,10 +687,11 @@ class ScSubmissionController extends Controller
             }
         }
 
-        $sort = $request->input('sort', 'terbaru');
+        // Default urutan terlama ke terbaru (id asc) sesuai buku agenda kedinasan
+        $sort = $request->input('sort', 'terlama');
         switch ($sort) {
-            case 'terlama':
-                $query->orderBy('id', 'asc');
+            case 'terbaru':
+                $query->orderBy('id', 'desc');
                 break;
             case 'nama_asc':
                 $query->orderBy('nama', 'asc');
@@ -659,9 +708,9 @@ class ScSubmissionController extends Controller
             case 'tanggal_sc':
                 $query->orderByRaw('CASE WHEN tanggal_sc IS NULL THEN 1 ELSE 0 END, tanggal_sc desc');
                 break;
-            case 'terbaru':
+            case 'terlama':
             default:
-                $query->orderBy('id', 'desc');
+                $query->orderBy('id', 'asc');
                 break;
         }
 
@@ -670,7 +719,13 @@ class ScSubmissionController extends Controller
         $filterPengambilanText = match ($request->pengambilan) {
             'sudah_diambil' => 'Sudah Diambil',
             'belum_diambil' => 'Belum Diambil',
-            default => 'Semua Berkas',
+            default => 'Semua Status Pengambilan',
+        };
+
+        $filterKategoriText = match ($request->kategori) {
+            'dinas' => 'SC DINAS (SKHPP-D)',
+            'perusahaan' => 'SC PERUSAHAAN (SKHPP-P)',
+            default => 'SEMUA KATEGORI (DINAS & PERUSAHAAN)',
         };
 
         $periodeText = null;
@@ -681,10 +736,13 @@ class ScSubmissionController extends Controller
         $pdf = Pdf::loadView('pdf.sc_submission_agenda', [
             'submissions' => $submissions,
             'filter_pengambilan' => $filterPengambilanText,
+            'filter_kategori' => $filterKategoriText,
+            'kategori' => $request->kategori ?? 'all',
             'periode_text' => $periodeText,
             'filters' => [
                 'search' => $request->search,
                 'pengambilan' => $request->pengambilan,
+                'kategori' => $request->kategori,
                 'stage' => $request->stage,
                 'status' => $request->status,
                 'sort' => $sort,
@@ -692,7 +750,12 @@ class ScSubmissionController extends Controller
             'printDate' => now()->locale('id')->isoFormat('D MMMM Y'),
         ])->setPaper('a4', 'portrait');
 
-        $filename = 'BUKU_AGENDA_PENGAMBILAN_SC_' . date('Ymd_His') . '.pdf';
+        $kategoriSlug = match ($request->kategori) {
+            'dinas' => 'DINAS_SKHPP_D_',
+            'perusahaan' => 'PERUSAHAAN_SKHPP_P_',
+            default => '',
+        };
+        $filename = 'BUKU_AGENDA_PENGAMBILAN_SC_' . $kategoriSlug . date('Ymd_His') . '.pdf';
         return $pdf->stream($filename);
     }
 

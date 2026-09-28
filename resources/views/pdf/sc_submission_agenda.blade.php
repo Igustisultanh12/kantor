@@ -107,7 +107,8 @@
     <!-- JUDUL BUKU AGENDA -->
     <div class="judul-container">
         <h3>BUKU AGENDA PENGAMBILAN SECURITY CLEARANCE (SC)</h3>
-        <p>STATUS PENGAMBILAN: {{ strtoupper($filter_pengambilan ?? 'SEMUA BERKAS') }}</p>
+        <p>{{ strtoupper($filter_kategori ?? 'SEMUA KATEGORI (DINAS & PERUSAHAAN)') }}</p>
+        <p style="font-size: 9.5px; margin-top: 2px;">STATUS: {{ strtoupper($filter_pengambilan ?? 'SEMUA STATUS PENGAMBILAN') }}</p>
         @if(!empty($periode_text))
             <p style="font-weight: normal; font-size: 9.5px; text-transform: none;">Periode: {{ $periode_text }}</p>
         @endif
