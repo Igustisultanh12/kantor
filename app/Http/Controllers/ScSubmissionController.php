@@ -972,7 +972,7 @@ class ScSubmissionController extends Controller
         }
         $recipientLine = "Yth. " . (empty($recipientParts) ? 'Personel Staf Intelijen' : implode(' ', $recipientParts));
 
-        $trackingUrl = route('tracking-sc.index');
+        $trackingUrl = route('sc-submissions.index');
 
         $message = "*PEMBERITAHUAN BERKAS SECURITY CLEARANCE (SC)*\n" .
                    "*DETASEMEN INTELIJEN KODAERAL V*\n\n" .
@@ -987,7 +987,8 @@ class ScSubmissionController extends Controller
         }
 
         $message .= "Mohon perkenan untuk melakukan pembaruan berkas melalui tautan sistem SINDEN:\n" .
-                   "{$trackingUrl}\n\n" .
+                   "{$trackingUrl}\n" .
+                   "*(Silakan login menggunakan NRP dan Password Anda)*\n\n" .
                    "Demikian pemberitahuan ini disampaikan. Terima kasih.";
 
         $targetPhone = trim($validated['phone']);

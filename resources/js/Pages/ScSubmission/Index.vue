@@ -220,7 +220,7 @@ const formattedRecipient = computed(() => {
 const generatedPreviewMessage = computed(() => {
     const stats = currentNotifyStats.value;
     const recipient = formattedRecipient.value;
-    const trackingUrl = typeof window !== 'undefined' ? (window.location.origin + '/tracking-sc') : 'https://kantor.site/tracking-sc';
+    const trackingUrl = typeof window !== 'undefined' ? (window.location.origin + '/sc-submissions') : 'https://sisinden.my.id/sc-submissions';
     
     let msg = `*PEMBERITAHUAN BERKAS SECURITY CLEARANCE (SC)*\n*DETASEMEN INTELIJEN KODAERAL V*\n\n${recipient}\n\nDisampaikan informasi bahwa saat ini terdapat berkas pengajuan Security Clearance (SC) yang perlu ditindaklanjuti dan diperbarui oleh Staf Intelijen:\n\n- Berkas Dinas: ${stats.dinas} berkas\n- Berkas Perusahaan: ${stats.perusahaan} berkas\n- Total Berkas: ${stats.total} berkas\n\n`;
     
@@ -228,7 +228,7 @@ const generatedPreviewMessage = computed(() => {
         msg += `Catatan: ${notifyCatatanTambahan.value.trim()}\n\n`;
     }
     
-    msg += `Mohon perkenan untuk melakukan pembaruan berkas melalui tautan sistem SINDEN:\n${trackingUrl}\n\nDemikian pemberitahuan ini disampaikan. Terima kasih.`;
+    msg += `Mohon perkenan untuk melakukan pembaruan berkas melalui tautan sistem SINDEN:\n${trackingUrl}\n*(Silakan login menggunakan NRP dan Password Anda)*\n\nDemikian pemberitahuan ini disampaikan. Terima kasih.`;
     return msg;
 });
 
