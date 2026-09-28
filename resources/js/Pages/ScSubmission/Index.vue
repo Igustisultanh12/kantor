@@ -19,7 +19,7 @@ const selectedStage = ref(props.filters?.stage || 'all');
 const selectedStatus = ref(props.filters?.status || 'all');
 const selectedPengambilan = ref(props.filters?.pengambilan || 'all');
 const selectedKategori = ref(props.filters?.kategori || 'all');
-const selectedSort = ref(props.filters?.sort || 'terlama');
+const selectedSort = ref(props.filters?.sort || 'terbaru');
 
 const handleFilter = () => {
     router.get(route('sc-submissions.index'), {
@@ -46,7 +46,7 @@ const resetFilter = () => {
     selectedStatus.value = 'all';
     selectedPengambilan.value = 'all';
     selectedKategori.value = 'all';
-    selectedSort.value = 'terlama';
+    selectedSort.value = 'terbaru';
     handleFilter();
 };
 
@@ -684,14 +684,14 @@ const formatDateTime = (dateStr) => {
                         <option value="sudah_diambil">Sudah Diambil</option>
                     </select>
 
-                    <!-- Urutkan / Sort (Default: Terlama ke Terbaru) -->
+                    <!-- Urutkan / Sort (Default: Terbaru ke Terlama) -->
                     <select 
                         v-model="selectedSort" 
                         @change="handleFilter"
                         class="text-xs font-semibold py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white"
                     >
-                        <option value="terlama">Urutan: Terlama ke Terbaru</option>
-                        <option value="terbaru">Urutan: Terbaru ke Terlama</option>
+                        <option value="terbaru">Urutan: Terbaru (Terbaru di Atas)</option>
+                        <option value="terlama">Urutan: Terlama (Terlama di Atas)</option>
                         <option value="nama_asc">Nama (A - Z)</option>
                         <option value="nama_desc">Nama (Z - A)</option>
                         <option value="nomor_sc">Nomor SC</option>
@@ -813,23 +813,23 @@ const formatDateTime = (dateStr) => {
                 </div>
 
                 <div class="overflow-x-auto">
-                    <table class="min-w-[1020px] w-full text-left text-xs border-collapse">
+                    <table class="w-full min-w-[940px] text-left text-xs border-collapse">
                         <thead>
                             <tr class="bg-slate-50/80 border-b border-slate-100 text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
-                                <th class="p-3.5 pl-5 w-[220px]">Kode / Pemohon / No. SC</th>
-                                <th class="p-3.5 w-[140px]">Kesatuan & Keperluan</th>
-                                <th class="p-3.5 w-[170px]">Tahapan Terkini (1-10)</th>
-                                <th class="p-3.5 w-[130px]">Integrasi Dokumen</th>
+                                <th class="p-3.5 pl-5 w-[210px] sticky left-0 bg-slate-50/95 backdrop-blur-xs z-10 shadow-[6px_0_10px_-4px_rgba(0,0,0,0.06)]">Kode / Pemohon / No. SC</th>
+                                <th class="p-3.5 w-[130px]">Kesatuan & Keperluan</th>
+                                <th class="p-3.5 w-[160px]">Tahapan Terkini (1-10)</th>
+                                <th class="p-3.5 w-[125px]">Integrasi Dokumen</th>
                                 <th class="p-3.5 w-[85px] text-center">Status SC</th>
-                                <th class="p-3.5 w-[125px]">Pengambilan</th>
-                                <th class="p-3.5 w-[85px]">Tanggal</th>
-                                <th class="p-3.5 pr-5 text-right sticky right-0 bg-slate-50/95 backdrop-blur-xs z-10 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.06)] min-w-[145px]">Aksi Kedinasan</th>
+                                <th class="p-3.5 w-[120px]">Pengambilan</th>
+                                <th class="p-3.5 w-[80px]">Tanggal</th>
+                                <th class="p-3.5 pr-5 text-right sticky right-0 bg-slate-50/95 backdrop-blur-xs z-10 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.06)] min-w-[135px]">Aksi Kedinasan</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 font-semibold text-slate-700">
                             <tr v-for="sub in submissions.data" :key="sub.id" class="hover:bg-slate-50/70 transition">
-                                <!-- Kode, Kategori & Pemohon -->
-                                <td class="p-3.5 pl-5">
+                                <!-- Kode, Kategori & Pemohon (Sticky Left agar identitas selalu terlihat) -->
+                                <td class="p-3.5 pl-5 sticky left-0 bg-white/95 backdrop-blur-xs z-10 shadow-[6px_0_10px_-4px_rgba(0,0,0,0.06)]">
                                     <div class="flex flex-wrap items-center gap-1.5 mb-1">
                                         <span class="font-mono text-[10px] font-bold px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded-md">
                                             {{ sub.tracking_code }}

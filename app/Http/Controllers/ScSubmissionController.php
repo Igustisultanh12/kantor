@@ -116,11 +116,11 @@ class ScSubmissionController extends Controller
             }
         }
 
-        // Default urutan terlama ke terbaru (id asc) sesuai permintaan kedinasan
-        $sort = $request->input('sort', 'terlama');
+        // Default urutan terbaru ke terlama (id desc) agar berkas terbaru berada di paling atas
+        $sort = $request->input('sort', 'terbaru');
         switch ($sort) {
-            case 'terbaru':
-                $query->orderBy('id', 'desc');
+            case 'terlama':
+                $query->orderBy('id', 'asc');
                 break;
             case 'nama_asc':
                 $query->orderBy('nama', 'asc');
@@ -137,9 +137,9 @@ class ScSubmissionController extends Controller
             case 'tanggal_sc':
                 $query->orderByRaw('CASE WHEN tanggal_sc IS NULL THEN 1 ELSE 0 END, tanggal_sc desc');
                 break;
-            case 'terlama':
+            case 'terbaru':
             default:
-                $query->orderBy('id', 'asc');
+                $query->orderBy('id', 'desc');
                 break;
         }
 
@@ -687,11 +687,11 @@ class ScSubmissionController extends Controller
             }
         }
 
-        // Default urutan terlama ke terbaru (id asc) sesuai buku agenda kedinasan
-        $sort = $request->input('sort', 'terlama');
+        // Default urutan terbaru ke terlama (id desc) agar berkas terbaru di urutan atas
+        $sort = $request->input('sort', 'terbaru');
         switch ($sort) {
-            case 'terbaru':
-                $query->orderBy('id', 'desc');
+            case 'terlama':
+                $query->orderBy('id', 'asc');
                 break;
             case 'nama_asc':
                 $query->orderBy('nama', 'asc');
@@ -708,9 +708,9 @@ class ScSubmissionController extends Controller
             case 'tanggal_sc':
                 $query->orderByRaw('CASE WHEN tanggal_sc IS NULL THEN 1 ELSE 0 END, tanggal_sc desc');
                 break;
-            case 'terlama':
+            case 'terbaru':
             default:
-                $query->orderBy('id', 'asc');
+                $query->orderBy('id', 'desc');
                 break;
         }
 
