@@ -244,6 +244,7 @@ Route::middleware('auth')->group(function () {
     // --- FITUR MANAJEMEN PENGAJUAN SECURITY CLEARANCE (SC) ---
     Route::get('sc-submissions/export-pdf', [ScSubmissionController::class, 'exportPdf'])->name('sc-submissions.pdf');
     Route::post('sc-submissions/sync-skhpp', [ScSubmissionController::class, 'syncFromApprovedSkhpp'])->name('sc-submissions.sync-skhpp');
+    Route::post('sc-submissions/notify-sintel', [ScSubmissionController::class, 'sendSintelNotification'])->name('sc-submissions.notify-sintel');
     Route::post('sc-submissions/{id}/toggle-taken', [ScSubmissionController::class, 'toggleTaken'])->name('sc-submissions.toggle-taken');
     Route::post('sc-submissions/{id}/update-stage', [ScSubmissionController::class, 'updateStage'])->name('sc-submissions.update-stage');
     Route::resource('sc-submissions', ScSubmissionController::class)->except(['create', 'edit', 'show']);

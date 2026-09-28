@@ -39,6 +39,15 @@ class ScSubmissionController extends Controller
                     'sudah_diambil' => 0,
                     'belum_diambil' => 0,
                 ],
+                'sintelStats' => [
+                    'stage_6_9' => ['dinas' => 0, 'perusahaan' => 0, 'total' => 0],
+                    'stage_5_9' => ['dinas' => 0, 'perusahaan' => 0, 'total' => 0],
+                    'dinas' => 0,
+                    'perusahaan' => 0,
+                    'total' => 0,
+                ],
+                'sintelUsers' => [],
+                'otherUsers' => [],
                 'filters' => $request->only(['search', 'stage', 'status', 'pengambilan', 'sort', 'kategori']),
                 'stages' => array_values(ScSubmission::STAGES),
             ]);
@@ -163,9 +172,88 @@ class ScSubmissionController extends Controller
             'belum_diambil' => Schema::hasColumn('sc_submissions', 'is_taken') ? ScSubmission::where('is_taken', false)->orWhereNull('is_taken')->count() : 0,
         ];
 
+        // Statistik berkas yang perlu ditindaklanjuti & diperbarui oleh Staf Intel
+        // 1. Cakupan Tahap 6 s/d 9 (Dalam penanganan aktif Staf Intel)
+        $sintelStage69Query = ScSubmission::where(function($q) {
+            if (Schema::hasColumn('sc_submissions', 'current_stage')) {
+                $q->whereBetween('current_stage', [6, 9]);
+            }
+            if (Schema::hasColumn('sc_submissions', 'status')) {
+                $q->where('status', '!=', 'ditolak');
+            }
+        });
+
+        $sintelDinas69 = (clone $sintelStage69Query)->where(function ($q) {
+            $q->where('kategori_sc', '!=', 'perusahaan')->orWhereNull('kategori_sc');
+        })->where(function ($q) {
+            $q->whereNull('nomor_skhpp')->orWhere('nomor_skhpp', 'not like', '%SKHPP-P%');
+        })->count();
+
+        $sintelPerusahaan69 = (clone $sintelStage69Query)->where(function ($q) {
+            $q->where('kategori_sc', 'perusahaan')->orWhere('nomor_skhpp', 'like', '%SKHPP-P%');
+        })->count();
+
+        // 2. Cakupan Tahap 5 s/d 9 (Termasuk berkas Tahap 5 SKHPP Terbit yang siap ditindaklanjuti Sintel)
+        $sintelStage59Query = ScSubmission::where(function($q) {
+            if (Schema::hasColumn('sc_submissions', 'current_stage')) {
+                $q->whereBetween('current_stage', [5, 9]);
+            }
+            if (Schema::hasColumn('sc_submissions', 'status')) {
+                $q->where('status', '!=', 'ditolak');
+            }
+        });
+
+        $sintelDinas59 = (clone $sintelStage59Query)->where(function ($q) {
+            $q->where('kategori_sc', '!=', 'perusahaan')->orWhereNull('kategori_sc');
+        })->where(function ($q) {
+            $q->whereNull('nomor_skhpp')->orWhere('nomor_skhpp', 'not like', '%SKHPP-P%');
+        })->count();
+
+        $sintelPerusahaan59 = (clone $sintelStage59Query)->where(function ($q) {
+            $q->where('kategori_sc', 'perusahaan')->orWhere('nomor_skhpp', 'like', '%SKHPP-P%');
+        })->count();
+
+        $sintelStats = [
+            'stage_6_9' => [
+                'dinas' => $sintelDinas69,
+                'perusahaan' => $sintelPerusahaan69,
+                'total' => $sintelDinas69 + $sintelPerusahaan69,
+            ],
+            'stage_5_9' => [
+                'dinas' => $sintelDinas59,
+                'perusahaan' => $sintelPerusahaan59,
+                'total' => $sintelDinas59 + $sintelPerusahaan59,
+            ],
+            'dinas' => $sintelDinas69,
+            'perusahaan' => $sintelPerusahaan69,
+            'total' => $sintelDinas69 + $sintelPerusahaan69,
+        ];
+
+        // Daftar Personel Staf Intel & Personel Lainnya untuk Pilihan Penerima Notifikasi
+        $sintelUsers = User::query()
+            ->where(function ($q) {
+                $q->where('role', 'anggotasintel')
+                  ->orWhere('role', 'like', '%sintel%');
+            })
+            ->orderBy('name', 'asc')
+            ->get(['id', 'name', 'pangkat', 'nrp', 'phone', 'role']);
+
+        $otherUsers = User::query()
+            ->where(function ($q) {
+                $q->where('role', '!=', 'anggotasintel')
+                  ->where('role', 'not like', '%sintel%');
+            })
+            ->whereNotNull('phone')
+            ->where('phone', '!=', '')
+            ->orderBy('name', 'asc')
+            ->get(['id', 'name', 'pangkat', 'nrp', 'phone', 'role']);
+
         return Inertia::render('ScSubmission/Index', [
             'submissions' => $submissions,
             'stats' => $stats,
+            'sintelStats' => $sintelStats,
+            'sintelUsers' => $sintelUsers,
+            'otherUsers' => $otherUsers,
             'filters' => $request->only(['search', 'stage', 'status', 'pengambilan', 'sort', 'kategori']),
             'stages' => array_values(ScSubmission::STAGES),
         ]);
@@ -826,5 +914,87 @@ class ScSubmissionController extends Controller
         }
 
         return redirect()->back()->with('success', "Lapor! Status pengambilan berkas SC atas nama {$submission->nama} berhasil diperbarui.");
+    }
+
+    /**
+     * Kirim Notifikasi Rekap Pengajuan SC ke WhatsApp Staf Intel
+     */
+    public function sendSintelNotification(Request $request)
+    {
+        $validated = $request->validate([
+            'user_id' => 'nullable|integer',
+            'phone' => 'required|string|max:50',
+            'pangkat' => 'nullable|string|max:100',
+            'nama' => 'required|string|max:255',
+            'nrp' => 'nullable|string|max:50',
+            'scope' => 'nullable|string|in:stage_6_9,stage_5_9',
+            'catatan_tambahan' => 'nullable|string|max:1000',
+        ]);
+
+        $scope = $validated['scope'] ?? 'stage_6_9';
+        $minStage = ($scope === 'stage_5_9') ? 5 : 6;
+
+        $baseQuery = ScSubmission::where(function($q) use ($minStage) {
+            if (Schema::hasColumn('sc_submissions', 'current_stage')) {
+                $q->whereBetween('current_stage', [$minStage, 9]);
+            }
+            if (Schema::hasColumn('sc_submissions', 'status')) {
+                $q->where('status', '!=', 'ditolak');
+            }
+        });
+
+        $dinasCount = (clone $baseQuery)->where(function ($q) {
+            $q->where('kategori_sc', '!=', 'perusahaan')->orWhereNull('kategori_sc');
+        })->where(function ($q) {
+            $q->whereNull('nomor_skhpp')->orWhere('nomor_skhpp', 'not like', '%SKHPP-P%');
+        })->count();
+
+        $perusahaanCount = (clone $baseQuery)->where(function ($q) {
+            $q->where('kategori_sc', 'perusahaan')->orWhere('nomor_skhpp', 'like', '%SKHPP-P%');
+        })->count();
+
+        $totalCount = $dinasCount + $perusahaanCount;
+
+        // Susun baris sapaan: Yth [pangkat][Nama][Nrp]
+        $pangkatStr = trim($validated['pangkat'] ?? '');
+        $namaStr = trim($validated['nama'] ?? '');
+        $nrpStr = trim($validated['nrp'] ?? '');
+
+        $recipientParts = [];
+        if (!empty($pangkatStr)) {
+            $recipientParts[] = $pangkatStr;
+        }
+        if (!empty($namaStr)) {
+            $recipientParts[] = $namaStr;
+        }
+        if (!empty($nrpStr)) {
+            $recipientParts[] = "NRP {$nrpStr}";
+        }
+        $recipientLine = "Yth. " . (empty($recipientParts) ? 'Personel Staf Intelijen' : implode(' ', $recipientParts));
+
+        $trackingUrl = route('tracking-sc.index');
+
+        $message = "*PEMBERITAHUAN BERKAS SECURITY CLEARANCE (SC)*\n" .
+                   "*DETASEMEN INTELIJEN KODAERAL V*\n\n" .
+                   "{$recipientLine}\n\n" .
+                   "Disampaikan informasi bahwa saat ini terdapat berkas pengajuan Security Clearance (SC) yang perlu ditindaklanjuti dan diperbarui oleh Staf Intelijen:\n\n" .
+                   "- Berkas Dinas: {$dinasCount} berkas\n" .
+                   "- Berkas Perusahaan: {$perusahaanCount} berkas\n" .
+                   "- Total Berkas: {$totalCount} berkas\n\n";
+
+        if (!empty($validated['catatan_tambahan'])) {
+            $message .= "Catatan: " . trim($validated['catatan_tambahan']) . "\n\n";
+        }
+
+        $message .= "Mohon perkenan untuk melakukan pembaruan berkas melalui tautan sistem SINDEN:\n" .
+                   "{$trackingUrl}\n\n" .
+                   "Demikian pemberitahuan ini disampaikan. Terima kasih.";
+
+        $targetPhone = trim($validated['phone']);
+        WhatsappService::sendMessage($targetPhone, $message);
+
+        Log::info("Notifikasi SC Sintel dikirim ke {$recipientLine} ({$targetPhone}) oleh " . (Auth::user()->name ?? 'Petugas'));
+
+        return redirect()->back()->with('success', "Lapor! Notifikasi pembaruan berkas SC berhasil dikirim ke WhatsApp {$recipientLine} ({$targetPhone}).");
     }
 }

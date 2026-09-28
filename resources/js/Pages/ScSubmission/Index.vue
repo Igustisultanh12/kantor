@@ -7,6 +7,9 @@ import Swal from 'sweetalert2';
 const props = defineProps({
     submissions: Object,
     stats: Object,
+    sintelStats: Object,
+    sintelUsers: Array,
+    otherUsers: Array,
     filters: Object,
     stages: Array,
 });
@@ -160,6 +163,141 @@ const syncSkhpp = () => {
                     isSyncingSkhpp.value = false;
                 }
             });
+        }
+    });
+};
+
+// State & Logika Modal Kirim Notifikasi ke Staf Intel
+const isNotifyModalOpen = ref(false);
+const isSubmittingNotification = ref(false);
+const notifyRecipientType = ref('user'); // 'user' | 'custom'
+const selectedSintelUserId = ref('');
+const notifyScope = ref('stage_6_9'); // 'stage_6_9' | 'stage_5_9'
+const notifyCustomPangkat = ref('');
+const notifyCustomNama = ref('');
+const notifyCustomNrp = ref('');
+const notifyCustomPhone = ref('');
+const notifyCatatanTambahan = ref('');
+
+const sintelUsersList = computed(() => props.sintelUsers || []);
+const otherUsersList = computed(() => props.otherUsers || []);
+
+const currentNotifyStats = computed(() => {
+    if (notifyScope.value === 'stage_5_9') {
+        return props.sintelStats?.stage_5_9 || { dinas: 0, perusahaan: 0, total: 0 };
+    }
+    return props.sintelStats?.stage_6_9 || { dinas: 0, perusahaan: 0, total: 0 };
+});
+
+const selectedUserObj = computed(() => {
+    if (!selectedSintelUserId.value) return null;
+    return [...sintelUsersList.value, ...otherUsersList.value].find(u => String(u.id) === String(selectedSintelUserId.value)) || null;
+});
+
+const onSelectUser = () => {
+    if (selectedUserObj.value) {
+        notifyCustomPangkat.value = selectedUserObj.value.pangkat || '';
+        notifyCustomNama.value = selectedUserObj.value.name || '';
+        notifyCustomNrp.value = selectedUserObj.value.nrp || '';
+        notifyCustomPhone.value = selectedUserObj.value.phone || '';
+    }
+};
+
+const formattedRecipient = computed(() => {
+    const p = (notifyCustomPangkat.value || '').trim();
+    const n = (notifyCustomNama.value || '').trim();
+    const nrp = (notifyCustomNrp.value || '').trim();
+    
+    const parts = [];
+    if (p) parts.push(p);
+    if (n) parts.push(n);
+    if (nrp) parts.push(`NRP ${nrp}`);
+    
+    if (parts.length === 0) return 'Yth. Personel Staf Intelijen';
+    return `Yth. ${parts.join(' ')}`;
+});
+
+const generatedPreviewMessage = computed(() => {
+    const stats = currentNotifyStats.value;
+    const recipient = formattedRecipient.value;
+    const trackingUrl = typeof window !== 'undefined' ? (window.location.origin + '/tracking-sc') : 'https://kantor.site/tracking-sc';
+    
+    let msg = `*PEMBERITAHUAN BERKAS SECURITY CLEARANCE (SC)*\n*DETASEMEN INTELIJEN KODAERAL V*\n\n${recipient}\n\nDisampaikan informasi bahwa saat ini terdapat berkas pengajuan Security Clearance (SC) yang perlu ditindaklanjuti dan diperbarui oleh Staf Intelijen:\n\n- Berkas Dinas: ${stats.dinas} berkas\n- Berkas Perusahaan: ${stats.perusahaan} berkas\n- Total Berkas: ${stats.total} berkas\n\n`;
+    
+    if (notifyCatatanTambahan.value && notifyCatatanTambahan.value.trim()) {
+        msg += `Catatan: ${notifyCatatanTambahan.value.trim()}\n\n`;
+    }
+    
+    msg += `Mohon perkenan untuk melakukan pembaruan berkas melalui tautan sistem SINDEN:\n${trackingUrl}\n\nDemikian pemberitahuan ini disampaikan. Terima kasih.`;
+    return msg;
+});
+
+const openNotifyModal = () => {
+    if (sintelUsersList.value.length > 0 && !selectedSintelUserId.value) {
+        selectedSintelUserId.value = sintelUsersList.value[0].id;
+        onSelectUser();
+    } else if (selectedUserObj.value) {
+        onSelectUser();
+    }
+    isNotifyModalOpen.value = true;
+};
+
+const submitSendNotification = () => {
+    if (isSubmittingNotification.value) return;
+    
+    const phone = (notifyCustomPhone.value || '').trim();
+    const nama = (notifyCustomNama.value || '').trim();
+    
+    if (!nama) {
+        Swal.fire({
+            title: 'Nama Penerima Wajib Diisi',
+            text: 'Silakan pilih personel atau masukkan nama penerima notifikasi.',
+            icon: 'warning',
+            confirmButtonColor: '#4f46e5',
+        });
+        return;
+    }
+    
+    if (!phone) {
+        Swal.fire({
+            title: 'Nomor WhatsApp Wajib Diisi',
+            text: 'Penerima belum memiliki nomor telepon WhatsApp. Silakan isi nomor WhatsApp tujuan.',
+            icon: 'warning',
+            confirmButtonColor: '#4f46e5',
+        });
+        return;
+    }
+    
+    isSubmittingNotification.value = true;
+    router.post(route('sc-submissions.notify-sintel'), {
+        user_id: notifyRecipientType.value === 'user' ? selectedSintelUserId.value : null,
+        pangkat: notifyCustomPangkat.value,
+        nama: notifyCustomNama.value,
+        nrp: notifyCustomNrp.value,
+        phone: phone,
+        scope: notifyScope.value,
+        catatan_tambahan: notifyCatatanTambahan.value,
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            isNotifyModalOpen.value = false;
+            Swal.fire({
+                title: 'Notifikasi Terkirim',
+                text: `Notifikasi rekap pengajuan berkas SC berhasil dikirim ke WhatsApp ${formattedRecipient.value} (${phone}).`,
+                icon: 'success',
+                confirmButtonColor: '#4f46e5',
+            });
+        },
+        onError: (err) => {
+            Swal.fire({
+                title: 'Gagal Mengirim',
+                text: Object.values(err)[0] || 'Terjadi kesalahan saat mengirim notifikasi ke server WhatsApp.',
+                icon: 'error',
+                confirmButtonColor: '#dc2626',
+            });
+        },
+        onFinish: () => {
+            isSubmittingNotification.value = false;
         }
     });
 };
@@ -581,6 +719,18 @@ const formatDateTime = (dateStr) => {
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
                             <span>{{ isSyncingSkhpp ? 'Menyinkronkan...' : 'Sinkronkan SKHPP Terbit' }}</span>
+                        </button>
+
+                        <!-- Tombol Kirim Notifikasi ke Staf Intel -->
+                        <button 
+                            @click="openNotifyModal"
+                            class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+                            title="Kirim notifikasi rekap pengajuan berkas SC ke WhatsApp Staf Intel"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                            <span>Kirim Notifikasi</span>
                         </button>
                     </div>
 
@@ -1881,6 +2031,220 @@ const formatDateTime = (dateStr) => {
                                 class="px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-extrabold text-xs uppercase tracking-wider shadow-md shadow-teal-600/20 transition cursor-pointer disabled:opacity-50 flex items-center gap-2"
                             >
                                 <span>{{ isSubmittingTaken ? 'Menyimpan...' : 'Simpan Status Pengambilan' }}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- MODAL: Kirim Notifikasi ke Staf Intel -->
+        <Teleport to="body">
+            <div 
+                v-if="isNotifyModalOpen" 
+                class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+                @click.self="isNotifyModalOpen = false"
+            >
+                <div class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-100 overflow-hidden my-8 animate-in fade-in zoom-in duration-200">
+                    <!-- Header Modal -->
+                    <div class="p-5 sm:p-6 bg-gradient-to-r from-indigo-700 to-indigo-900 text-white flex items-center justify-between">
+                        <div class="space-y-1">
+                            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/30 text-indigo-100 text-[10px] font-black uppercase tracking-wider">
+                                <span>WhatsApp Gateway Dinas</span>
+                            </div>
+                            <h3 class="text-lg font-black tracking-tight">Kirim Notifikasi ke Staf Intel</h3>
+                            <p class="text-xs text-indigo-100/90 font-medium">Kirimkan rekapitulasi pengajuan berkas SC yang perlu ditindaklanjuti ke WhatsApp Staf Intel.</p>
+                        </div>
+                        <button 
+                            @click="isNotifyModalOpen = false" 
+                            class="p-2 text-indigo-200 hover:text-white hover:bg-white/10 rounded-xl transition cursor-pointer"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Form Isi -->
+                    <form @submit.prevent="submitSendNotification" class="p-5 sm:p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                        <!-- Mode Penerima: Dari Daftar Personel vs Input Manual -->
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Pilihan Tujuan Penerima</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button 
+                                    type="button"
+                                    @click="notifyRecipientType = 'user'"
+                                    :class="notifyRecipientType === 'user' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+                                    class="py-2 px-3 rounded-xl font-bold text-xs uppercase tracking-wider transition text-center cursor-pointer"
+                                >
+                                    Pilih dari Daftar Personel
+                                </button>
+                                <button 
+                                    type="button"
+                                    @click="notifyRecipientType = 'custom'"
+                                    :class="notifyRecipientType === 'custom' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+                                    class="py-2 px-3 rounded-xl font-bold text-xs uppercase tracking-wider transition text-center cursor-pointer"
+                                >
+                                    Input Manual / Nomor Lain
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Dropdown Pilih Personel jika mode 'user' -->
+                        <div v-if="notifyRecipientType === 'user'" class="space-y-1">
+                            <label class="text-[10px] font-black uppercase tracking-wider text-slate-700">Pilih Personel Staf Intel *</label>
+                            <select 
+                                v-model="selectedSintelUserId"
+                                @change="onSelectUser"
+                                class="w-full text-xs font-bold p-3 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500"
+                            >
+                                <option value="" disabled>-- Pilih Personel Tujuan --</option>
+                                <optgroup label="Staf Intelijen (Sintel)">
+                                    <option v-for="user in sintelUsersList" :key="'sintel-' + user.id" :value="user.id">
+                                        {{ user.pangkat ? user.pangkat + ' ' : '' }}{{ user.name }} {{ user.nrp ? '(NRP ' + user.nrp + ')' : '' }} {{ user.phone ? ' - ' + user.phone : ' [Belum ada No. HP]' }}
+                                    </option>
+                                </optgroup>
+                                <optgroup v-if="otherUsersList.length > 0" label="Personel Lainnya">
+                                    <option v-for="user in otherUsersList" :key="'other-' + user.id" :value="user.id">
+                                        {{ user.pangkat ? user.pangkat + ' ' : '' }}{{ user.name }} {{ user.nrp ? '(NRP ' + user.nrp + ')' : '' }} - {{ user.phone }}
+                                    </option>
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <!-- Form Detail Penerima (Auto-filled atau Manual) -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-600">Pangkat Penerima</label>
+                                <input 
+                                    type="text" 
+                                    v-model="notifyCustomPangkat" 
+                                    placeholder="Contoh: Peltu Saa / Kapten"
+                                    class="w-full text-xs font-medium p-2.5 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500"
+                                />
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-600">Nama Penerima *</label>
+                                <input 
+                                    type="text" 
+                                    v-model="notifyCustomNama" 
+                                    required
+                                    placeholder="Nama personel..."
+                                    class="w-full text-xs font-bold p-2.5 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500"
+                                />
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-600">NRP Penerima</label>
+                                <input 
+                                    type="text" 
+                                    v-model="notifyCustomNrp" 
+                                    placeholder="Contoh: 82068"
+                                    class="w-full text-xs font-mono font-medium p-2.5 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500"
+                                />
+                            </div>
+                            <div class="sm:col-span-3 space-y-1">
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-700 flex items-center justify-between">
+                                    <span>Nomor WhatsApp Penerima *</span>
+                                    <span v-if="!notifyCustomPhone" class="text-rose-600 font-bold">Wajib diisi</span>
+                                </label>
+                                <input 
+                                    type="text" 
+                                    v-model="notifyCustomPhone" 
+                                    required
+                                    placeholder="Contoh: 08123456789 atau 628123456789"
+                                    class="w-full text-xs font-mono font-bold p-2.5 border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500"
+                                    :class="!notifyCustomPhone ? 'border-amber-300 ring-2 ring-amber-200' : 'border-slate-200'"
+                                />
+                            </div>
+                        </div>
+
+                        <!-- Pilihan Cakupan Berkas yang Perlu Diupdate -->
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Cakupan Berkas yang Perlu Di-update</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <label 
+                                    :class="notifyScope === 'stage_6_9' ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 font-bold' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
+                                    class="p-3 rounded-2xl border cursor-pointer transition flex items-start gap-2.5"
+                                >
+                                    <input type="radio" value="stage_6_9" v-model="notifyScope" class="mt-0.5 text-indigo-600 focus:ring-indigo-500" />
+                                    <div class="text-xs">
+                                        <div class="font-black text-slate-900">Tahap 6 s/d 9 (Di Staf Intel)</div>
+                                        <div class="text-[10px] text-slate-500">Berkas yang saat ini aktif diproses Staf Intel.</div>
+                                    </div>
+                                </label>
+                                <label 
+                                    :class="notifyScope === 'stage_5_9' ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 font-bold' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
+                                    class="p-3 rounded-2xl border cursor-pointer transition flex items-start gap-2.5"
+                                >
+                                    <input type="radio" value="stage_5_9" v-model="notifyScope" class="mt-0.5 text-indigo-600 focus:ring-indigo-500" />
+                                    <div class="text-xs">
+                                        <div class="font-black text-slate-900">Tahap 5 s/d 9 (Termasuk SKHPP Terbit)</div>
+                                        <div class="text-[10px] text-slate-500">Termasuk berkas SKHPP terbit yang siap beralih ke Sintel.</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Ringkasan Jumlah Pengajuan yang Harus Di-update -->
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Jumlah Pengajuan yang Harus Di-update</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <div class="p-3 rounded-2xl bg-blue-50 border border-blue-200 text-center">
+                                    <span class="text-[9px] font-black uppercase tracking-wider text-blue-800 block">Berkas Dinas</span>
+                                    <span class="text-xl font-black text-blue-900 block mt-0.5">{{ currentNotifyStats.dinas }}</span>
+                                    <span class="text-[9px] text-blue-600 font-medium">Pengajuan</span>
+                                </div>
+                                <div class="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-center">
+                                    <span class="text-[9px] font-black uppercase tracking-wider text-emerald-800 block">Berkas Perusahaan</span>
+                                    <span class="text-xl font-black text-emerald-900 block mt-0.5">{{ currentNotifyStats.perusahaan }}</span>
+                                    <span class="text-[9px] text-emerald-600 font-medium">Pengajuan</span>
+                                </div>
+                                <div class="p-3 rounded-2xl bg-slate-900 border border-slate-800 text-center text-white">
+                                    <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Total Berkas</span>
+                                    <span class="text-xl font-black text-amber-400 block mt-0.5">{{ currentNotifyStats.total }}</span>
+                                    <span class="text-[9px] text-slate-400 font-medium">Menunggu Tindak Lanjut</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Catatan Tambahan (Opsional) -->
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Catatan Tambahan (Opsional)</label>
+                            <textarea 
+                                v-model="notifyCatatanTambahan" 
+                                rows="2"
+                                placeholder="Tambahkan pesan instruksi atau keterangan dinas..."
+                                class="w-full text-xs font-medium p-3 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500"
+                            ></textarea>
+                        </div>
+
+                        <!-- Pratinjau Pesan WhatsApp -->
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-black uppercase tracking-wider text-slate-500 flex items-center justify-between">
+                                <span>Pratinjau Pesan WhatsApp</span>
+                                <span class="text-indigo-600 font-bold">Otomatis Terformat</span>
+                            </label>
+                            <div class="p-3.5 bg-slate-900 text-emerald-400 font-mono text-[11px] leading-relaxed rounded-2xl border border-slate-800 whitespace-pre-line shadow-inner max-h-48 overflow-y-auto">
+                                {{ generatedPreviewMessage }}
+                            </div>
+                        </div>
+
+                        <!-- Tombol Aksi -->
+                        <div class="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
+                            <button 
+                                type="button" 
+                                @click="isNotifyModalOpen = false" 
+                                class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 font-extrabold text-xs uppercase tracking-wider transition cursor-pointer"
+                            >
+                                Batal
+                            </button>
+                            <button 
+                                type="submit" 
+                                :disabled="isSubmittingNotification || !notifyCustomPhone"
+                                class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-extrabold text-xs uppercase tracking-wider shadow-md shadow-indigo-600/20 transition cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                </svg>
+                                <span>{{ isSubmittingNotification ? 'Mengirim Notifikasi...' : 'Kirim Notifikasi WhatsApp' }}</span>
                             </button>
                         </div>
                     </form>
