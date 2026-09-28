@@ -299,11 +299,19 @@ class ScSubmissionController extends Controller
 
             // Catat riwayat log inisialisasi jika tabel logs ada
             if (Schema::hasTable('sc_submission_logs')) {
+                $initialNote = $validated['catatan_petugas'] ?? null;
+                if (empty($initialNote)) {
+                    if ($stage >= 5 && !empty($validated['nomor_skhpp'])) {
+                        $initialNote = "Pendaftaran berkas langsung pada Tahap {$stage}: {$stageInfo['title']} (No. SKHPP: {$validated['nomor_skhpp']}).";
+                    } else {
+                        $initialNote = 'Pendaftaran pengajuan berkas Security Clearance di sistem.';
+                    }
+                }
                 ScSubmissionLog::create([
                     'sc_submission_id' => $submission->id,
                     'stage' => $stage,
                     'stage_title' => $stageInfo['title'],
-                    'notes' => $validated['catatan_petugas'] ?: 'Pendaftaran pengajuan berkas Security Clearance di sistem.',
+                    'notes' => $initialNote,
                     'user_id' => Auth::id(),
                     'user_name' => Auth::user()->name ?? 'Petugas Kedinasan',
                 ]);

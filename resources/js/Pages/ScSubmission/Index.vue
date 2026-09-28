@@ -1219,6 +1219,37 @@ const formatDateTime = (dateStr) => {
                                 </select>
                             </div>
 
+                            <!-- Input Nomor SKHPP (Muncul otomatis jika memilih Tahap 5 ke atas) -->
+                            <div v-if="Number(createForm.current_stage) >= 5" class="space-y-1 sm:col-span-2 p-3.5 bg-blue-50/70 border border-blue-200 rounded-2xl animate-in fade-in slide-in-from-top-2 duration-200">
+                                <label class="text-[10px] font-black uppercase tracking-wider text-blue-900 flex items-center justify-between">
+                                    <span>Nomor SKHPP {{ createForm.kategori_sc === 'perusahaan' ? 'Perusahaan (SKHPP-P)' : 'Dinas (SKHPP-D)' }}</span>
+                                    <span class="text-[9px] font-mono font-extrabold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-md">Tahap 5: SKHPP Terbit</span>
+                                </label>
+                                <input 
+                                    type="text" 
+                                    v-model="createForm.nomor_skhpp" 
+                                    :placeholder="createForm.kategori_sc === 'perusahaan' ? 'Contoh: B/SKHPP-P/05/IX/2026/Denintel' : 'Contoh: B/SKHPP-D/18/IX/2026/Denintel'"
+                                    class="w-full text-xs font-mono font-bold p-2.5 border border-blue-200 rounded-xl bg-white focus:ring-2 focus:ring-blue-500 text-slate-900"
+                                />
+                                <span class="text-[10px] text-slate-500 block px-0.5">
+                                    *Masukkan nomor resmi SKHPP yang telah disahkan oleh Komandan Detasemen Intelijen.
+                                </span>
+                            </div>
+
+                            <!-- Input Nomor SC (Muncul otomatis jika memilih Tahap 8 ke atas) -->
+                            <div v-if="Number(createForm.current_stage) >= 8" class="space-y-1 sm:col-span-2 p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-2xl animate-in fade-in slide-in-from-top-2 duration-200">
+                                <label class="text-[10px] font-black uppercase tracking-wider text-indigo-950 flex items-center justify-between">
+                                    <span>Nomor Naskah Security Clearance (SC) Resmi</span>
+                                    <span class="text-[9px] font-mono font-extrabold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md">Tahap 8+: Sintel</span>
+                                </label>
+                                <input 
+                                    type="text" 
+                                    v-model="createForm.nomor_sc" 
+                                    placeholder="Contoh: SC/456/IX/2026/Sintel"
+                                    class="w-full text-xs font-mono font-bold p-2.5 border border-indigo-200 rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 text-slate-900"
+                                />
+                            </div>
+
                             <!-- Upload Berkas SKHPP TTD Basah (Opsional) -->
                             <div class="space-y-1 sm:col-span-2">
                                 <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Unggah PDF SKHPP Tanda Tangan Basah (Opsional)</label>
