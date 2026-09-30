@@ -333,6 +333,11 @@ const removeAnggotaFromDivisi = (divIdx, itemIdx) => {
 };
 
 
+const showCol7 = ref(false);
+const hasCol7 = computed(() => {
+    return showCol7.value || form.perwiras.some(p => p.tgl_7 && p.tgl_7.trim() !== '' && p.tgl_7.trim() !== '-');
+});
+
 let isSyncingDates = false;
 
 // Fungsi Otomatis Hitung Ulang Tanggal Jaga Perwira & Anggota (Sesuai Perbandingan Siklus Resmi)
@@ -673,13 +678,22 @@ const submit = () => {
                             <h2 class="text-base font-extrabold text-slate-900">2. Lampiran 1: Daftar Nama Perwira Jaga</h2>
                             <p class="text-xs text-slate-500">Daftar perwira siaga dan jadwal rotasi tanggal dinas selama bulan berjalan. Anda juga dapat memilih Perwira Tertua (Pater) langsung dari tabel.</p>
                         </div>
-                        <button 
-                            @click="addPerwira" 
-                            type="button"
-                            class="px-3.5 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold text-xs rounded-xl transition cursor-pointer"
-                        >
-                            + Tambah Baris Perwira
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <button 
+                                type="button" 
+                                @click="showCol7 = !showCol7" 
+                                class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+                            >
+                                {{ hasCol7 ? 'Sembunyikan Kolom 7' : '+ Kolom 7 (Opsional)' }}
+                            </button>
+                            <button 
+                                @click="addPerwira" 
+                                type="button"
+                                class="px-3.5 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold text-xs rounded-xl transition cursor-pointer"
+                            >
+                                + Tambah Baris Perwira
+                            </button>
+                        </div>
                     </div>
 
                     <div class="overflow-x-auto">
@@ -691,7 +705,7 @@ const submit = () => {
                                     <th class="p-2.5 w-36">Pangkat, Korps</th>
                                     <th class="p-2.5 w-28">NRP</th>
                                     <th class="p-2.5 text-center w-28">Pater / Tertua</th>
-                                    <th class="p-2.5 text-center" colspan="7">Tanggal Dinas Jaga</th>
+                                    <th class="p-2.5 text-center" :colspan="hasCol7 ? 7 : 6">Tanggal Dinas Jaga</th>
                                     <th class="p-2.5 text-center w-10">Hapus</th>
                                 </tr>
                             </thead>
@@ -739,14 +753,14 @@ const submit = () => {
                                             ⭐ Pilih Pater
                                         </button>
                                     </td>
-                                    <!-- 7 Kolom Tanggal Dinas -->
+                                    <!-- Kolom Tanggal Dinas Jaga (Dinamis Sesuai Kebutuhan Bulan) -->
                                     <td class="p-1 w-12"><input type="text" v-model="p.tgl_1" class="w-full p-1.5 text-xs text-center border border-slate-200 rounded-lg" /></td>
                                     <td class="p-1 w-12"><input type="text" v-model="p.tgl_2" class="w-full p-1.5 text-xs text-center border border-slate-200 rounded-lg" /></td>
                                     <td class="p-1 w-12"><input type="text" v-model="p.tgl_3" class="w-full p-1.5 text-xs text-center border border-slate-200 rounded-lg" /></td>
                                     <td class="p-1 w-12"><input type="text" v-model="p.tgl_4" class="w-full p-1.5 text-xs text-center border border-slate-200 rounded-lg" /></td>
                                     <td class="p-1 w-12"><input type="text" v-model="p.tgl_5" class="w-full p-1.5 text-xs text-center border border-slate-200 rounded-lg" /></td>
                                     <td class="p-1 w-12"><input type="text" v-model="p.tgl_6" class="w-full p-1.5 text-xs text-center border border-slate-200 rounded-lg" /></td>
-                                    <td class="p-1 w-12"><input type="text" v-model="p.tgl_7" class="w-full p-1.5 text-xs text-center border border-slate-200 rounded-lg" /></td>
+                                    <td v-if="hasCol7" class="p-1 w-12"><input type="text" v-model="p.tgl_7" class="w-full p-1.5 text-xs text-center border border-slate-200 rounded-lg" /></td>
                                     <td class="p-2 text-center">
                                         <button 
                                             @click="removePerwira(idx)" 

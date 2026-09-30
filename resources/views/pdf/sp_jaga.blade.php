@@ -227,12 +227,14 @@
             <tr>
                 <td style="width: 42%; vertical-align: bottom;">
                     <!-- Tembusan -->
-                    <div style="font-size: 11pt;">
-                        <u>Tembusan:</u>
-                        <ol style="margin: 2px 0 0 0; padding-left: 18px;">
-                            <li>Asintel Dankodaeral V</li>
-                            <li>Dandenma Kodaeral V</li>
-                        </ol>
+                    <div style="font-size: 11pt; width: 220px;">
+                        <div style="margin-bottom: 4px;">Tembusan:</div>
+                        <div style="border-bottom: 1.5px solid #000; padding-bottom: 4px;">
+                            <ol style="margin: 0; padding-left: 18px;">
+                                <li>Asintel Dankodaeral V</li>
+                                <li>Dandenma Kodaeral V</li>
+                            </ol>
+                        </div>
                     </div>
                 </td>
                 <td style="width: 58%; vertical-align: top;">
@@ -331,6 +333,18 @@
             </div>
         </div>
 
+        @php
+            $hasTgl7 = false;
+            if (isset($spJaga->perwiras)) {
+                foreach($spJaga->perwiras as $p) {
+                    $v = trim($p->tgl_7 ?? '');
+                    if ($v !== '' && $v !== '-') {
+                        $hasTgl7 = true;
+                        break;
+                    }
+                }
+            }
+        @endphp
         <!-- Tabel Perwira Jaga (Width 100% Fixed, Font 10pt di dalam tabel) -->
         <table class="table-bordered" style="width: 100%; table-layout: fixed; margin-bottom: 10px; font-size: 10pt;">
             <thead>
@@ -339,7 +353,7 @@
                     <th style="width: 25%;">N A M A</th>
                     <th style="width: 20%;">PANGKAT, KORPS</th>
                     <th style="width: 15%;">NRP</th>
-                    <th colspan="7" style="width: 35%;">{{ $namaBulanTahun }}<br>TANGGAL</th>
+                    <th colspan="{{ $hasTgl7 ? 7 : 6 }}" style="width: 35%;">{{ $namaBulanTahun }}<br>TANGGAL</th>
                 </tr>
             </thead>
             <tbody>
@@ -349,17 +363,19 @@
                     <td style="padding: 4px 6px;">{{ $perwira->nama }}</td>
                     <td style="padding: 4px 6px;">{{ $perwira->pangkat_korps }}</td>
                     <td class="text-center" style="padding: 4px 4px;">{{ $perwira->nrp }}</td>
-                    <td class="text-center" style="width: 5%; padding: 4px 2px;">{{ $perwira->tgl_1 ?: '-' }}</td>
-                    <td class="text-center" style="width: 5%; padding: 4px 2px;">{{ $perwira->tgl_2 ?: '-' }}</td>
-                    <td class="text-center" style="width: 5%; padding: 4px 2px;">{{ $perwira->tgl_3 ?: '-' }}</td>
-                    <td class="text-center" style="width: 5%; padding: 4px 2px;">{{ $perwira->tgl_4 ?: '-' }}</td>
-                    <td class="text-center" style="width: 5%; padding: 4px 2px;">{{ $perwira->tgl_5 ?: '-' }}</td>
-                    <td class="text-center" style="width: 5%; padding: 4px 2px;">{{ $perwira->tgl_6 ?: '-' }}</td>
-                    <td class="text-center" style="width: 5%; padding: 4px 2px;">{{ $perwira->tgl_7 ?: '-' }}</td>
+                    <td class="text-center" style="padding: 4px 2px;">{{ $perwira->tgl_1 ?: '-' }}</td>
+                    <td class="text-center" style="padding: 4px 2px;">{{ $perwira->tgl_2 ?: '-' }}</td>
+                    <td class="text-center" style="padding: 4px 2px;">{{ $perwira->tgl_3 ?: '-' }}</td>
+                    <td class="text-center" style="padding: 4px 2px;">{{ $perwira->tgl_4 ?: '-' }}</td>
+                    <td class="text-center" style="padding: 4px 2px;">{{ $perwira->tgl_5 ?: '-' }}</td>
+                    <td class="text-center" style="padding: 4px 2px;">{{ $perwira->tgl_6 ?: '-' }}</td>
+                    @if($hasTgl7)
+                    <td class="text-center" style="padding: 4px 2px;">{{ $perwira->tgl_7 ?: '-' }}</td>
+                    @endif
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="11" class="text-center">Belum ada daftar perwira jaga.</td>
+                    <td colspan="{{ $hasTgl7 ? 11 : 10 }}" class="text-center">Belum ada daftar perwira jaga.</td>
                 </tr>
                 @endforelse
             </tbody>
