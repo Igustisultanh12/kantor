@@ -38,13 +38,99 @@ const initPrevYear = initMonth === 1 ? initYear - 1 : initYear;
 const daysInInitPrevMonth = new Date(initPrevYear, initPrevMonth, 0).getDate();
 const initMonthNameUpper = (monthNames[initMonth] || '').toUpperCase();
 
-const getInitDivisiDates = (offset) => {
-    const dates = [];
-    for (let d = offset; d <= daysInInitMonth; d += 5) {
-        dates.push(String(d).padStart(2, '0'));
-    }
-    return `${dates.join(', ')} ${initMonthNameUpper} ${initYear}`;
+// Definisi Pola Rotasi Matriks Perwira Jaga (Mega-siklus 49 hari / 8 siklus kolom)
+// Berdasarkan perbandingan resmi jadwal jaga Sintel Kodaeral V
+const cycleDefs = [
+    { skip: null, rows: [0, 1, 2, 3, 4, 5, 6] },
+    { skip: 0,    rows: [1, 2, 3, 4, 5, 6] },
+    { skip: 1,    rows: [0, 2, 3, 4, 5, 6] },
+    { skip: 2,    rows: [0, 1, 3, 4, 5, 6] },
+    { skip: 3,    rows: [0, 1, 2, 4, 5, 6] },
+    { skip: 4,    rows: [0, 1, 2, 3, 5, 6] },
+    { skip: 5,    rows: [0, 1, 2, 3, 4, 6] },
+    { skip: 6,    rows: [0, 1, 2, 3, 4, 5] },
+];
+
+const mod = (n, m) => ((n % m) + m) % m;
+
+const getDaysDiff = (y, m, d, refY, refM, refD) => {
+    const utc1 = Date.UTC(y, m - 1, d);
+    const utc2 = Date.UTC(refY, refM - 1, refD);
+    return Math.floor((utc1 - utc2) / (1000 * 60 * 60 * 24));
 };
+
+const calculatePerwiraMatrix = (year, month, endDay) => {
+    const monthDaysInfo = [];
+    for (let d = 1; d <= endDay; d++) {
+        const diff = getDaysDiff(year, month, d, 2026, 8, 5);
+        const megaId = Math.floor(diff / 49);
+        const remD = mod(diff, 49);
+
+        let cIdx = 0;
+        let row = 0;
+        let skip = null;
+        let remAcc = remD;
+        for (let i = 0; i < cycleDefs.length; i++) {
+            if (remAcc < cycleDefs[i].rows.length) {
+                cIdx = i;
+                row = cycleDefs[i].rows[remAcc];
+                skip = cycleDefs[i].skip;
+                break;
+            }
+            remAcc -= cycleDefs[i].rows.length;
+        }
+        const globalCycleId = megaId * 8 + cIdx;
+        monthDaysInfo.push({
+            day: d,
+            globalCycleId,
+            cIdx,
+            row,
+            skip,
+        });
+    }
+
+    const cyclesInMonth = [];
+    for (const info of monthDaysInfo) {
+        if (cyclesInMonth.length === 0 || cyclesInMonth[cyclesInMonth.length - 1].globalCycleId !== info.globalCycleId) {
+            cyclesInMonth.push({
+                globalCycleId: info.globalCycleId,
+                cIdx: info.cIdx,
+                skip: info.skip,
+                days: {},
+            });
+        }
+        cyclesInMonth[cyclesInMonth.length - 1].days[info.row] = String(info.day).padStart(2, '0');
+    }
+
+    const table = Array.from({ length: 7 }, () => Array(7).fill('-'));
+    for (let colIdx = 0; colIdx < cyclesInMonth.length && colIdx < 7; colIdx++) {
+        const cyc = cyclesInMonth[colIdx];
+        for (let r = 0; r < 7; r++) {
+            if (cyc.days[r] !== undefined) {
+                table[r][colIdx] = cyc.days[r];
+            } else {
+                table[r][colIdx] = '-';
+            }
+        }
+    }
+    return table;
+};
+
+const calculateAnggotaDates = (year, month, endDay) => {
+    const mName = (monthNames[month] || '').toUpperCase();
+    const divDates = Array.from({ length: 5 }, () => []);
+
+    for (let d = 1; d <= endDay; d++) {
+        const diff = getDaysDiff(year, month, d, 2026, 8, 1);
+        const divIdx = mod(3 + diff, 5);
+        divDates[divIdx].push(String(d).padStart(2, '0'));
+    }
+
+    return divDates.map(dates => `${dates.join(', ')} ${mName} ${year}`);
+};
+
+const initPerwiraTable = calculatePerwiraMatrix(initYear, initMonth, daysInInitMonth);
+const initAnggotaDates = calculateAnggotaDates(initYear, initMonth, daysInInitMonth);
 
 // Data Form SP Jaga
 const form = useForm({
@@ -62,22 +148,22 @@ const form = useForm({
     perwira_tertua_pangkat_nrp: 'Kapten Laut (P) NRP 19739/P',
     perwira_tertua_jabatan: 'Dan Unit 1 Lid Den Intel Kodaeral V',
     
-    // Perwira Jaga (Default 7 Baris Sesuai Format Resmi PDF Gambar 2)
+    // Perwira Jaga (Default 7 Baris Sesuai Format Resmi PDF)
     perwiras: [
-        { user_id: '', nama: 'Bambang', pangkat_korps: 'Peltu Saa', nrp: '82068', tgl_1: '-', tgl_2: '05', tgl_3: '11', tgl_4: '17', tgl_5: '23', tgl_6: '-', tgl_7: '-' },
-        { user_id: '', nama: 'Rizal Nurdin W.', pangkat_korps: 'Kapten Laut (P)', nrp: '20873/P', tgl_1: '-', tgl_2: '06', tgl_3: '12', tgl_4: '18', tgl_5: '24', tgl_6: '30', tgl_7: '-' },
-        { user_id: '', nama: 'Bayu Aji K', pangkat_korps: 'Kapten Laut (P)', nrp: '22029/P', tgl_1: '01', tgl_2: '07', tgl_3: '13', tgl_4: '19', tgl_5: '25', tgl_6: '-', tgl_7: '-' },
-        { user_id: '', nama: 'Indra Gunawan', pangkat_korps: 'Kapten Laut (P)', nrp: '19739/P', tgl_1: '-', tgl_2: '08', tgl_3: '14', tgl_4: '20', tgl_5: '26', tgl_6: '-', tgl_7: '-' },
-        { user_id: '', nama: 'Erwan Junaidi', pangkat_korps: 'Peltu Ttg', nrp: '84025', tgl_1: '02', tgl_2: '-', tgl_3: '15', tgl_4: '21', tgl_5: '27', tgl_6: '-', tgl_7: '-' },
-        { user_id: '', nama: "Agus Sub'chan", pangkat_korps: 'Lettu Laut (T)', nrp: '25724/P', tgl_1: '03', tgl_2: '09', tgl_3: '-', tgl_4: '22', tgl_5: '28', tgl_6: '-', tgl_7: '-' },
-        { user_id: '', nama: 'Agus Musonif', pangkat_korps: 'Lettu Laut (P)', nrp: '26327/P', tgl_1: '04', tgl_2: '10', tgl_3: '16', tgl_4: '-', tgl_5: '29', tgl_6: '-', tgl_7: '-' },
+        { user_id: '', nama: 'Bambang', pangkat_korps: 'Peltu Saa', nrp: '82068', tgl_1: initPerwiraTable[0][0], tgl_2: initPerwiraTable[0][1], tgl_3: initPerwiraTable[0][2], tgl_4: initPerwiraTable[0][3], tgl_5: initPerwiraTable[0][4], tgl_6: initPerwiraTable[0][5], tgl_7: initPerwiraTable[0][6] },
+        { user_id: '', nama: 'Rizal Nurdin W.', pangkat_korps: 'Kapten Laut (P)', nrp: '20873/P', tgl_1: initPerwiraTable[1][0], tgl_2: initPerwiraTable[1][1], tgl_3: initPerwiraTable[1][2], tgl_4: initPerwiraTable[1][3], tgl_5: initPerwiraTable[1][4], tgl_6: initPerwiraTable[1][5], tgl_7: initPerwiraTable[1][6] },
+        { user_id: '', nama: 'Bayu Aji K', pangkat_korps: 'Kapten Laut (P)', nrp: '22029/P', tgl_1: initPerwiraTable[2][0], tgl_2: initPerwiraTable[2][1], tgl_3: initPerwiraTable[2][2], tgl_4: initPerwiraTable[2][3], tgl_5: initPerwiraTable[2][4], tgl_6: initPerwiraTable[2][5], tgl_7: initPerwiraTable[2][6] },
+        { user_id: '', nama: 'Indra Gunawan', pangkat_korps: 'Kapten Laut (P)', nrp: '19739/P', tgl_1: initPerwiraTable[3][0], tgl_2: initPerwiraTable[3][1], tgl_3: initPerwiraTable[3][2], tgl_4: initPerwiraTable[3][3], tgl_5: initPerwiraTable[3][4], tgl_6: initPerwiraTable[3][5], tgl_7: initPerwiraTable[3][6] },
+        { user_id: '', nama: 'Erwan Junaidi', pangkat_korps: 'Peltu Ttg', nrp: '84025', tgl_1: initPerwiraTable[4][0], tgl_2: initPerwiraTable[4][1], tgl_3: initPerwiraTable[4][2], tgl_4: initPerwiraTable[4][3], tgl_5: initPerwiraTable[4][4], tgl_6: initPerwiraTable[4][5], tgl_7: initPerwiraTable[4][6] },
+        { user_id: '', nama: "Agus Sub'chan", pangkat_korps: 'Lettu Laut (T)', nrp: '25724/P', tgl_1: initPerwiraTable[5][0], tgl_2: initPerwiraTable[5][1], tgl_3: initPerwiraTable[5][2], tgl_4: initPerwiraTable[5][3], tgl_5: initPerwiraTable[5][4], tgl_6: initPerwiraTable[5][5], tgl_7: initPerwiraTable[5][6] },
+        { user_id: '', nama: 'Agus Musonif', pangkat_korps: 'Lettu Laut (P)', nrp: '26327/P', tgl_1: initPerwiraTable[6][0], tgl_2: initPerwiraTable[6][1], tgl_3: initPerwiraTable[6][2], tgl_4: initPerwiraTable[6][3], tgl_5: initPerwiraTable[6][4], tgl_6: initPerwiraTable[6][5], tgl_7: initPerwiraTable[6][6] },
     ],
 
-    // Anggota Jaga Divisi (Default 5 Divisi Sesuai Format Resmi PDF Gambar 3)
+    // Anggota Jaga Divisi (Default 5 Divisi Sesuai Format Resmi PDF)
     anggotas: [
         {
             divisi_no: 1,
-            tanggal_list_text: getInitDivisiDates(2),
+            tanggal_list_text: initAnggotaDates[0],
             anggota_items: [
                 { user_id: '', nama: 'HASAN BASRI', pangkat_korps: 'PELDA MAR', nrp_nip: '106737', role_jaga: 'BAGA' },
                 { user_id: '', nama: 'ADITYA H.', pangkat_korps: 'SERMA KOM', nrp_nip: '115980', role_jaga: 'ANGGOTA' },
@@ -87,7 +173,7 @@ const form = useForm({
         },
         {
             divisi_no: 2,
-            tanggal_list_text: getInitDivisiDates(3),
+            tanggal_list_text: initAnggotaDates[1],
             anggota_items: [
                 { user_id: '', nama: 'ANDIS Y.', pangkat_korps: 'SERKA EKO', nrp_nip: '114153', role_jaga: 'BAGA' },
                 { user_id: '', nama: 'PUJIANTO', pangkat_korps: 'SERKA TKU', nrp_nip: '117387', role_jaga: 'ANGGOTA' },
@@ -97,7 +183,7 @@ const form = useForm({
         },
         {
             divisi_no: 3,
-            tanggal_list_text: getInitDivisiDates(4),
+            tanggal_list_text: initAnggotaDates[2],
             anggota_items: [
                 { user_id: '', nama: 'HARTANTO', pangkat_korps: 'PELTU NAV', nrp_nip: '98486', role_jaga: 'BAGA' },
                 { user_id: '', nama: 'DWI PURNOMO', pangkat_korps: 'SERTU TTU', nrp_nip: '105224', role_jaga: 'ANGGOTA' },
@@ -107,7 +193,7 @@ const form = useForm({
         },
         {
             divisi_no: 4,
-            tanggal_list_text: getInitDivisiDates(5),
+            tanggal_list_text: initAnggotaDates[3],
             anggota_items: [
                 { user_id: '', nama: 'TRI WINDARTO', pangkat_korps: 'SERMA PDK', nrp_nip: '114222', role_jaga: 'BAGA' },
                 { user_id: '', nama: 'KARIYADI', pangkat_korps: 'SERKA JAS', nrp_nip: '85822', role_jaga: 'ANGGOTA' },
@@ -117,7 +203,7 @@ const form = useForm({
         },
         {
             divisi_no: 5,
-            tanggal_list_text: getInitDivisiDates(1),
+            tanggal_list_text: initAnggotaDates[4],
             anggota_items: [
                 { user_id: '', nama: 'RIBUT JOHAN P', pangkat_korps: 'SERMA KEU', nrp_nip: '112631', role_jaga: 'BAGA' },
                 { user_id: '', nama: 'HENDRA S', pangkat_korps: 'SERMA KOM', nrp_nip: '114931', role_jaga: 'ANGGOTA' },
@@ -249,7 +335,7 @@ const removeAnggotaFromDivisi = (divIdx, itemIdx) => {
 
 let isSyncingDates = false;
 
-// Fungsi Otomatis Hitung Ulang Tanggal Jaga Perwira & Anggota (Sesuai Gambar 2 & 3)
+// Fungsi Otomatis Hitung Ulang Tanggal Jaga Perwira & Anggota (Sesuai Perbandingan Siklus Resmi)
 const generateJadwalJaga = (showNotification = true) => {
     let y = parseInt(form.tahun, 10);
     let m = parseInt(form.bulan, 10);
@@ -280,106 +366,27 @@ const generateJadwalJaga = (showNotification = true) => {
 
     const mName = (monthNames[m] || '').toUpperCase();
 
-    // 1. Generate Tanggal Perwira Jaga (Matriks Rotasi 7 Perwira Sesuai Gambar 2)
-    // Row 0 (Bambang):       -, 05, 11, 17, 23, -, -
-    // Row 1 (Rizal Nurdin):  -, 06, 12, 18, 24, 30, -
-    // Row 2 (Bayu Aji K):    01, 07, 13, 19, 25, (31), -
-    // Row 3 (Indra Gunawan): -, 08, 14, 20, 26, -, -
-    // Row 4 (Erwan Junaidi): 02, -, 15, 21, 27, -, -
-    // Row 5 (Agus Sub'chan): 03, 09, -, 22, 28, -, -
-    // Row 6 (Agus Musonif):  04, 10, 16, -, 29, -, -
+    // 1. Generate Tanggal Perwira Jaga (Matriks Rotasi Kontinu Antar-Bulan)
     if (form.perwiras && form.perwiras.length >= 7) {
-        // Row 0 (Bambang)
-        form.perwiras[0].tgl_1 = '-';
-        form.perwiras[0].tgl_2 = endDay >= 5 ? '05' : '-';
-        form.perwiras[0].tgl_3 = endDay >= 11 ? '11' : '-';
-        form.perwiras[0].tgl_4 = endDay >= 17 ? '17' : '-';
-        form.perwiras[0].tgl_5 = endDay >= 23 ? '23' : '-';
-        form.perwiras[0].tgl_6 = '-';
-        form.perwiras[0].tgl_7 = '-';
-
-        // Row 1 (Rizal Nurdin W.)
-        form.perwiras[1].tgl_1 = '-';
-        form.perwiras[1].tgl_2 = endDay >= 6 ? '06' : '-';
-        form.perwiras[1].tgl_3 = endDay >= 12 ? '12' : '-';
-        form.perwiras[1].tgl_4 = endDay >= 18 ? '18' : '-';
-        form.perwiras[1].tgl_5 = endDay >= 24 ? '24' : '-';
-        form.perwiras[1].tgl_6 = endDay >= 30 ? '30' : '-';
-        form.perwiras[1].tgl_7 = '-';
-
-        // Row 2 (Bayu Aji K)
-        form.perwiras[2].tgl_1 = '01';
-        form.perwiras[2].tgl_2 = endDay >= 7 ? '07' : '-';
-        form.perwiras[2].tgl_3 = endDay >= 13 ? '13' : '-';
-        form.perwiras[2].tgl_4 = endDay >= 19 ? '19' : '-';
-        form.perwiras[2].tgl_5 = endDay >= 25 ? '25' : '-';
-        form.perwiras[2].tgl_6 = endDay >= 31 ? '31' : '-';
-        form.perwiras[2].tgl_7 = '-';
-
-        // Row 3 (Indra Gunawan)
-        form.perwiras[3].tgl_1 = '-';
-        form.perwiras[3].tgl_2 = endDay >= 8 ? '08' : '-';
-        form.perwiras[3].tgl_3 = endDay >= 14 ? '14' : '-';
-        form.perwiras[3].tgl_4 = endDay >= 20 ? '20' : '-';
-        form.perwiras[3].tgl_5 = endDay >= 26 ? '26' : '-';
-        form.perwiras[3].tgl_6 = '-';
-        form.perwiras[3].tgl_7 = '-';
-
-        // Row 4 (Erwan Junaidi)
-        form.perwiras[4].tgl_1 = endDay >= 2 ? '02' : '-';
-        form.perwiras[4].tgl_2 = '-';
-        form.perwiras[4].tgl_3 = endDay >= 15 ? '15' : '-';
-        form.perwiras[4].tgl_4 = endDay >= 21 ? '21' : '-';
-        form.perwiras[4].tgl_5 = endDay >= 27 ? '27' : '-';
-        form.perwiras[4].tgl_6 = '-';
-        form.perwiras[4].tgl_7 = '-';
-
-        // Row 5 (Agus Sub'chan)
-        form.perwiras[5].tgl_1 = endDay >= 3 ? '03' : '-';
-        form.perwiras[5].tgl_2 = endDay >= 9 ? '09' : '-';
-        form.perwiras[5].tgl_3 = '-';
-        form.perwiras[5].tgl_4 = endDay >= 22 ? '22' : '-';
-        form.perwiras[5].tgl_5 = endDay >= 28 ? '28' : '-';
-        form.perwiras[5].tgl_6 = '-';
-        form.perwiras[5].tgl_7 = '-';
-
-        // Row 6 (Agus Musonif)
-        form.perwiras[6].tgl_1 = endDay >= 4 ? '04' : '-';
-        form.perwiras[6].tgl_2 = endDay >= 10 ? '10' : '-';
-        form.perwiras[6].tgl_3 = endDay >= 16 ? '16' : '-';
-        form.perwiras[6].tgl_4 = '-';
-        form.perwiras[6].tgl_5 = endDay >= 29 ? '29' : '-';
-        form.perwiras[6].tgl_6 = '-';
-        form.perwiras[6].tgl_7 = '-';
-
-        // Baris perwira ke-8 dan seterusnya jika ada
+        const perwiraMatrix = calculatePerwiraMatrix(y, m, endDay);
+        for (let r = 0; r < 7; r++) {
+            for (let colIdx = 1; colIdx <= 7; colIdx++) {
+                form.perwiras[r][`tgl_${colIdx}`] = perwiraMatrix[r][colIdx - 1];
+            }
+        }
         for (let i = 7; i < form.perwiras.length; i++) {
-            form.perwiras[i].tgl_1 = '-';
-            form.perwiras[i].tgl_2 = '-';
-            form.perwiras[i].tgl_3 = '-';
-            form.perwiras[i].tgl_4 = '-';
-            form.perwiras[i].tgl_5 = '-';
-            form.perwiras[i].tgl_6 = '-';
-            form.perwiras[i].tgl_7 = '-';
+            for (let colIdx = 1; colIdx <= 7; colIdx++) {
+                form.perwiras[i][`tgl_${colIdx}`] = '-';
+            }
         }
     }
 
-    // 2. Generate Tanggal Anggota Jaga 5 Divisi (Sesuai Gambar 3)
-    // Divisi 1 (Start tgl 2): 02, 07, 12, 17, 22, 27
-    // Divisi 2 (Start tgl 3): 03, 08, 13, 18, 23, 28
-    // Divisi 3 (Start tgl 4): 04, 09, 14, 19, 24, 29
-    // Divisi 4 (Start tgl 5): 05, 10, 15, 20, 25, 30
-    // Divisi 5 (Start tgl 1): 01, 06, 11, 16, 21, 26 (, 31)
-    const startOffsets = [2, 3, 4, 5, 1];
+    // 2. Generate Tanggal Anggota Jaga 5 Divisi (Rotasi Kontinu Antar-Bulan)
     if (form.anggotas && form.anggotas.length >= 5) {
+        const anggotaDates = calculateAnggotaDates(y, m, endDay);
         form.anggotas.forEach((div, idx) => {
-            if (idx < startOffsets.length) {
-                const startDay = startOffsets[idx];
-                const dates = [];
-                for (let d = startDay; d <= endDay; d += 5) {
-                    dates.push(String(d).padStart(2, '0'));
-                }
-                div.tanggal_list_text = `${dates.join(', ')} ${mName} ${y}`;
+            if (idx < 5) {
+                div.tanggal_list_text = anggotaDates[idx];
             }
         });
     }
