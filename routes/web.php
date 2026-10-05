@@ -38,6 +38,7 @@ use App\Http\Controllers\ScSubmissionController;
 use App\Http\Controllers\SystemCheckController;
 use App\Http\Controllers\PrintServiceController;
 use App\Http\Controllers\Chat\LiveChatController;
+use App\Http\Controllers\WhatsAppController;
 use App\Models\User;
 use App\Models\LetterLog;
 use App\Models\Letter;
@@ -230,6 +231,17 @@ Route::middleware('auth')->group(function () {
     Route::post('/live-chat/{uuid}/call/signal', [LiveChatController::class, 'sendCallSignal'])->name('chat.call.send-signal');
     Route::post('/live-chat/{uuid}/call/end', [LiveChatController::class, 'endCall'])->name('chat.call.end');
     Route::get('/live-chat/{uuid}/call/agora-token', [LiveChatController::class, 'getAgoraToken'])->name('chat.call.agora-token');
+
+    // --- FITUR WHATSAPP WEB MULTI-AKUN (MULTI-SESSION WA) ---
+    Route::get('/whatsapp-web', [WhatsAppController::class, 'index'])->name('whatsapp.index');
+    Route::post('/whatsapp-web/sessions', [WhatsAppController::class, 'createSession'])->name('whatsapp.sessions.create');
+    Route::get('/whatsapp-web/sessions/{session}/qr', [WhatsAppController::class, 'getQr'])->name('whatsapp.sessions.qr');
+    Route::get('/whatsapp-web/sessions/{session}/status', [WhatsAppController::class, 'getStatus'])->name('whatsapp.sessions.status');
+    Route::post('/whatsapp-web/sessions/{session}/logout', [WhatsAppController::class, 'logoutSession'])->name('whatsapp.sessions.logout');
+    Route::delete('/whatsapp-web/sessions/{session}', [WhatsAppController::class, 'deleteSession'])->name('whatsapp.sessions.delete');
+    Route::get('/whatsapp-web/sessions/{session}/chats', [WhatsAppController::class, 'getChats'])->name('whatsapp.sessions.chats');
+    Route::get('/whatsapp-web/sessions/{session}/chats/{jid}/messages', [WhatsAppController::class, 'getMessages'])->name('whatsapp.sessions.messages');
+    Route::post('/whatsapp-web/sessions/{session}/send', [WhatsAppController::class, 'sendMessage'])->name('whatsapp.sessions.send');
 
     // PRATINJAU DOKUMEN & MEDIA TEROTENTIKASI (STREAMING DEKRIPSI ON-THE-FLY)
     Route::get('/pc-backup/preview-file/{id}', [BackupController::class, 'previewFile'])->name('backup.preview-file');

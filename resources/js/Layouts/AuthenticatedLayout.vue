@@ -222,6 +222,19 @@ onUnmounted(() => {
                                 <span class="flex-1">Komunikasi & VC</span>
                                 <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-black rounded-lg uppercase tracking-wider">Vicon</span>
                             </Link>
+
+                            <Link 
+                                :href="route('whatsapp.index')" 
+                                @click="isMobileMenuOpen = false"
+                                :class="route().current('whatsapp.*') ? 'bg-emerald-500/10 text-emerald-600 font-bold shadow-xs' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"
+                                class="group flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-xs transition duration-150"
+                            >
+                                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 10-7.8-4.5L3 21l4.7-1.2A8.96 8.96 0 0012 21z"></path>
+                                </svg>
+                                <span class="flex-1">WhatsApp Web</span>
+                                <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-black rounded-lg uppercase tracking-wider">Multi</span>
+                            </Link>
                         </div>
 
                         <!-- SURAT & NASKAH / LAYANAN SINTEL -->
@@ -531,6 +544,18 @@ onUnmounted(() => {
                             <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
                             <span class="flex-1">Komunikasi & VC</span>
                             <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-black rounded-lg uppercase tracking-wider">Vicon</span>
+                        </Link>
+
+                        <Link 
+                            :href="route('whatsapp.index')" 
+                            :class="route().current('whatsapp.*') ? 'bg-emerald-500/10 text-emerald-600 font-bold shadow-sm shadow-emerald-500/[0.05]' : 'text-[#64748B] hover:text-slate-800 font-medium hover:bg-slate-50'"
+                            class="group flex items-center gap-4 px-5 py-3.5 rounded-2xl text-[14px] transition duration-150"
+                        >
+                            <svg class="w-5 h-5 opacity-80 group-hover:opacity-100 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 10-7.8-4.5L3 21l4.7-1.2A8.96 8.96 0 0012 21z"></path>
+                            </svg>
+                            <span class="flex-1">WhatsApp Web</span>
+                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-black rounded-lg uppercase tracking-wider">Multi</span>
                         </Link>
                     </div>
 

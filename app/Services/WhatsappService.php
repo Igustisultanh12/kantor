@@ -10,7 +10,7 @@ class WhatsappService
     /**
      * Mengirim pesan WA via Server Node.js Internal (Port 3000)
      */
-    public static function sendMessage($target, $message)
+    public static function sendMessage($target, $message, $sessionId = null)
     {
         // 0. Cek Pengaturan Master Admin (wa_notifications_enabled)
         $enabled = \App\Models\Setting::where('key', 'wa_notifications_enabled')->value('value') ?? '1';
@@ -34,10 +34,15 @@ class WhatsappService
 
         // 3. Kirim perintah ke Server Node.js (wa-gateway)
         try {
-            $response = Http::timeout(10)->get("http://127.0.0.1:3000/send", [
+            $payload = [
                 'number' => $phone,
                 'msg'    => $message
-            ]);
+            ];
+            if (!empty($sessionId)) {
+                $payload['session'] = $sessionId;
+            }
+
+            $response = Http::timeout(10)->get("http://127.0.0.1:3000/send", $payload);
 
             if ($response->successful()) {
                 Log::info("WA Terkirim ke: {$phone}");
