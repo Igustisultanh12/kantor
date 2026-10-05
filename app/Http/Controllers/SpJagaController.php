@@ -12,10 +12,23 @@ use Inertia\Inertia;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class SpJagaController extends Controller
 {
+    private function ensureNomorUrutColumnType(): void
+    {
+        try {
+            static $checked = false;
+            if (!$checked) {
+                DB::statement("ALTER TABLE sp_jagas MODIFY COLUMN nomor_urut VARCHAR(50) NULL DEFAULT NULL");
+                $checked = true;
+            }
+        } catch (\Throwable $e) {
+            // Abaikan jika sudah VARCHAR(50) atau database tidak mengizinkan ALTER langsung
+        }
+    }
     private function getRomanMonth($month)
     {
         $map = [
@@ -232,7 +245,9 @@ class SpJagaController extends Controller
 
         $status = ($request->ttd_type === 'tte') ? 'pending_signature' : 'draft';
 
-        $spJaga = SpJaga::create([
+        $this->ensureNomorUrutColumnType();
+
+        $createData = [
             'nomor_sprin' => $nomorSprin,
             'nomor_urut' => $nomorUrut,
             'bulan' => $bulanInput,
@@ -254,7 +269,18 @@ class SpJagaController extends Controller
             'penandatangan_pangkat_nrp' => 'Mayor Laut (P) NRP 17456/P',
             'penandatangan_jabatan' => 'Pasiops',
             'created_by' => $user->id,
-        ]);
+        ];
+
+        try {
+            $spJaga = SpJaga::create($createData);
+        } catch (\Throwable $e) {
+            if (str_contains($e->getMessage(), 'nomor_urut') || str_contains($e->getMessage(), '1265')) {
+                DB::statement("ALTER TABLE sp_jagas MODIFY COLUMN nomor_urut VARCHAR(50) NULL DEFAULT NULL");
+                $spJaga = SpJaga::create($createData);
+            } else {
+                throw $e;
+            }
+        }
 
         // Simpan Perwira Jaga (Lampiran 1)
         foreach ($request->perwiras as $idx => $p) {
@@ -370,7 +396,9 @@ class SpJagaController extends Controller
         $perwiraTertuaPangkatNrp = $request->perwira_tertua_pangkat_nrp ?: (($firstPerwira['pangkat_korps'] ?? 'Kapten Laut (P)') . ' NRP ' . ($firstPerwira['nrp'] ?? '19739/P'));
         $perwiraTertuaJabatan = $request->perwira_tertua_jabatan ?: 'Dan Unit 1 Lid Den Intel Kodaeral V';
 
-        $spJaga->update([
+        $this->ensureNomorUrutColumnType();
+
+        $updateData = [
             'nomor_sprin' => $nomorSprin,
             'nomor_urut' => $nomorUrut,
             'bulan' => $bulanInput,
@@ -386,7 +414,18 @@ class SpJagaController extends Controller
             'total_personel_count' => $totalPersonel,
             'total_personel_terbilang' => $terbilang,
             'ttd_type' => $request->ttd_type,
-        ]);
+        ];
+
+        try {
+            $spJaga->update($updateData);
+        } catch (\Throwable $e) {
+            if (str_contains($e->getMessage(), 'nomor_urut') || str_contains($e->getMessage(), '1265')) {
+                DB::statement("ALTER TABLE sp_jagas MODIFY COLUMN nomor_urut VARCHAR(50) NULL DEFAULT NULL");
+                $spJaga->update($updateData);
+            } else {
+                throw $e;
+            }
+        }
 
         // Sync Perwira
         SpJagaPerwira::where('sp_jaga_id', $spJaga->id)->delete();
