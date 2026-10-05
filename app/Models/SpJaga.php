@@ -38,11 +38,39 @@ class SpJaga extends Model
     ];
 
     protected $casts = [
-        'tmt_mulai' => 'date',
-        'tmt_selesai' => 'date',
-        'tanggal_surat' => 'date',
+        'nomor_urut' => 'string',
+        'tmt_mulai' => 'date:Y-m-d',
+        'tmt_selesai' => 'date:Y-m-d',
+        'tanggal_surat' => 'date:Y-m-d',
         'approved_at' => 'datetime',
     ];
+
+    protected $appends = [
+        'tmt_mulai_formatted',
+        'tmt_selesai_formatted',
+        'tanggal_surat_formatted',
+    ];
+
+    public function getTmtMulaiFormattedAttribute(): string
+    {
+        $raw = $this->attributes['tmt_mulai'] ?? null;
+        if (!$raw) return '';
+        return substr((string)$raw, 0, 10);
+    }
+
+    public function getTmtSelesaiFormattedAttribute(): string
+    {
+        $raw = $this->attributes['tmt_selesai'] ?? null;
+        if (!$raw) return '';
+        return substr((string)$raw, 0, 10);
+    }
+
+    public function getTanggalSuratFormattedAttribute(): string
+    {
+        $raw = $this->attributes['tanggal_surat'] ?? null;
+        if (!$raw) return '';
+        return substr((string)$raw, 0, 10);
+    }
 
     public function perwiras()
     {

@@ -29,8 +29,34 @@ const monthsList = [
     { id: 12, name: 'Desember' },
 ];
 
-const initialTmtMulai = props.spJaga.tmt_mulai ? String(props.spJaga.tmt_mulai).substring(0, 10) : '';
-const initialBulan = props.spJaga.bulan ? parseInt(props.spJaga.bulan, 10) : (initialTmtMulai ? parseInt(initialTmtMulai.substring(5, 7), 10) : 9);
+const parseExactDate = (dateVal) => {
+    if (!dateVal) return '';
+    const str = String(dateVal);
+    if (str.includes('T')) {
+        const d = new Date(str);
+        if (!isNaN(d.getTime())) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+    }
+    return str.substring(0, 10);
+};
+
+const initialTmtMulai = props.spJaga.tmt_mulai_formatted 
+    ? String(props.spJaga.tmt_mulai_formatted).substring(0, 10) 
+    : parseExactDate(props.spJaga.tmt_mulai);
+
+const initialTmtSelesai = props.spJaga.tmt_selesai_formatted 
+    ? String(props.spJaga.tmt_selesai_formatted).substring(0, 10) 
+    : parseExactDate(props.spJaga.tmt_selesai);
+
+const initialTanggalSurat = props.spJaga.tanggal_surat_formatted 
+    ? String(props.spJaga.tanggal_surat_formatted).substring(0, 10) 
+    : parseExactDate(props.spJaga.tanggal_surat);
+
+const initialBulan = props.spJaga.bulan ? parseInt(props.spJaga.bulan, 10) : (initialTmtMulai ? parseInt(initialTmtMulai.substring(5, 7), 10) : 10);
 const initialTahun = props.spJaga.tahun ? parseInt(props.spJaga.tahun, 10) : (initialTmtMulai ? parseInt(initialTmtMulai.substring(0, 4), 10) : 2026);
 
 function safeParseArray(val) {
@@ -51,8 +77,8 @@ const form = useForm({
     tahun: initialTahun,
     nomor_urut: props.spJaga.nomor_urut !== null && props.spJaga.nomor_urut !== undefined ? String(props.spJaga.nomor_urut) : '29',
     tmt_mulai: initialTmtMulai,
-    tmt_selesai: props.spJaga.tmt_selesai ? String(props.spJaga.tmt_selesai).substring(0, 10) : '',
-    tanggal_surat: props.spJaga.tanggal_surat ? String(props.spJaga.tanggal_surat).substring(0, 10) : '',
+    tmt_selesai: initialTmtSelesai,
+    tanggal_surat: initialTanggalSurat,
     ttd_type: props.spJaga.ttd_type || 'tte',
     
     // Perwira Tertua (Pater / Penerima Perintah)
