@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import Swal from 'sweetalert2';
 
 const props = defineProps({
@@ -16,6 +16,7 @@ const showModal = ref(false);
 const isEdit = ref(false);
 
 const filterMonth = ref(props.filters?.month || '');
+const searchQuery = ref(props.filters?.search || '');
 
 const applyMonthFilter = () => {
     router.get(route('commander.index'), {
@@ -97,6 +98,43 @@ const deleteItem = (id) => {
 const formatRupiah = (val) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val || 0);
 };
+
+const filteredLogs = computed(() => {
+    const query = searchQuery.value.toLowerCase().trim();
+    if (!query) return props.logs;
+
+    return props.logs.filter(item => {
+        const keterangan = (item.keterangan || '').toLowerCase();
+        const petugas = (item.petugas_input || '').toLowerCase();
+        const jenis = (item.jenis || '').toLowerCase();
+        const tanggal = (item.tanggal || '').toLowerCase();
+
+        let formattedDateStr = '';
+        if (item.tanggal) {
+            const parts = item.tanggal.split('-');
+            if (parts.length === 3) {
+                const day = parts[2];
+                const month = parts[1];
+                const year = parts[0];
+                const months = ['januari', 'februari', 'maret', 'april', 'mei', 'juni', 'juli', 'agustus', 'september', 'oktober', 'november', 'desember'];
+                const monthName = months[parseInt(month, 10) - 1] || '';
+                formattedDateStr = `${day}/${month}/${year} ${day} ${monthName} ${year}`;
+            }
+        }
+
+        const jumlahRaw = (item.jumlah || 0).toString();
+        const jumlahFormatted = formatRupiah(item.jumlah).toLowerCase().replace(/\s+/g, '');
+        const cleanQuery = query.replace(/\s+/g, '');
+
+        return keterangan.includes(query) ||
+            petugas.includes(query) ||
+            jenis.includes(query) ||
+            tanggal.includes(query) ||
+            formattedDateStr.includes(query) ||
+            jumlahRaw.includes(cleanQuery) ||
+            jumlahFormatted.includes(cleanQuery);
+    });
+});
 </script>
 
 <template>
@@ -137,8 +175,8 @@ const formatRupiah = (val) => {
                 </div>
             </div>
 
-            <!-- Filter Bulan / Periode Mutasi Bar -->
-            <div class="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+            <!-- Filter Bulan / Periode Mutasi Bar & Pencarian -->
+            <div class="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
                 <div class="flex flex-wrap items-center gap-3">
                     <div class="flex items-center gap-2">
                         <svg class="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -151,7 +189,7 @@ const formatRupiah = (val) => {
                     <select 
                         v-model="filterMonth" 
                         @change="applyMonthFilter"
-                        class="bg-slate-50 border border-slate-200 rounded-xl text-xs font-extrabold px-3.5 py-2.5 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition cursor-pointer min-w-[180px]"
+                        class="bg-slate-50 border border-slate-200 rounded-xl text-xs font-extrabold px-3.5 py-2.5 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition cursor-pointer min-w-[170px]"
                     >
                         <option value="">Semua Periode (All Time)</option>
                         <option v-for="ym in available_months" :key="ym" :value="ym">
@@ -177,11 +215,43 @@ const formatRupiah = (val) => {
                     </button>
                 </div>
 
-                <div class="text-xs font-bold text-slate-500 flex items-center gap-2">
-                    <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-[10px] font-black uppercase">
-                        {{ filterMonth ? 'Periode: ' + formatMonthName(filterMonth) : 'Semua Transaksi' }}
-                    </span>
-                    <span>Total: <b class="text-slate-900">{{ logs.length }}</b> Mutasi</span>
+                <!-- Bagian Form Pencarian & Counter Mutasi -->
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="relative flex-1 sm:w-64 md:w-72">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                        </div>
+                        <input 
+                            type="text" 
+                            v-model="searchQuery" 
+                            placeholder="Cari uraian, nominal, tanggal..." 
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold pl-9 pr-8 py-2 text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                        />
+                        <button 
+                            v-if="searchQuery" 
+                            @click="searchQuery = ''" 
+                            class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-rose-600 transition cursor-pointer"
+                            title="Hapus pencarian"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="text-xs font-bold text-slate-500 flex items-center gap-2 shrink-0">
+                        <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-[10px] font-black uppercase">
+                            {{ filterMonth ? 'Periode: ' + formatMonthName(filterMonth) : 'Semua Transaksi' }}
+                        </span>
+                        <span v-if="searchQuery">
+                            Cocok: <b class="text-blue-600">{{ filteredLogs.length }}</b> / {{ logs.length }} Mutasi
+                        </span>
+                        <span v-else>
+                            Total: <b class="text-slate-900">{{ logs.length }}</b> Mutasi
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -246,10 +316,15 @@ const formatRupiah = (val) => {
 
             <!-- Table Card -->
             <div class="bg-white rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0] overflow-hidden">
-                <div class="p-5 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div class="p-5 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div>
-                        <h3 class="font-extrabold text-xs uppercase tracking-wider text-slate-800">Buku Mutasi & Rekening Koran</h3>
-                        <p class="text-[10px] text-slate-400 font-semibold mt-0.5">Daftar mutasi dengan perhitungan saldo berjalan (running balance) real-time</p>
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-extrabold text-xs uppercase tracking-wider text-slate-800">Buku Mutasi & Rekening Koran</h3>
+                            <span v-if="searchQuery" class="text-[10px] font-black bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full uppercase">
+                                Hasil Pencarian: {{ filteredLogs.length }}
+                            </span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 font-semibold mt-0.5">Daftar mutasi dengan perhitungan saldo berjalan (running balance) otomatis</p>
                     </div>
                     <span class="text-[10px] font-extrabold bg-slate-100 text-slate-600 px-3 py-1 rounded-full uppercase">
                         {{ filterMonth ? formatMonthName(filterMonth) : 'Seluruh Riwayat' }}
@@ -269,7 +344,7 @@ const formatRupiah = (val) => {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 text-xs font-semibold">
-                            <tr v-for="item in logs" :key="item.id" class="hover:bg-slate-50/70 transition">
+                            <tr v-for="item in filteredLogs" :key="item.id" class="hover:bg-slate-50/70 transition">
                                 <td class="p-4 font-bold text-slate-600 whitespace-nowrap">{{ item.tanggal }}</td>
                                 <td class="p-4">
                                     <p class="font-extrabold text-slate-900 uppercase">{{ item.keterangan }}</p>
@@ -295,7 +370,7 @@ const formatRupiah = (val) => {
                             </tr>
 
                             <!-- Baris Saldo Awal jika memfilter bulan tertentu -->
-                            <tr v-if="stats.is_monthly && stats.saldo_awal !== 0" class="bg-amber-50/40 border-t-2 border-amber-200/60">
+                            <tr v-if="stats.is_monthly && stats.saldo_awal !== 0 && (!searchQuery || 'saldo awal'.includes(searchQuery.toLowerCase().trim()))" class="bg-amber-50/40 border-t-2 border-amber-200/60">
                                 <td class="p-4 font-bold text-amber-900 whitespace-nowrap">01/{{ filterMonth.split('-')[1] }}/{{ filterMonth.split('-')[0] }}</td>
                                 <td class="p-4 font-extrabold text-amber-900 uppercase">
                                     SALDO AWAL BULAN (BEGINNING BALANCE)
@@ -312,9 +387,28 @@ const formatRupiah = (val) => {
                                 <td v-if="canEdit" class="p-4 text-center text-slate-400 text-[10px]">-</td>
                             </tr>
 
-                            <tr v-if="logs.length === 0 && (!stats.is_monthly || stats.saldo_awal === 0)">
-                                <td :colspan="canEdit ? 6 : 5" class="p-12 text-center italic text-slate-400 font-medium">
-                                    Belum ada mutasi finansial tercatat pada periode ini.
+                            <!-- Baris jika data kosong atau pencarian tidak ditemukan -->
+                            <tr v-if="filteredLogs.length === 0 && (!stats.is_monthly || stats.saldo_awal === 0 || searchQuery)">
+                                <td :colspan="canEdit ? 6 : 5" class="p-12 text-center text-slate-400 font-medium">
+                                    <div class="flex flex-col items-center justify-center gap-2">
+                                        <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                        </svg>
+                                        <p v-if="searchQuery" class="text-xs font-bold text-slate-600">
+                                            Tidak ada mutasi yang cocok dengan kata kunci "<span class="text-blue-600 font-extrabold">{{ searchQuery }}</span>".
+                                        </p>
+                                        <p v-else class="italic text-xs">
+                                            Belum ada mutasi finansial tercatat pada periode ini.
+                                        </p>
+                                        <div v-if="searchQuery" class="flex items-center gap-2 mt-2">
+                                            <button @click="searchQuery = ''" class="px-3 py-1.5 text-[11px] font-extrabold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition cursor-pointer">
+                                                Hapus Kata Kunci
+                                            </button>
+                                            <button v-if="filterMonth" @click="resetFilter" class="px-3 py-1.5 text-[11px] font-extrabold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer">
+                                                Cari di Semua Periode
+                                            </button>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>

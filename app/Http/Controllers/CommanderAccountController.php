@@ -116,6 +116,7 @@ class CommanderAccountController extends Controller
             'available_months' => $availableMonths,
             'filters' => [
                 'month' => $month ?? '',
+                'search' => $request->query('search', ''),
             ],
             'stats' => [
                 'saldo_awal' => $saldoAwal,
