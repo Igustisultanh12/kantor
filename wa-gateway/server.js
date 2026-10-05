@@ -96,6 +96,8 @@ async function createSession(sessionId, label = '', customFolder = null) {
         name: null,
         chats: sessions.get(sessionId)?.chats || new Map(),
         messages: sessions.get(sessionId)?.messages || new Map(),
+        calls: sessions.get(sessionId)?.calls || [],
+        groupMetadata: sessions.get(sessionId)?.groupMetadata || new Map(),
     };
 
     sessions.set(sessionId, sessionData);
@@ -167,7 +169,37 @@ async function createSession(sessionId, label = '', customFolder = null) {
         }
     });
 
-    // Handle incoming & outgoing messages
+    // Handle phone/video call events (Riwayat Telepon)
+    sock.ev.on('call', async (callEvents) => {
+        if (!Array.isArray(callEvents)) return;
+        for (const c of callEvents) {
+            const fromJid = c.from || c.chatId || '';
+            const fromNumber = jidToNumber(fromJid);
+            const callItem = {
+                id: c.id,
+                from: fromJid,
+                number: fromNumber,
+                name: fromNumber,
+                isVideo: Boolean(c.isVideo),
+                isGroup: Boolean(c.isGroup),
+                status: c.status || 'ringing', // offer, ringing, timeout, reject, accept
+                timestamp: new Date(c.date || Date.now()).toISOString(),
+            };
+
+            const existingIdx = sessionData.calls.findIndex(x => x.id === c.id);
+            if (existingIdx >= 0) {
+                sessionData.calls[existingIdx] = { ...sessionData.calls[existingIdx], ...callItem };
+            } else {
+                sessionData.calls.unshift(callItem);
+            }
+
+            if (sessionData.calls.length > 50) {
+                sessionData.calls.pop();
+            }
+        }
+    });
+
+    // Handle incoming & outgoing messages (Pribadi & Grup)
     sock.ev.on('messages.upsert', async (m) => {
         if (!m.messages || m.messages.length === 0) return;
 
@@ -176,29 +208,51 @@ async function createSession(sessionId, label = '', customFolder = null) {
             const jid = msg.key.remoteJid;
             if (!jid || jid.endsWith('@broadcast')) continue;
 
+            const isGroup = jid.endsWith('@g.us');
             const fromMe = Boolean(msg.key.fromMe);
             const body = extractMessageText(msg.message);
             const timestamp = msg.messageTimestamp ? new Date(msg.messageTimestamp * 1000).toISOString() : new Date().toISOString();
-            const senderName = msg.pushName || jidToNumber(jid);
+            
+            const participantJid = msg.key.participant || msg.participant || '';
+            const participantNumber = participantJid ? jidToNumber(participantJid) : '';
+            const senderName = msg.pushName || (isGroup ? participantNumber : jidToNumber(jid));
+
+            // Jika ini grup dan belum ada subjek nama grup, tarik metadata grup dari server
+            if (isGroup && !sessionData.groupMetadata.has(jid)) {
+                sock.groupMetadata(jid).then(meta => {
+                    sessionData.groupMetadata.set(jid, meta);
+                    if (sessionData.chats.has(jid)) {
+                        sessionData.chats.get(jid).name = meta.subject || sessionData.chats.get(jid).name;
+                    }
+                }).catch(() => {});
+            }
+
+            const groupSubject = sessionData.groupMetadata.get(jid)?.subject;
+            const chatDisplayName = isGroup ? (groupSubject || 'Grup WhatsApp') : (senderName || jidToNumber(jid));
 
             // Update chat list
             if (!sessionData.chats.has(jid)) {
                 sessionData.chats.set(jid, {
                     jid,
-                    number: jidToNumber(jid),
-                    name: senderName,
+                    isGroup,
+                    number: isGroup ? '' : jidToNumber(jid),
+                    name: chatDisplayName,
                     lastMessage: body,
+                    lastSender: isGroup ? (msg.pushName || participantNumber) : '',
                     timestamp,
                     unreadCount: fromMe ? 0 : 1,
                 });
             } else {
                 const existingChat = sessionData.chats.get(jid);
                 existingChat.lastMessage = body;
+                existingChat.lastSender = isGroup ? (msg.pushName || participantNumber) : '';
                 existingChat.timestamp = timestamp;
                 if (!fromMe) {
                     existingChat.unreadCount = (existingChat.unreadCount || 0) + 1;
                 }
-                if (senderName && senderName !== existingChat.name && !existingChat.name.startsWith('62')) {
+                if (isGroup && groupSubject) {
+                    existingChat.name = groupSubject;
+                } else if (!isGroup && senderName && senderName !== existingChat.name && !existingChat.name.startsWith('62')) {
                     existingChat.name = senderName;
                 }
             }
@@ -211,6 +265,9 @@ async function createSession(sessionId, label = '', customFolder = null) {
             chatMessages.push({
                 id: msg.key.id,
                 fromMe,
+                isGroup,
+                participant: participantNumber,
+                participantName: isGroup && !fromMe ? (msg.pushName || participantNumber) : '',
                 body,
                 timestamp,
                 status: fromMe ? 'SENT' : 'RECEIVED'
@@ -471,7 +528,19 @@ app.delete('/sessions/:id', (req, res) => {
     res.json({ ok: true, message: `Sesi ${sessionId} dihapus.` });
 });
 
-// 9. Get Chats for session
+// 9. Get Calls History for session (Riwayat Panggilan / Telepon)
+app.get('/sessions/:id/calls', (req, res) => {
+    const sessionId = req.params.id;
+    const session = sessions.get(sessionId);
+
+    if (!session || session.status !== 'CONNECTED') {
+        return res.status(400).json({ ok: false, error: 'Sesi belum terhubung.' });
+    }
+
+    res.json({ ok: true, calls: session.calls || [] });
+});
+
+// 10. Get Chats for session
 app.get('/sessions/:id/chats', (req, res) => {
     const sessionId = req.params.id;
     const session = sessions.get(sessionId);

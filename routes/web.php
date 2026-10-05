@@ -240,6 +240,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/whatsapp-web/sessions/{session}/logout', [WhatsAppController::class, 'logoutSession'])->name('whatsapp.sessions.logout');
     Route::delete('/whatsapp-web/sessions/{session}', [WhatsAppController::class, 'deleteSession'])->name('whatsapp.sessions.delete');
     Route::get('/whatsapp-web/sessions/{session}/chats', [WhatsAppController::class, 'getChats'])->name('whatsapp.sessions.chats');
+    Route::get('/whatsapp-web/sessions/{session}/calls', [WhatsAppController::class, 'getCalls'])->name('whatsapp.sessions.calls');
     Route::get('/whatsapp-web/sessions/{session}/chats/{jid}/messages', [WhatsAppController::class, 'getMessages'])->name('whatsapp.sessions.messages');
     Route::post('/whatsapp-web/sessions/{session}/send', [WhatsAppController::class, 'sendMessage'])->name('whatsapp.sessions.send');
 

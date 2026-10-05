@@ -265,6 +265,22 @@ class WhatsAppController extends Controller
     }
 
     /**
+     * Mengambil Riwayat Panggilan / Telepon
+     */
+    public function getCalls(string $sessionId)
+    {
+        try {
+            $res = Http::timeout(6)->get("{$this->gatewayUrl}/sessions/{$sessionId}/calls");
+            if ($res->successful()) {
+                return response()->json($res->json());
+            }
+            return response()->json(['ok' => false, 'calls' => []]);
+        } catch (\Exception $e) {
+            return response()->json(['ok' => false, 'calls' => []]);
+        }
+    }
+
+    /**
      * Mengambil Daftar Percakapan Aktif
      */
     public function getChats(string $sessionId)

@@ -21,8 +21,14 @@ const props = defineProps({
     isCommander: Boolean,
 });
 
-// State Sesi Aktif
-const activeSessionId = ref(props.sessions.length > 0 ? props.sessions[0].session_id : null);
+// Tab Navigasi Samping Kiri Ala WhatsApp Web: 'chats' | 'calls'
+const activeLeftNav = ref('chats');
+
+// Filter Tab Obrolan: 'all' | 'unread' | 'personal' | 'groups'
+const activeChatFilter = ref('all');
+
+// Sesi Aktif (Multi-Akun)
+const activeSessionId = ref(props.sessions.length > 0 ? props.sessions[0].session_id : 'dinas');
 const activeSession = computed(() => {
     return props.sessions.find(s => s.session_id === activeSessionId.value) || null;
 });
@@ -30,19 +36,36 @@ const activeSession = computed(() => {
 // State Obrolan & Pesan
 const chats = ref([]);
 const isLoadingChats = ref(false);
-const activeChat = ref(null); // { jid, name, number }
+const activeChat = ref(null); // { jid, name, number, isGroup }
 const messages = ref([]);
 const isLoadingMessages = ref(false);
 const messageInput = ref('');
 const isSending = ref(false);
 const messagesContainer = ref(null);
 
+// State Riwayat Telepon / Panggilan
+const calls = ref([]);
+const isLoadingCalls = ref(false);
+
 // State Pencarian Obrolan
 const chatSearchQuery = ref('');
 const filteredChats = computed(() => {
+    let list = chats.value;
+
+    // Filter Kategori (Semua / Belum Dibaca / Pribadi / Grup)
+    if (activeChatFilter.value === 'unread') {
+        list = list.filter(c => (c.unreadCount || 0) > 0);
+    } else if (activeChatFilter.value === 'personal') {
+        list = list.filter(c => !c.isGroup);
+    } else if (activeChatFilter.value === 'groups') {
+        list = list.filter(c => c.isGroup);
+    }
+
+    // Filter Kata Kunci Pencarian
     const q = chatSearchQuery.value.toLowerCase().trim();
-    if (!q) return chats.value;
-    return chats.value.filter(c => {
+    if (!q) return list;
+
+    return list.filter(c => {
         const name = (c.name || '').toLowerCase();
         const number = (c.number || '').toLowerCase();
         const lastMsg = (c.lastMessage || '').toLowerCase();
@@ -80,10 +103,21 @@ const filteredPersonnel = computed(() => {
     });
 });
 
-// Template Pesan Cepat Kedinasan
+// Warna Acak Konsisten untuk Nama Pengirim di Dalam Grup
+const getParticipantColor = (name) => {
+    const colors = ['#1f7aec', '#029046', '#e542a3', '#d13b3b', '#8b5cf6', '#d97706', '#0d9488'];
+    if (!name) return colors[0];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+};
+
+// Template Cepat Kedinasan
 const quickTemplates = [
-    { title: 'Pemberitahuan Sprin', text: 'Yth. Personel Denintel, diberitahukan terdapat Surat Perintah (Sprin) dinas baru yang telah diterbitkan pada sistem SINDEN. Harap segera memeriksa tugas Anda. Terima kasih.' },
-    { title: 'Koordinasi Tugas', text: 'Selamat bertugas. Mohon konfirmasi kesiapan dan perkembangan situasi lapangan untuk dilaporkan ke pimpinan. Terima kasih.' },
+    { title: 'Pemberitahuan Sprin', text: 'Yth. Personel Denintel, terdapat Surat Perintah (Sprin) dinas baru yang telah diterbitkan pada sistem SINDEN. Harap segera memeriksa tugas Anda. Terima kasih.' },
+    { title: 'Koordinasi Tugas', text: 'Selamat bertugas. Mohon konfirmasi kesiapan dan perkembangan situasi terkini untuk dilaporkan ke pimpinan. Terima kasih.' },
     { title: 'Panggilan Piket', text: 'Panggilan dinas jaga/piket Denintel. Harap segera merapat ke pos komando untuk serah terima tugas dinas. Terima kasih.' },
 ];
 
@@ -95,7 +129,7 @@ const insertTemplate = (text) => {
 // API FUNCTIONS
 // -------------------------------------------------------------------
 
-// 1. Ambil Percakapan Sesi Terpilih
+// 1. Ambil Daftar Obrolan (Pribadi & Grup)
 const fetchChats = async (sessionId) => {
     if (!sessionId) return;
     isLoadingChats.value = true;
@@ -114,7 +148,26 @@ const fetchChats = async (sessionId) => {
     }
 };
 
-// 2. Pilih Percakapan & Ambil Riwayat Pesan
+// 2. Ambil Riwayat Telepon / Panggilan
+const fetchCalls = async (sessionId) => {
+    if (!sessionId) return;
+    isLoadingCalls.value = true;
+    try {
+        const res = await fetch(route('whatsapp.sessions.calls', sessionId));
+        const data = await res.json();
+        if (data.ok && Array.isArray(data.calls)) {
+            calls.value = data.calls;
+        } else {
+            calls.value = [];
+        }
+    } catch (e) {
+        calls.value = [];
+    } finally {
+        isLoadingCalls.value = false;
+    }
+};
+
+// 3. Pilih Percakapan & Ambil Riwayat Pesan
 const selectChat = async (chat) => {
     activeChat.value = chat;
     await fetchMessages(chat.jid);
@@ -140,7 +193,6 @@ const fetchMessages = async (jid) => {
     }
 };
 
-// 3. Gulir Obrolan ke Bawah
 const scrollToBottom = () => {
     nextTick(() => {
         if (messagesContainer.value) {
@@ -155,13 +207,14 @@ const sendMessage = async () => {
     if (!text || !activeChat.value || !activeSessionId.value) return;
 
     isSending.value = true;
-    const targetNumber = activeChat.value.number || activeChat.value.jid;
+    const targetNumber = activeChat.value.jid;
 
     // Optimistic UI update
     const tempId = 'temp-' + Date.now();
     const tempMsg = {
         id: tempId,
         fromMe: true,
+        isGroup: activeChat.value.isGroup,
         body: text,
         timestamp: new Date().toISOString(),
         status: 'PENDING'
@@ -186,7 +239,6 @@ const sendMessage = async () => {
         const data = await res.json();
         if (data.ok) {
             tempMsg.status = 'SENT';
-            // Perbarui daftar chat terakhir
             fetchChats(activeSessionId.value);
         } else {
             tempMsg.status = 'FAILED';
@@ -200,7 +252,7 @@ const sendMessage = async () => {
     }
 };
 
-// 5. Ganti Tab Sesi Aktif
+// 5. Ganti Akun Sesi Aktif
 const switchSession = (sessionId) => {
     activeSessionId.value = sessionId;
     activeChat.value = null;
@@ -208,12 +260,14 @@ const switchSession = (sessionId) => {
     const sess = props.sessions.find(s => s.session_id === sessionId);
     if (sess && sess.status === 'connected') {
         fetchChats(sessionId);
+        fetchCalls(sessionId);
     } else {
         chats.value = [];
+        calls.value = [];
     }
 };
 
-// 6. Buat Sesi Baru & Minta QR Code
+// 6. Modal Tambah Sesi & Minta QR
 const openCreateModal = () => {
     createForm.value = {
         label: '',
@@ -256,7 +310,6 @@ const submitCreateSession = async () => {
     }
 };
 
-// Polling QR Code sampai Terhubung
 const startQrPolling = (sessionId) => {
     stopQrPolling();
     qrPollTimer = setInterval(async () => {
@@ -292,11 +345,11 @@ const closeCreateModal = () => {
     showCreateModal.value = false;
 };
 
-// 7. Putuskan Sambungan (Logout) Sesi
+// 7. Logout Sesi
 const logoutSession = (sessionId) => {
     Swal.fire({
         title: 'Putuskan Akun WhatsApp?',
-        text: 'Sesi perangkat tertaut akan diputuskan dari ponsel dan token kredensial akan dihapus secara bersih dari server.',
+        text: 'Sesi perangkat tertaut akan diputuskan dan kredensial dihapus secara bersih dari server.',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonText: 'Ya, Putuskan',
@@ -323,7 +376,7 @@ const logoutSession = (sessionId) => {
     });
 };
 
-// 8. Hapus Sesi Sepenuhnya
+// 8. Hapus Sesi
 const deleteSession = (sessionId) => {
     Swal.fire({
         title: 'Hapus Sesi Akun?',
@@ -363,6 +416,7 @@ const startChatWithPersonnel = (person) => {
     const cleanNumber = person.phone.replace(/[^0-9]/g, '');
     activeChat.value = {
         jid: cleanNumber + '@s.whatsapp.net',
+        isGroup: false,
         number: cleanNumber,
         name: `${person.pangkat ? person.pangkat + ' ' : ''}${person.name}`
     };
@@ -378,6 +432,7 @@ const startChatManual = () => {
     }
     activeChat.value = {
         jid: num + '@s.whatsapp.net',
+        isGroup: false,
         number: num,
         name: manualName.value.trim() || num
     };
@@ -387,18 +442,19 @@ const startChatManual = () => {
     fetchMessages(activeChat.value.jid);
 };
 
-// Interval Sinkronisasi Pesan Berkala
+// Sinkronisasi Pesan Berkala
 let messageSyncTimer = null;
 onMounted(() => {
     if (activeSession.value && activeSession.value.status === 'connected') {
         fetchChats(activeSession.value.session_id);
+        fetchCalls(activeSession.value.session_id);
     }
 
     messageSyncTimer = setInterval(() => {
         if (activeChat.value && activeSessionId.value) {
             fetchMessages(activeChat.value.jid);
         }
-    }, 5000);
+    }, 4000);
 });
 
 onUnmounted(() => {
@@ -415,280 +471,453 @@ const formatTime = (isoString) => {
         return '';
     }
 };
+
+const formatDateFull = (isoString) => {
+    if (!isoString) return '';
+    try {
+        const d = new Date(isoString);
+        return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+        return '';
+    }
+};
 </script>
 
 <template>
-    <Head title="WhatsApp Web Multi-Akun - SINDEN" />
+    <Head title="WhatsApp Web - SINDEN" />
     <AuthenticatedLayout>
-        <div class="space-y-5 font-sans">
+        <div class="space-y-3 font-sans">
             
-            <!-- Header Card Utama -->
-            <div class="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
-                        <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 10-7.8-4.5L3 21l4.7-1.2A8.96 8.96 0 0012 21z"></path>
-                        </svg>
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <h2 class="font-extrabold text-lg sm:text-xl text-slate-900 uppercase tracking-tight">WhatsApp Web Multi-Akun</h2>
-                            <span class="px-2.5 py-0.5 text-[9px] font-black uppercase rounded-md bg-emerald-100 text-emerald-700">Dinas Multi-Session</span>
-                        </div>
-                        <p class="text-xs text-slate-500 font-semibold mt-0.5">Pusat Kendali Pesan WhatsApp Resmi, Multi-Perangkat & Terintegrasi Personel SINDEN</p>
-                    </div>
-                </div>
+            <!-- Bilah Atas: Pemilih Akun (Multi-Akun Switcher) & Status Gateway -->
+            <div class="bg-white p-3 px-4 rounded-2xl shadow-xs border border-[#E2E8F0] flex flex-wrap items-center justify-between gap-3">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-xs font-black uppercase text-slate-500 tracking-wider me-1">Pilih Akun:</span>
+                    
+                    <button 
+                        v-for="s in sessions" 
+                        :key="s.id"
+                        @click="switchSession(s.session_id)"
+                        :class="activeSessionId === s.session_id ? 'bg-[#00a884] text-white shadow-xs font-extrabold' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold'"
+                        class="px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-2 transition cursor-pointer"
+                    >
+                        <span 
+                            :class="s.status === 'connected' ? 'bg-white' : 'bg-amber-300 animate-pulse'" 
+                            class="w-2 h-2 rounded-full"
+                        ></span>
+                        <span>{{ s.label }}</span>
+                        <span v-if="s.phone_number" class="text-[10px] opacity-80 font-mono">({{ s.phone_number }})</span>
+                    </button>
 
-                <div class="flex flex-wrap items-center gap-2 sm:gap-3 w-full md:w-auto">
-                    <!-- Status Gateway Port 3000 -->
-                    <div :class="gatewayOnline ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'" class="px-3 py-2 rounded-xl border text-xs font-bold flex items-center gap-2">
-                        <span :class="gatewayOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'" class="w-2 h-2 rounded-full"></span>
-                        <span>{{ gatewayOnline ? 'Gateway Aktif (Port 3000)' : 'Gateway Tidak Terdeteksi' }}</span>
-                    </div>
-
-                    <!-- Tombol Tambah Nomor / Scan QR -->
                     <button 
                         @click="openCreateModal" 
-                        class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl text-xs font-extrabold uppercase shadow-sm shadow-emerald-500/20 transition tracking-wider flex items-center gap-2 cursor-pointer"
+                        class="px-3 py-1.5 bg-slate-100 hover:bg-[#00a884]/10 text-slate-600 hover:text-[#00a884] rounded-xl text-xs font-bold border border-dashed border-slate-300 flex items-center gap-1.5 transition cursor-pointer"
                     >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
-                        </svg>
-                        <span>Tautkan Nomor Baru</span>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
+                        <span>Tambah Nomor (Scan QR)</span>
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-2 text-xs font-bold">
+                    <span v-if="activeSession" :class="activeSession.status === 'connected' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'" class="px-2.5 py-1 text-[10px] font-black uppercase rounded-lg border">
+                        Status: {{ activeSession.status }}
+                    </span>
+                    <button 
+                        v-if="activeSession && activeSession.status === 'connected'" 
+                        @click="logoutSession(activeSession.session_id)"
+                        class="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-[11px] font-bold transition cursor-pointer"
+                    >
+                        Logout
+                    </button>
+                    <button 
+                        v-if="activeSession"
+                        @click="deleteSession(activeSession.session_id)"
+                        class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-[11px] font-bold transition cursor-pointer"
+                    >
+                        Hapus
                     </button>
                 </div>
             </div>
 
-            <!-- Bilah Pemilih Sesi / Multi-Akun Tabs -->
-            <div class="bg-white p-3 sm:p-4 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0]">
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                    <div class="flex flex-wrap items-center gap-2">
-                        <span class="text-xs font-black uppercase text-slate-500 tracking-wider me-1">Pilih Akun:</span>
-                        
-                        <div v-if="sessions.length === 0" class="text-xs text-slate-400 italic">
-                            Belum ada akun WhatsApp yang ditautkan. Klik tombol "Tautkan Nomor Baru" di atas.
-                        </div>
-
-                        <!-- Tombol Tab Setiap Sesi -->
-                        <button 
-                            v-for="s in sessions" 
-                            :key="s.id"
-                            @click="switchSession(s.session_id)"
-                            :class="activeSessionId === s.session_id ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30 font-black' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold'"
-                            class="px-4 py-2 rounded-xl text-xs flex items-center gap-2 transition cursor-pointer"
-                        >
-                            <span 
-                                :class="s.status === 'connected' ? 'bg-emerald-300' : (s.status === 'connecting' || s.status === 'qr_ready' ? 'bg-amber-400 animate-pulse' : 'bg-rose-400')" 
-                                class="w-2 h-2 rounded-full"
-                            ></span>
-                            <span>{{ s.label }}</span>
-                            <span v-if="s.phone_number" class="text-[10px] opacity-80 font-mono">({{ s.phone_number }})</span>
-                        </button>
-                    </div>
-
-                    <!-- Tombol Kontrol Sesi Aktif -->
-                    <div v-if="activeSession" class="flex items-center gap-2">
-                        <span :class="activeSession.status === 'connected' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'" class="px-2.5 py-1 text-[10px] font-black uppercase rounded-lg border">
-                            Status: {{ activeSession.status }}
-                        </span>
-                        
-                        <button 
-                            v-if="activeSession.status === 'connected'" 
-                            @click="logoutSession(activeSession.session_id)"
-                            class="px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-xs font-bold transition cursor-pointer"
-                            title="Putuskan sambungan WhatsApp dan bersihkan kredensial"
-                        >
-                            Logout Akun
-                        </button>
-
-                        <button 
-                            @click="deleteSession(activeSession.session_id)"
-                            class="px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold transition cursor-pointer"
-                            title="Hapus sesi secara permanen"
-                        >
-                            Hapus Sesi
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Antarmuka Utama WhatsApp Web (Split Layout) -->
-            <div class="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-[#E2E8F0] overflow-hidden grid grid-cols-1 lg:grid-cols-12 h-[calc(100vh-17rem)] min-h-[580px] max-h-[850px]">
+            <!-- CONTAINER UTAMA TAMPILAN WHATSAPP WEB ASLI -->
+            <div class="bg-[#ffffff] rounded-2xl shadow-sm border border-[#d1d7db] overflow-hidden flex h-[calc(100vh-12rem)] min-h-[620px] max-h-[880px]">
                 
-                <!-- KOLOM KIRI: Daftar Percakapan & Kontak (lg:col-span-4) -->
-                <div class="lg:col-span-4 border-r border-slate-200 flex flex-col h-full bg-slate-50/60">
-                    
-                    <!-- Toolbar & Input Pencarian Obrolan -->
-                    <div class="p-4 border-b border-slate-200 bg-white space-y-3 shrink-0">
-                        <div class="flex items-center justify-between">
-                            <h3 class="font-black text-xs uppercase tracking-wider text-slate-800">Daftar Obrolan</h3>
-                            <button 
-                                @click="showNewChatModal = true"
-                                :disabled="!activeSession || activeSession.status !== 'connected'"
-                                class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer"
-                            >
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
-                                </svg>
-                                <span>Mulai Chat</span>
-                            </button>
-                        </div>
-
-                        <div class="relative">
-                            <input 
-                                type="text" 
-                                v-model="chatSearchQuery"
-                                placeholder="Cari kontak / nomor / isi obrolan..."
-                                class="w-full bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold pl-8 pr-3 py-2 text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
-                            />
-                            <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                <!-- 1. VERTICAL ICON RAIL (Bilah Ikon Samping Kiri Ala WA Web) -->
+                <div class="w-14 bg-[#f0f2f5] border-r border-[#d1d7db] flex flex-col items-center justify-between py-3 shrink-0 select-none">
+                    <div class="space-y-4 flex flex-col items-center w-full">
+                        <!-- Tombol Tab Obrolan (Chats) -->
+                        <button 
+                            @click="activeLeftNav = 'chats'"
+                            :class="activeLeftNav === 'chats' ? 'bg-[#d9fdd3] text-[#00a884]' : 'text-[#54656f] hover:bg-slate-200/80'"
+                            class="w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer relative"
+                            title="Obrolan"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                             </svg>
-                        </div>
+                        </button>
+
+                        <!-- Tombol Tab Riwayat Panggilan (Calls / Telepon) -->
+                        <button 
+                            @click="activeLeftNav = 'calls'; fetchCalls(activeSessionId)"
+                            :class="activeLeftNav === 'calls' ? 'bg-[#d9fdd3] text-[#00a884]' : 'text-[#54656f] hover:bg-slate-200/80'"
+                            class="w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer relative"
+                            title="Riwayat Panggilan / Telepon"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+                            </svg>
+                            <span v-if="calls.length > 0" class="w-2 h-2 rounded-full bg-[#00a884] absolute top-2 right-2"></span>
+                        </button>
                     </div>
 
-                    <!-- Daftar Item Percakapan -->
-                    <div class="flex-1 overflow-y-auto divide-y divide-slate-100">
-                        <div v-if="!activeSession || activeSession.status !== 'connected'" class="p-8 text-center text-slate-400">
-                            <svg class="w-10 h-10 mx-auto text-slate-300 mb-2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                            </svg>
-                            <p class="text-xs font-bold text-slate-600">Akun WhatsApp Belum Terhubung</p>
-                            <p class="text-[11px] text-slate-400 mt-1">Pilih sesi yang terhubung atau tautkan nomor baru untuk memuat daftar obrolan.</p>
-                        </div>
-
-                        <div v-else-if="isLoadingChats" class="p-8 text-center text-slate-400 text-xs font-semibold">
-                            Memuat daftar obrolan WhatsApp...
-                        </div>
-
-                        <div v-else-if="filteredChats.length === 0" class="p-8 text-center text-slate-400">
-                            <p class="text-xs font-bold text-slate-600">Belum Ada Riwayat Obrolan</p>
-                            <p class="text-[11px] text-slate-400 mt-1">Klik tombol "+ Mulai Chat" untuk mengirim pesan pertama ke personel SINDEN atau nomor luar.</p>
-                        </div>
-
-                        <div 
-                            v-for="c in filteredChats" 
-                            :key="c.jid"
-                            @click="selectChat(c)"
-                            :class="activeChat && activeChat.jid === c.jid ? 'bg-emerald-50/70 border-l-4 border-emerald-600' : 'hover:bg-slate-100/80'"
-                            class="p-3.5 flex items-center gap-3 transition cursor-pointer"
-                        >
-                            <!-- Avatar Kontak -->
-                            <div class="w-11 h-11 rounded-full bg-emerald-100 text-emerald-800 font-extrabold flex items-center justify-center shrink-0 uppercase text-xs">
-                                {{ (c.name || c.number || 'W').slice(0, 2) }}
-                            </div>
-
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center justify-between">
-                                    <h4 class="text-xs font-bold text-slate-900 truncate">{{ c.name || c.number }}</h4>
-                                    <span class="text-[10px] text-slate-400 font-semibold shrink-0">{{ formatTime(c.timestamp) }}</span>
-                                </div>
-                                <p class="text-[11px] text-slate-500 truncate mt-0.5">{{ c.lastMessage || 'Tidak ada pesan teks' }}</p>
-                            </div>
-
-                            <span v-if="c.unreadCount > 0" class="px-2 py-0.5 bg-emerald-600 text-white rounded-full text-[9px] font-black shrink-0">
-                                {{ c.unreadCount }}
-                            </span>
-                        </div>
+                    <!-- Profil Akun di Bawah -->
+                    <div class="w-9 h-9 rounded-full bg-[#00a884] text-white font-extrabold flex items-center justify-center text-xs uppercase shadow-xs">
+                        {{ (activeSession?.label || 'W').slice(0, 1) }}
                     </div>
                 </div>
 
-                <!-- KOLOM KANAN: Ruang Obrolan & Pengiriman Pesan (lg:col-span-8) -->
-                <div class="lg:col-span-8 flex flex-col h-full bg-[#EFEAE2]/30">
+                <!-- 2. PANEL KIRI: DAFTAR OBROLAN ATAU RIWAYAT TELEPON -->
+                <div class="w-80 sm:w-96 border-r border-[#d1d7db] flex flex-col h-full bg-[#ffffff] shrink-0">
                     
-                    <!-- Jika Belum Ada Chat yang Dipilih -->
-                    <div v-if="!activeChat" class="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                        <div class="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-4">
-                            <svg class="w-10 h-10" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 10-7.8-4.5L3 21l4.7-1.2A8.96 8.96 0 0012 21z"></path>
-                            </svg>
-                        </div>
-                        <h3 class="text-base font-extrabold text-slate-800 uppercase tracking-tight">SINDEN WhatsApp Web Center</h3>
-                        <p class="text-xs text-slate-500 max-w-sm mt-1 leading-relaxed">Pilih salah satu kontak di bilah kiri atau klik tombol <b>Mulai Chat</b> untuk mengirim pesan dinas secara resmi.</p>
-                    </div>
-
-                    <!-- Jika Chat Aktif Terpilih -->
-                    <template v-else>
-                        <!-- Header Chat Terpilih -->
-                        <div class="p-3.5 px-5 bg-white border-b border-slate-200 flex items-center justify-between shrink-0">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-full bg-emerald-600 text-white font-extrabold flex items-center justify-center text-xs uppercase">
-                                    {{ (activeChat.name || activeChat.number || 'W').slice(0, 2) }}
-                                </div>
-                                <div>
-                                    <h3 class="text-xs font-extrabold text-slate-900">{{ activeChat.name }}</h3>
-                                    <p class="text-[10px] text-slate-400 font-mono">{{ activeChat.number || activeChat.jid }}</p>
-                                </div>
-                            </div>
-
+                    <!-- KONDISI A: TAMPILAN TAB OBROLAN (CHATS) -->
+                    <template v-if="activeLeftNav === 'chats'">
+                        <!-- Header Daftar Obrolan -->
+                        <div class="p-3 px-4 bg-[#ffffff] border-b border-[#f0f2f5] flex items-center justify-between shrink-0">
+                            <h2 class="font-extrabold text-lg text-[#111b21] tracking-tight">Obrolan</h2>
+                            
                             <div class="flex items-center gap-2">
-                                <button @click="fetchMessages(activeChat.jid)" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition cursor-pointer" title="Perbarui Pesan">
-                                    Segarkan
+                                <button 
+                                    @click="showNewChatModal = true"
+                                    class="w-9 h-9 rounded-full hover:bg-[#f0f2f5] text-[#54656f] flex items-center justify-center transition cursor-pointer"
+                                    title="Mulai Obrolan Baru"
+                                >
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
+                                    </svg>
+                                </button>
+                                <button 
+                                    @click="fetchChats(activeSessionId)"
+                                    class="w-9 h-9 rounded-full hover:bg-[#f0f2f5] text-[#54656f] flex items-center justify-center transition cursor-pointer"
+                                    title="Segarkan Obrolan"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    </svg>
                                 </button>
                             </div>
                         </div>
 
-                        <!-- Ruang Tampilan Pesan (Bubbles) -->
-                        <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3">
-                            <div v-if="isLoadingMessages" class="text-center text-slate-400 text-xs font-semibold py-4">
+                        <!-- Kolom Pencarian -->
+                        <div class="p-2 px-3 bg-[#ffffff] border-b border-[#f0f2f5]">
+                            <div class="relative flex items-center">
+                                <input 
+                                    type="text" 
+                                    v-model="chatSearchQuery"
+                                    placeholder="Cari atau mulai obrolan baru"
+                                    class="w-full bg-[#f0f2f5] border-none rounded-lg text-xs py-2 pl-9 pr-3 text-[#111b21] placeholder-[#54656f] focus:ring-1 focus:ring-[#00a884] transition"
+                                />
+                                <svg class="w-4 h-4 text-[#54656f] absolute left-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Pill Filter Kategori: Semua | Belum Dibaca | Pribadi | Grup -->
+                        <div class="p-2 px-3 bg-[#ffffff] border-b border-[#f0f2f5] flex items-center gap-1.5 overflow-x-auto select-none">
+                            <button 
+                                @click="activeChatFilter = 'all'"
+                                :class="activeChatFilter === 'all' ? 'bg-[#d9fdd3] text-[#008069] font-black' : 'bg-[#f0f2f5] text-[#54656f] font-semibold hover:bg-slate-200'"
+                                class="px-3 py-1 rounded-full text-[11px] whitespace-nowrap transition cursor-pointer"
+                            >
+                                Semua
+                            </button>
+                            <button 
+                                @click="activeChatFilter = 'unread'"
+                                :class="activeChatFilter === 'unread' ? 'bg-[#d9fdd3] text-[#008069] font-black' : 'bg-[#f0f2f5] text-[#54656f] font-semibold hover:bg-slate-200'"
+                                class="px-3 py-1 rounded-full text-[11px] whitespace-nowrap transition cursor-pointer"
+                            >
+                                Belum dibaca
+                            </button>
+                            <button 
+                                @click="activeChatFilter = 'personal'"
+                                :class="activeChatFilter === 'personal' ? 'bg-[#d9fdd3] text-[#008069] font-black' : 'bg-[#f0f2f5] text-[#54656f] font-semibold hover:bg-slate-200'"
+                                class="px-3 py-1 rounded-full text-[11px] whitespace-nowrap transition cursor-pointer"
+                            >
+                                Pribadi
+                            </button>
+                            <button 
+                                @click="activeChatFilter = 'groups'"
+                                :class="activeChatFilter === 'groups' ? 'bg-[#d9fdd3] text-[#008069] font-black' : 'bg-[#f0f2f5] text-[#54656f] font-semibold hover:bg-slate-200'"
+                                class="px-3 py-1 rounded-full text-[11px] whitespace-nowrap transition cursor-pointer"
+                            >
+                                Grup
+                            </button>
+                        </div>
+
+                        <!-- Daftar Percakapan (List of Chats) -->
+                        <div class="flex-1 overflow-y-auto divide-y divide-[#f0f2f5]">
+                            <div v-if="isLoadingChats" class="p-8 text-center text-xs text-[#54656f]">
+                                Memuat daftar obrolan...
+                            </div>
+
+                            <div v-else-if="filteredChats.length === 0" class="p-8 text-center text-xs text-[#54656f]">
+                                Tidak ada obrolan dalam kategori ini.
+                            </div>
+
+                            <div 
+                                v-for="c in filteredChats" 
+                                :key="c.jid"
+                                @click="selectChat(c)"
+                                :class="activeChat && activeChat.jid === c.jid ? 'bg-[#f0f2f5]' : 'hover:bg-[#f5f6f6]'"
+                                class="p-3 px-3.5 flex items-center gap-3 transition cursor-pointer"
+                            >
+                                <!-- Avatar: Grup vs Kontak Pribadi -->
+                                <div 
+                                    :class="c.isGroup ? 'bg-[#00a884]/15 text-[#00a884]' : 'bg-[#dfe5e7] text-[#54656f]'"
+                                    class="w-12 h-12 rounded-full flex items-center justify-center shrink-0 uppercase font-black text-xs relative"
+                                >
+                                    <template v-if="c.isGroup">
+                                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M12 12.75c1.63 0 3.07.39 4.24.9 1.08.48 1.76 1.56 1.76 2.73V18H6v-1.61c0-1.18.68-2.26 1.76-2.74 1.17-.52 2.61-.9 4.24-.9zM4 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm16 0c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-8-3c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3z"/>
+                                        </svg>
+                                    </template>
+                                    <template v-else>
+                                        {{ (c.name || c.number || 'W').slice(0, 2) }}
+                                    </template>
+                                </div>
+
+                                <!-- Ringkasan Pesan -->
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-1.5 truncate">
+                                            <h4 class="text-xs font-bold text-[#111b21] truncate">{{ c.name || c.number }}</h4>
+                                            <span v-if="c.isGroup" class="px-1.5 py-0.2 bg-[#00a884]/10 text-[#008069] rounded text-[9px] font-black uppercase">Grup</span>
+                                        </div>
+                                        <span class="text-[10px] text-[#667781] font-semibold shrink-0">{{ formatTime(c.timestamp) }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between mt-0.5">
+                                        <p class="text-[11px] text-[#667781] truncate">
+                                            <span v-if="c.isGroup && c.lastSender" class="font-bold text-[#111b21]">{{ c.lastSender }}: </span>
+                                            {{ c.lastMessage || '[Media/Lampiran]' }}
+                                        </p>
+                                        <span v-if="c.unreadCount > 0" class="px-1.5 py-0.5 bg-[#25d366] text-white rounded-full text-[9px] font-black shrink-0">
+                                            {{ c.unreadCount }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- KONDISI B: TAMPILAN TAB RIWAYAT TELEPON (CALLS) -->
+                    <template v-else-if="activeLeftNav === 'calls'">
+                        <div class="p-3 px-4 bg-[#ffffff] border-b border-[#f0f2f5] flex items-center justify-between shrink-0">
+                            <h2 class="font-extrabold text-lg text-[#111b21] tracking-tight">Panggilan</h2>
+                            <button 
+                                @click="fetchCalls(activeSessionId)"
+                                class="w-9 h-9 rounded-full hover:bg-[#f0f2f5] text-[#54656f] flex items-center justify-center transition cursor-pointer"
+                                title="Segarkan Riwayat Panggilan"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div class="flex-1 overflow-y-auto divide-y divide-[#f0f2f5]">
+                            <div v-if="isLoadingCalls" class="p-8 text-center text-xs text-[#54656f]">
+                                Memuat riwayat panggilan...
+                            </div>
+
+                            <div v-else-if="calls.length === 0" class="p-8 text-center text-xs text-[#54656f]">
+                                Belum ada riwayat panggilan telepon masuk atau keluar pada sesi ini.
+                            </div>
+
+                            <div 
+                                v-for="call in calls" 
+                                :key="call.id"
+                                class="p-3 px-4 flex items-center justify-between hover:bg-[#f5f6f6] transition"
+                            >
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-[#dfe5e7] text-[#54656f] flex items-center justify-center font-bold text-xs uppercase">
+                                        {{ (call.name || call.number || 'W').slice(0, 2) }}
+                                    </div>
+                                    <div>
+                                        <h4 class="text-xs font-bold text-[#111b21]">{{ call.name || call.number }}</h4>
+                                        <div class="flex items-center gap-1.5 text-[10px] text-[#667781] mt-0.5">
+                                            <!-- Ikon Arah Panggilan -->
+                                            <span v-if="call.status === 'timeout' || call.status === 'reject'" class="text-rose-600 font-bold flex items-center gap-1">
+                                                <svg class="w-3 h-3 text-rose-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                                                Tak Terjawab
+                                            </span>
+                                            <span v-else class="text-emerald-600 font-bold flex items-center gap-1">
+                                                <svg class="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                                                Panggilan Masuk
+                                            </span>
+                                            <span>• {{ formatDateFull(call.timestamp) }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <svg v-if="call.isVideo" class="w-5 h-5 text-[#54656f]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                    </svg>
+                                    <svg v-else class="w-4 h-4 text-[#54656f]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- 3. PANEL KANAN: RUANG OBROLAN ASLI DENGAN WALLPAPER DOODLE WHATSAPP -->
+                <div class="flex-1 flex flex-col h-full relative bg-[#efeae2] overflow-hidden">
+                    
+                    <!-- Latar Belakang Pola Doodle Khas WhatsApp Asli -->
+                    <div 
+                        class="absolute inset-0 opacity-[0.06] pointer-events-none"
+                        style="background-image: radial-gradient(#000 0.75px, transparent 0.75px), radial-gradient(#000 0.75px, #efeae2 0.75px); background-size: 30px 30px; background-position: 0 0, 15px 15px;"
+                    ></div>
+
+                    <!-- KONDISI JIKA BELUM MEMILIH CHAT -->
+                    <div v-if="!activeChat" class="flex-1 flex flex-col items-center justify-center p-8 text-center relative z-10 select-none">
+                        <div class="w-20 h-20 rounded-full bg-[#ffffff] shadow-sm flex items-center justify-center mb-4 text-[#00a884]">
+                            <svg class="w-10 h-10" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 10-7.8-4.5L3 21l4.7-1.2A8.96 8.96 0 0012 21z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-[#41525d] tracking-tight">WhatsApp Web SINDEN</h3>
+                        <p class="text-xs text-[#667781] max-w-sm mt-2 leading-relaxed">
+                            Kirim dan terima pesan kedinasan secara aman. Pilih obrolan di sebelah kiri atau klik tombol <b>+</b> untuk memulai obrolan baru.
+                        </p>
+                    </div>
+
+                    <!-- KONDISI JIKA OBROLAN SUDAH TERPILIH -->
+                    <template v-else>
+                        <!-- Header Chat Terpilih Ala WA Web Asli -->
+                        <div class="p-2.5 px-4 bg-[#f0f2f5] border-b border-[#d1d7db] flex items-center justify-between shrink-0 relative z-10 select-none">
+                            <div class="flex items-center gap-3">
+                                <!-- Avatar Header -->
+                                <div 
+                                    :class="activeChat.isGroup ? 'bg-[#00a884]/20 text-[#00a884]' : 'bg-[#dfe5e7] text-[#54656f]'"
+                                    class="w-10 h-10 rounded-full flex items-center justify-center font-black text-xs uppercase"
+                                >
+                                    <template v-if="activeChat.isGroup">
+                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M12 12.75c1.63 0 3.07.39 4.24.9 1.08.48 1.76 1.56 1.76 2.73V18H6v-1.61c0-1.18.68-2.26 1.76-2.74 1.17-.52 2.61-.9 4.24-.9zM4 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm16 0c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-8-3c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3z"/>
+                                        </svg>
+                                    </template>
+                                    <template v-else>
+                                        {{ (activeChat.name || activeChat.number || 'W').slice(0, 2) }}
+                                    </template>
+                                </div>
+
+                                <!-- Nama Kontak / Grup -->
+                                <div>
+                                    <h3 class="text-xs font-bold text-[#111b21]">{{ activeChat.name }}</h3>
+                                    <p class="text-[10px] text-[#667781] truncate">
+                                        {{ activeChat.isGroup ? 'Grup WhatsApp' : (activeChat.number || activeChat.jid) }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-1 text-[#54656f]">
+                                <button @click="fetchMessages(activeChat.jid)" class="w-8 h-8 rounded-full hover:bg-slate-200/80 flex items-center justify-center transition cursor-pointer" title="Perbarui Pesan">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Ruang Obrolan (Bubbles) -->
+                        <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-2 relative z-10">
+                            <!-- Pemisah Tanggal WhatsApp -->
+                            <div class="flex justify-center my-2">
+                                <span class="bg-[#ffffff]/90 shadow-xs border border-black/5 text-[#54656f] text-[10px] font-bold px-3 py-1 rounded-md uppercase">
+                                    Pesan Terenkripsi Kedinasan SINDEN
+                                </span>
+                            </div>
+
+                            <div v-if="isLoadingMessages" class="text-center text-xs text-[#54656f] py-4">
                                 Mengambil riwayat pesan...
                             </div>
 
-                            <div v-else-if="messages.length === 0" class="text-center text-slate-400 text-xs italic py-6">
-                                Belum ada pesan dalam percakapan ini. Kirim pesan pertama Anda di bawah.
+                            <div v-else-if="messages.length === 0" class="text-center text-xs text-[#54656f] py-6">
+                                Belum ada riwayat pesan dalam percakapan ini.
                             </div>
 
                             <div 
                                 v-for="m in messages" 
                                 :key="m.id"
                                 :class="m.fromMe ? 'justify-end' : 'justify-start'"
-                                class="flex items-end gap-2"
+                                class="flex items-end gap-1"
                             >
+                                <!-- Gelembung Obrolan (Bubble) -->
                                 <div 
-                                    :class="m.fromMe ? 'bg-[#DCF8C6] text-slate-900 rounded-tr-xs' : 'bg-white text-slate-900 rounded-tl-xs shadow-xs'"
-                                    class="max-w-[80%] sm:max-w-[70%] p-3 rounded-2xl text-xs font-medium space-y-1 relative border border-black/5"
+                                    :class="m.fromMe ? 'bg-[#d9fdd3] text-[#111b21] rounded-lg rounded-tr-none' : 'bg-[#ffffff] text-[#111b21] rounded-lg rounded-tl-none'"
+                                    class="max-w-[85%] sm:max-w-[70%] p-2 px-3 shadow-xs border border-black/5 text-xs relative space-y-1"
                                 >
-                                    <p class="whitespace-pre-wrap leading-relaxed">{{ m.body }}</p>
-                                    <div class="flex items-center justify-end gap-1 text-[9px] text-slate-400 font-semibold">
+                                    <!-- Nama Pengirim jika di dalam Grup dan bukan pesan dari diri sendiri -->
+                                    <p 
+                                        v-if="m.isGroup && !m.fromMe && m.participantName" 
+                                        class="text-[11px] font-extrabold pb-0.5"
+                                        :style="{ color: getParticipantColor(m.participantName) }"
+                                    >
+                                        {{ m.participantName }}
+                                    </p>
+
+                                    <!-- Isi Pesan Teks -->
+                                    <p class="whitespace-pre-wrap leading-relaxed text-[12.5px] select-text">{{ m.body }}</p>
+                                    
+                                    <!-- Waktu & Centang Ganda Khas WhatsApp -->
+                                    <div class="flex items-center justify-end gap-1 text-[9px] text-[#667781] select-none pt-0.5">
                                         <span>{{ formatTime(m.timestamp) }}</span>
-                                        <span v-if="m.fromMe" class="text-emerald-700 font-bold">✓</span>
+                                        <template v-if="m.fromMe">
+                                            <!-- Centang Ganda Biru / Abu-abu -->
+                                            <span class="text-[#53bdeb] font-black">✓✓</span>
+                                        </template>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Panel Template Cepat Pesan Kedinasan -->
-                        <div class="bg-slate-100/80 px-4 py-2 border-t border-slate-200 flex items-center gap-2 overflow-x-auto">
-                            <span class="text-[10px] font-black uppercase text-slate-400 shrink-0">Template Cepat:</span>
+                        <!-- Panel Template Cepat Kedinasan -->
+                        <div class="bg-[#f0f2f5] px-4 py-1.5 border-t border-[#d1d7db] flex items-center gap-1.5 overflow-x-auto relative z-10 shrink-0">
+                            <span class="text-[10px] font-bold text-[#54656f] uppercase shrink-0">Cepat:</span>
                             <button 
                                 v-for="t in quickTemplates" 
                                 :key="t.title"
                                 @click="insertTemplate(t.text)"
-                                class="px-2.5 py-1 bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 rounded-lg text-[10px] font-bold whitespace-nowrap transition cursor-pointer"
+                                class="px-2.5 py-0.5 bg-white hover:bg-[#d9fdd3] text-[#111b21] border border-black/5 rounded-md text-[10px] font-bold whitespace-nowrap transition cursor-pointer"
                             >
                                 {{ t.title }}
                             </button>
                         </div>
 
-                        <!-- Kolom Input Pesan & Tombol Kirim -->
-                        <div class="p-3 bg-white border-t border-slate-200 flex items-end gap-2 shrink-0">
-                            <textarea 
-                                v-model="messageInput"
-                                @keydown.enter.exact.prevent="sendMessage"
-                                rows="2"
-                                placeholder="Ketik pesan resmi di sini... (Enter untuk kirim, Shift+Enter untuk baris baru)"
-                                class="flex-1 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium p-3 text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none transition"
-                            ></textarea>
-                            
+                        <!-- Bilah Pengetikan Pesan Bawah Ala WhatsApp Web Asli -->
+                        <div class="p-2.5 px-4 bg-[#f0f2f5] border-t border-[#d1d7db] flex items-center gap-2.5 shrink-0 relative z-10">
+                            <!-- Input Kapsul Putih -->
+                            <div class="flex-1 bg-white rounded-lg px-3 py-2 border border-transparent focus-within:border-[#00a884] shadow-xs flex items-center">
+                                <textarea 
+                                    v-model="messageInput"
+                                    @keydown.enter.exact.prevent="sendMessage"
+                                    rows="1"
+                                    placeholder="Ketik pesan"
+                                    class="w-full bg-transparent border-none text-xs text-[#111b21] placeholder-[#54656f] focus:ring-0 p-0 resize-none max-h-24"
+                                ></textarea>
+                            </div>
+
+                            <!-- Tombol Kirim Pesan -->
                             <button 
                                 @click="sendMessage"
                                 :disabled="!messageInput.trim() || isSending"
-                                class="h-12 px-5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold uppercase transition shadow-sm shadow-emerald-500/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                                class="w-10 h-10 rounded-full bg-[#00a884] hover:bg-[#008f6f] disabled:opacity-50 text-white flex items-center justify-center transition shadow-xs cursor-pointer shrink-0"
+                                title="Kirim Pesan"
                             >
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <svg class="w-4 h-4 rotate-45 -mr-0.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
                                 </svg>
-                                <span>Kirim</span>
                             </button>
                         </div>
                     </template>
@@ -697,65 +926,58 @@ const formatTime = (isoString) => {
         </div>
 
         <!-- MODAL 1: TAUTKAN NOMOR BARU (SCAN QR CODE) -->
-        <div v-if="showCreateModal" class="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 text-left">
-            <div class="bg-white w-full max-w-lg rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5 border border-slate-100">
+        <div v-if="showCreateModal" class="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 text-left">
+            <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4 border border-slate-100">
                 <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-                    <h3 class="font-extrabold uppercase text-sm tracking-wider text-slate-900">Tautkan Akun WhatsApp Baru</h3>
+                    <h3 class="font-extrabold text-sm text-slate-900">Tautkan Perangkat WhatsApp Baru</h3>
                     <button @click="closeCreateModal" class="text-slate-400 hover:text-slate-600 text-lg font-bold cursor-pointer">&times;</button>
                 </div>
 
-                <!-- Form Label Sesi jika belum memuat QR -->
                 <div v-if="!qrCodeData" class="space-y-4">
                     <div>
-                        <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider ms-1">Nama / Label Akun WhatsApp</label>
+                        <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider ms-1">Nama / Label Akun</label>
                         <input 
                             v-model="createForm.label" 
                             type="text" 
-                            placeholder="Contoh: WA Dinas Denintel, WA Komandan, WA Piket"
-                            class="w-full rounded-2xl border-slate-200 bg-slate-50 text-xs font-bold py-3 mt-1 uppercase focus:ring-emerald-500 focus:border-emerald-600"
+                            placeholder="Contoh: WA Dinas, WA Komandan, WA Piket"
+                            class="w-full rounded-xl border-slate-200 bg-slate-50 text-xs font-bold py-2.5 mt-1 focus:ring-[#00a884] focus:border-[#00a884]"
                         />
                     </div>
 
                     <div v-if="isAdmin">
-                        <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider ms-1">Otoritas Hak Akses Akun</label>
-                        <select v-model="createForm.role_access" class="w-full rounded-2xl border-slate-200 bg-slate-50 text-xs font-bold py-3 mt-1 focus:ring-emerald-500 focus:border-emerald-600">
-                            <option value="all">Semua Pengguna Terotentikasi</option>
-                            <option value="admin">Khusus Administrator SINDEN</option>
-                            <option value="komandan">Khusus Komandan & Administrator</option>
+                        <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider ms-1">Hak Akses</label>
+                        <select v-model="createForm.role_access" class="w-full rounded-xl border-slate-200 bg-slate-50 text-xs font-bold py-2.5 mt-1 focus:ring-[#00a884] focus:border-[#00a884]">
+                            <option value="all">Semua Pengguna SINDEN</option>
+                            <option value="admin">Khusus Administrator</option>
+                            <option value="komandan">Khusus Komandan & Admin</option>
                         </select>
                     </div>
 
-                    <div class="p-3 bg-blue-50 border border-blue-200 rounded-2xl text-[11px] text-blue-800 leading-relaxed font-semibold">
-                        Koneksi ini menggunakan protokol multi-perangkat resmi WhatsApp. Sesi akan tetap aktif dan tidak mudah ter-logout secara otomatis.
-                    </div>
-
-                    <div class="flex gap-3 pt-2">
-                        <button type="button" @click="closeCreateModal" class="w-1/2 py-3 bg-slate-100 text-slate-600 rounded-2xl font-extrabold uppercase text-xs hover:bg-slate-200 transition cursor-pointer">Batal</button>
-                        <button type="button" @click="submitCreateSession" :disabled="isRequestingQr" class="w-1/2 py-3 bg-emerald-600 text-white rounded-2xl font-extrabold uppercase text-xs shadow-md shadow-emerald-500/20 hover:bg-emerald-700 transition cursor-pointer">
+                    <div class="flex gap-2 pt-2">
+                        <button type="button" @click="closeCreateModal" class="w-1/2 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold text-xs hover:bg-slate-200 transition cursor-pointer">Batal</button>
+                        <button type="button" @click="submitCreateSession" :disabled="isRequestingQr" class="w-1/2 py-2.5 bg-[#00a884] text-white rounded-xl font-bold text-xs hover:bg-[#008f6f] transition cursor-pointer">
                             {{ isRequestingQr ? 'Menyiapkan...' : 'Minta QR Code' }}
                         </button>
                     </div>
                 </div>
 
-                <!-- Tampilan QR Code untuk Dipindai -->
                 <div v-else class="space-y-4 text-center">
-                    <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 inline-block mx-auto shadow-inner">
-                        <img :src="qrCodeData" alt="Scan QR Code" class="w-64 h-64 mx-auto rounded-xl" />
+                    <div class="p-3 bg-white rounded-xl border border-slate-200 inline-block mx-auto shadow-sm">
+                        <img :src="qrCodeData" alt="Scan QR Code" class="w-60 h-60 mx-auto rounded-lg" />
                     </div>
 
-                    <div class="text-left bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-xs text-emerald-900 space-y-1">
-                        <p class="font-extrabold uppercase text-[11px]">Petunjuk Pemindaian WhatsApp:</p>
-                        <ol class="list-decimal list-inside space-y-0.5 font-medium text-[11px]">
-                            <li>Buka aplikasi WhatsApp di ponsel Anda.</li>
-                            <li>Ketuk menu <b>Titik Tiga</b> atau <b>Pengaturan</b>.</li>
-                            <li>Pilih <b>Perangkat Tertaut (Linked Devices)</b>.</li>
+                    <div class="text-left bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-700 space-y-1">
+                        <p class="font-extrabold text-[11px]">Langkah Pemindaian:</p>
+                        <ol class="list-decimal list-inside space-y-0.5 text-[11px]">
+                            <li>Buka WhatsApp di ponsel Anda.</li>
+                            <li>Ketuk <b>Menu</b> atau <b>Pengaturan</b> > <b>Perangkat Tertaut</b>.</li>
                             <li>Ketuk <b>Tautkan Perangkat</b> lalu arahkan kamera ke QR Code di atas.</li>
                         </ol>
                     </div>
 
-                    <p class="text-[11px] text-slate-400 font-bold animate-pulse">Menunggu pemindaian dari ponsel...</p>
+                    <p class="text-[11px] text-[#00a884] font-bold animate-pulse">Menunggu pemindaian dari ponsel...</p>
 
-                    <button type="button" @click="closeCreateModal" class="w-full py-2.5 bg-slate-100 text-slate-600 rounded-xl font-extrabold uppercase text-xs hover:bg-slate-200 transition cursor-pointer">
+                    <button type="button" @click="closeCreateModal" class="w-full py-2 bg-slate-100 text-slate-600 rounded-xl font-bold text-xs hover:bg-slate-200 transition cursor-pointer">
                         Tutup
                     </button>
                 </div>
@@ -763,72 +985,67 @@ const formatTime = (isoString) => {
         </div>
 
         <!-- MODAL 2: MULAI OBROLAN BARU -->
-        <div v-if="showNewChatModal" class="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 text-left">
-            <div class="bg-white w-full max-w-lg rounded-3xl p-6 sm:p-8 shadow-2xl space-y-4 border border-slate-100 max-h-[85vh] flex flex-col">
+        <div v-if="showNewChatModal" class="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 text-left">
+            <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-3 border border-slate-100 max-h-[85vh] flex flex-col">
                 <div class="flex justify-between items-center border-b border-slate-100 pb-3 shrink-0">
-                    <h3 class="font-extrabold uppercase text-sm tracking-wider text-slate-900">Mulai Obrolan WhatsApp Baru</h3>
+                    <h3 class="font-extrabold text-sm text-slate-900">Mulai Obrolan Baru</h3>
                     <button @click="showNewChatModal = false" class="text-slate-400 hover:text-slate-600 text-lg font-bold cursor-pointer">&times;</button>
                 </div>
 
-                <!-- Tabs Pilihan -->
                 <div class="flex border-b border-slate-200 shrink-0">
                     <button 
                         @click="newChatTab = 'personnel'"
-                        :class="newChatTab === 'personnel' ? 'border-b-2 border-emerald-600 text-emerald-700 font-black' : 'text-slate-400 font-bold'"
-                        class="flex-1 py-2.5 text-xs uppercase tracking-wider text-center transition cursor-pointer"
+                        :class="newChatTab === 'personnel' ? 'border-b-2 border-[#00a884] text-[#00a884] font-black' : 'text-slate-400 font-bold'"
+                        class="flex-1 py-2 text-xs uppercase tracking-wider text-center transition cursor-pointer"
                     >
-                        Personel SINDEN Terdaftar
+                        Personel SINDEN
                     </button>
                     <button 
                         @click="newChatTab = 'manual'"
-                        :class="newChatTab === 'manual' ? 'border-b-2 border-emerald-600 text-emerald-700 font-black' : 'text-slate-400 font-bold'"
-                        class="flex-1 py-2.5 text-xs uppercase tracking-wider text-center transition cursor-pointer"
+                        :class="newChatTab === 'manual' ? 'border-b-2 border-[#00a884] text-[#00a884] font-black' : 'text-slate-400 font-bold'"
+                        class="flex-1 py-2 text-xs uppercase tracking-wider text-center transition cursor-pointer"
                     >
                         Ketik Nomor Manual
                     </button>
                 </div>
 
-                <!-- Konten Tab 1: Personel SINDEN -->
-                <div v-if="newChatTab === 'personnel'" class="flex-1 overflow-y-auto space-y-3 min-h-0">
+                <div v-if="newChatTab === 'personnel'" class="flex-1 overflow-y-auto space-y-2 min-h-0 pt-1">
                     <input 
                         type="text" 
                         v-model="personnelSearchQuery"
-                        placeholder="Cari nama personel, pangkat, atau NRP..."
-                        class="w-full bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold px-3 py-2 text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                        placeholder="Cari nama, pangkat, atau NRP..."
+                        class="w-full bg-[#f0f2f5] border-none rounded-lg text-xs py-2 px-3 text-slate-800 focus:ring-1 focus:ring-[#00a884]"
                     />
 
-                    <div class="divide-y divide-slate-100 max-h-72 overflow-y-auto">
+                    <div class="divide-y divide-slate-100 max-h-64 overflow-y-auto">
                         <div 
                             v-for="p in filteredPersonnel" 
                             :key="p.id"
                             @click="startChatWithPersonnel(p)"
-                            class="p-2.5 hover:bg-emerald-50/70 rounded-xl flex items-center justify-between transition cursor-pointer"
+                            class="p-2 hover:bg-[#f0f2f5] rounded-lg flex items-center justify-between transition cursor-pointer"
                         >
-                            <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center uppercase">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-full bg-[#dfe5e7] text-[#54656f] font-bold text-xs flex items-center justify-center uppercase">
                                     {{ p.name.slice(0, 2) }}
                                 </div>
                                 <div>
-                                    <h4 class="text-xs font-extrabold text-slate-900">{{ p.pangkat ? p.pangkat + ' ' : '' }}{{ p.name }}</h4>
-                                    <p class="text-[10px] text-slate-400">NRP: {{ p.nrp || '-' }} | WA: <b class="text-emerald-600">{{ p.phone || '-' }}</b></p>
+                                    <h4 class="text-xs font-bold text-[#111b21]">{{ p.pangkat ? p.pangkat + ' ' : '' }}{{ p.name }}</h4>
+                                    <p class="text-[10px] text-[#667781]">WA: <b class="text-[#00a884]">{{ p.phone || '-' }}</b></p>
                                 </div>
                             </div>
-                            <button class="px-2.5 py-1 bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase">
-                                Chat
-                            </button>
+                            <span class="text-[10px] text-[#00a884] font-bold uppercase">Pilih</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Konten Tab 2: Nomor Manual -->
-                <div v-else class="space-y-4 pt-2">
+                <div v-else class="space-y-3 pt-2">
                     <div>
                         <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider ms-1">Nomor WhatsApp Tujuan</label>
                         <input 
                             v-model="manualNumber" 
                             type="text" 
                             placeholder="Contoh: 08123456789 atau 628123456789"
-                            class="w-full rounded-2xl border-slate-200 bg-slate-50 text-xs font-bold py-3 mt-1 focus:ring-emerald-500 focus:border-emerald-600"
+                            class="w-full rounded-xl border-slate-200 bg-slate-50 text-xs font-bold py-2.5 mt-1 focus:ring-[#00a884] focus:border-[#00a884]"
                         />
                     </div>
                     <div>
@@ -837,12 +1054,12 @@ const formatTime = (isoString) => {
                             v-model="manualName" 
                             type="text" 
                             placeholder="Contoh: Kasat Intelijen, Komandan Lantamal"
-                            class="w-full rounded-2xl border-slate-200 bg-slate-50 text-xs font-bold py-3 mt-1 focus:ring-emerald-500 focus:border-emerald-600"
+                            class="w-full rounded-xl border-slate-200 bg-slate-50 text-xs font-bold py-2.5 mt-1 focus:ring-[#00a884] focus:border-[#00a884]"
                         />
                     </div>
                     <button 
                         @click="startChatManual" 
-                        class="w-full py-3 bg-emerald-600 text-white rounded-2xl font-extrabold uppercase text-xs shadow-md shadow-emerald-500/20 hover:bg-emerald-700 transition cursor-pointer"
+                        class="w-full py-2.5 bg-[#00a884] text-white rounded-xl font-bold uppercase text-xs hover:bg-[#008f6f] transition cursor-pointer"
                     >
                         Buka Obrolan
                     </button>
