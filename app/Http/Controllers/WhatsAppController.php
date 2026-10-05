@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -24,41 +25,80 @@ class WhatsAppController extends Controller
         $isAdmin = $user->role === 'admin' || $user->name === 'I Gusti Sultan H.A, A.Md.Kom';
         $isCommander = $isAdmin || $user->role === 'komandan';
 
-        // Filter sesi berdasarkan hak akses
-        $query = WaSession::query();
-        if (!$isAdmin && !$isCommander) {
-            $query->where('role_access', 'all');
-        } elseif (!$isAdmin && $isCommander) {
-            $query->whereIn('role_access', ['all', 'komandan']);
-        }
-        $sessions = $query->orderBy('id', 'asc')->get();
-
-        // Cek status keaktifan server gateway Node.js
+        // 1. Cek status keaktifan server gateway Node.js
         $gatewayOnline = false;
+        $remoteSessions = collect();
+        $gwData = [];
         try {
-            $gwResponse = Http::timeout(2)->get("{$this->gatewayUrl}/status");
+            $gwResponse = Http::timeout(3)->get("{$this->gatewayUrl}/status");
             if ($gwResponse->successful()) {
                 $gatewayOnline = true;
                 $gwData = $gwResponse->json();
                 $remoteSessions = collect($gwData['sessions'] ?? []);
-
-                // Sinkronkan status lokal dengan gateway aktif
-                foreach ($sessions as $s) {
-                    $remote = $remoteSessions->firstWhere('sessionId', $s->session_id);
-                    if ($remote) {
-                        $s->status = strtolower($remote['status']);
-                        if (!empty($remote['phone'])) {
-                            $s->phone_number = $remote['phone'];
-                        }
-                        $s->save();
-                    } else if ($s->status === 'connected') {
-                        $s->status = 'disconnected';
-                        $s->save();
-                    }
-                }
             }
         } catch (\Exception $e) {
             $gatewayOnline = false;
+        }
+
+        $tableExists = Schema::hasTable('wa_sessions');
+
+        if ($tableExists) {
+            if ($remoteSessions->isNotEmpty()) {
+                // Gateway versi multi-session aktif
+                foreach ($remoteSessions as $remote) {
+                    WaSession::updateOrCreate(
+                        ['session_id' => $remote['sessionId']],
+                        [
+                            'label' => $remote['label'] ?? 'WA Dinas Denintel',
+                            'status' => strtolower($remote['status'] ?? 'disconnected'),
+                            'phone_number' => $remote['phone'] ?? null,
+                            'last_active_at' => now(),
+                        ]
+                    );
+                }
+            } elseif (!empty($gwData['status']) && in_array($gwData['status'], ['ONLINE', 'WAITING_SCAN'])) {
+                // Gateway versi tunggal aktif terhubung
+                WaSession::updateOrCreate(
+                    ['session_id' => 'dinas'],
+                    [
+                        'label' => 'WA Dinas Denintel',
+                        'status' => $gwData['status'] === 'ONLINE' ? 'connected' : 'connecting',
+                        'role_access' => 'all',
+                        'last_active_at' => now(),
+                    ]
+                );
+            }
+
+            // Pastikan minimal selalu ada sesi 'dinas' terdaftar di sistem
+            if (WaSession::where('session_id', 'dinas')->doesntExist()) {
+                WaSession::create([
+                    'session_id' => 'dinas',
+                    'label' => 'WA Dinas Denintel',
+                    'status' => $gatewayOnline ? 'connected' : 'disconnected',
+                    'role_access' => 'all',
+                ]);
+            }
+
+            // Filter sesi berdasarkan hak akses pengguna
+            $query = WaSession::query();
+            if (!$isAdmin && !$isCommander) {
+                $query->where('role_access', 'all');
+            } elseif (!$isAdmin && $isCommander) {
+                $query->whereIn('role_access', ['all', 'komandan']);
+            }
+            $sessions = $query->orderBy('id', 'asc')->get();
+        } else {
+            // Jika migrasi belum sempat dijalankan di server VPS
+            $sessions = collect([
+                (object) [
+                    'id' => 1,
+                    'session_id' => 'dinas',
+                    'label' => 'WA Dinas Denintel',
+                    'status' => $gatewayOnline ? 'connected' : 'disconnected',
+                    'phone_number' => null,
+                    'role_access' => 'all',
+                ]
+            ]);
         }
 
         // Ambil daftar personel untuk memulai obrolan cepat
@@ -274,6 +314,20 @@ class WhatsAppController extends Controller
 
             if ($res->successful()) {
                 return response()->json($res->json());
+            }
+
+            // Fallback ke endpoint lama jika gateway masih versi tunggal
+            if ($res->status() === 404) {
+                $legacyRes = Http::timeout(10)->get("{$this->gatewayUrl}/send", [
+                    'number' => $request->input('number'),
+                    'msg'    => $request->input('message'),
+                ]);
+                if ($legacyRes->successful()) {
+                    return response()->json([
+                        'ok' => true,
+                        'message' => 'Pesan berhasil dikirim via gateway.',
+                    ]);
+                }
             }
 
             return response()->json([
