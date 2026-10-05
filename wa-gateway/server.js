@@ -70,7 +70,7 @@ function extractMessageText(message) {
 /**
  * Initialize / start a session
  */
-async function createSession(sessionId, label = '') {
+async function createSession(sessionId, label = '', customFolder = null) {
     if (sessions.has(sessionId)) {
         const existing = sessions.get(sessionId);
         if (existing.status === 'CONNECTED' && existing.sock) {
@@ -78,7 +78,7 @@ async function createSession(sessionId, label = '') {
         }
     }
 
-    const sessionFolder = path.join(SESSIONS_DIR, sessionId);
+    const sessionFolder = customFolder || path.join(SESSIONS_DIR, sessionId);
     if (!fs.existsSync(sessionFolder)) {
         fs.mkdirSync(sessionFolder, { recursive: true });
     }
@@ -230,11 +230,30 @@ async function createSession(sessionId, label = '') {
  * Auto-restore previous sessions from disk
  */
 function restoreSessions() {
+    // 1. Cek folder warisan lama 'auth_info_baileys' (agar koneksi WA yang sekarang tidak putus/perlu scan ulang)
+    const legacyPaths = [
+        path.join(__dirname, 'auth_info_baileys'),
+        path.join(__dirname, '..', 'auth_info_baileys'),
+        path.join(process.cwd(), 'auth_info_baileys'),
+    ];
+
+    let legacyFound = false;
+    for (const lPath of legacyPaths) {
+        if (fs.existsSync(path.join(lPath, 'creds.json'))) {
+            console.log(`📡 Menemukan auth_info_baileys di ${lPath}, menghubungkan otomatis sebagai sesi 'dinas'...`);
+            createSession('dinas', 'WA Dinas / Radar Utama', lPath).catch(console.error);
+            legacyFound = true;
+            break;
+        }
+    }
+
+    // 2. Cek folder multi-sesi 'sessions/'
     try {
         const dirs = fs.readdirSync(SESSIONS_DIR, { withFileTypes: true });
         for (const dir of dirs) {
             if (dir.isDirectory()) {
                 const sessionId = dir.name;
+                if (sessionId === 'dinas' && legacyFound) continue;
                 const credsPath = path.join(SESSIONS_DIR, sessionId, 'creds.json');
                 if (fs.existsSync(credsPath)) {
                     console.log(`Memulihkan sesi tersimpan: ${sessionId}`);
@@ -251,9 +270,12 @@ function restoreSessions() {
 // REST API ROUTES
 // -------------------------------------------------------------
 
-// 1. Health check & Overview
+// 1. Health check & Overview (Kompatibel dengan sistem lama dan baru)
 app.get('/status', (req, res) => {
     const list = [];
+    let legacyStatus = 'OFFLINE';
+    let legacyQR = null;
+
     for (const [id, data] of sessions.entries()) {
         list.push({
             sessionId: id,
@@ -262,9 +284,19 @@ app.get('/status', (req, res) => {
             phone: data.phone,
             name: data.name
         });
+
+        if (data.status === 'CONNECTED') {
+            legacyStatus = 'ONLINE';
+        } else if (data.status === 'QR_READY' && legacyStatus !== 'ONLINE') {
+            legacyStatus = 'WAITING_SCAN';
+            legacyQR = data.qr;
+        }
     }
+
     res.json({
         ok: true,
+        status: legacyStatus,
+        qr: legacyQR,
         uptime: process.uptime(),
         totalSessions: list.length,
         sessions: list
@@ -275,13 +307,15 @@ app.get('/status', (req, res) => {
 app.get('/send', async (req, res) => {
     const { number, msg, session } = req.query;
     if (!number || !msg) {
-        return res.status(400).json({ ok: false, error: 'Parameter number dan msg wajib diisi.' });
+        return res.status(400).json({ status: 'error', ok: false, error: 'Parameter number dan msg wajib diisi.' });
     }
 
-    // Cari sesi yang aktif: jika 'session' disertakan, gunakan itu; jika tidak, gunakan sesi terhubung pertama
+    // Cari sesi yang aktif: jika 'session' disertakan gunakan itu, jika tidak cari 'dinas' atau sesi pertama yang CONNECTED
     let targetSession = null;
     if (session && sessions.has(session) && sessions.get(session).status === 'CONNECTED') {
         targetSession = sessions.get(session);
+    } else if (sessions.has('dinas') && sessions.get('dinas').status === 'CONNECTED') {
+        targetSession = sessions.get('dinas');
     } else {
         for (const data of sessions.values()) {
             if (data.status === 'CONNECTED' && data.sock) {
@@ -292,15 +326,21 @@ app.get('/send', async (req, res) => {
     }
 
     if (!targetSession) {
-        return res.status(503).json({ ok: false, error: 'Tidak ada sesi WhatsApp yang terhubung di sistem.' });
+        return res.status(503).json({ status: 'not_ready', ok: false, error: 'Tidak ada sesi WhatsApp yang terhubung di sistem.' });
     }
 
     try {
         const jid = formatToJid(number);
         await targetSession.sock.sendMessage(jid, { text: msg });
-        return res.json({ ok: true, message: 'Pesan terkirim', target: jid, session: targetSession.sessionId });
+        return res.json({ 
+            status: 'success', 
+            ok: true, 
+            message: 'Pesan terkirim', 
+            target: jid, 
+            session: targetSession.sessionId 
+        });
     } catch (err) {
-        return res.status(500).json({ ok: false, error: err.message });
+        return res.status(500).json({ status: 'error', ok: false, message: err.message });
     }
 });
 
