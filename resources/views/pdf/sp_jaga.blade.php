@@ -285,30 +285,30 @@
         <!-- Header Lampiran -->
         <table style="width: 100%; margin-bottom: 12px;">
             <tr>
-                <td style="width: 50%; vertical-align: top;">
-                    <div class="kop-surat" style="width: 320px;">
+                <td style="width: 45%; vertical-align: top;">
+                    <div class="kop-surat" style="width: 310px;">
                         <div class="line1">KOMANDO DAERAH TNI ANGKATAN LAUT V</div>
                         <div class="line2">DETASEMEN INTELIJEN</div>
                         <div class="divider"></div>
                     </div>
                 </td>
-                <td style="width: 50%; vertical-align: top; text-align: right; font-size: 11.5pt;">
-                    <div style="width: 290px; margin-left: auto; text-align: left;">
+                <td style="width: 55%; vertical-align: top; text-align: right; font-size: 11.5pt;">
+                    <div style="width: 350px; margin-left: auto; text-align: left;">
                         <table style="width: 100%; font-size: 11.5pt;">
                             <tr>
-                                <td style="vertical-align: top; width: 75px;">Lampiran</td>
+                                <td style="vertical-align: top; width: 68px;">Lampiran</td>
                                 <td style="vertical-align: top; width: 10px;">:</td>
-                                <td style="padding-left: 10px;">Sprin Danden Intel Kodaeral V</td>
+                                <td style="padding-left: 8px; white-space: nowrap;">Sprin Danden Intel Kodaeral V</td>
                             </tr>
                             <tr>
                                 <td style="vertical-align: top;">Nomor</td>
                                 <td style="vertical-align: top;">:</td>
-                                <td style="padding-left: 10px;">{{ $nomorSprinBaku }}</td>
+                                <td style="padding-left: 8px; white-space: nowrap;">{{ $nomorSprinBaku }}</td>
                             </tr>
                             <tr>
                                 <td style="vertical-align: top;">Tanggal</td>
                                 <td style="vertical-align: top;">:</td>
-                                <td style="padding-left: 10px;">{{ $tglSuratBaku }}</td>
+                                <td style="padding-left: 8px; white-space: nowrap;">{{ $tglSuratBaku }}</td>
                             </tr>
                         </table>
                         <div style="border-bottom: 1px solid #000; margin-top: 3px;"></div>
