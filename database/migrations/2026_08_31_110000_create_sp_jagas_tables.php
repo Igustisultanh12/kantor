@@ -15,7 +15,7 @@ return new class extends Migration
         Schema::create('sp_jagas', function (Blueprint $table) {
             $table->id();
             $table->string('nomor_sprin')->nullable(); // e.g. "Sprin/ 29 /VI/2026"
-            $table->integer('nomor_urut')->nullable();
+            $table->string('nomor_urut', 50)->nullable();
             $table->integer('bulan'); // 1 - 12
             $table->integer('tahun'); // e.g. 2026
             $table->string('bulan_romawi', 10)->nullable(); // e.g. "VI" / "VII"

@@ -196,7 +196,7 @@ class SpJagaController extends Controller
         $request->validate([
             'bulan' => 'required|integer|min:1|max:12',
             'tahun' => 'required|integer|min:2024',
-            'nomor_urut' => 'nullable|integer',
+            'nomor_urut' => 'nullable|string|max:50',
             'tmt_mulai' => 'required|date',
             'tmt_selesai' => 'required|date',
             'tanggal_surat' => 'required|date',
@@ -207,17 +207,10 @@ class SpJagaController extends Controller
 
         $user = auth()->user();
 
-        // Sinkronkan bulan dan tahun dengan tmt_mulai jika ada
         $bulanInput = (int)$request->bulan;
         $tahunInput = (int)$request->tahun;
-        if (!empty($request->tmt_mulai)) {
-            $tmtCarbon = \Carbon\Carbon::parse($request->tmt_mulai);
-            $bulanInput = (int)$tmtCarbon->format('n');
-            $tahunInput = (int)$tmtCarbon->format('Y');
-        }
-
         $bulanRomawi = $this->getRomanMonth($bulanInput);
-        $nomorUrut = $request->nomor_urut ?: 29;
+        $nomorUrut = trim((string)($request->nomor_urut ?: '29'));
         $nomorSprin = "Sprin/ {$nomorUrut} /{$bulanRomawi}/{$tahunInput}";
 
         // Hitung total personel
@@ -348,6 +341,7 @@ class SpJagaController extends Controller
         $request->validate([
             'bulan' => 'required|integer|min:1|max:12',
             'tahun' => 'required|integer|min:2024',
+            'nomor_urut' => 'nullable|string|max:50',
             'tmt_mulai' => 'required|date',
             'tmt_selesai' => 'required|date',
             'tanggal_surat' => 'required|date',
@@ -356,17 +350,10 @@ class SpJagaController extends Controller
             'anggotas' => 'required|array|min:1',
         ]);
 
-        // Sinkronkan bulan dan tahun dengan tmt_mulai jika ada
         $bulanInput = (int)$request->bulan;
         $tahunInput = (int)$request->tahun;
-        if (!empty($request->tmt_mulai)) {
-            $tmtCarbon = \Carbon\Carbon::parse($request->tmt_mulai);
-            $bulanInput = (int)$tmtCarbon->format('n');
-            $tahunInput = (int)$tmtCarbon->format('Y');
-        }
-
         $bulanRomawi = $this->getRomanMonth($bulanInput);
-        $nomorUrut = $request->nomor_urut ?: $spJaga->nomor_urut;
+        $nomorUrut = trim((string)($request->nomor_urut ?: $spJaga->nomor_urut ?: '29'));
         $nomorSprin = "Sprin/ {$nomorUrut} /{$bulanRomawi}/{$tahunInput}";
 
         $totalPersonel = count($request->perwiras);

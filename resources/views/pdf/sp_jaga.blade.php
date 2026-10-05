@@ -18,23 +18,17 @@
         return $c->format('j') . ' ' . $bln . ' ' . $c->format('Y');
     };
 
-    // Prioritas bulan & tahun dari tmt_mulai jika ada
-    $blnAngka = (int)($spJaga->bulan ?? 1);
-    $tahunAngka = (int)($spJaga->tahun ?? 2026);
-    if (!empty($spJaga->tmt_mulai)) {
-        $cTmt = \Carbon\Carbon::parse($spJaga->tmt_mulai);
-        $blnAngka = (int)$cTmt->format('n');
-        $tahunAngka = (int)$cTmt->format('Y');
-    }
+    // Bulan & tahun dari data spJaga
+    $blnAngka = (int)($spJaga->bulan ?: ($spJaga->tmt_mulai ? \Carbon\Carbon::parse($spJaga->tmt_mulai)->format('n') : 1));
+    $tahunAngka = (int)($spJaga->tahun ?: ($spJaga->tmt_mulai ? \Carbon\Carbon::parse($spJaga->tmt_mulai)->format('Y') : 2026));
 
     $namaBulanBaku = $bulanBaku[$blnAngka] ?? 'Januari';
     $namaBulanTahun = strtoupper($namaBulanBaku . ' ' . $tahunAngka);
-    $romawiBaku = $bulanRomawiList[$blnAngka] ?? 'IX';
+    $romawiBaku = $spJaga->bulan_romawi ?: ($bulanRomawiList[$blnAngka] ?? 'IX');
 
-    $nomorUrutVal = $spJaga->nomor_urut ?: 29;
+    $nomorUrutVal = $spJaga->nomor_urut ?: '29';
     if (!empty($spJaga->nomor_sprin)) {
-        // Sinkronkan angka romawi dan tahun dengan bulan tmt yang benar
-        $nomorSprinBaku = preg_replace('/\/(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII)\/\d{4}/i', "/{$romawiBaku}/{$tahunAngka}", $spJaga->nomor_sprin);
+        $nomorSprinBaku = $spJaga->nomor_sprin;
     } else {
         $nomorSprinBaku = "Sprin/ {$nomorUrutVal} /{$romawiBaku}/{$tahunAngka}";
     }

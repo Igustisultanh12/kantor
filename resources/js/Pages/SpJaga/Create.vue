@@ -136,7 +136,7 @@ const initAnggotaDates = calculateAnggotaDates(initYear, initMonth, daysInInitMo
 const form = useForm({
     bulan: initMonth,
     tahun: initYear,
-    nomor_urut: 29,
+    nomor_urut: '29',
     tmt_mulai: `${initYear}-${String(initMonth).padStart(2, '0')}-01`,
     tmt_selesai: `${initYear}-${String(initMonth).padStart(2, '0')}-${String(daysInInitMonth).padStart(2, '0')}`,
     tanggal_surat: `${initPrevYear}-${String(initPrevMonth).padStart(2, '0')}-${String(daysInInitPrevMonth).padStart(2, '0')}`,
@@ -511,7 +511,7 @@ const submit = () => {
                         <!-- Nomor Urut Sprin -->
                         <div class="space-y-1.5">
                             <label class="text-xs font-bold text-slate-700 block">Nomor Urut Sprin</label>
-                            <input type="number" v-model="form.nomor_urut" placeholder="29" class="w-full p-2.5 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500" />
+                            <input type="text" v-model="form.nomor_urut" placeholder="Contoh: 29 atau 50a" class="w-full p-2.5 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500" />
                         </div>
 
                         <!-- TMT Mulai -->

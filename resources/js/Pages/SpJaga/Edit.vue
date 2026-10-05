@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import Swal from 'sweetalert2';
 
 const props = defineProps({
@@ -29,17 +29,30 @@ const monthsList = [
     { id: 12, name: 'Desember' },
 ];
 
-const initialTmtMulai = props.spJaga.tmt_mulai ? props.spJaga.tmt_mulai.substring(0, 10) : '';
-const initialBulan = initialTmtMulai ? parseInt(initialTmtMulai.substring(5, 7), 10) : parseInt(props.spJaga.bulan || 9, 10);
-const initialTahun = initialTmtMulai ? parseInt(initialTmtMulai.substring(0, 4), 10) : parseInt(props.spJaga.tahun || 2026, 10);
+const initialTmtMulai = props.spJaga.tmt_mulai ? String(props.spJaga.tmt_mulai).substring(0, 10) : '';
+const initialBulan = props.spJaga.bulan ? parseInt(props.spJaga.bulan, 10) : (initialTmtMulai ? parseInt(initialTmtMulai.substring(5, 7), 10) : 9);
+const initialTahun = props.spJaga.tahun ? parseInt(props.spJaga.tahun, 10) : (initialTmtMulai ? parseInt(initialTmtMulai.substring(0, 4), 10) : 2026);
+
+function safeParseArray(val) {
+    if (Array.isArray(val)) return val;
+    if (typeof val === 'string') {
+        try {
+            const parsed = JSON.parse(val);
+            if (Array.isArray(parsed)) return parsed;
+        } catch (e) {
+            return [];
+        }
+    }
+    return [];
+}
 
 const form = useForm({
     bulan: initialBulan,
     tahun: initialTahun,
-    nomor_urut: props.spJaga.nomor_urut || 29,
+    nomor_urut: props.spJaga.nomor_urut !== null && props.spJaga.nomor_urut !== undefined ? String(props.spJaga.nomor_urut) : '29',
     tmt_mulai: initialTmtMulai,
-    tmt_selesai: props.spJaga.tmt_selesai ? props.spJaga.tmt_selesai.substring(0, 10) : '',
-    tanggal_surat: props.spJaga.tanggal_surat ? props.spJaga.tanggal_surat.substring(0, 10) : '',
+    tmt_selesai: props.spJaga.tmt_selesai ? String(props.spJaga.tmt_selesai).substring(0, 10) : '',
+    tanggal_surat: props.spJaga.tanggal_surat ? String(props.spJaga.tanggal_surat).substring(0, 10) : '',
     ttd_type: props.spJaga.ttd_type || 'tte',
     
     // Perwira Tertua (Pater / Penerima Perintah)
@@ -64,14 +77,10 @@ const form = useForm({
 
     anggotas: props.spJaga.anggotas?.length > 0 ? props.spJaga.anggotas.map(a => ({
         divisi_no: a.divisi_no,
-        tanggal_list_text: a.tanggal_list_text,
-        anggota_items: isArray(a.anggota_items) ? a.anggota_items : JSON.parse(a.anggota_items || '[]')
+        tanggal_list_text: a.tanggal_list_text || '',
+        anggota_items: safeParseArray(a.anggota_items)
     })) : []
 });
-
-function isArray(val) {
-    return Array.isArray(val);
-}
 
 // Menetapkan baris perwira jaga sebagai Perwira Tertua
 const setAsPerwiraTertua = (idx) => {
@@ -309,11 +318,13 @@ const generateJadwalJaga = (showNotification = true) => {
         form.tmt_mulai = `${y}-${String(m).padStart(2, '0')}-01`;
     }
 
-    // Tanggal Surat Dikeluarkan (Akhir Bulan Sebelumnya)
-    const prevMonth = m === 1 ? 12 : m - 1;
-    const prevYear = m === 1 ? y - 1 : y;
-    const daysInPrevMonth = new Date(prevYear, prevMonth, 0).getDate();
-    form.tanggal_surat = `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(daysInPrevMonth).padStart(2, '0')}`;
+    // Tanggal Surat Dikeluarkan (hanya set jika masih kosong)
+    if (!form.tanggal_surat) {
+        const prevMonth = m === 1 ? 12 : m - 1;
+        const prevYear = m === 1 ? y - 1 : y;
+        const daysInPrevMonth = new Date(prevYear, prevMonth, 0).getDate();
+        form.tanggal_surat = `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(daysInPrevMonth).padStart(2, '0')}`;
+    }
 
     const mName = (monthNames[m] || '').toUpperCase();
 
@@ -354,47 +365,23 @@ const generateJadwalJaga = (showNotification = true) => {
     }
 };
 
-// Fungsi Otomatis Hitung Ulang Tanggal Berdasarkan Pilihan Bulan & Tahun
-const recalculateDatesForMonth = () => {
-    const b = parseInt(form.bulan, 10);
-    const y = parseInt(form.tahun, 10);
-    if (!b || !y) return;
-
-    isSyncingDates = true;
-    const daysInMonth = new Date(y, b, 0).getDate();
-    form.tmt_mulai = `${y}-${String(b).padStart(2, '0')}-01`;
-    form.tmt_selesai = `${y}-${String(b).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
-
-    generateJadwalJaga(false);
-
-    setTimeout(() => {
-        isSyncingDates = false;
-    }, 50);
-};
-
-watch(() => [form.bulan, form.tahun], () => {
-    if (!isSyncingDates) {
-        recalculateDatesForMonth();
-    }
-});
-
-// Watcher untuk sinkronisasi dua arah dari tmt_mulai ke bulan & tahun
-watch(() => form.tmt_mulai, (newVal) => {
-    if (isSyncingDates || !newVal) return;
-    const parts = newVal.split('-');
-    if (parts.length === 3) {
-        const y = parseInt(parts[0], 10);
-        const m = parseInt(parts[1], 10);
-        if (m >= 1 && m <= 12 && (parseInt(form.bulan) !== m || parseInt(form.tahun) !== y)) {
-            isSyncingDates = true;
-            form.bulan = m;
-            form.tahun = y;
-            setTimeout(() => {
-                isSyncingDates = false;
-            }, 50);
+// Konfirmasi sebelum menghitung ulang jadwal jaga agar data sebelumnya tidak hilang tanpa sengaja
+const confirmAndGenerateJadwalJaga = () => {
+    Swal.fire({
+        title: 'Hitung Ulang Jadwal Jaga?',
+        text: 'Tanggal dinas jaga perwira dan anggota akan dihitung ulang secara otomatis berdasarkan periode TMT. Data tanggal dinas yang ada saat ini akan diperbarui.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Hitung Ulang',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#2563eb',
+        cancelButtonColor: '#64748b',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            generateJadwalJaga(true);
         }
-    }
-});
+    });
+};
 
 const submit = () => {
     form.put(route('sp-jaga.update', props.spJaga.id), {
@@ -452,7 +439,7 @@ const submit = () => {
 
                         <div class="space-y-1.5">
                             <label class="text-xs font-bold text-slate-700 block">Nomor Urut Sprin</label>
-                            <input type="number" v-model="form.nomor_urut" class="w-full p-2.5 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500" />
+                            <input type="text" v-model="form.nomor_urut" placeholder="Contoh: 50 atau 50a" class="w-full p-2.5 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500" />
                         </div>
 
                         <div class="space-y-1.5">
@@ -470,7 +457,7 @@ const submit = () => {
                                 />
                                 <button 
                                     type="button" 
-                                    @click="generateJadwalJaga(true)" 
+                                    @click="confirmAndGenerateJadwalJaga" 
                                     class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-extrabold text-xs rounded-xl shadow-sm transition flex items-center gap-1.5 shrink-0 cursor-pointer"
                                     title="Generate otomatis tanggal jaga perwira dan anggota sesuai pola rotasi dinas"
                                 >
