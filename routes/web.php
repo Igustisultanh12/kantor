@@ -242,6 +242,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/whatsapp-web/sessions/{session}/chats', [WhatsAppController::class, 'getChats'])->name('whatsapp.sessions.chats');
     Route::get('/whatsapp-web/sessions/{session}/calls', [WhatsAppController::class, 'getCalls'])->name('whatsapp.sessions.calls');
     Route::get('/whatsapp-web/sessions/{session}/chats/{jid}/messages', [WhatsAppController::class, 'getMessages'])->name('whatsapp.sessions.messages');
+    Route::get('/whatsapp-web/sessions/{session}/media/{msgId}', [WhatsAppController::class, 'getMedia'])->name('whatsapp.sessions.media');
     Route::post('/whatsapp-web/sessions/{session}/send', [WhatsAppController::class, 'sendMessage'])->name('whatsapp.sessions.send');
 
     // PRATINJAU DOKUMEN & MEDIA TEROTENTIKASI (STREAMING DEKRIPSI ON-THE-FLY)

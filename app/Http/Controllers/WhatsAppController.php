@@ -354,4 +354,25 @@ class WhatsAppController extends Controller
             return response()->json(['ok' => false, 'error' => $e->getMessage()], 503);
         }
     }
+
+    /**
+     * Mengambil File Media / Dokumen / Gambar / Video dari Pesan WhatsApp
+     */
+    public function getMedia(string $sessionId, string $msgId)
+    {
+        try {
+            $res = Http::timeout(30)->get("{$this->gatewayUrl}/sessions/{$sessionId}/media/{$msgId}");
+            if ($res->successful()) {
+                $contentType = $res->header('Content-Type') ?: 'application/octet-stream';
+                $contentDisposition = $res->header('Content-Disposition') ?: 'inline';
+                return response($res->body(), 200)
+                    ->header('Content-Type', $contentType)
+                    ->header('Content-Disposition', $contentDisposition)
+                    ->header('Cache-Control', 'public, max-age=86400');
+            }
+            return response('File media tidak ditemukan atau telah kedaluwarsa.', 404);
+        } catch (\Exception $e) {
+            return response('Gagal mengunduh berkas media: ' . $e->getMessage(), 500);
+        }
+    }
 }
