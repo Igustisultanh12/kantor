@@ -1,7 +1,10 @@
 name: SISINDEN Android — Build, Test & Release
 
-# Build & test di setiap push/PR. GitHub Release HANYA dibuat dari tag v* dan
-# hanya bila APK rilis benar-benar ditandatangani dengan keystore resmi.
+# Build & test di setiap push/PR. GitHub Release dibuat otomatis:
+#  - setiap push ke main yang lulus build, bila rilis v<versionName> belum ada
+#    (naikkan versionName di android/app/build.gradle.kts untuk rilis baru);
+#  - atau saat tag v* di-push / workflow dijalankan manual dari main.
+# Rilis hanya diterbitkan bila APK rilis ditandatangani.
 on:
   push:
     branches: [ main, 'feature/**' ]
@@ -135,12 +138,37 @@ jobs:
             out/SHA256SUMS.txt
             android/app/build/reports/lint-results-debug.html
 
+      - name: Determine release tag
+        id: reltag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.collect.outputs.version }}
+        run: |
+          set -euo pipefail
+          PUBLISH=false
+          TAG=""
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            TAG="$GITHUB_REF_NAME"
+            PUBLISH=true
+          elif [[ "$GITHUB_EVENT_NAME" != "pull_request" && "$GITHUB_REF" == "refs/heads/main" ]]; then
+            TAG="v${VERSION}"
+            if gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" >/dev/null 2>&1; then
+              echo "::notice title=Rilis sudah ada::${TAG} sudah dirilis. Naikkan versionName untuk menerbitkan rilis baru."
+            else
+              PUBLISH=true
+            fi
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "publish=${PUBLISH}" >> "$GITHUB_OUTPUT"
+          echo "Release tag: ${TAG:-<none>} publish=${PUBLISH}"
+
       - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v') && steps.collect.outputs.signed == 'true'
+        if: steps.reltag.outputs.publish == 'true' && steps.collect.outputs.signed == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: SISINDEN Android ${{ github.ref_name }}
+          tag_name: ${{ steps.reltag.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: SISINDEN Android ${{ steps.reltag.outputs.tag }}
           body_path: docs/ANDROID_RELEASE_NOTES.md
           files: |
             out/SISINDEN-${{ steps.collect.outputs.version }}.apk
@@ -151,7 +179,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Refuse to release unsigned build
-        if: startsWith(github.ref, 'refs/tags/v') && steps.collect.outputs.signed != 'true'
+        if: steps.reltag.outputs.publish == 'true' && steps.collect.outputs.signed != 'true'
         run: |
-          echo "::error title=Release blocked::Tag rilis dibuat tetapi APK tidak ditandatangani. Tambahkan secrets SISINDEN_KEYSTORE_BASE64, SISINDEN_KEYSTORE_PASSWORD, SISINDEN_KEY_ALIAS, SISINDEN_KEY_PASSWORD."
+          echo "::error title=Release blocked::Rilis ${{ steps.reltag.outputs.tag }} tidak diterbitkan karena APK tidak ditandatangani. Tambahkan secrets SISINDEN_KEYSTORE_BASE64, SISINDEN_KEYSTORE_PASSWORD, SISINDEN_KEY_ALIAS, SISINDEN_KEY_PASSWORD."
           exit 1
