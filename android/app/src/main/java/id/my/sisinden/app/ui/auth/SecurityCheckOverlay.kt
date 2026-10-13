@@ -12,7 +12,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -187,9 +186,7 @@ private fun StepRow(label: String, state: StepState) {
         ) {
             when (state) {
                 StepState.ACTIVE -> CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Active)
-                StepState.DONE -> AnimatedVisibility(visible = true, enter = scaleIn()) {
-                    Icon(Icons.Filled.Check, contentDescription = null, tint = Done, modifier = Modifier.size(18.dp))
-                }
+                StepState.DONE -> Icon(Icons.Filled.Check, contentDescription = null, tint = Done, modifier = Modifier.size(18.dp))
                 StepState.PENDING -> Unit
             }
         }
