@@ -20,6 +20,7 @@
 use App\Http\Controllers\Mobile\MobileApiController;
 use App\Models\User;
 use App\Support\MobileAccess;
+use App\Support\Turnstile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -142,6 +143,12 @@ Route::post('/api/mobile/login', function (Request $request) {
             return response()->json(['status' => 'error', 'message' => 'NRP / Email dan Kata Sandi wajib diisi.'], 422);
         }
 
+        // Cloudflare Turnstile diverifikasi SEBELUM menyentuh data akun.
+        $ts = Turnstile::verify($data['cf_turnstile_token'] ?? null, $request->ip(), 'login');
+        if (!$ts['ok']) {
+            return response()->json(['status' => 'error', 'code' => 'turnstile_failed', 'message' => $ts['message']], 422);
+        }
+
         $user = User::where('email', $input)->orWhere('nrp', $input)->first();
 
         // Pesan generik: jangan membocorkan apakah NRP terdaftar.
@@ -203,8 +210,25 @@ Route::get('/api/mobile/config', function () {
         'mobile_show_balance_card' => ($settings['mobile_show_balance_card'] ?? '1') === '1',
         'mobile_show_summary_trio' => ($settings['mobile_show_summary_trio'] ?? '1') === '1',
         'mobile_show_quick_actions' => ($settings['mobile_show_quick_actions'] ?? '1') === '1',
+        'turnstile_site_key' => Turnstile::siteKey(),
+        'turnstile_enabled' => Turnstile::enabled(),
         'server_time' => now()->toIso8601String(),
     ]);
+})->middleware('throttle:60,1');
+
+// Halaman widget Cloudflare Turnstile yang dimuat WebView aplikasi Android
+// (origin = domain SISINDEN, sehingga cocok dengan daftar hostname widget).
+Route::get('/mobile/turnstile', function (Request $request) {
+    $action = in_array($request->query('action'), ['login', 'activate'], true) ? $request->query('action') : 'login';
+    $theme = $request->query('theme') === 'light' ? 'light' : 'dark';
+    return response()
+        ->view('mobile.turnstile', [
+            'siteKey' => Turnstile::siteKey(),
+            'action' => $action,
+            'theme' => $theme,
+        ])
+        ->header('Cache-Control', 'no-store')
+        ->header('X-Robots-Tag', 'noindex');
 })->middleware('throttle:60,1');
 
 // AKTIVASI AKUN MOBILE — wajib token aktivasi dari Admin (sama seperti web /aktivasi).
@@ -221,6 +245,11 @@ Route::post('/api/mobile/activate', function (Request $request) {
         ]);
         if ($v->fails()) {
             return mobile_validation_error($v);
+        }
+
+        $ts = Turnstile::verify($data['cf_turnstile_token'] ?? null, $request->ip(), 'activate');
+        if (!$ts['ok']) {
+            return response()->json(['status' => 'error', 'code' => 'turnstile_failed', 'message' => $ts['message']], 422);
         }
 
         $identifier = trim($data['nrp']);

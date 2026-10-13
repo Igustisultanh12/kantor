@@ -35,6 +35,13 @@ return [
         ],
     ],
 
+    // Cloudflare Turnstile (login & aktivasi aplikasi mobile).
+    // Site key bersifat publik; secret key WAJIB hanya di .env server.
+    'turnstile' => [
+        'site_key' => env('TURNSTILE_SITE_KEY', '0x4AAAAAAFV6406Da-2XrWTF'),
+        'secret_key' => env('TURNSTILE_SECRET_KEY'),
+    ],
+
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),

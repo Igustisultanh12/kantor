@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -22,6 +23,9 @@ class MobileApiSecurityTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Turnstile nonaktif secara default di test (diaktifkan per-test bila perlu).
+        config(['services.turnstile.secret_key' => null]);
 
         Schema::create('users', function (Blueprint $t) {
             $t->id();
@@ -321,6 +325,58 @@ class MobileApiSecurityTest extends TestCase
         $this->postJson('/api/mobile/activate', ['nrp' => '999', 'token' => 'TOKEN-ABC', 'password' => 'barubaru123'])->assertOk();
         $this->assertTrue($u->fresh()->is_active);
         $this->assertNull($u->fresh()->activation_token);
+    }
+
+    public function test_login_requires_valid_turnstile_when_secret_configured(): void
+    {
+        config(['services.turnstile.secret_key' => 'test-secret']);
+        $this->makeUser(['nrp' => '4242']);
+        Http::fake(['challenges.cloudflare.com/*' => Http::response(['success' => false, 'error-codes' => ['invalid-input-response']])]);
+
+        // Tanpa token → ditolak sebelum kredensial diperiksa.
+        $this->postJson('/api/mobile/login', ['username' => '4242', 'password' => 'rahasia123'])
+            ->assertStatus(422)->assertJsonPath('code', 'turnstile_failed')->assertJsonMissing(['token']);
+
+        // Token ditolak Cloudflare → tetap gagal.
+        $this->postJson('/api/mobile/login', ['username' => '4242', 'password' => 'rahasia123', 'cf_turnstile_token' => 'palsu'])
+            ->assertStatus(422)->assertJsonPath('code', 'turnstile_failed');
+    }
+
+    public function test_login_and_activation_pass_with_valid_turnstile(): void
+    {
+        config(['services.turnstile.secret_key' => 'test-secret']);
+        $this->makeUser(['nrp' => '5151']);
+        $u = $this->makeUser(['nrp' => '6161', 'is_active' => false, 'activation_token' => 'TOK-1']);
+
+        Http::fake(function ($request) {
+            $action = str_contains((string) $request->body(), 'act-token') ? 'activate' : 'login';
+            return Http::response(['success' => true, 'action' => $action]);
+        });
+
+        $this->postJson('/api/mobile/login', ['username' => '5151', 'password' => 'rahasia123', 'cf_turnstile_token' => 'login-token'])
+            ->assertOk()->assertJsonPath('status', 'success');
+
+        // Token untuk action "login" tidak boleh dipakai untuk aktivasi.
+        $this->postJson('/api/mobile/activate', ['nrp' => '6161', 'token' => 'TOK-1', 'password' => 'barubaru123', 'cf_turnstile_token' => 'login-token'])
+            ->assertStatus(422)->assertJsonPath('code', 'turnstile_failed');
+        $this->postJson('/api/mobile/activate', ['nrp' => '6161', 'token' => 'TOK-1', 'password' => 'barubaru123', 'cf_turnstile_token' => 'act-token'])
+            ->assertOk();
+        $this->assertTrue($u->fresh()->is_active);
+
+        Http::assertSent(fn ($r) => $r->url() === 'https://challenges.cloudflare.com/turnstile/v0/siteverify' && $r['secret'] === 'test-secret');
+    }
+
+    public function test_turnstile_widget_page_and_config_expose_only_site_key(): void
+    {
+        config(['services.turnstile.site_key' => 'SITE-KEY-PUBLIK', 'services.turnstile.secret_key' => 'RAHASIA-JANGAN-BOCOR']);
+
+        $page = $this->get('/mobile/turnstile?action=activate')->assertOk();
+        $page->assertSee('SITE-KEY-PUBLIK', false)->assertSee('"activate"', false)->assertDontSee('RAHASIA-JANGAN-BOCOR', false);
+
+        $cfg = $this->getJson('/api/mobile/config')->assertOk()
+            ->assertJsonPath('turnstile_site_key', 'SITE-KEY-PUBLIK')
+            ->assertJsonPath('turnstile_enabled', true);
+        $this->assertStringNotContainsString('RAHASIA-JANGAN-BOCOR', $cfg->getContent());
     }
 
     public function test_logout_revokes_token(): void

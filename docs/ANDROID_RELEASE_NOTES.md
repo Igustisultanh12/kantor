@@ -12,6 +12,14 @@ Tampilan baru perpaduan **Elder Friendly Livin'** (ramah lansia) dan **iOS 26 Li
 - **Pengingat jaga H-1** — notifikasi otomatis pukul 07.00 sehari sebelum tanggal jaga; tetap berjalan saat aplikasi ditutup dan dipasang ulang setelah ponsel dinyalakan ulang. Pengingat dihapus saat keluar akun.
 - **Halaman masuk baru** seperti web SISINDEN — foto latar dari pengaturan Admin (lapisan gelap), logo mengambang halus, kartu kaca gelap, tombol oranye.
 - **Ukuran teks** — pilihan Normal / Besar / Sangat besar di Pengaturan.
+- **Cloudflare Turnstile** pada Masuk & Aktivasi akun, dengan animasi bertahap: *Memeriksa keamanan sistem → Memeriksa sesi login → Masuk ke beranda* (aktivasi: *→ Memverifikasi token aktivasi → Mengaktifkan akun*). Token diverifikasi server; secret key hanya ada di `.env` server.
+- **Ikon aplikasi baru** dari `public/images/logo_sinden_app_icon.png` (adaptif, bulat, dan ikon lama).
+
+## Wajib di server sebelum/ saat rilis
+
+1. Deploy `main` lalu tambahkan ke `.env`: `TURNSTILE_SECRET_KEY=<secret dari Cloudflare>` (dan opsional `TURNSTILE_SITE_KEY`), lalu `php artisan config:clear`.
+2. Pastikan hostname `sisinden.my.id` terdaftar di widget Turnstile (Cloudflare → Turnstile → Hostname Management).
+3. Setelah secret diisi, aplikasi versi lama (≤ 1.1.x) tidak dapat masuk karena tidak mengirim token Turnstile — minta personel memperbarui aplikasi.
 
 ## Perubahan
 

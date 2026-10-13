@@ -26,11 +26,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -191,7 +191,7 @@ fun LoginScreen(
 
                 Button(
                     onClick = { focus.clearFocus(); vm.submit() },
-                    enabled = !state.submitting,
+                    enabled = !state.busy,
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
@@ -201,13 +201,9 @@ fun LoginScreen(
                         disabledContentColor = Color.White.copy(alpha = 0.8f),
                     ),
                 ) {
-                    if (state.submitting) {
-                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
-                        Spacer(Modifier.width(Spacing.sm))
-                        Text("Memproses…", style = MaterialTheme.typography.labelLarge)
-                    } else {
-                        Text("Masuk", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
-                    }
+                    Icon(Icons.Outlined.Shield, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(Spacing.sm))
+                    Text("Masuk", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
                 }
 
                 TextButton(onClick = onOpenActivation, modifier = Modifier.align(Alignment.CenterHorizontally)) {
@@ -229,6 +225,16 @@ fun LoginScreen(
             )
             Spacer(Modifier.height(Spacing.lg))
         }
+
+        SecurityCheckOverlay(
+            step = state.step,
+            labels = listOf("Memeriksa keamanan sistem", "Memeriksa sesi login", "Masuk ke beranda"),
+            action = TurnstileAction.LOGIN,
+            widgetKey = state.widgetKey,
+            onToken = vm::onTurnstileToken,
+            onWidgetError = vm::onTurnstileError,
+            onCancel = vm::cancelCheck,
+        )
     }
 }
 

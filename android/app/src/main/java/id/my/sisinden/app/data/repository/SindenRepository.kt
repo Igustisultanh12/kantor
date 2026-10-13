@@ -50,13 +50,24 @@ class SindenRepository(
 
     // ------------------------------------------------------------- Sesi
 
-    suspend fun login(username: String, password: String): ApiResult<UserProfile> {
+    /**
+     * @param turnstileToken token Cloudflare Turnstile dari widget login.
+     * @param beforeSessionStart dijalankan setelah kredensial diterima server dan
+     *   sebelum layar berpindah ke beranda (untuk animasi tahap akhir).
+     */
+    suspend fun login(
+        username: String,
+        password: String,
+        turnstileToken: String? = null,
+        beforeSessionStart: suspend () -> Unit = {},
+    ): ApiResult<UserProfile> {
         val device = "SISINDEN Android (${Build.MANUFACTURER} ${Build.MODEL})".take(100)
-        return when (val res = call { login(LoginRequest(username.trim(), password, device)) }) {
+        return when (val res = call { login(LoginRequest(username.trim(), password, device, turnstileToken)) }) {
             is ApiResult.Success -> {
                 val token = res.data.token
                 val user = res.data.user
                 if (res.data.status == "success" && !token.isNullOrBlank() && user != null) {
+                    beforeSessionStart()
                     session.startSession(token, user)
                     ApiResult.Success(user)
                 } else {
@@ -67,8 +78,8 @@ class SindenRepository(
         }
     }
 
-    suspend fun activate(nrp: String, token: String, password: String): ApiResult<SimpleResponse> =
-        call { activate(ActivateRequest(nrp.trim(), token.trim(), password)) }
+    suspend fun activate(nrp: String, token: String, password: String, turnstileToken: String? = null): ApiResult<SimpleResponse> =
+        call { activate(ActivateRequest(nrp.trim(), token.trim(), password, turnstileToken)) }
 
     /** Segarkan profil + permission dari server. */
     suspend fun refreshSession(): ApiResult<UserProfile> = when (val res = call { me() }) {
