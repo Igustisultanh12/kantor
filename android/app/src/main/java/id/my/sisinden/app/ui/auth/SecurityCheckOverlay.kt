@@ -79,6 +79,7 @@ fun SecurityCheckOverlay(
     labels: List<String>,
     action: TurnstileAction,
     widgetKey: Int,
+    showWidget: Boolean,
     onToken: (String) -> Unit,
     onWidgetError: (String) -> Unit,
     onCancel: () -> Unit,
@@ -134,7 +135,7 @@ fun SecurityCheckOverlay(
                         })
                         if (i == 0) {
                             AnimatedVisibility(
-                                visible = step == AuthStep.SECURITY,
+                                visible = showWidget && step == AuthStep.SECURITY,
                                 enter = expandVertically(),
                                 exit = shrinkVertically(),
                             ) {

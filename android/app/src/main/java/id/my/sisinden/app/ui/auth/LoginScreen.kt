@@ -231,6 +231,7 @@ fun LoginScreen(
             labels = listOf("Memeriksa keamanan sistem", "Memeriksa sesi login", "Masuk ke beranda"),
             action = TurnstileAction.LOGIN,
             widgetKey = state.widgetKey,
+            showWidget = state.showWidget,
             onToken = vm::onTurnstileToken,
             onWidgetError = vm::onTurnstileError,
             onCancel = vm::cancelCheck,

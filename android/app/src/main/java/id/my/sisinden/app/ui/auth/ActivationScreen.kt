@@ -76,11 +76,6 @@ fun ActivationScreen(
             )
             Spacer(Modifier.height(Spacing.sm))
             PrimaryButton(text = "Aktifkan akun", onClick = vm::submit, enabled = !s.busy)
-            Text(
-                "Saat ditekan, sistem memeriksa keamanan (Cloudflare Turnstile) sebelum token aktivasi diverifikasi.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             Spacer(Modifier.height(Spacing.xxl))
         }
     }
@@ -90,6 +85,7 @@ fun ActivationScreen(
         labels = listOf("Memeriksa keamanan sistem", "Memverifikasi token aktivasi", "Mengaktifkan akun"),
         action = TurnstileAction.ACTIVATE,
         widgetKey = s.widgetKey,
+        showWidget = s.showWidget,
         onToken = vm::onTurnstileToken,
         onWidgetError = vm::onTurnstileError,
         onCancel = vm::cancelCheck,

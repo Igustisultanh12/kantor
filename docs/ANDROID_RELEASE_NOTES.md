@@ -1,3 +1,10 @@
+# SISINDEN Android v1.2.1 (versionCode 10)
+
+- **Cloudflare Turnstile dinonaktifkan sementara.** Widget pemeriksaan keamanan hanya tampil bila server mengaktifkannya (`TURNSTILE_SECRET_KEY` terisi di `.env`). Selama kosong, Masuk & Aktivasi langsung berjalan dengan animasi *Memeriksa keamanan sistem → Memeriksa sesi login → Masuk ke beranda*.
+- Mengaktifkan kembali cukup dengan mengisi `TURNSTILE_SECRET_KEY` di server — tanpa perlu memperbarui aplikasi.
+
+---
+
 # SISINDEN Android v1.2.0 (versionCode 9)
 
 Tampilan baru perpaduan **Elder Friendly Livin'** (ramah lansia) dan **iOS 26 Liquid Glass**, Daftar Jaga pribadi, pengingat H-1, dan halaman masuk baru.

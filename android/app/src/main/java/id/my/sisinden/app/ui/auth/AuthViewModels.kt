@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import id.my.sisinden.app.core.network.ApiResult
 import id.my.sisinden.app.data.model.ConfigResponse
 import id.my.sisinden.app.data.repository.SindenRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,6 +34,8 @@ data class LoginUiState(
     val step: AuthStep = AuthStep.IDLE,
     /** Naik setiap kali widget Turnstile perlu dimuat ulang (token sekali pakai). */
     val widgetKey: Int = 0,
+    /** Widget Turnstile ditampilkan hanya bila server mewajibkannya (turnstile_enabled). */
+    val showWidget: Boolean = false,
 ) {
     val busy: Boolean get() = step != AuthStep.IDLE
 }
@@ -52,6 +55,8 @@ class LoginViewModel(private val repository: SindenRepository) : ViewModel() {
         }
     }
 
+    private var pending: Job? = null
+
     fun onIdentifier(v: String) = _state.update { it.copy(identifier = v, identifierError = null, errorMessage = null) }
     fun onPassword(v: String) = _state.update { it.copy(password = v, passwordError = null, errorMessage = null) }
 
@@ -65,7 +70,15 @@ class LoginViewModel(private val repository: SindenRepository) : ViewModel() {
             _state.update { it.copy(identifierError = idErr, passwordError = pwErr) }
             return
         }
-        _state.update { it.copy(step = AuthStep.SECURITY, errorMessage = null, widgetKey = it.widgetKey + 1) }
+        val useTurnstile = _config.value?.turnstileEnabled == true
+        _state.update { it.copy(step = AuthStep.SECURITY, errorMessage = null, widgetKey = it.widgetKey + 1, showWidget = useTurnstile) }
+        if (!useTurnstile) {
+            // Turnstile sedang nonaktif di server: tahap keamanan hanya animasi singkat.
+            pending = viewModelScope.launch {
+                delay(MIN_STEP_MS)
+                if (_state.value.step == AuthStep.SECURITY) authenticate(null)
+            }
+        }
     }
 
     fun onTurnstileToken(token: String) {
@@ -86,7 +99,9 @@ class LoginViewModel(private val repository: SindenRepository) : ViewModel() {
     }
 
     fun cancelCheck() {
-        if (_state.value.step == AuthStep.SECURITY) _state.update { it.copy(step = AuthStep.IDLE, widgetKey = it.widgetKey + 1) }
+        if (_state.value.step != AuthStep.SECURITY) return
+        pending?.cancel()
+        _state.update { it.copy(step = AuthStep.IDLE, widgetKey = it.widgetKey + 1) }
     }
 
     /** Tahap 2 (cek sesi login di server) dan tahap 3 (masuk ke beranda). */
@@ -126,6 +141,7 @@ data class ActivationUiState(
     val successMessage: String? = null,
     val step: AuthStep = AuthStep.IDLE,
     val widgetKey: Int = 0,
+    val showWidget: Boolean = false,
 ) {
     val busy: Boolean get() = step != AuthStep.IDLE
 }
@@ -135,6 +151,7 @@ class ActivationViewModel(private val repository: SindenRepository) : ViewModel(
     val state: StateFlow<ActivationUiState> = _state.asStateFlow()
 
     private var turnstileEnforced: Boolean? = null
+    private var pending: Job? = null
 
     init {
         viewModelScope.launch {
@@ -159,7 +176,16 @@ class ActivationViewModel(private val repository: SindenRepository) : ViewModel(
             _state.update { it.copy(errors = errors) }
             return
         }
-        _state.update { it.copy(step = AuthStep.SECURITY, errors = emptyMap(), errorMessage = null, widgetKey = it.widgetKey + 1) }
+        val useTurnstile = turnstileEnforced == true
+        _state.update {
+            it.copy(step = AuthStep.SECURITY, errors = emptyMap(), errorMessage = null, widgetKey = it.widgetKey + 1, showWidget = useTurnstile)
+        }
+        if (!useTurnstile) {
+            pending = viewModelScope.launch {
+                delay(MIN_STEP_MS)
+                if (_state.value.step == AuthStep.SECURITY) activate(null)
+            }
+        }
     }
 
     fun onTurnstileToken(token: String) {
@@ -179,7 +205,9 @@ class ActivationViewModel(private val repository: SindenRepository) : ViewModel(
     }
 
     fun cancelCheck() {
-        if (_state.value.step == AuthStep.SECURITY) _state.update { it.copy(step = AuthStep.IDLE, widgetKey = it.widgetKey + 1) }
+        if (_state.value.step != AuthStep.SECURITY) return
+        pending?.cancel()
+        _state.update { it.copy(step = AuthStep.IDLE, widgetKey = it.widgetKey + 1) }
     }
 
     private fun activate(turnstileToken: String?) {
