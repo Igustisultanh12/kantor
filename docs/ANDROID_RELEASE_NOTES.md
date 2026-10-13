@@ -1,3 +1,30 @@
+# SISINDEN Android v1.2.0 (versionCode 9)
+
+Tampilan baru perpaduan **Elder Friendly Livin'** (ramah lansia) dan **iOS 26 Liquid Glass**, Daftar Jaga pribadi, pengingat H-1, dan halaman masuk baru.
+
+## Yang baru
+
+- **Desain "Livin Glass"** — biru Livin, huruf Figtree yang lebih besar (isi 16sp, judul 20sp tebal), ikon selalu berlabel, ubin fitur bergradien, kartu putih bergaris tegas; mode gelap memakai permukaan kaca tembus pandang dengan cahaya lembut.
+- **Tab bar mengambang** berbentuk kapsul kaca; tombol **Presensi** menonjol di tengah.
+- **Top bar biru** dengan judul di tengah dan tombol **"Kembali" berlabel**.
+- **Beranda baru** — kartu akun (sapaan, pangkat/jabatan, tanggal) dengan bar presensi hari ini, "Fitur Utama Anda", Daftar Jaga Anda, Ringkasan, dan "Fitur Lainnya" berkategori.
+- **Daftar Jaga pribadi** — kartu per bulan (bulan ini & bulan lalu) yang hanya menampilkan **tanggal jaga milik Anda** beserta peran dan statusnya (Selesai/Hari ini/Besok). Susunan lengkap seluruh personel tetap tersedia lewat tombol **Lihat PDF** dan **Unduh PDF** (PDF resmi server).
+- **Pengingat jaga H-1** — notifikasi otomatis pukul 07.00 sehari sebelum tanggal jaga; tetap berjalan saat aplikasi ditutup dan dipasang ulang setelah ponsel dinyalakan ulang. Pengingat dihapus saat keluar akun.
+- **Halaman masuk baru** seperti web SISINDEN — foto latar dari pengaturan Admin (lapisan gelap), logo mengambang halus, kartu kaca gelap, tombol oranye.
+- **Ukuran teks** — pilihan Normal / Besar / Sangat besar di Pengaturan.
+
+## Perubahan
+
+- Pengaturan **alamat server dihapus** (halaman masuk & Pengaturan); aplikasi selalu terhubung ke server resmi `https://sisinden.my.id`.
+- Ikon notifikasi monokrom agar tampil jelas di status bar.
+
+## Status pengujian
+
+- Unit test baru: penyaringan jadwal pribadi (tanggal personel lain tidak tampil), status relatif tanggal, dan konfigurasi latar login.
+- Build, unit test, dan lint dijalankan oleh GitHub Actions pada setiap push ke `main`.
+
+---
+
 # SISINDEN Android v1.1.0 (versionCode 7)
 
 Rilis desain ulang total aplikasi Android SISINDEN, dengan hak akses mengikuti pengaturan Admin, **Daftar Jaga** di beranda, dan pratinjau/unduh PDF resmi.

@@ -18,6 +18,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import id.my.sisinden.app.core.security.Perm
 import id.my.sisinden.app.core.security.PermissionSet
 import id.my.sisinden.app.core.ui.components.Tone
+import id.my.sisinden.app.core.ui.theme.TileGradient
+import id.my.sisinden.app.core.ui.theme.TilePalette
 
 enum class FeatureGroup(val title: String) {
     OPERASIONAL("Operasional"),
@@ -53,6 +55,23 @@ enum class Feature(
     VIOLATIONS(Routes.VIOLATIONS, "Pelanggaran", "Catatan disiplin prajurit", Icons.Outlined.Gavel, Perm.VIOLATIONS_VIEW, FeatureGroup.PERSONEL, Tone.DANGER),
     USERS(Routes.USERS, "Kelola Pengguna", "Akun & status personel", Icons.Outlined.Group, Perm.USERS_VIEW, FeatureGroup.PERSONEL, Tone.NEUTRAL);
 
+    /** Warna ubin bergradien (gaya "Fitur Utama" Livin) — tiap modul punya warna sendiri. */
+    val gradient: TileGradient
+        get() = when (this) {
+            DUTY -> TilePalette.Blue
+            ATTENDANCE -> TilePalette.Teal
+            NOTIFICATIONS -> TilePalette.Orange
+            LETTER_LOGS -> TilePalette.Sky
+            SKHPP -> TilePalette.Violet
+            SIGNATURE -> TilePalette.Orange
+            CASH -> TilePalette.Teal
+            TECHNICAL_CASH -> TilePalette.Lime
+            COMMANDER -> TilePalette.Blue
+            MITRA -> TilePalette.Sky
+            VIOLATIONS -> TilePalette.Rose
+            USERS -> TilePalette.Slate
+        }
+
     companion object {
         fun permitted(permissions: PermissionSet): List<Feature> = entries.filter { permissions.has(it.permission) }
     }
@@ -86,12 +105,9 @@ object Routes {
     const val SETTINGS = "settings"
 
     // Berparameter
-    const val DUTY_DAY = "duty_day?sp={sp}&date={date}"
-    fun dutyDay(spId: Int?, date: String) = "duty_day?sp=${spId ?: -1}&date=${Uri.encode(date)}"
-
-    const val PDF = "pdf?path={path}&title={title}&file={file}"
-    fun pdf(apiPath: String, title: String, fileName: String) =
-        "pdf?path=${Uri.encode(apiPath)}&title=${Uri.encode(title)}&file=${Uri.encode(fileName)}"
+    const val PDF = "pdf?path={path}&title={title}&file={file}&save={save}"
+    fun pdf(apiPath: String, title: String, fileName: String, save: Boolean = false) =
+        "pdf?path=${Uri.encode(apiPath)}&title=${Uri.encode(title)}&file=${Uri.encode(fileName)}&save=$save"
 
     const val DEEP_LINK_PREFIX = "sisinden://app/"
 

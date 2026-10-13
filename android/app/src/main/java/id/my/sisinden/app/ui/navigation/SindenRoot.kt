@@ -6,11 +6,14 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import id.my.sisinden.app.core.data.SessionState
+import id.my.sisinden.app.core.notification.DutyReminders
+import id.my.sisinden.app.core.ui.components.GlassBackground
 import id.my.sisinden.app.data.repository.SindenRepository
 import id.my.sisinden.app.ui.auth.ActivationScreen
 import id.my.sisinden.app.ui.auth.LoginScreen
@@ -34,6 +37,12 @@ fun SindenRoot(
         if (repository.session.restore()) {
             repository.refreshSession()
         }
+    }
+
+    // Keluar akun → hapus pengingat jaga milik akun sebelumnya.
+    val context = LocalContext.current
+    LaunchedEffect(session is SessionState.LoggedOut) {
+        if (session is SessionState.LoggedOut) DutyReminders.cancelAll(context)
     }
 
     val stage = when (session) {
@@ -66,6 +75,8 @@ fun SindenRoot(
 @Composable
 private fun AuthNavigation(repository: SindenRepository, state: SessionState.LoggedOut?) {
     val nav = rememberNavController()
+    // Latar untuk layar autentikasi yang memakai SindenScaffold transparan (mis. Aktivasi).
+    GlassBackground {
     NavHost(navController = nav, startDestination = Routes.LOGIN) {
         composable(Routes.LOGIN) {
             LoginScreen(
@@ -81,5 +92,6 @@ private fun AuthNavigation(repository: SindenRepository, state: SessionState.Log
                 onActivated = { nav.popBackStack() },
             )
         }
+    }
     }
 }

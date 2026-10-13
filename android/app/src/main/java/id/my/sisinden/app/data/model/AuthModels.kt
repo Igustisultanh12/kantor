@@ -109,6 +109,8 @@ data class UserProfile(
 }
 
 data class ConfigResponse(
+    @SerializedName("app_name") val appName: String? = null,
+    @SerializedName("login_background") val loginBackground: String? = null,
     @SerializedName("agency_name") val agencyName: String? = null,
     @SerializedName("agency_logo") val agencyLogo: String? = null,
     @SerializedName("api_status") val apiStatus: String? = null,

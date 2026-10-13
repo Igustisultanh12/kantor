@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Memasang ulang pengingat jaga H-1 setelah perangkat dinyalakan ulang -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Lokasi hanya diminta saat pengguna menekan "Gunakan lokasi saya" pada Presensi -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -54,6 +56,19 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- Pengingat jaga H-1 (alarm lokal, intent eksplisit) -->
+        <receiver
+            android:name=".core.notification.DutyReminderReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".core.notification.DutyReminderBootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

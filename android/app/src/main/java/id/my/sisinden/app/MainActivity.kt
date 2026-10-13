@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import id.my.sisinden.app.core.ui.theme.SindenTheme
+import id.my.sisinden.app.core.ui.theme.TextScale
 import id.my.sisinden.app.core.ui.theme.ThemeMode
 import id.my.sisinden.app.ui.navigation.SindenRoot
 
@@ -34,8 +35,9 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val themeMode by app.repository.themeModeFlow.collectAsStateWithLifecycle(initialValue = ThemeMode.SYSTEM)
+            val textScale by app.repository.textScaleFlow.collectAsStateWithLifecycle(initialValue = TextScale.NORMAL)
             val newIntent by pendingIntent
-            SindenTheme(themeMode = themeMode) {
+            SindenTheme(themeMode = themeMode, textScale = textScale) {
                 SindenRoot(
                     repository = app.repository,
                     newIntent = newIntent,

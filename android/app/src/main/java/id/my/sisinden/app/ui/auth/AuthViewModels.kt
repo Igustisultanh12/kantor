@@ -2,14 +2,12 @@ package id.my.sisinden.app.ui.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import id.my.sisinden.app.core.data.SessionStore
 import id.my.sisinden.app.core.network.ApiResult
+import id.my.sisinden.app.data.model.ConfigResponse
 import id.my.sisinden.app.data.repository.SindenRepository
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -26,8 +24,16 @@ class LoginViewModel(private val repository: SindenRepository) : ViewModel() {
     private val _state = MutableStateFlow(LoginUiState())
     val state: StateFlow<LoginUiState> = _state.asStateFlow()
 
-    val baseUrl: StateFlow<String> = repository.baseUrlFlow
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SessionStore.DEFAULT_BASE_URL)
+    /** Konfigurasi publik server (latar login, nama instansi) — sama dengan halaman login web. */
+    private val _config = MutableStateFlow<ConfigResponse?>(null)
+    val config: StateFlow<ConfigResponse?> = _config.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            val res = repository.getConfig()
+            if (res is ApiResult.Success) _config.value = res.data
+        }
+    }
 
     fun onIdentifier(v: String) = _state.update { it.copy(identifier = v, identifierError = null, errorMessage = null) }
     fun onPassword(v: String) = _state.update { it.copy(password = v, passwordError = null, errorMessage = null) }
@@ -49,14 +55,6 @@ class LoginViewModel(private val repository: SindenRepository) : ViewModel() {
                 is ApiResult.Failure -> _state.update { it.copy(submitting = false, errorMessage = res.error.message) }
             }
         }
-    }
-
-    /** @return pesan error, atau null bila tersimpan. */
-    fun saveBaseUrl(input: String): String? {
-        val normalized = SessionStore.normalizeBaseUrl(input)
-            ?: return "Alamat server tidak valid. Gunakan alamat HTTPS, mis. https://sisinden.my.id"
-        viewModelScope.launch { repository.setBaseUrl(normalized) }
-        return null
     }
 }
 

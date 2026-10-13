@@ -20,9 +20,6 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.HowToReg
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +28,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import id.my.sisinden.app.core.ui.components.GlassBackground
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -54,7 +53,6 @@ import id.my.sisinden.app.ui.cash.CashScreen
 import id.my.sisinden.app.ui.commander.CommanderScreen
 import id.my.sisinden.app.ui.common.AccessDeniedScreen
 import id.my.sisinden.app.ui.dashboard.DashboardScreen
-import id.my.sisinden.app.ui.duty.DutyDayScreen
 import id.my.sisinden.app.ui.duty.DutyRosterScreen
 import id.my.sisinden.app.ui.letters.LetterLogsScreen
 import id.my.sisinden.app.ui.menu.MenuScreen
@@ -70,7 +68,7 @@ import id.my.sisinden.app.ui.users.UsersScreen
 import id.my.sisinden.app.ui.violations.ViolationFormScreen
 import id.my.sisinden.app.ui.violations.ViolationsScreen
 
-private data class TabItem(
+internal data class TabItem(
     val route: String,
     val label: String,
     val icon: ImageVector,
@@ -134,31 +132,20 @@ fun MainNavigation(
     val openPdf: (String, String, String) -> Unit = remember(nav) {
         { path, title, file -> nav.navigate(Routes.pdf(path, title, file)) }
     }
+    val downloadPdf: (String, String, String) -> Unit = remember(nav) {
+        { path, title, file -> nav.navigate(Routes.pdf(path, title, file, save = true)) }
+    }
     val navigate: (String) -> Unit = remember(nav) {
         { route -> if (route in Routes.tabs) nav.navigateToTab(route) else nav.navigate(route) { launchSingleTop = true } }
     }
 
+    GlassBackground {
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         contentWindowInsets = if (showBottomBar) WindowInsets(0, 0, 0, 0) else WindowInsets.navigationBars,
         bottomBar = {
             if (showBottomBar) {
-                NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
-                    tabs.forEach { tab ->
-                        val selected = currentRoute == tab.route
-                        NavigationBarItem(
-                            selected = selected,
-                            onClick = { if (!selected) nav.navigateToTab(tab.route) },
-                            icon = { Icon(if (selected) tab.selectedIcon else tab.icon, contentDescription = null) },
-                            label = { Text(tab.label, style = MaterialTheme.typography.labelMedium) },
-                            colors = NavigationBarItemDefaults.colors(
-                                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                                selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                            ),
-                        )
-                    }
-                }
+                SindenBottomBar(tabs = tabs, currentRoute = currentRoute, onSelect = { nav.navigateToTab(it) })
             }
         },
     ) { padding ->
@@ -177,7 +164,6 @@ fun MainNavigation(
                     repository = repository,
                     session = sessionState.value,
                     onNavigate = navigate,
-                    onOpenDutyDay = { sp, date -> nav.navigate(Routes.dutyDay(sp, date)) },
                 )
             }
             composable(Routes.DUTY, deepLinks = appDeepLink("duty")) {
@@ -185,8 +171,8 @@ fun MainNavigation(
                     DutyRosterScreen(
                         repository = repository,
                         permissions = currentPerms(),
-                        onOpenDay = { sp, date -> nav.navigate(Routes.dutyDay(sp, date)) },
                         onOpenPdf = openPdf,
+                        onDownloadPdf = downloadPdf,
                     )
                 }
             }
@@ -205,27 +191,6 @@ fun MainNavigation(
                     onOpenSettings = { nav.navigate(Routes.SETTINGS) },
                     onOpenNotifications = { nav.navigate(Routes.NOTIFICATIONS) },
                 )
-            }
-
-            // ------------------------------------------------------ Daftar jaga
-            composable(
-                Routes.DUTY_DAY,
-                arguments = listOf(
-                    navArgument("sp") { type = NavType.IntType; defaultValue = -1 },
-                    navArgument("date") { type = NavType.StringType; defaultValue = "" },
-                ),
-            ) { entry ->
-                Guard(currentPerms(), Perm.DUTY_VIEW, back) {
-                    val sp = entry.arguments?.getInt("sp")?.takeIf { it > 0 }
-                    DutyDayScreen(
-                        repository = repository,
-                        spId = sp,
-                        date = entry.arguments?.getString("date").orEmpty(),
-                        canPdf = currentPerms().has(Perm.DUTY_PDF),
-                        onBack = back,
-                        onOpenPdf = openPdf,
-                    )
-                }
             }
 
             // ------------------------------------------------------ Modul
@@ -305,6 +270,7 @@ fun MainNavigation(
                     navArgument("path") { type = NavType.StringType; defaultValue = "" },
                     navArgument("title") { type = NavType.StringType; defaultValue = "Dokumen" },
                     navArgument("file") { type = NavType.StringType; defaultValue = "dokumen.pdf" },
+                    navArgument("save") { type = NavType.BoolType; defaultValue = false },
                 ),
             ) { entry ->
                 PdfPreviewScreen(
@@ -312,10 +278,12 @@ fun MainNavigation(
                     apiPath = entry.arguments?.getString("path").orEmpty(),
                     title = entry.arguments?.getString("title").orEmpty(),
                     fileName = entry.arguments?.getString("file").orEmpty(),
+                    autoSave = entry.arguments?.getBoolean("save") ?: false,
                     onBack = back,
                 )
             }
         }
+    }
     }
 }
 

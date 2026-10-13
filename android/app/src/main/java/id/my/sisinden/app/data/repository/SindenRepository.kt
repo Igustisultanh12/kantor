@@ -282,7 +282,8 @@ class SindenRepository(
     val hideBalanceFlow = store.hideBalanceFlow
     suspend fun setThemeMode(mode: id.my.sisinden.app.core.ui.theme.ThemeMode) = store.setThemeMode(mode)
     suspend fun setHideBalance(hide: Boolean) = store.setHideBalance(hide)
-    suspend fun setBaseUrl(url: String) = store.setBaseUrl(url)
+    val textScaleFlow = store.textScaleFlow
+    suspend fun setTextScale(scale: id.my.sisinden.app.core.ui.theme.TextScale) = store.setTextScale(scale)
 }
 
 enum class CashKind(val title: String, val subtitle: String) {
