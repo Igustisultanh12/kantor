@@ -61,9 +61,9 @@ object Biometric {
                     override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) = onSuccess()
 
                     override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                        // Tombol "Gunakan PIN" ditangani listener tombol negatif (bukan error).
                         val silent = errorCode == BiometricPrompt.BIOMETRIC_ERROR_USER_CANCELED ||
-                            errorCode == BiometricPrompt.BIOMETRIC_ERROR_CANCELED ||
-                            errorCode == BiometricPrompt.BIOMETRIC_ERROR_NEGATIVE_BUTTON
+                            errorCode == BiometricPrompt.BIOMETRIC_ERROR_CANCELED
                         if (!silent) onError(errString.toString().ifBlank { "Biometrik tidak dapat digunakan. Gunakan PIN." })
                     }
                 },
