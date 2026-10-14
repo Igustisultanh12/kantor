@@ -115,6 +115,8 @@ class SindenRepository(
 
     suspend fun getConfig(): ApiResult<ConfigResponse> = call { getConfig() }
 
+    suspend fun pushTest() = call { pushTest() }
+
     /** Daftarkan token FCM perangkat ini ke akun yang sedang masuk. */
     suspend fun registerPushToken(token: String) = call {
         registerPush(PushRegisterRequest(token, id.my.sisinden.app.BuildConfig.VERSION_NAME, "${Build.MANUFACTURER} ${Build.MODEL}".take(100)))

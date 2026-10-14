@@ -3,6 +3,7 @@ package id.my.sisinden.app.ui.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import id.my.sisinden.app.core.network.ApiResult
+import id.my.sisinden.app.core.network.ErrorKind
 import id.my.sisinden.app.data.model.ConfigResponse
 import id.my.sisinden.app.data.repository.SindenRepository
 import kotlinx.coroutines.Job
@@ -12,10 +13,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** Durasi minimum tiap tahap animasi agar terbaca (ms). */
 private const val MIN_STEP_MS = 700L
 private const val FINISH_MS = 900L
+private const val TOKEN_SHOW_MS = 600L
 
 /** Pesan ramah untuk kode error widget Turnstile. */
 internal fun turnstileErrorMessage(code: String): String = when {
@@ -70,8 +73,19 @@ class LoginViewModel(private val repository: SindenRepository) : ViewModel() {
             _state.update { it.copy(identifierError = idErr, passwordError = pwErr) }
             return
         }
+        _state.update { it.copy(step = AuthStep.SECURITY, errorMessage = null, showWidget = false) }
+        pending = viewModelScope.launch {
+            // Selalu ambil status Turnstile terbaru (Admin bisa mengaktifkannya kapan saja).
+            val fresh = withTimeoutOrNull(4_000) { repository.getConfig() }
+            if (fresh is ApiResult.Success) _config.value = fresh.data
+            if (_state.value.step != AuthStep.SECURITY) return@launch
+            startSecurityStep()
+        }
+    }
+
+    private fun startSecurityStep() {
         val useTurnstile = _config.value?.turnstileEnabled == true
-        _state.update { it.copy(step = AuthStep.SECURITY, errorMessage = null, widgetKey = it.widgetKey + 1, showWidget = useTurnstile) }
+        _state.update { it.copy(step = AuthStep.SECURITY, widgetKey = it.widgetKey + 1, showWidget = useTurnstile) }
         if (!useTurnstile) {
             // Turnstile sedang nonaktif di server: tahap keamanan hanya animasi singkat.
             pending = viewModelScope.launch {
@@ -83,7 +97,11 @@ class LoginViewModel(private val repository: SindenRepository) : ViewModel() {
 
     fun onTurnstileToken(token: String) {
         if (_state.value.step != AuthStep.SECURITY) return
-        authenticate(token)
+        // Biarkan tanda "Berhasil" Cloudflare terlihat sejenak sebelum lanjut.
+        pending = viewModelScope.launch {
+            delay(TOKEN_SHOW_MS)
+            if (_state.value.step == AuthStep.SECURITY) authenticate(token)
+        }
     }
 
     fun onTurnstileError(code: String) {
@@ -122,6 +140,14 @@ class LoginViewModel(private val repository: SindenRepository) : ViewModel() {
                 is ApiResult.Failure -> {
                     val elapsed = System.currentTimeMillis() - started
                     if (elapsed < MIN_STEP_MS) delay(MIN_STEP_MS - elapsed)
+                    if (token == null && res.error.kind == ErrorKind.VALIDATION && _config.value?.turnstileEnabled != true &&
+                        res.error.message.contains("keamanan", ignoreCase = true)
+                    ) {
+                        // Server ternyata mewajibkan Turnstile (konfigurasi lama di HP) → tampilkan widget.
+                        _config.value = _config.value?.copy(turnstileEnabled = true) ?: ConfigResponse(turnstileEnabled = true)
+                        startSecurityStep()
+                        return@launch
+                    }
                     _state.update {
                         it.copy(step = AuthStep.IDLE, widgetKey = it.widgetKey + 1, errorMessage = res.error.message)
                     }
@@ -176,10 +202,17 @@ class ActivationViewModel(private val repository: SindenRepository) : ViewModel(
             _state.update { it.copy(errors = errors) }
             return
         }
-        val useTurnstile = turnstileEnforced == true
-        _state.update {
-            it.copy(step = AuthStep.SECURITY, errors = emptyMap(), errorMessage = null, widgetKey = it.widgetKey + 1, showWidget = useTurnstile)
+        _state.update { it.copy(step = AuthStep.SECURITY, errors = emptyMap(), errorMessage = null, showWidget = false) }
+        pending = viewModelScope.launch {
+            val fresh = withTimeoutOrNull(4_000) { repository.getConfig() }
+            if (fresh is ApiResult.Success) turnstileEnforced = fresh.data.turnstileEnabled
+            if (_state.value.step == AuthStep.SECURITY) startActivationCheck()
         }
+    }
+
+    private fun startActivationCheck() {
+        val useTurnstile = turnstileEnforced == true
+        _state.update { it.copy(widgetKey = it.widgetKey + 1, showWidget = useTurnstile) }
         if (!useTurnstile) {
             pending = viewModelScope.launch {
                 delay(MIN_STEP_MS)

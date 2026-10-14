@@ -4,6 +4,7 @@ import { Head, useForm, router, usePage, Link } from '@inertiajs/vue3';
 import { ref, shallowRef, markRaw, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import Swal from 'sweetalert2';
 import interact from 'interactjs';
+import QrcodeVue from 'qrcode.vue';
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Konfigurasi Worker PDF.js Core
@@ -311,13 +312,25 @@ const activePagesList = computed(() => {
   return Object.keys(pageSignatures.value).map(Number).sort((a, b) => a - b);
 });
 
+// Ukuran kanvas yang TAMPIL di layar (CSS px). Kotak QR diposisikan dalam CSS px,
+// jadi rasio harus dihitung terhadap ukuran tampil — bukan resolusi internal kanvas —
+// agar posisi QR hasil TTE sama persis dengan pratinjau (termasuk di layar HP).
+const canvasBox = (canvas) => {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    w: rect.width || canvas.clientWidth || canvas.width,
+    h: rect.height || canvas.clientHeight || canvas.height,
+  };
+};
+
 const saveCurrentPagePos = () => {
   const canvas = document.getElementById('pdf-render-canvas');
   if (canvas && isAdjusting.value && pageSignatures.value && pageSignatures.value[currentPage.value]) {
+    const box = canvasBox(canvas);
     pageSignatures.value[currentPage.value] = {
-      x: parseFloat(signaturePos.value.x / canvas.width),
-      y: parseFloat(signaturePos.value.y / canvas.height),
-      width: parseFloat(signatureSize.value.width / canvas.width)
+      x: parseFloat(signaturePos.value.x / box.w),
+      y: parseFloat(signaturePos.value.y / box.h),
+      width: parseFloat(signatureSize.value.width / box.w)
     };
   }
 };
@@ -366,18 +379,20 @@ const loadPagePos = () => {
   const canvas = document.getElementById('pdf-render-canvas');
   if (!canvas) return;
 
-  const minSize = typeof window !== 'undefined' && window.innerWidth < 640 ? 55 : 60;
+  const box = canvasBox(canvas);
+  // Komandan melihat ukuran QR yang sebenarnya (tanpa batas minimum) agar pratinjau = hasil.
+  const minSize = isCommander.value ? 0 : (typeof window !== 'undefined' && window.innerWidth < 640 ? 55 : 60);
   if (pageSignatures.value && pageSignatures.value[currentPage.value]) {
     const pData = pageSignatures.value[currentPage.value];
-    signaturePos.value = { x: pData.x * canvas.width, y: pData.y * canvas.height };
-    const wPx = pData.width * canvas.width;
+    signaturePos.value = { x: pData.x * box.w, y: pData.y * box.h };
+    const wPx = pData.width * box.w;
     signatureSize.value = { width: Math.max(minSize, wPx), height: Math.max(minSize, wPx) };
   } else {
     signaturePos.value = {
-      x: Math.max(10, canvas.width * 0.58),
-      y: Math.max(10, canvas.height * 0.72)
+      x: Math.max(10, box.w * 0.58),
+      y: Math.max(10, box.h * 0.72)
     };
-    const defaultW = Math.max(minSize, canvas.width * 0.15);
+    const defaultW = Math.max(minSize, box.w * 0.15);
     signatureSize.value = { width: defaultW, height: defaultW };
   }
 };
@@ -451,9 +466,10 @@ const saveOperatorPos = () => {
   saveCurrentPagePos();
   const canvas = document.getElementById('pdf-render-canvas');
   if (canvas) {
-    form.x = parseFloat(signaturePos.value.x / canvas.width);
-    form.y = parseFloat(signaturePos.value.y / canvas.height);
-    form.width = parseFloat(signatureSize.value.width / canvas.width);
+    const box = canvasBox(canvas);
+    form.x = parseFloat(signaturePos.value.x / box.w);
+    form.y = parseFloat(signaturePos.value.y / box.h);
+    form.width = parseFloat(signatureSize.value.width / box.w);
     form.target_page = currentPage.value;
     form.pages_data = Object.keys(pageSignatures.value).length > 0 ? JSON.stringify(pageSignatures.value) : null;
   }
@@ -536,9 +552,10 @@ const enableDrag = () => {
     const canvas = document.getElementById('pdf-render-canvas');
     if (canvas) {
       if (signaturePos.value.x <= 50 || signaturePos.value.y <= 100) {
+        const box = canvasBox(canvas);
         signaturePos.value = {
-          x: Math.max(10, canvas.width * 0.58),
-          y: Math.max(10, canvas.height * 0.72)
+          x: Math.max(10, box.w * 0.58),
+          y: Math.max(10, box.h * 0.72)
         };
       }
     }
@@ -600,10 +617,19 @@ const handlePdfDecision = (status, applyAll = false) => {
   const configuredCount = Object.keys(pageSignatures.value).length;
   
   decisionForm.status = 'approved';
-  decisionForm.x = parseFloat(signaturePos.value.x / canvas.width); 
-  decisionForm.y = parseFloat(signaturePos.value.y / canvas.height);
-  decisionForm.width = parseFloat(signatureSize.value.width / canvas.width);
-  decisionForm.canvas_width = canvas.width;
+  const box = canvasBox(canvas);
+  const stored = pageSignatures.value ? pageSignatures.value[currentPage.value] : null;
+  if (isCommander.value && stored) {
+    // Komandan tidak menggeser QR: pakai posisi persis yang ditetapkan pengaju.
+    decisionForm.x = parseFloat(stored.x);
+    decisionForm.y = parseFloat(stored.y);
+    decisionForm.width = parseFloat(stored.width);
+  } else {
+    decisionForm.x = parseFloat(signaturePos.value.x / box.w);
+    decisionForm.y = parseFloat(signaturePos.value.y / box.h);
+    decisionForm.width = parseFloat(signatureSize.value.width / box.w);
+  }
+  decisionForm.canvas_width = box.w;
   decisionForm.target_page = currentPage.value;
   decisionForm.apply_to_all = applyAll;
   decisionForm.pages_data = configuredCount > 0 ? JSON.stringify(pageSignatures.value) : null;
@@ -1234,11 +1260,13 @@ const getStatusClass = (status) => {
           <!-- Signature Box (Khusus Komandan: Posisi Terkunci / Read-Only; Operator: Draggable & Resizable) -->
           <div v-if="isAdjusting && isCurrentPageActive" 
                :class="isCommander 
-                 ? 'border-2 border-emerald-600 bg-white/95 shadow-xl select-none cursor-default' 
-                 : 'drag-signature cursor-move border-2 border-blue-600 bg-white shadow-2xl touch-none'"
-               class="absolute z-[200] flex items-center justify-center text-center p-0.5"
+                 ? 'ring-2 ring-emerald-600 bg-white/95 shadow-xl select-none cursor-default' 
+                 : 'drag-signature cursor-move ring-2 ring-blue-600 bg-white shadow-2xl touch-none'"
+               class="absolute z-[200] flex items-center justify-center text-center"
                :style="{ left: signaturePos.x + 'px', top: signaturePos.y + 'px', width: signatureSize.width + 'px', height: signatureSize.height + 'px' }">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=SINDEN_PREVIEW" class="w-full h-full object-contain pointer-events-none" alt="QR Code TTD Digital" />
+            <!-- QR dibuat lokal (tanpa layanan luar) & mengisi kotak penuh = ukuran QR hasil TTE -->
+            <qrcode-vue value="SINDEN-PRATINJAU-TTE" :size="Math.max(16, Math.round(signatureSize.width))" level="M" render-as="svg" :margin="0"
+                        class="w-full h-full pointer-events-none" style="width:100%;height:100%" />
             
             <!-- Resize handle hanya untuk Operator / Non-Komandan -->
             <div v-if="!isCommander" class="absolute -bottom-2 -right-2 w-6 h-6 bg-blue-600 rounded-full border-2 border-white shadow-lg cursor-se-resize flex items-center justify-center">

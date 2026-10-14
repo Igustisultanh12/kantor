@@ -779,6 +779,13 @@ class MobileApiSecurityTest extends TestCase
         $this->withToken($this->tokenFor($v))->postJson('/api/mobile/logout', ['push_token' => 'fcm-token-' . str_repeat('a', 30)])->assertOk();
         $this->assertSame(0, \App\Models\DeviceToken::count());
 
+        // Uji push dari aplikasi.
+        $w = $this->makeUser();
+        $tw = $this->tokenFor($w);
+        $this->withToken($tw)->postJson('/api/mobile/push/test')->assertOk()->assertJsonPath('code', 'no_device');
+        \App\Models\DeviceToken::register($w->id, 'tok-uji-' . str_repeat('u', 20));
+        $this->withToken($tw)->postJson('/api/mobile/push/test')->assertOk()->assertJsonPath('status', 'success');
+
         // google-services.json untuk paket lain ditolak.
         $this->assertIsString(\App\Support\PushNotifier::parseGoogleServices(json_encode(['project_info' => ['project_id' => 'x'], 'client' => [['client_info' => ['android_client_info' => ['package_name' => 'com.lain']]]]])));
     }
@@ -838,5 +845,104 @@ class MobileApiSecurityTest extends TestCase
         \App\Models\DeviceToken::register($u->id, 'tok-lama-' . str_repeat('z', 20));
         $this->assertSame(0, \App\Support\PushNotifier::sendNow([$u->id], ['type' => 'notification']));
         $this->assertSame(0, \App\Models\DeviceToken::count());
+    }
+
+    private function realPdf(int $pages = 2): string
+    {
+        $pdf = new \setasign\Fpdi\Fpdi();
+        for ($i = 1; $i <= $pages; $i++) {
+            $pdf->AddPage('P', 'A4');
+            $pdf->SetFont('Helvetica', '', 12);
+            $pdf->Cell(0, 10, "Halaman {$i}");
+        }
+        return $pdf->Output('S');
+    }
+
+    private function fakeQrPng(): string
+    {
+        $img = imagecreatetruecolor(60, 60);
+        imagefill($img, 0, 0, imagecolorallocate($img, 255, 255, 255));
+        imagefilledrectangle($img, 5, 5, 25, 25, imagecolorallocate($img, 0, 0, 0));
+        ob_start();
+        imagepng($img);
+        return (string) ob_get_clean();
+    }
+
+    /** Jumlah gambar QR per halaman PDF keluaran (FPDF menulis satu XObject per gambar unik). */
+    private function stampedPages(string $pdfContent): array
+    {
+        $fpdi = new \setasign\Fpdi\Fpdi();
+        $tmp = tempnam(sys_get_temp_dir(), 'tte');
+        file_put_contents($tmp, $pdfContent);
+        $count = $fpdi->setSourceFile($tmp);
+        @unlink($tmp);
+        // Buka aliran konten (FlateDecode) per halaman lalu hitung perintah gambar FPDF "/I<n> Do".
+        $draws = 0;
+        $drawPages = [];
+        $page = 0;
+        $text = '';
+        preg_match_all('/stream\r?\n(.*?)\r?\nendstream/s', $pdfContent, $streams);
+        foreach ($streams[1] as $raw) {
+            $plain = @gzuncompress($raw);
+            $plain = $plain === false ? $raw : $plain;
+            if (str_contains($plain, '/TPL')) {
+                $page++;
+                $n = preg_match_all('/\/I\d+ Do/', $plain);
+                $draws += $n;
+                if ($n) {
+                    $drawPages[] = $page;
+                }
+                $text .= $plain;
+            }
+        }
+        return ['pages' => $count, 'draws' => $draws, 'draw_pages' => $drawPages, 'text' => $text];
+    }
+
+    public function test_tte_preview_shows_qr_and_mobile_approval_uses_requested_page(): void
+    {
+        // Skema produksi lengkap untuk tabel TTE.
+        Schema::drop('signature_requests');
+        foreach (glob(database_path('migrations/*signature_requests*.php')) as $m) {
+            (require $m)->up();
+        }
+        foreach (glob(database_path('migrations/*audit_logs*.php')) as $m) {
+            if (!Schema::hasTable('audit_logs')) {
+                (require $m)->up();
+            }
+        }
+        \Illuminate\Support\Facades\Storage::fake('public');
+        Http::fake([
+            'api.qrserver.com/*' => Http::response($this->fakeQrPng(), 200, ['Content-Type' => 'image/png']),
+            '*' => Http::response('', 200),
+        ]);
+        \Illuminate\Support\Facades\Storage::disk('public')->put('signature_reqs/dok3.pdf', $this->realPdf(3));
+        $owner = $this->makeUser();
+        $komandan = $this->makeUser(['role' => 'komandan']);
+        $sr = \App\Models\SignatureRequest::forceCreate([
+            'user_id' => $owner->id, 'subject' => 'Laporan 3 halaman', 'file_path' => 'signature_reqs/dok3.pdf',
+            'status' => 'pending', 'verification_code' => 'TTE-DOC-UJI', 'x' => 0.6, 'y' => 0.7, 'width' => 0.15,
+            'target_page' => 1, 'pages_data' => null,
+        ]);
+
+        // Pratinjau: dokumen + QR di halaman pilihan pengaju (bukan dokumen polos).
+        $preview = $this->withToken($this->tokenFor($owner))->get("/api/mobile/pdf/signature/{$sr->id}")->assertOk()->getContent();
+        $this->assertStringStartsWith('%PDF', $preview);
+        $info = $this->stampedPages($preview);
+        $this->assertSame(3, $info['pages']);
+        $this->assertSame(1, $info['draws'], 'QR pratinjau hanya di halaman 1');
+        $this->assertSame([1], $info['draw_pages']);
+        $this->assertStringContainsString('PRATINJAU TTE', $info['text']);
+
+        // Pengesahan dari aplikasi tanpa target_page → tetap di halaman 1 (bukan halaman terakhir).
+        $r = $this->withToken($this->tokenFor($komandan))->postJson("/api/mobile/signature-requests/{$sr->id}/sign");
+        $this->assertSame(200, $r->status(), (string) $r->getContent());
+        $sr->refresh();
+        $this->assertSame('approved', $sr->status);
+        $this->assertSame(1, (int) $sr->target_page);
+        $signed = \Illuminate\Support\Facades\Storage::disk('public')->get($sr->file_path);
+        $page1 = $this->stampedPages($signed);
+        $this->assertSame(3, $page1['pages']);
+        $this->assertSame(1, $page1['draws']);
+        $this->assertSame([1], $page1['draw_pages'], 'QR hasil TTE di halaman pilihan pengaju');
     }
 }

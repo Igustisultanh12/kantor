@@ -142,6 +142,12 @@ data class PushRegisterRequest(
     @SerializedName("device_name") val deviceName: String?,
 )
 
+data class PushTestResponse(
+    @SerializedName("status") val status: String? = null,
+    @SerializedName("code") val code: String? = null,
+    @SerializedName("message") val message: String? = null,
+)
+
 data class LogoutRequest(@SerializedName("push_token") val pushToken: String? = null)
 
 data class SimpleResponse(

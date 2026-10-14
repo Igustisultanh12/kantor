@@ -1483,3 +1483,32 @@ Route::post('/api/mobile/push/unregister', function (Request $request) {
     }
     return response()->json(['status' => 'success']);
 })->middleware(['mobile.auth', 'throttle:30,1']);
+
+// Uji notifikasi push ke perangkat milik pengguna sendiri (menu Pengaturan aplikasi).
+Route::post('/api/mobile/push/test', function (Request $request) {
+    $user = $request->user();
+    $push = \App\Support\PushNotifier::class;
+    if (!$push::clientConfig() || !\App\Support\PushNotifier::serviceAccountProject()) {
+        return response()->json(['status' => 'error', 'code' => 'push_not_configured',
+            'message' => 'Notifikasi push belum diatur Admin (Pengaturan web → Notifikasi Push Aplikasi).']);
+    }
+    if (!\App\Support\PushNotifier::enabled()) {
+        return response()->json(['status' => 'error', 'code' => 'push_disabled', 'message' => 'Notifikasi push dinonaktifkan Admin.']);
+    }
+    $devices = \Illuminate\Support\Facades\Schema::hasTable('device_tokens')
+        ? \App\Models\DeviceToken::where('user_id', $user->id)->count() : 0;
+    if ($devices === 0) {
+        return response()->json(['status' => 'error', 'code' => 'no_device',
+            'message' => 'HP ini belum terdaftar untuk notifikasi push. Buka ulang aplikasi lalu coba lagi.']);
+    }
+    $sent = \App\Support\PushNotifier::sendNow([$user->id], [
+        'type' => 'notification',
+        'id' => (string) (900000000 + random_int(1, 99999999)),
+        'title' => 'Uji notifikasi SiNDEN',
+        'body' => 'Notifikasi push berhasil diterima di HP ini.',
+        'link' => '/notifications',
+    ], 300);
+    return response()->json($sent > 0
+        ? ['status' => 'success', 'message' => "Terkirim ke {$sent} perangkat. Notifikasi akan muncul dalam beberapa detik."]
+        : ['status' => 'error', 'code' => 'send_failed', 'message' => 'Server gagal mengirim ke Firebase. Periksa service account & google-services.json di Pengaturan web (lihat log server [PUSH]).']);
+})->middleware(['mobile.auth', 'throttle:10,1']);

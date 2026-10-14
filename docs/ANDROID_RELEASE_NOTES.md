@@ -1,3 +1,24 @@
+# SISINDEN Android v1.6.0 (versionCode 14)
+
+Perbaikan notifikasi & panggilan, TTE (pratinjau QR dan posisi QR), serta Turnstile.
+
+## Perbaikan
+
+- **Notifikasi & panggilan saat layar PIN tampil** — warta dan panggilan masuk tetap dipantau walau aplikasi sedang terkunci; panggilan muncul sebagai notifikasi layar penuh yang berdering. Saat aplikasi terbuka, warta & chat dicek tiap 15 detik.
+- **Pengaturan → Notifikasi & panggilan** (baru) — memeriksa izin notifikasi, izin panggilan layar penuh (Android 14), status notifikasi push (Firebase), dan pembatasan baterai, lengkap dengan tombol perbaikan dan **Kirim notifikasi uji**.
+- **Pratinjau TTE kini menampilkan QR** — Komandan, Admin, dan pengaju melihat dokumen lengkap dengan QR TTE di posisi yang dipilih pengaju (bertanda "PRATINJAU TTE").
+- **Posisi QR setelah TTE kini pas**:
+  - Pengesahan dari aplikasi memakai halaman & posisi pilihan pengaju (sebelumnya QR jatuh ke halaman terakhir dan posisi per halaman diabaikan).
+  - Di web, posisi dihitung terhadap ukuran PDF yang tampil di layar (sebelumnya meleset di layar HP/sempit); bingkai kotak QR tidak lagi menggeser QR; Komandan melihat ukuran QR sebenarnya.
+  - QR dibuat dengan layanan cadangan; bila gagal, pengesahan dibatalkan dengan pesan jelas (tidak lagi diganti gambar lain yang ukurannya tidak pas).
+- **Turnstile** — status Turnstile diambil ulang dari server setiap kali menekan Masuk/Aktivasi, dan bila server mewajibkan verifikasi, widget langsung ditampilkan otomatis.
+
+## Server
+
+- `git pull`, `php artisan migrate --force`, `php artisan config:clear`, `npm run build` (halaman TTE web berubah).
+
+---
+
 # SISINDEN Android v1.5.0 (versionCode 13)
 
 Notifikasi push seperti WhatsApp, kunci PIN setiap keluar aplikasi, dan pembaruan otomatis dari dalam aplikasi.

@@ -30,6 +30,9 @@ interface SindenApiService {
     @POST("api/mobile/logout")
     suspend fun logout(@Body body: LogoutRequest): Response<SimpleResponse>
 
+    @POST("api/mobile/push/test")
+    suspend fun pushTest(): Response<PushTestResponse>
+
     @POST("api/mobile/push/register")
     suspend fun registerPush(@Body body: PushRegisterRequest): Response<SimpleResponse>
 

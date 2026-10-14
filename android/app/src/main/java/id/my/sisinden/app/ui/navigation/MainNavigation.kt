@@ -162,7 +162,7 @@ fun MainNavigation(
         NotificationSync.schedule(context)
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
-                delay(30_000)
+                delay(15_000)
                 NotificationSync.run(context, repository)
             }
         }

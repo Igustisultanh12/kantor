@@ -62,6 +62,8 @@ fun SettingsScreen(repository: SindenRepository, onBack: () -> Unit) {
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = Spacing.screen),
             verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
+            NotificationCard(repository = repository, onMessage = { msg -> scope.launch { snackbar.showSnackbar(msg) } })
+
             UpdateCard()
 
             SecurityCard(

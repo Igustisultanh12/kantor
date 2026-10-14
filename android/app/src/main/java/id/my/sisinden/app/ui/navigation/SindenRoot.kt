@@ -14,6 +14,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import id.my.sisinden.app.ui.lock.LockScreen
+import id.my.sisinden.app.core.network.ApiResult
+import id.my.sisinden.app.core.notification.CallNotifications
+import id.my.sisinden.app.core.notification.CommsState
+import id.my.sisinden.app.core.notification.NotificationSync
+import id.my.sisinden.app.core.security.Perm
 import id.my.sisinden.app.ui.lock.PinSetupScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -104,6 +109,35 @@ private fun SecuredMain(
             while (true) {
                 delay(10_000)
                 appLock.checkIdle()
+            }
+        }
+    }
+
+    // Saat layar PIN tampil, navigasi utama tidak berjalan: tetap pantau warta & panggilan
+    // masuk agar muncul di bilah notifikasi (panggilan → notifikasi layar penuh berdering).
+    val context = LocalContext.current
+    LaunchedEffect(locked, hasPin) {
+        if (!locked && hasPin) return@LaunchedEffect
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            var tick = 0
+            while (true) {
+                if (session.permissions.has(Perm.CHAT_VIEW) && CommsState.activeCallThread == null) {
+                    val call = when (val res = repository.incomingCall()) {
+                        is ApiResult.Success -> res.data.call
+                        is ApiResult.Failure -> null
+                    }
+                    val uuid = call?.threadUuid
+                    val callId = call?.callId
+                    if (call != null && uuid != null && callId != null && call.normalizedStatus == "RINGING" &&
+                        call.caller?.id != userId && CommsState.claimCall(callId)
+                    ) {
+                        val peer = listOfNotNull(call.caller?.pangkat, call.caller?.name).joinToString(" ").ifBlank { "Panggilan Dinas" }
+                        CallNotifications.showIncoming(context, uuid, call.isVideo, peer)
+                    }
+                }
+                if (tick % 4 == 0) NotificationSync.run(context, repository)
+                tick++
+                delay(4_000)
             }
         }
     }

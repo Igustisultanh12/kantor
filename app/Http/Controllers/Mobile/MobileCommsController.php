@@ -274,7 +274,16 @@ class MobileCommsController extends Controller
         if ($path === '' || str_contains($path, '..') || !Storage::disk('public')->exists($path)) {
             return response()->json(['status' => 'error', 'message' => 'Berkas dokumen tidak ditemukan.'], 404);
         }
-        return response(Storage::disk('public')->get($path), 200, [
+        // Belum disahkan: tampilkan pratinjau dengan QR TTE di posisi yang dipilih pengaju.
+        $content = null;
+        if (!in_array(strtolower((string) $sr->status), ['approved', 'signed', 'selesai'], true)) {
+            try {
+                $content = \App\Http\Controllers\SignatureRequestController::renderPreview($sr);
+            } catch (\Throwable $e) {
+                Log::warning('[TTE] Pratinjau QR gagal, kirim dokumen asli: ' . $e->getMessage());
+            }
+        }
+        return response($content ?? Storage::disk('public')->get($path), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="TTE_' . $sr->id . '.pdf"',
             'Cache-Control' => 'private, no-store',
