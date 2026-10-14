@@ -26,8 +26,8 @@ android {
         applicationId = "id.my.sisinden.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 10
-        versionName = "1.2.1"
+        versionCode = 11
+        versionName = "1.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -112,6 +112,8 @@ dependencies {
 
     // Asynchronous Coroutines
     implementation(libs.kotlinx.coroutines.android)
+    // Sinkron notifikasi bersuara di latar belakang
+    implementation(libs.androidx.work.runtime.ktx)
 
     // Testing
     testImplementation(libs.junit)

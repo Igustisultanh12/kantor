@@ -28,6 +28,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import id.my.sisinden.app.core.network.ApiResult
+import id.my.sisinden.app.core.notification.CommsState
+import id.my.sisinden.app.core.notification.NotificationSync
+import id.my.sisinden.app.ui.call.CallScreen
+import id.my.sisinden.app.ui.chat.ChatHomeScreen
+import id.my.sisinden.app.ui.chat.ChatThreadScreen
+import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.Color
 import id.my.sisinden.app.core.ui.components.GlassBackground
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -118,6 +129,47 @@ fun MainNavigation(
     val currentRoute = backStack?.destination?.route
     val tabs = allTabs.filter { perms.has(it.permission) }
     val showBottomBar = currentRoute in Routes.tabs
+
+    val context = LocalContext.current
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val myUserId = session.user.id
+    val canChat = perms.has(Perm.CHAT_VIEW)
+
+    // Notifikasi bersuara: WorkManager di latar belakang + sinkron cepat saat aplikasi terbuka.
+    LaunchedEffect(Unit) {
+        NotificationSync.schedule(context)
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                delay(30_000)
+                NotificationSync.run(context, repository)
+            }
+        }
+    }
+
+    // Panggilan masuk (Chat Dinas): cek tiap 4 detik selama aplikasi terbuka.
+    LaunchedEffect(canChat, myUserId) {
+        if (!canChat) return@LaunchedEffect
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                if (CommsState.activeCallThread == null) {
+                    val call = when (val res = repository.incomingCall()) {
+                        is ApiResult.Success -> res.data.call
+                        is ApiResult.Failure -> null
+                    }
+                    val threadUuid = call?.threadUuid
+                    val callId = call?.callId
+                    if (call != null && threadUuid != null && callId != null &&
+                        call.normalizedStatus == "RINGING" && call.caller?.id != myUserId &&
+                        CommsState.claimCall(callId)
+                    ) {
+                        val peer = listOfNotNull(call.caller?.pangkat, call.caller?.name).joinToString(" ").ifBlank { "Panggilan Dinas" }
+                        nav.navigate(Routes.call(threadUuid, call.isVideo, incoming = true, peer = peer)) { launchSingleTop = true }
+                    }
+                }
+                delay(4_000)
+            }
+        }
+    }
 
     LaunchedEffect(newIntent) {
         if (newIntent != null) {
@@ -220,7 +272,15 @@ fun MainNavigation(
                 }
             }
             composable(Routes.SIGNATURE, deepLinks = appDeepLink("signature")) {
-                Guard(currentPerms(), Perm.SIGNATURE_VIEW, back) { SignatureScreen(repository, currentPerms(), onBack = back) }
+                Guard(currentPerms(), Perm.SIGNATURE_VIEW, back) {
+                    SignatureScreen(
+                        repository = repository,
+                        permissions = currentPerms(),
+                        onBack = back,
+                        onOpenPdf = openPdf,
+                        onOpenSkhpp = { nav.navigate(Routes.SKHPP) { launchSingleTop = true } },
+                    )
+                }
             }
             composable(Routes.CASH, deepLinks = appDeepLink("cash")) {
                 Guard(currentPerms(), Perm.CASH_VIEW, back) {
@@ -261,6 +321,61 @@ fun MainNavigation(
             }
             composable(Routes.SETTINGS) {
                 SettingsScreen(repository, onBack = back)
+            }
+
+            // ------------------------------------------------------ Chat Dinas & Vicon
+            composable(Routes.CHAT, deepLinks = appDeepLink("chat")) {
+                Guard(currentPerms(), Perm.CHAT_VIEW, back) {
+                    ChatHomeScreen(
+                        repository = repository,
+                        myUserId = sessionState.value.user.id,
+                        onBack = back,
+                        onOpenThread = { uuid, title -> nav.navigate(Routes.chatThread(uuid, title)) { launchSingleTop = true } },
+                        onCall = { uuid, video, peer -> nav.navigate(Routes.call(uuid, video, incoming = false, peer = peer)) },
+                    )
+                }
+            }
+            composable(
+                Routes.CHAT_THREAD,
+                arguments = listOf(
+                    navArgument("uuid") { type = NavType.StringType },
+                    navArgument("title") { type = NavType.StringType; defaultValue = "Chat Dinas" },
+                ),
+            ) { entry ->
+                Guard(currentPerms(), Perm.CHAT_MANAGE, back) {
+                    val uuid = entry.arguments?.getString("uuid").orEmpty()
+                    val title = entry.arguments?.getString("title").orEmpty().ifBlank { "Chat Dinas" }
+                    ChatThreadScreen(
+                        repository = repository,
+                        uuid = uuid,
+                        title = title,
+                        isOperator = true,
+                        myUserId = sessionState.value.user.id,
+                        onBack = back,
+                        onCall = { video -> nav.navigate(Routes.call(uuid, video, incoming = false, peer = title)) },
+                    )
+                }
+            }
+            composable(
+                Routes.CALL,
+                arguments = listOf(
+                    navArgument("uuid") { type = NavType.StringType },
+                    navArgument("video") { type = NavType.BoolType; defaultValue = true },
+                    navArgument("incoming") { type = NavType.BoolType; defaultValue = false },
+                    navArgument("peer") { type = NavType.StringType; defaultValue = "Panggilan Dinas" },
+                ),
+            ) { entry ->
+                Guard(currentPerms(), Perm.CHAT_VIEW, back) {
+                    CallScreen(
+                        repository = repository,
+                        threadUuid = entry.arguments?.getString("uuid").orEmpty(),
+                        video = entry.arguments?.getBoolean("video") ?: true,
+                        incoming = entry.arguments?.getBoolean("incoming") ?: false,
+                        peerName = entry.arguments?.getString("peer").orEmpty().ifBlank { "Panggilan Dinas" },
+                        myUserId = sessionState.value.user.id,
+                        onClose = { nav.popBackStack() },
+                    )
+                }
             }
 
             // ------------------------------------------------------ PDF

@@ -37,6 +37,9 @@ class HandleInertiaRequests extends Middleware
 
         // --- TAMBAHAN: AMBIL DATA ARRAY SETTINGS UNTUK INDIKATOR FAVICON DI BLADE ---
         $settingsArray = Setting::pluck('value', 'key')->toArray();
+        // Jangan pernah membagikan kredensial ke browser seluruh pengguna
+        // (props ini terkirim ke setiap halaman, termasuk halaman login).
+        $publicSettings = self::publicSettings($settingsArray);
         
         // Ambil favicon dari array, jika kosong fallback ke logo instansi (agency_logo)
         $faviconPath = $settingsArray['favicon'] ?? ($settingsArray['agency_logo'] ?? null);
@@ -48,7 +51,7 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             
             // --- DATA PENGATURAN SISTEM ---
-            'settings' => $settingsArray, // Dioptimasi menggunakan variabel agar tidak query ganda
+            'settings' => $publicSettings, // tanpa secret/sertifikat/token
 
             // --- STATUS PERANGKAT ---
             'isMobileDevice' => $isMobile,
@@ -94,5 +97,18 @@ class HandleInertiaRequests extends Middleware
             // --- CSRF TOKEN (Cadangan untuk request manual) ---
             'csrf_token' => csrf_token(),
         ];
+    }
+
+    /** Kunci pengaturan yang bersifat rahasia dan tidak boleh dibagikan ke frontend. */
+    public const SECRET_SETTING_KEYS = ['google_client_secret', 'agora_app_certificate', 'turnstile_secret_key'];
+
+    public static function publicSettings(array $settings): array
+    {
+        return array_filter($settings, function ($value, $key) {
+            if (in_array($key, self::SECRET_SETTING_KEYS, true)) {
+                return false;
+            }
+            return !preg_match('/(secret|password|certificate|private_key|api_key|_token)$/i', (string) $key);
+        }, ARRAY_FILTER_USE_BOTH);
     }
 }

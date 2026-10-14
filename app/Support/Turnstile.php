@@ -8,26 +8,75 @@ use Illuminate\Support\Facades\Log;
 /**
  * Verifikasi Cloudflare Turnstile untuk login & aktivasi aplikasi mobile.
  *
- * Kunci dibaca dari .env (JANGAN disimpan di repository):
- *   TURNSTILE_SITE_KEY   — kunci publik widget
- *   TURNSTILE_SECRET_KEY — kunci rahasia untuk siteverify (server saja)
- *
- * Bila TURNSTILE_SECRET_KEY belum diisi, verifikasi dilewati agar deploy
- * bertahap tidak memutus login; begitu diisi, token wajib dan divalidasi.
+ * Kunci diatur Admin di web (Pengaturan → Cloudflare Turnstile) dan disimpan
+ * di tabel settings:
+ *   turnstile_enabled    — "1" aktif, "0" nonaktif
+ *   turnstile_site_key   — kunci publik widget
+ *   turnstile_secret_key — kunci rahasia, DISIMPAN TERENKRIPSI (Crypt)
+ * Cadangan bila belum diatur di web: TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY
+ * pada .env. Secret tidak pernah dikirim ke aplikasi maupun ke halaman web.
  */
 class Turnstile
 {
     public const VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 
+    private static function setting(string $key): ?string
+    {
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasTable('settings')) {
+                return null;
+            }
+            $v = \App\Models\Setting::where('key', $key)->value('value');
+            return filled($v) ? (string) $v : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
     public static function siteKey(): ?string
     {
-        $key = config('services.turnstile.site_key');
+        $key = self::setting('turnstile_site_key') ?? config('services.turnstile.site_key');
         return filled($key) ? (string) $key : null;
     }
 
+    public static function secretKey(): ?string
+    {
+        $stored = self::setting('turnstile_secret_key');
+        if ($stored !== null) {
+            try {
+                return \Illuminate\Support\Facades\Crypt::decryptString($stored);
+            } catch (\Throwable $e) {
+                Log::error('[TURNSTILE] Secret key tersimpan tidak dapat didekripsi (APP_KEY berubah?).');
+                return null;
+            }
+        }
+        $env = config('services.turnstile.secret_key');
+        return filled($env) ? (string) $env : null;
+    }
+
+    /** Simpan secret key secara terenkripsi (dipanggil dari SettingController). */
+    public static function storeSecret(string $plain): void
+    {
+        \App\Models\Setting::updateOrCreate(
+            ['key' => 'turnstile_secret_key'],
+            ['value' => \Illuminate\Support\Facades\Crypt::encryptString($plain)]
+        );
+    }
+
+    /**
+     * Aktif bila Admin menyalakannya di web DAN site key + secret key tersedia.
+     * Bila Admin belum pernah mengatur, aktif mengikuti keberadaan secret di .env.
+     */
     public static function enabled(): bool
     {
-        return filled(config('services.turnstile.secret_key'));
+        $flag = self::setting('turnstile_enabled');
+        if ($flag === '0') {
+            return false;
+        }
+        if ($flag === null && self::setting('turnstile_secret_key') === null) {
+            return filled(config('services.turnstile.secret_key')) && self::siteKey() !== null;
+        }
+        return self::siteKey() !== null && self::secretKey() !== null;
     }
 
     /**
@@ -46,7 +95,7 @@ class Turnstile
 
         try {
             $res = Http::asForm()->timeout(8)->post(self::VERIFY_URL, array_filter([
-                'secret' => config('services.turnstile.secret_key'),
+                'secret' => self::secretKey(),
                 'response' => $token,
                 'remoteip' => $ip,
             ]));

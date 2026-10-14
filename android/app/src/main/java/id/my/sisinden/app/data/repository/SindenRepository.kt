@@ -231,6 +231,45 @@ class SindenRepository(
     suspend fun setUserActive(id: Int, active: Boolean) = call { updateUserStatus(id, UpdateUserStatusRequest(active)) }
     suspend fun deleteUser(id: Int) = call { deleteUser(id) }
 
+    // ------------------------------------------------------ Chat Dinas
+
+    suspend fun chatHome() = call { chatHome() }
+    suspend fun chatSync(uuid: String?, status: String? = null, search: String? = null) =
+        call { chatSync(uuid, status, search?.takeIf { it.isNotBlank() }) }
+    suspend fun chatUnread() = call { chatUnread() }
+    suspend fun chatMessages(uuid: String) = call { chatMessages(uuid) }
+    suspend fun chatTyping(uuid: String) = call { chatTyping(uuid) }
+    suspend fun chatSearchUsers(query: String) = call { chatSearchUsers(query.trim()) }
+    suspend fun chatStart(userId: Int) = call { chatStart(ChatStartRequest(userId)) }
+    suspend fun chatToggleStatus(uuid: String) = call { chatToggleStatus(uuid) }
+    suspend fun chatDelete(uuid: String) = call { chatDelete(uuid) }
+
+    /** Kirim pesan teks dan/atau lampiran (maks. 20 MB total, divalidasi server). */
+    suspend fun chatSend(uuid: String, text: String, files: List<UploadImage>): ApiResult<ChatSendResponse> {
+        val body = text.trim().takeIf { it.isNotEmpty() }?.toRequestBody("text/plain".toMediaType())
+        val parts = files.map {
+            MultipartBody.Part.createFormData("attachments[]", it.fileName, it.bytes.toRequestBody(it.mimeType.toMediaType()))
+        }
+        return call { chatSend(uuid, body, parts) }
+    }
+
+    // ------------------------------------------------- Panggilan (Vicon)
+
+    suspend fun incomingCall() = call { incomingCall() }
+    suspend fun initiateCall(uuid: String, video: Boolean) =
+        call { initiateCall(uuid, InitiateCallRequest(if (video) "video" else "audio")) }
+    suspend fun callSignal(uuid: String) = call { callSignal(uuid) }
+    suspend fun sendCallSignal(uuid: String, action: String, status: String) =
+        call { sendCallSignal(uuid, CallSignalRequest(action, status)) }
+    suspend fun endCall(uuid: String, reason: String, durationSeconds: Int = 0) =
+        call { endCall(uuid, EndCallRequest(reason, durationSeconds)) }
+    suspend fun agoraToken(uuid: String, uid: Int) = call { agoraToken(uuid, uid) }
+
+    // ------------------------------------------------- TTE SP Jaga
+
+    suspend fun pendingSpJaga() = call { pendingSpJaga() }
+    suspend fun approveSpJaga(id: Int) = call { approveSpJaga(id) }
+
     // ------------------------------------------------------------- PDF
 
     /**

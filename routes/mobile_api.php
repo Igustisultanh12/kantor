@@ -18,6 +18,7 @@
 */
 
 use App\Http\Controllers\Mobile\MobileApiController;
+use App\Http\Controllers\Mobile\MobileCommsController;
 use App\Models\User;
 use App\Support\MobileAccess;
 use App\Support\Turnstile;
@@ -1419,3 +1420,38 @@ Route::post('/api/mobile/attendances', function (Request $request) {
         return mobile_error($e, 'Gagal mencatat presensi.');
     }
 })->middleware(['mobile.auth:attendance.create', 'throttle:20,1']);
+
+// =====================================================================
+// CHAT DINAS, PANGGILAN VIDEO (AGORA), PRATINJAU TTE, TTE SP JAGA (v1.3)
+// =====================================================================
+Route::middleware('mobile.auth:chat.view')->group(function () {
+    Route::get('/api/mobile/chat', [MobileCommsController::class, 'index']);
+    Route::get('/api/mobile/chat/sync', [MobileCommsController::class, 'sync']);
+    Route::get('/api/mobile/chat/unread', [MobileCommsController::class, 'unread']);
+    Route::get('/api/mobile/chat/incoming-call', [MobileCommsController::class, 'incomingCall']);
+    Route::get('/api/mobile/chat/{uuid}/messages', [MobileCommsController::class, 'messages']);
+    Route::post('/api/mobile/chat/{uuid}/send', [MobileCommsController::class, 'send'])->middleware('throttle:60,1');
+    Route::post('/api/mobile/chat/{uuid}/typing', [MobileCommsController::class, 'typing'])->middleware('throttle:60,1');
+    Route::post('/api/mobile/chat/{uuid}/call/initiate', [MobileCommsController::class, 'initiateCall'])->middleware('throttle:20,1');
+    Route::get('/api/mobile/chat/{uuid}/call/signal', [MobileCommsController::class, 'callSignal']);
+    Route::post('/api/mobile/chat/{uuid}/call/signal', [MobileCommsController::class, 'sendCallSignal']);
+    Route::post('/api/mobile/chat/{uuid}/call/end', [MobileCommsController::class, 'endCall']);
+    Route::get('/api/mobile/chat/{uuid}/call/agora-token', [MobileCommsController::class, 'agoraToken']);
+});
+
+Route::middleware('mobile.auth:chat.manage')->group(function () {
+    Route::get('/api/mobile/chat/users', [MobileCommsController::class, 'searchUsers']);
+    Route::post('/api/mobile/chat/start', [MobileCommsController::class, 'start']);
+    Route::post('/api/mobile/chat/{uuid}/status', [MobileCommsController::class, 'toggleStatus']);
+    Route::delete('/api/mobile/chat/{uuid}', [MobileCommsController::class, 'destroy']);
+});
+
+// Halaman media vicon untuk WebView (tanpa data; token Agora diberikan oleh aplikasi).
+Route::get('/mobile/vicon', [MobileCommsController::class, 'viconPage'])->middleware('throttle:60,1');
+
+Route::get('/api/mobile/pdf/signature/{id}', [MobileCommsController::class, 'signaturePdf'])
+    ->whereNumber('id')->middleware('mobile.auth:signature.view');
+
+Route::get('/api/mobile/duty-roster/pending', [MobileCommsController::class, 'pendingSpJaga'])->middleware('mobile.auth:duty_roster.sign');
+Route::post('/api/mobile/duty-roster/{id}/approve', [MobileCommsController::class, 'approveSpJaga'])
+    ->whereNumber('id')->middleware('mobile.auth:duty_roster.sign');

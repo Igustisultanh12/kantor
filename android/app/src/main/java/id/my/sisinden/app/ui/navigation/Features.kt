@@ -12,6 +12,7 @@ import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.HowToReg
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -45,6 +46,7 @@ enum class Feature(
     DUTY(Routes.DUTY, "Daftar Jaga", "Jadwal SP Jaga Siaga Sintel", Icons.Outlined.EventAvailable, Perm.DUTY_VIEW, FeatureGroup.OPERASIONAL, Tone.INFO),
     ATTENDANCE(Routes.ATTENDANCE, "Presensi", "Lapor kehadiran harian", Icons.Outlined.HowToReg, Perm.ATTENDANCE_VIEW, FeatureGroup.OPERASIONAL, Tone.SUCCESS),
     NOTIFICATIONS(Routes.NOTIFICATIONS, "Notifikasi", "Warta & instruksi dinas", Icons.Outlined.Notifications, Perm.NOTIFICATIONS_VIEW, FeatureGroup.OPERASIONAL, Tone.WARNING),
+    CHAT(Routes.CHAT, "Chat Dinas", "Pesan & panggilan video", Icons.Outlined.Forum, Perm.CHAT_VIEW, FeatureGroup.OPERASIONAL, Tone.INFO),
     LETTER_LOGS(Routes.LETTERS, "Agenda Surat", "Penomoran & rekap surat", Icons.Outlined.Email, Perm.LETTER_LOGS_VIEW, FeatureGroup.ADMINISTRASI, Tone.INFO),
     SKHPP(Routes.SKHPP, "SKHPP", "Hasil penelitian personel", Icons.Outlined.VerifiedUser, Perm.SKHPP_VIEW, FeatureGroup.ADMINISTRASI, Tone.SUCCESS),
     SIGNATURE(Routes.SIGNATURE, "Tanda Tangan", "Antrean TTE Komandan", Icons.Outlined.Create, Perm.SIGNATURE_VIEW, FeatureGroup.ADMINISTRASI, Tone.WARNING),
@@ -61,6 +63,7 @@ enum class Feature(
             DUTY -> TilePalette.Blue
             ATTENDANCE -> TilePalette.Teal
             NOTIFICATIONS -> TilePalette.Orange
+            CHAT -> TilePalette.Violet
             LETTER_LOGS -> TilePalette.Sky
             SKHPP -> TilePalette.Violet
             SIGNATURE -> TilePalette.Orange
@@ -103,6 +106,15 @@ object Routes {
     const val VIOLATION_FORM = "violation_form"
     const val USERS = "users"
     const val SETTINGS = "settings"
+    const val CHAT = "chat"
+
+    // Berparameter — Chat & panggilan
+    const val CHAT_THREAD = "chat_thread/{uuid}?title={title}"
+    fun chatThread(uuid: String, title: String) = "chat_thread/${Uri.encode(uuid)}?title=${Uri.encode(title)}"
+
+    const val CALL = "call/{uuid}?video={video}&incoming={incoming}&peer={peer}"
+    fun call(uuid: String, video: Boolean, incoming: Boolean, peer: String) =
+        "call/${Uri.encode(uuid)}?video=$video&incoming=$incoming&peer=${Uri.encode(peer)}"
 
     // Berparameter
     const val PDF = "pdf?path={path}&title={title}&file={file}&save={save}"

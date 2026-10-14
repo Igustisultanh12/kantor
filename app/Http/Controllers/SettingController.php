@@ -14,6 +14,10 @@ class SettingController extends Controller
     {
         // Mengambil semua pengaturan dan mengubahnya menjadi format Key-Value
         $settings = Setting::pluck('value', 'key')->toArray();
+        // Secret Turnstile tidak pernah dikirim ke browser; cukup status tersimpan/tidak.
+        $settings['turnstile_secret_set'] = !empty($settings['turnstile_secret_key']) || filled(config('services.turnstile.secret_key'));
+        unset($settings['turnstile_secret_key']);
+        $settings['turnstile_site_key'] = $settings['turnstile_site_key'] ?? \App\Support\Turnstile::siteKey();
         return Inertia::render('Settings/Index', [
             'settings' => $settings
         ]);
@@ -32,6 +36,9 @@ class SettingController extends Controller
             'google_login_enabled' => 'nullable|in:0,1',
             'agora_app_id' => 'nullable|string|max:100',
             'agora_app_certificate' => 'nullable|string|max:100',
+            'turnstile_enabled' => 'nullable|in:0,1',
+            'turnstile_site_key' => 'nullable|string|max:255',
+            'turnstile_secret_key' => 'nullable|string|max:255',
             'logo' => 'nullable|image|max:2048', 
             'login_background' => 'nullable|image|max:5120', // Background login (Maks 5MB)
             'signature_file' => 'nullable|image|mimes:png|max:2048', // Validasi khusus PNG
@@ -45,12 +52,21 @@ class SettingController extends Controller
             'mobile_theme_mode', 'mobile_primary_color', 'mobile_accent_color', 'mobile_card_radius',
             'mobile_show_balance_card', 'mobile_show_summary_trio', 'mobile_show_quick_actions',
             'google_client_id', 'google_client_secret', 'google_login_enabled',
-            'agora_app_id', 'agora_app_certificate'
+            'agora_app_id', 'agora_app_certificate',
+            'turnstile_enabled', 'turnstile_site_key',
         ];
         foreach ($request->only($textFields) as $key => $value) {
             if ($value !== null) {
                 Setting::updateOrCreate(['key' => $key], ['value' => (string)$value]);
             }
+        }
+
+        // Secret key Turnstile disimpan terenkripsi; kolom kosong = tidak diubah.
+        if (filled($request->input('turnstile_secret_key'))) {
+            \App\Support\Turnstile::storeSecret(trim((string) $request->input('turnstile_secret_key')));
+        }
+        if ($request->boolean('turnstile_secret_clear')) {
+            Setting::where('key', 'turnstile_secret_key')->delete();
         }
 
         // 2. Logika Update Logo Instansi

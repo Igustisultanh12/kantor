@@ -12,11 +12,15 @@ object Perm {
     const val PROFILE_VIEW = "profile.view"
     const val NOTIFICATIONS_VIEW = "notifications.view"
 
+    const val CHAT_VIEW = "chat.view"
+    const val CHAT_MANAGE = "chat.manage"
+
     const val ATTENDANCE_VIEW = "attendance.view"
     const val ATTENDANCE_CREATE = "attendance.create"
 
     const val DUTY_VIEW = "duty_roster.view"
     const val DUTY_PDF = "duty_roster.pdf"
+    const val DUTY_SIGN = "duty_roster.sign"
 
     const val LETTER_LOGS_VIEW = "letter_logs.view"
     const val LETTER_LOGS_CREATE = "letter_logs.create"

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Draw
 import androidx.compose.material.icons.outlined.EventAvailable
 import androidx.compose.material.icons.outlined.EventBusy
 import androidx.compose.material.icons.outlined.FileDownload
@@ -24,9 +25,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,7 +43,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import id.my.sisinden.app.core.security.Perm
 import id.my.sisinden.app.core.security.PermissionSet
+import id.my.sisinden.app.core.ui.components.ConfirmDialog
 import id.my.sisinden.app.core.ui.components.ErrorState
+import id.my.sisinden.app.core.ui.components.Tone
+import id.my.sisinden.app.core.ui.components.toneAccent
 import id.my.sisinden.app.core.ui.components.IconBadge
 import id.my.sisinden.app.core.ui.components.LoadStateContent
 import id.my.sisinden.app.core.ui.components.RefreshableBox
@@ -48,9 +56,12 @@ import id.my.sisinden.app.core.ui.components.SoftDivider
 import id.my.sisinden.app.core.ui.theme.SindenTheme
 import id.my.sisinden.app.core.ui.theme.Spacing
 import id.my.sisinden.app.core.util.Fmt
+import id.my.sisinden.app.data.model.PendingSpJagaDto
 import id.my.sisinden.app.data.model.SpJagaSummary
+import id.my.sisinden.app.ui.common.CollectMessages
 import id.my.sisinden.app.data.repository.SindenRepository
 import java.time.LocalDate
+import java.time.YearMonth
 
 /**
  * Daftar Jaga pribadi dalam bentuk kartu per bulan (bulan ini & bulan lalu).
@@ -64,12 +75,18 @@ fun DutyRosterScreen(
     onOpenPdf: (String, String, String) -> Unit,
     onDownloadPdf: (String, String, String) -> Unit,
 ) {
-    val vm: DutyRosterViewModel = viewModel { DutyRosterViewModel(repository) }
+    val canSign = permissions.has(Perm.DUTY_SIGN)
+    val vm: DutyRosterViewModel = viewModel { DutyRosterViewModel(repository, canSign) }
     val state by vm.state.collectAsStateWithLifecycle()
     val refreshing by vm.refreshing.collectAsStateWithLifecycle()
+    val pending by vm.pending.collectAsStateWithLifecycle()
+    val signing by vm.signing.collectAsStateWithLifecycle()
     val canPdf = permissions.has(Perm.DUTY_PDF)
+    val snackbar = remember { SnackbarHostState() }
+    CollectMessages(vm.messages, snackbar)
+    var confirmSign by remember { mutableStateOf<PendingSpJagaDto?>(null) }
 
-    SindenScaffold(title = "Daftar Jaga", subtitle = "Jadwal jaga Anda") { padding ->
+    SindenScaffold(title = "Daftar Jaga", subtitle = "Jadwal jaga Anda", snackbarHostState = snackbar) { padding ->
         RefreshableBox(
             isRefreshing = refreshing,
             onRefresh = { vm.load(pullToRefresh = true) },
@@ -83,6 +100,17 @@ fun DutyRosterScreen(
                     contentPadding = PaddingValues(start = Spacing.screen, end = Spacing.screen, top = Spacing.lg, bottom = Spacing.xxxl),
                     verticalArrangement = Arrangement.spacedBy(Spacing.lg),
                 ) {
+                    if (canSign && pending.isNotEmpty()) {
+                        items(pending, key = { "pending-${it.id}" }) { sp ->
+                            PendingSignCard(
+                                sp = sp,
+                                onPreview = {
+                                    onOpenPdf("api/mobile/pdf/sp-jaga/${sp.id}", "Draf SP Jaga ${Fmt.monthYear(YearMonth.of(sp.tahun, sp.bulan.coerceIn(1, 12)))}", "Draf_SP_Jaga_${sp.id}.pdf")
+                                },
+                                onSign = { confirmSign = sp },
+                            )
+                        }
+                    }
                     item(key = "next") { NextDutyCard(next) }
                     items(months, key = { it.month.toString() }) { month ->
                         MonthDutyCard(
@@ -102,6 +130,52 @@ fun DutyRosterScreen(
                         )
                     }
                 }
+            }
+        }
+    }
+
+    confirmSign?.let { sp ->
+        ConfirmDialog(
+            title = "Tandatangani SP Jaga?",
+            message = "SP Jaga ${sp.nomorSprin.orEmpty()} akan disahkan dengan TTE Pasops dan langsung diterbitkan ke seluruh personel. Pastikan isi draf sudah diperiksa.",
+            confirmLabel = "Tandatangani",
+            loading = signing,
+            onDismiss = { confirmSign = null },
+            onConfirm = { vm.approve(sp.id) { confirmSign = null } },
+        )
+    }
+}
+
+/** Kartu antrean TTE SP Jaga untuk Pasops. */
+@Composable
+private fun PendingSignCard(sp: PendingSpJagaDto, onPreview: () -> Unit, onSign: () -> Unit) {
+    val period = runCatching { Fmt.monthYear(YearMonth.of(sp.tahun, sp.bulan)) }.getOrDefault("Periode ${sp.bulan}/${sp.tahun}")
+    SindenCard(Modifier.fillMaxWidth(), contentPadding = Spacing.lg) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconBadge(Icons.Outlined.Draw, toneAccent(Tone.WARNING))
+            Spacer(Modifier.width(Spacing.md))
+            Column(Modifier.weight(1f)) {
+                Text("Menunggu TTE Anda", style = MaterialTheme.typography.labelLarge, color = toneAccent(Tone.WARNING))
+                Text("SP Jaga $period", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    listOfNotNull(sp.nomorSprin?.takeIf { it.isNotBlank() }, if (sp.totalPersonel > 0) "${sp.totalPersonel} personel" else null)
+                        .joinToString(" · ").ifEmpty { "Draf diajukan untuk ditandatangani" },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Spacer(Modifier.height(Spacing.md))
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            OutlinedButton(onClick = onPreview, modifier = Modifier.weight(1f)) {
+                Icon(Icons.Outlined.PictureAsPdf, contentDescription = null)
+                Spacer(Modifier.width(Spacing.xs))
+                Text("Lihat PDF")
+            }
+            Button(onClick = onSign, modifier = Modifier.weight(1f)) {
+                Icon(Icons.Outlined.Draw, contentDescription = null)
+                Spacer(Modifier.width(Spacing.xs))
+                Text("Tandatangani")
             }
         }
     }

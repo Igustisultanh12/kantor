@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import id.my.sisinden.app.core.network.ApiResult
 import id.my.sisinden.app.core.notification.DutyReminders
-import id.my.sisinden.app.core.notification.NotificationHelper
+import id.my.sisinden.app.core.notification.NotificationSync
 import id.my.sisinden.app.core.security.Perm
 import id.my.sisinden.app.core.ui.components.LoadState
 import id.my.sisinden.app.core.util.Fmt
@@ -81,19 +81,8 @@ class DashboardViewModel(
         DutyReminders.sync(appContext, dates.associateWith { roleByDate[it] })
     }
 
-    /** Bunyikan notifikasi sistem untuk warta baru (deduplikasi persisten di NotificationHelper). */
+    /** Bunyikan notifikasi sistem untuk warta & chat baru (deduplikasi persisten). */
     private suspend fun checkNewNotification() {
-        if (!repository.session.permissions.has(Perm.NOTIFICATIONS_VIEW)) return
-        val res = repository.notifications()
-        if (res is ApiResult.Success) {
-            val latest = res.data.notifications.orEmpty().firstOrNull() ?: return
-            NotificationHelper.processNewNotification(
-                context = appContext,
-                notificationId = latest.id,
-                title = latest.title?.ifBlank { null } ?: "Warta Dinas SISINDEN",
-                message = latest.message?.ifBlank { null } ?: "Terdapat pemberitahuan kedinasan baru.",
-                isRead = latest.isRead,
-            )
-        }
+        NotificationSync.run(appContext, repository)
     }
 }

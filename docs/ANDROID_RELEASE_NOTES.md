@@ -1,3 +1,41 @@
+# SISINDEN Android v1.3.0 (versionCode 11)
+
+Chat Dinas dengan panggilan video/suara, pratinjau dokumen TTE, TTE SP Jaga oleh Pasops, notifikasi bersuara di bilah status, dan Cloudflare Turnstile yang diatur dari web.
+
+## Yang baru
+
+- **Chat Dinas** (menu Operasional) — sama dengan halaman Chat di web. Personel langsung masuk ke *Pusat Komunikasi Dinas*; operator (admin/developer) melihat daftar utas dengan pencarian, filter Semua/Aktif/Ditutup, status online, jumlah belum dibaca, **Chat baru** ke personel mana pun, **Tutup/Buka sesi**, dan **Hapus utas**. Mendukung lampiran gambar & dokumen (jpg, png, webp, pdf, doc/x, xls/x, txt, zip; maks. 20 MB) dan indikator *sedang mengetik*.
+- **Panggilan video & suara (Vicon)** dari utas chat — memakai kanal Agora dan sinyal panggilan yang sama dengan modul Vicon web, sehingga **aplikasi ↔ web saling tersambung**. Ada nada dering untuk panggilan masuk, nada sambung, bisukan mikrofon, matikan/ganti kamera, pengeras suara/earpiece, dan durasi. Riwayat panggilan tercatat di chat seperti di web.
+- **Pratinjau dokumen TTE** — Komandan, Admin, dan pengaju dapat membuka PDF yang diajukan untuk TTE sebelum disahkan (menu Tanda Tangan). Antrean SKHPP yang menunggu TTE Komandan juga tampil dengan tombol pratinjau.
+- **TTE SP Jaga oleh Pasops** — setiap pengajuan SP Jaga (TTE) memunculkan notifikasi untuk Pasops. Di tab **Jaga**, Pasops melihat kartu *Menunggu TTE Anda* dengan tombol **Lihat PDF** dan **Tandatangani**. Setelah disahkan, seluruh personel mendapat notifikasi *Jadwal jaga terbit*.
+- **Notifikasi bersuara di bilah status** — semua warta baru (bukan hanya yang terbaru) dan pesan Chat Dinas berbunyi di bilah HP. Menekan notifikasi membuka modul terkait (TTE → Tanda Tangan, SP Jaga → Jaga, SKHPP, Chat).
+- **Cloudflare Turnstile aktif kembali, diatur dari web** — site key, secret key, dan saklar aktif diisi Admin di **Pengaturan → Keamanan Login Aplikasi Mobile**. Secret key disimpan terenkripsi di database dan tidak pernah dikirim ke browser maupun aplikasi.
+
+## Keterbatasan yang perlu diketahui
+
+- Server belum memakai push (FCM). Saat aplikasi terbuka, notifikasi dicek tiap ±30 detik dan panggilan masuk tiap ±4 detik. Saat aplikasi ditutup, notifikasi dicek WorkManager paling cepat tiap 15 menit (bisa tertunda mode hemat daya), dan **panggilan masuk hanya berdering bila aplikasi sedang terbuka**.
+- Panggilan dari personel diteruskan ke operator utas (atau admin pertama), sama seperti di web.
+
+## Wajib di server saat rilis
+
+1. Pull `main`, lalu `php artisan config:clear` dan `npm run build` (halaman Pengaturan web berubah).
+2. Buka **Pengaturan** web → *Keamanan Login Aplikasi Mobile (Cloudflare Turnstile)* → isi site key & secret key → centang **Aktif** → Simpan.
+3. Pastikan hostname `sisinden.my.id` terdaftar di widget Turnstile (Cloudflare → Turnstile → Hostname Management).
+4. Pastikan `agora_app_id` / `agora_app_certificate` di Pengaturan sudah terisi (sama dengan yang dipakai Vicon web).
+
+## Keamanan
+
+- Perbaikan kebocoran: pengaturan rahasia (mis. `google_client_secret`, `agora_app_certificate`) tidak lagi ikut terkirim ke setiap halaman web.
+- Endpoint chat & panggilan mobile memeriksa kepemilikan utas: personel hanya dapat mengakses utasnya sendiri.
+
+## Status pengujian
+
+- Feature test PHP `MobileApiSecurityTest`: Turnstile dari pengaturan admin (secret terenkripsi & tidak bocor), kepemilikan utas chat, sinyal panggilan & log durasi, akses pratinjau TTE, notifikasi & TTE SP Jaga.
+- Unit test Android baru terhadap respons asli server (chat, panggilan, token Agora, antrean SP Jaga, pemetaan tautan notifikasi, lampiran).
+- Build, unit test, dan lint dijalankan oleh GitHub Actions pada setiap push ke `main`.
+
+---
+
 # SISINDEN Android v1.2.1 (versionCode 10)
 
 - **Cloudflare Turnstile dinonaktifkan sementara.** Widget pemeriksaan keamanan hanya tampil bila server mengaktifkannya (`TURNSTILE_SECRET_KEY` terisi di `.env`). Selama kosong, Masuk & Aktivasi langsung berjalan dengan animasi *Memeriksa keamanan sistem → Memeriksa sesi login → Masuk ke beranda*.
