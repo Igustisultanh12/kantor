@@ -1,3 +1,23 @@
+# SISINDEN Android v1.4.0 (versionCode 12)
+
+Keamanan bergaya M-Banking: PIN, kunci otomatis 5 menit, login biometrik, dan blokir screenshot/rekam layar.
+
+## Yang baru
+
+- **PIN 6 angka** — setelah masuk dengan NRP & kata sandi pertama kali di HP ini, personel diminta **membuat PIN** (dan mengulanginya). PIN yang terlalu mudah (angka sama semua / berurutan) ditolak. PIN hanya disimpan sebagai hash PBKDF2 di HP, tidak pernah dikirim ke server.
+- **Kunci otomatis 5 menit** — aplikasi terkunci bila tidak disentuh selama 5 menit atau berada di latar belakang ≥ 5 menit, dan selalu terkunci saat dibuka ulang. Buka kembali dengan **PIN** atau **biometrik**. Panggilan video yang sedang berlangsung tidak ikut terkunci.
+- **Login biometrik** — sidik jari / pengenalan wajah yang terdaftar di HP (Android 9 ke atas). Bisa diaktifkan saat membuat PIN atau di **Pengaturan → Keamanan**.
+- **5 kali salah PIN** → keluar otomatis dan wajib masuk lagi dengan kata sandi, lalu membuat PIN baru. Tersedia juga tombol **"Lupa PIN? Masuk dengan kata sandi"**.
+- **Ubah PIN** di Pengaturan → Keamanan (PIN lama → PIN baru → ulangi).
+- **Screenshot & rekam layar diblokir** di seluruh aplikasi; isi aplikasi juga disamarkan di daftar aplikasi terbaru.
+
+## Catatan
+
+- Android 8.0/8.1 tidak mendukung dialog biometrik bawaan, sehingga hanya memakai PIN.
+- Pengguna yang memperbarui dari v1.3.0 dengan sesi aktif akan langsung diminta membuat PIN saat membuka aplikasi.
+
+---
+
 # SISINDEN Android v1.3.0 (versionCode 11)
 
 Chat Dinas dengan panggilan video/suara, pratinjau dokumen TTE, TTE SP Jaga oleh Pasops, notifikasi bersuara di bilah status, dan Cloudflare Turnstile yang diatur dari web.

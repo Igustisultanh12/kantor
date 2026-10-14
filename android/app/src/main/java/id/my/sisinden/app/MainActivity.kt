@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -23,9 +24,18 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Cegah screenshot & rekam layar; isi aplikasi juga disamarkan di daftar aplikasi terbaru.
+        window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
         enableEdgeToEdge()
 
         val app = application as SindenApplication
+
+        // Deep link peluncuran (mis. dari notifikasi) ditangani sekali oleh MainNavigation
+        // setelah PIN dibuka, bukan otomatis oleh NavController setiap kali layar dibuat ulang.
+        if (savedInstanceState == null && intent?.data != null) {
+            pendingIntent.value = Intent(intent)
+            intent = Intent(intent).setData(null)
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -45,6 +55,21 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        (application as SindenApplication).appLock.touch()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        (application as SindenApplication).appLock.onForeground()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        (application as SindenApplication).appLock.onBackground()
     }
 
     override fun onNewIntent(intent: Intent) {

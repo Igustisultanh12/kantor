@@ -21,11 +21,13 @@ import androidx.compose.material.icons.outlined.SettingsBrightness
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -52,12 +54,20 @@ fun SettingsScreen(repository: SindenRepository, onBack: () -> Unit) {
     val hideBalance by repository.hideBalanceFlow.collectAsStateWithLifecycle(initialValue = false)
     val textScale by repository.textScaleFlow.collectAsStateWithLifecycle(initialValue = TextScale.NORMAL)
     var sound by rememberSaveable { mutableStateOf(NotificationHelper.isNotificationSoundEnabled(context)) }
+    val snackbar = remember { SnackbarHostState() }
+    val userId = repository.session.user?.id ?: 0
 
-    SindenScaffold(title = "Pengaturan", onBack = onBack) { padding ->
+    SindenScaffold(title = "Pengaturan", onBack = onBack, snackbarHostState = snackbar) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = Spacing.screen),
             verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
+            SecurityCard(
+                appLock = repository.appLock,
+                userId = userId,
+                onMessage = { msg -> scope.launch { snackbar.showSnackbar(msg) } },
+            )
+
             SindenCard(Modifier.fillMaxWidth()) {
                 Text("Tampilan", style = MaterialTheme.typography.titleSmall)
                 Spacer(Modifier.height(Spacing.sm))
@@ -151,7 +161,7 @@ fun SettingsScreen(repository: SindenRepository, onBack: () -> Unit) {
 }
 
 @Composable
-private fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+internal fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()

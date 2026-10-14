@@ -37,6 +37,8 @@ class SindenRepository(
     private val store: SessionStore,
     val session: SessionManager,
     private val appScope: CoroutineScope,
+    /** Kunci PIN/biometrik (gaya M-Banking). */
+    val appLock: id.my.sisinden.app.core.security.AppLockManager,
 ) {
     /** Jalankan pekerjaan yang harus selesai walau layar pemanggil ditutup (mis. logout). */
     fun appScopeLaunch(block: suspend () -> Unit) {
@@ -68,6 +70,8 @@ class SindenRepository(
                 val user = res.data.user
                 if (res.data.status == "success" && !token.isNullOrBlank() && user != null) {
                     beforeSessionStart()
+                    // Baru saja masuk dengan kata sandi → tidak perlu PIN lagi untuk sesi ini.
+                    appLock.unlock()
                     session.startSession(token, user)
                     ApiResult.Success(user)
                 } else {
@@ -91,6 +95,13 @@ class SindenRepository(
             } else ApiResult.Failure(ApiError(ErrorKind.SERVER, "Profil tidak tersedia."))
         }
         is ApiResult.Failure -> res
+    }
+
+    /** Lupa PIN / PIN salah berulang: hapus PIN lalu keluar (wajib masuk dengan kata sandi). */
+    suspend fun logoutAndResetPin() {
+        appLock.store.clear()
+        appLock.lock()
+        logout()
     }
 
     suspend fun logout() {
