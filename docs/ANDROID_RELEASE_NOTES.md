@@ -1,3 +1,30 @@
+# SISINDEN Android v1.5.0 (versionCode 13)
+
+Notifikasi push seperti WhatsApp, kunci PIN setiap keluar aplikasi, dan pembaruan otomatis dari dalam aplikasi.
+
+## Yang baru
+
+- **Notifikasi push (Firebase Cloud Messaging)** — warta dinas, pesan Chat Dinas, dan **panggilan masuk** muncul & berdering di HP walau aplikasi sedang ditutup. Panggilan tampil layar penuh di layar kunci dengan nada dering HP dan tombol **Jawab / Tolak**; dering berhenti otomatis bila pemanggil membatalkan atau panggilan dijawab dari perangkat lain.
+- **Kunci setiap keluar aplikasi** — kembali dari Home/aplikasi lain atau setelah layar mati langsung meminta **PIN / biometrik**. Membuka pemilih berkas, menyimpan/membagikan PDF, atau membuka lampiran dari dalam aplikasi tidak memicu kunci. Kunci otomatis 5 menit tanpa sentuhan tetap berlaku.
+- **Pembaruan dari dalam aplikasi** — cek otomatis ke GitHub Releases saat aplikasi dibuka (tiap ±6 jam) dan di latar belakang lewat Wi-Fi (tiap ±12 jam), unduh, cocokkan SHA-256 & tanda tangan, lalu pasang. Di Android 12+ pembaruan berikutnya dapat terpasang otomatis tanpa konfirmasi; di versi lain cukup satu ketukan **Perbarui**. Menu manual: **Pengaturan → Pembaruan aplikasi**.
+- **Tanda tangan rilis tetap** — mulai versi ini APK ditandatangani kunci rilis resmi, sehingga pembaruan cukup dipasang di atas versi lama **tanpa uninstall**.
+
+## Penting saat pindah ke v1.5.0
+
+- Versi ≤ 1.4.0 ditandatangani kunci debug yang berbeda-beda. **Uninstall sekali** versi lama, lalu pasang v1.5.0. Setelah itu tidak perlu uninstall lagi.
+
+## Wajib di server
+
+1. `git pull`, `php artisan migrate --force` (tabel `device_tokens`), `php artisan config:clear`, `npm run build`.
+2. Buat project Firebase (gratis) → tambahkan aplikasi Android `id.my.sisinden.app` → unduh **google-services.json**; lalu **Project settings → Service accounts → Generate new private key**.
+3. Web **Pengaturan → Notifikasi Push Aplikasi** → pilih kedua berkas JSON → Simpan. Service account disimpan terenkripsi dan tidak pernah dikirim ke browser/aplikasi.
+
+## Keterbatasan
+
+- Push tidak diterima bila aplikasi di-*force stop* atau dibatasi penghemat baterai pabrikan (Xiaomi/Oppo/Vivo: izinkan *Autostart* & tanpa batasan baterai) — sama seperti aplikasi chat lain.
+
+---
+
 # SISINDEN Android v1.4.0 (versionCode 12)
 
 Keamanan bergaya M-Banking: PIN, kunci otomatis 5 menit, login biometrik, dan blokir screenshot/rekam layar.

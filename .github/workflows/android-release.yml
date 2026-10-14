@@ -119,8 +119,16 @@ jobs:
           if [ -f android/app/build/outputs/apk/release/app-release.apk ]; then
             cp android/app/build/outputs/apk/release/app-release.apk "out/SISINDEN-${VERSION}.apk"
             APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
-            "$APKSIGNER" verify --verbose --print-certs "out/SISINDEN-${VERSION}.apk"
-            SIGNED=true
+            "$APKSIGNER" verify --verbose --print-certs "out/SISINDEN-${VERSION}.apk" | tee "$RUNNER_TEMP/certs.txt"
+            if grep -q "CN=Android Debug" "$RUNNER_TEMP/certs.txt"; then
+              # Kunci debug berbeda di setiap runner → APK tidak bisa dipasang sebagai pembaruan.
+              echo "::warning title=Kunci debug::APK rilis ditandatangani kunci debug acak. Rilis TIDAK diterbitkan agar pengguna tidak perlu uninstall. Isi secrets SISINDEN_KEYSTORE_*."
+              mv "out/SISINDEN-${VERSION}.apk" "out/SISINDEN-${VERSION}-debugsigned.apk"
+              rm -f "out/SISINDEN-${VERSION}.aab"
+              SIGNED=false
+            else
+              SIGNED=true
+            fi
           else
             cp android/app/build/outputs/apk/release/app-release-unsigned.apk "out/SISINDEN-${VERSION}-unsigned.apk"
             echo "::warning title=Unsigned release::Secrets keystore belum dikonfigurasi; APK rilis tidak ditandatangani dan tidak akan dipublikasikan."
@@ -181,5 +189,5 @@ jobs:
       - name: Refuse to release unsigned build
         if: steps.reltag.outputs.publish == 'true' && steps.collect.outputs.signed != 'true'
         run: |
-          echo "::error title=Release blocked::Rilis ${{ steps.reltag.outputs.tag }} tidak diterbitkan karena APK tidak ditandatangani. Tambahkan secrets SISINDEN_KEYSTORE_BASE64, SISINDEN_KEYSTORE_PASSWORD, SISINDEN_KEY_ALIAS, SISINDEN_KEY_PASSWORD."
+          echo "::error title=Release blocked::Rilis ${{ steps.reltag.outputs.tag }} tidak diterbitkan karena APK tidak ditandatangani kunci rilis tetap. Tambahkan secrets SISINDEN_KEYSTORE_BASE64, SISINDEN_KEYSTORE_PASSWORD, SISINDEN_KEY_ALIAS, SISINDEN_KEY_PASSWORD."
           exit 1

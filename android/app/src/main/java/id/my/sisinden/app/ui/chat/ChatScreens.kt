@@ -80,6 +80,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import id.my.sisinden.app.core.data.SessionStore
 import id.my.sisinden.app.core.notification.CommsState
+import id.my.sisinden.app.core.security.expectExternalActivity
 import id.my.sisinden.app.core.ui.components.ConfirmDialog
 import id.my.sisinden.app.core.ui.components.CountBadge
 import id.my.sisinden.app.core.ui.components.EmptyState
@@ -408,7 +409,7 @@ fun ChatThreadScreen(
                     Modifier.fillMaxWidth().padding(horizontal = Spacing.sm, vertical = Spacing.sm),
                     verticalAlignment = Alignment.Bottom,
                 ) {
-                    IconButton(onClick = { picker.launch(ChatThreadViewModel.PICKER_MIME) }) {
+                    IconButton(onClick = { context.expectExternalActivity(); picker.launch(ChatThreadViewModel.PICKER_MIME) }) {
                         Icon(Icons.Outlined.AttachFile, contentDescription = "Lampirkan berkas")
                     }
                     TextField(
@@ -533,6 +534,7 @@ private fun AttachmentView(a: ChatAttachmentDto, fg: Color, context: Context) {
 
 private fun openUrl(context: Context, url: String) {
     try {
+        context.expectExternalActivity()
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     } catch (_: ActivityNotFoundException) {
         // Tidak ada aplikasi peramban/penampil: abaikan.

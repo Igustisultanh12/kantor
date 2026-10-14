@@ -26,8 +26,8 @@ android {
         applicationId = "id.my.sisinden.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 12
-        versionName = "1.4.0"
+        versionCode = 13
+        versionName = "1.5.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -114,6 +114,10 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     // Sinkron notifikasi bersuara di latar belakang
     implementation(libs.androidx.work.runtime.ktx)
+    // Notifikasi push (FCM). Konfigurasi Firebase diambil dari server saat runtime,
+    // jadi plugin google-services & google-services.json tidak diperlukan di repo.
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
     // Testing
     testImplementation(libs.junit)

@@ -106,11 +106,19 @@ class SindenRepository(
 
     suspend fun logout() {
         // Cabut token di server (best-effort), lalu hapus sesi lokal apa pun hasilnya.
-        if (session.token != null) call { logout() }
+        if (session.token != null) {
+            val pushToken = id.my.sisinden.app.core.notification.PushManager.lastToken(appContext)
+            call { logout(LogoutRequest(pushToken)) }
+        }
         session.end(LogoutReason.USER)
     }
 
     suspend fun getConfig(): ApiResult<ConfigResponse> = call { getConfig() }
+
+    /** Daftarkan token FCM perangkat ini ke akun yang sedang masuk. */
+    suspend fun registerPushToken(token: String) = call {
+        registerPush(PushRegisterRequest(token, id.my.sisinden.app.BuildConfig.VERSION_NAME, "${Build.MANUFACTURER} ${Build.MODEL}".take(100)))
+    }
 
     // ------------------------------------------------------- Dashboard
 

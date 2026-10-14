@@ -17,6 +17,11 @@ class SettingController extends Controller
         // Secret Turnstile tidak pernah dikirim ke browser; cukup status tersimpan/tidak.
         $settings['turnstile_secret_set'] = !empty($settings['turnstile_secret_key']) || filled(config('services.turnstile.secret_key'));
         unset($settings['turnstile_secret_key']);
+        // Firebase: service account (rahasia) tidak pernah dikirim ke browser.
+        $settings['fcm_service_account_project'] = \App\Support\PushNotifier::serviceAccountProject();
+        $settings['fcm_client_project'] = \App\Support\PushNotifier::clientConfig()['project_id'] ?? null;
+        $settings['fcm_ready'] = \App\Support\PushNotifier::enabled();
+        unset($settings['fcm_service_account'], $settings['fcm_client_config']);
         $settings['turnstile_site_key'] = $settings['turnstile_site_key'] ?? \App\Support\Turnstile::siteKey();
         return Inertia::render('Settings/Index', [
             'settings' => $settings
@@ -39,6 +44,9 @@ class SettingController extends Controller
             'turnstile_enabled' => 'nullable|in:0,1',
             'turnstile_site_key' => 'nullable|string|max:255',
             'turnstile_secret_key' => 'nullable|string|max:255',
+            'fcm_enabled' => 'nullable|in:0,1',
+            'fcm_google_services' => 'nullable|string|max:20000',
+            'fcm_service_account' => 'nullable|string|max:20000',
             'logo' => 'nullable|image|max:2048', 
             'login_background' => 'nullable|image|max:5120', // Background login (Maks 5MB)
             'signature_file' => 'nullable|image|mimes:png|max:2048', // Validasi khusus PNG
@@ -53,7 +61,7 @@ class SettingController extends Controller
             'mobile_show_balance_card', 'mobile_show_summary_trio', 'mobile_show_quick_actions',
             'google_client_id', 'google_client_secret', 'google_login_enabled',
             'agora_app_id', 'agora_app_certificate',
-            'turnstile_enabled', 'turnstile_site_key',
+            'turnstile_enabled', 'turnstile_site_key', 'fcm_enabled',
         ];
         foreach ($request->only($textFields) as $key => $value) {
             if ($value !== null) {
@@ -71,6 +79,24 @@ class SettingController extends Controller
                 return back()->with('error', 'Secret key Turnstile belum tersimpan: database belum diperbarui. Jalankan "php artisan migrate --force" di server lalu simpan ulang.');
             }
         }
+        // Firebase Cloud Messaging (notifikasi push aplikasi Android).
+        if (filled($request->input('fcm_google_services'))) {
+            $cfg = \App\Support\PushNotifier::parseGoogleServices((string) $request->input('fcm_google_services'));
+            if (is_string($cfg)) {
+                return back()->with('error', $cfg);
+            }
+            Setting::updateOrCreate(['key' => 'fcm_client_config'], ['value' => json_encode($cfg)]);
+        }
+        if (filled($request->input('fcm_service_account'))) {
+            $err = \App\Support\PushNotifier::storeServiceAccount((string) $request->input('fcm_service_account'));
+            if ($err) {
+                return back()->with('error', $err);
+            }
+        }
+        if ($request->boolean('fcm_clear')) {
+            Setting::whereIn('key', ['fcm_service_account', 'fcm_client_config'])->delete();
+        }
+
         if ($request->boolean('turnstile_secret_clear')) {
             Setting::where('key', 'turnstile_secret_key')->delete();
         }

@@ -35,6 +35,9 @@ import androidx.lifecycle.repeatOnLifecycle
 import id.my.sisinden.app.core.network.ApiResult
 import id.my.sisinden.app.core.notification.CommsState
 import id.my.sisinden.app.core.notification.NotificationSync
+import id.my.sisinden.app.core.notification.PushManager
+import id.my.sisinden.app.core.update.AppUpdater
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import id.my.sisinden.app.ui.call.CallScreen
 import id.my.sisinden.app.ui.chat.ChatHomeScreen
 import id.my.sisinden.app.ui.chat.ChatThreadScreen
@@ -134,6 +137,25 @@ fun MainNavigation(
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val myUserId = session.user.id
     val canChat = perms.has(Perm.CHAT_VIEW)
+
+    // Navigasi utama tampil (tidak terkunci): panggilan masuk ditangani poller, bukan notifikasi.
+    LifecycleResumeEffect(Unit) {
+        CommsState.mainUiVisible = true
+        onPauseOrDispose { CommsState.mainUiVisible = false }
+    }
+
+    // Notifikasi push (FCM): ambil konfigurasi Firebase dari server lalu daftarkan perangkat.
+    LaunchedEffect(myUserId) {
+        val cfg = when (val res = repository.getConfig()) {
+            is ApiResult.Success -> res.data
+            is ApiResult.Failure -> null
+        }
+        PushManager.configure(context, cfg?.push)
+        PushManager.register(context, repository)
+        // Pembaruan aplikasi otomatis (GitHub Releases).
+        AppUpdater.schedule(context)
+        AppUpdater.autoCheckOnOpen(context)
+    }
 
     // Notifikasi bersuara: WorkManager di latar belakang + sinkron cepat saat aplikasi terbuka.
     LaunchedEffect(Unit) {
@@ -358,6 +380,7 @@ fun MainNavigation(
             }
             composable(
                 Routes.CALL,
+                deepLinks = appDeepLink("call/{uuid}?video={video}&incoming={incoming}&peer={peer}"),
                 arguments = listOf(
                     navArgument("uuid") { type = NavType.StringType },
                     navArgument("video") { type = NavType.BoolType; defaultValue = true },

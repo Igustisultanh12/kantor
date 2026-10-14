@@ -23,6 +23,12 @@ class AppNotification extends Model
         'is_read' => 'boolean',
     ];
 
+    protected static function booted(): void
+    {
+        // Notifikasi push ke HP (seperti WhatsApp) untuk setiap warta baru.
+        static::created(fn (self $n) => \App\Support\PushNotifier::appNotification($n));
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

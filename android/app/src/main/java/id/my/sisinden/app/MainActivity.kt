@@ -65,11 +65,14 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         (application as SindenApplication).appLock.onForeground()
+        id.my.sisinden.app.core.notification.CommsState.appForeground = true
     }
 
     override fun onStop() {
         super.onStop()
-        (application as SindenApplication).appLock.onBackground()
+        // Rotasi layar bukan "keluar aplikasi".
+        if (!isChangingConfigurations) (application as SindenApplication).appLock.onBackground()
+        id.my.sisinden.app.core.notification.CommsState.appForeground = false
     }
 
     override fun onNewIntent(intent: Intent) {

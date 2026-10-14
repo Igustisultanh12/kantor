@@ -74,13 +74,36 @@ class AppLockTest {
     }
 
     @Test
-    fun `terkunci bila di latar belakang lima menit`() {
+    fun `keluar aplikasi lalu kembali wajib pin`() {
         val m = manager()
         m.unlock()
         m.onBackground()
-        clock += 60_000
+        clock += 3_000
+        m.onForeground()
+        assertTrue("kembali dari Home/aplikasi lain → terkunci", m.locked.value)
+    }
+
+    @Test
+    fun `pemilih berkas dari dalam aplikasi tidak mengunci`() {
+        val m = manager()
+        m.unlock()
+        m.expectExternal()
+        m.onBackground()
+        clock += 30_000
         m.onForeground()
         assertFalse(m.locked.value)
+        // Pengecualian hanya sekali: keluar berikutnya tetap terkunci.
+        m.onBackground()
+        clock += 1_000
+        m.onForeground()
+        assertTrue(m.locked.value)
+    }
+
+    @Test
+    fun `pengecualian tidak berlaku bila pergi lebih dari lima menit`() {
+        val m = manager()
+        m.unlock()
+        m.expectExternal()
         m.onBackground()
         clock += AppLockManager.TIMEOUT_MS
         m.onForeground()

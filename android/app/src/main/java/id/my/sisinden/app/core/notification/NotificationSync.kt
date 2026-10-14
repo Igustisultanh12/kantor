@@ -26,6 +26,12 @@ object CommsState {
     /** true bila layar Chat Dinas (daftar/utas) sedang tampil. */
     @Volatile var chatScreenVisible: Boolean = false
 
+    /** Aktivitas utama sedang tampil di layar. */
+    @Volatile var appForeground: Boolean = false
+
+    /** Navigasi utama tampil & tidak terkunci (poller panggilan aktif). */
+    @Volatile var mainUiVisible: Boolean = false
+
     /** UUID utas yang sedang dalam panggilan (null = tidak ada panggilan). */
     @Volatile var activeCallThread: String? = null
 

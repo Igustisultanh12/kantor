@@ -30,6 +30,8 @@ class SindenApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         NotificationHelper.createNotificationChannel(this)
+        // Firebase dari konfigurasi tersimpan, agar push tetap diterima saat aplikasi dibangunkan.
+        id.my.sisinden.app.core.notification.PushManager.initFromCache(this)
         appLock = AppLockManager(AppLockStore(this)).apply {
             // Panggilan video yang sedang berlangsung tidak ikut terkunci karena "diam".
             keepAlive = { CommsState.activeCallThread != null }

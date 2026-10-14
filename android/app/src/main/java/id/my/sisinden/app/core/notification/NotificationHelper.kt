@@ -126,6 +126,23 @@ object NotificationHelper {
         showNotification(context, CHAT_NOTIFICATION_ID, title, text, "chat", CHAT_CHANNEL_ID)
     }
 
+    /** Warta dari push FCM: tampilkan bila belum pernah dibunyikan (dedup dengan polling). */
+    fun showPushedNotification(context: Context, id: Int, title: String, message: String, link: String?) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val last = prefs.getInt(PREF_LAST_NOTIFIED_ID, 0)
+        if (prefs.getBoolean(PREF_IS_INITIALIZED, false) && id in 1..last) return
+        prefs.edit().putBoolean(PREF_IS_INITIALIZED, true).putInt(PREF_LAST_NOTIFIED_ID, maxOf(id, last)).apply()
+        showNotification(context, id, title, message, deepLinkFor(link))
+    }
+
+    /** Pesan Chat Dinas dari push FCM (dedup dengan polling). */
+    fun showPushedChat(context: Context, messageId: Long, sender: String, text: String) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (messageId <= prefs.getLong(PREF_LAST_CHAT_ID, 0L)) return
+        prefs.edit().putBoolean(PREF_CHAT_INITIALIZED, true).putLong(PREF_LAST_CHAT_ID, messageId).apply()
+        showNotification(context, CHAT_NOTIFICATION_ID, sender, text, "chat", CHAT_CHANNEL_ID)
+    }
+
     /** Tandai pesan chat sudah terlihat (mis. saat utas dibuka) agar tidak dibunyikan lagi. */
     fun markChatSeen(context: Context, messageId: Long) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

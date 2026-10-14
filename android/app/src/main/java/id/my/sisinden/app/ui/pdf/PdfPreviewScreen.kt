@@ -1,5 +1,6 @@
 package id.my.sisinden.app.ui.pdf
 
+import id.my.sisinden.app.core.security.expectExternalActivity
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -172,7 +173,7 @@ fun PdfPreviewScreen(
     LaunchedEffect(ready != null) {
         if (autoSave && ready != null && !autoSaveDone) {
             autoSaveDone = true
-            saveLauncher.launch(fileName.ifBlank { "dokumen.pdf" })
+            run { context.expectExternalActivity(); saveLauncher.launch(fileName.ifBlank { "dokumen.pdf" }) }
         }
     }
 
@@ -183,7 +184,7 @@ fun PdfPreviewScreen(
         snackbarHostState = snackbar,
         actions = {
             if (ready != null) {
-                IconButton(onClick = { saveLauncher.launch(fileName.ifBlank { "dokumen.pdf" }) }) {
+                IconButton(onClick = { run { context.expectExternalActivity(); saveLauncher.launch(fileName.ifBlank { "dokumen.pdf" }) } }) {
                     Icon(Icons.Outlined.FileDownload, contentDescription = "Simpan ke perangkat")
                 }
                 IconButton(onClick = {
@@ -193,6 +194,7 @@ fun PdfPreviewScreen(
                         putExtra(Intent.EXTRA_STREAM, uri)
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
+                    context.expectExternalActivity()
                     context.startActivity(Intent.createChooser(intent, "Bagikan PDF"))
                 }) {
                     Icon(Icons.Outlined.Share, contentDescription = "Bagikan")
@@ -231,6 +233,7 @@ private fun openWithExternalApp(
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
     }
     try {
+        context.expectExternalActivity()
         context.startActivity(intent)
     } catch (_: ActivityNotFoundException) {
         scope.launch { snackbar.showSnackbar("Tidak ada aplikasi pembaca PDF di perangkat.") }

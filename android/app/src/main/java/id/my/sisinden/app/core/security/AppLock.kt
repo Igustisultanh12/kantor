@@ -110,10 +110,13 @@ class AppLockStore(context: Context) : LockStore {
 }
 
 /**
- * Kunci aplikasi bergaya M-Banking: setelah [TIMEOUT_MS] tanpa aktivitas
- * (atau aplikasi di latar belakang selama itu) sesi terkunci dan pengguna
- * harus memasukkan PIN / biometrik. Saat aplikasi dibuka dari awal, aplikasi
- * juga selalu terkunci.
+ * Kunci aplikasi bergaya M-Banking:
+ *  - setiap kali pengguna keluar dari aplikasi (Home, ganti aplikasi, layar
+ *    mati) lalu kembali, aplikasi terkunci dan wajib PIN / biometrik;
+ *  - selama aplikasi terbuka, terkunci setelah [TIMEOUT_MS] tanpa sentuhan;
+ *  - saat dibuka dari awal, aplikasi selalu terkunci.
+ * Pengecualian: membuka pemilih berkas / berbagi PDF dari dalam aplikasi
+ * ([expectExternal]) dan panggilan video yang sedang berlangsung.
  */
 class AppLockManager(
     val store: LockStore,
@@ -136,10 +139,24 @@ class AppLockManager(
         backgroundAt = now()
     }
 
+    @Volatile private var externalUntil = 0L
+
+    /**
+     * Dipanggil sebelum aplikasi sendiri membuka layar sistem (pemilih berkas,
+     * simpan/bagikan PDF, membuka lampiran) agar kembalinya tidak dianggap keluar.
+     */
+    fun expectExternal() {
+        externalUntil = now() + EXTERNAL_GRACE_MS
+    }
+
     fun onForeground() {
         val since = backgroundAt
         backgroundAt = null
-        if (since != null && now() - since >= TIMEOUT_MS && !keepAlive()) lock() else touch()
+        val t = now()
+        val away = if (since == null) 0L else t - since
+        val internalTrip = t <= externalUntil && away < TIMEOUT_MS
+        externalUntil = 0L
+        if (since != null && !internalTrip && !keepAlive()) lock() else touch()
     }
 
     /** Dipanggil berkala selama aplikasi terbuka. */
@@ -175,5 +192,12 @@ class AppLockManager(
     companion object {
         const val TIMEOUT_MS = 5 * 60_000L
         const val MAX_ATTEMPTS = 5
+        /** Batas waktu kembali dari pemilih berkas/berbagi tanpa diminta PIN. */
+        const val EXTERNAL_GRACE_MS = 3 * 60_000L
     }
+}
+
+/** Tandai bahwa layar berikutnya dibuka oleh aplikasi sendiri (lihat [AppLockManager.expectExternal]). */
+fun android.content.Context.expectExternalActivity() {
+    (applicationContext as? id.my.sisinden.app.SindenApplication)?.appLock?.expectExternal()
 }

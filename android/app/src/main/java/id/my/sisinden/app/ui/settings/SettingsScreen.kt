@@ -62,6 +62,8 @@ fun SettingsScreen(repository: SindenRepository, onBack: () -> Unit) {
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = Spacing.screen),
             verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
+            UpdateCard()
+
             SecurityCard(
                 appLock = repository.appLock,
                 userId = userId,

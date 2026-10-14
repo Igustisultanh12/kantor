@@ -155,7 +155,11 @@ class DutyReminderReceiver : BroadcastReceiver() {
 class DutyReminderBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
-            Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED -> DutyReminders.restore(context)
+            Intent.ACTION_BOOT_COMPLETED -> DutyReminders.restore(context)
+            Intent.ACTION_MY_PACKAGE_REPLACED -> {
+                DutyReminders.restore(context)
+                id.my.sisinden.app.core.update.AppUpdater.onPackageReplaced(context)
+            }
         }
     }
 }

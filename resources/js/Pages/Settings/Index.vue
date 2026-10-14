@@ -34,6 +34,10 @@ const form = useForm({
     turnstile_site_key: props.settings.turnstile_site_key || '',
     turnstile_secret_key: '',
     turnstile_secret_clear: false,
+    fcm_enabled: props.settings.fcm_enabled !== undefined ? String(props.settings.fcm_enabled) : '1',
+    fcm_google_services: '',
+    fcm_service_account: '',
+    fcm_clear: false,
     logo: null,
     login_background: null,
     signature_file: null,
@@ -44,6 +48,16 @@ const form = useForm({
 const showClientSecret = ref(false);
 const showAgoraCertificate = ref(false);
 const showTurnstileSecret = ref(false);
+
+// Baca berkas JSON Firebase dari perangkat admin ke kolom formulir (tidak diunggah sebagai file).
+const readJsonFile = (event, field) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => { form[field] = String(reader.result || ''); };
+    reader.readAsText(file);
+    event.target.value = '';
+};
 const copiedCallback = ref(false);
 
 const callbackUrl = computed(() => {
@@ -681,6 +695,70 @@ onUnmounted(() => { if (waInterval) clearInterval(waInterval); });
                                     <li>Salin <b>Site Key</b> dan <b>Secret Key</b> ke kolom di atas, centang <b>Aktif</b>, lalu simpan.</li>
                                     <li>Saat aktif, aplikasi versi lama yang belum mendukung Turnstile tidak dapat masuk &mdash; pastikan personel memperbarui aplikasi.</li>
                                     <li>Perubahan berlaku seketika tanpa memperbarui aplikasi maupun menyetel ulang server.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NOTIFIKASI PUSH APLIKASI (FIREBASE CLOUD MESSAGING) -->
+                    <div class="pt-8 border-t border-slate-100 space-y-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center shrink-0">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-xs font-black text-slate-900 uppercase tracking-wider">NOTIFIKASI PUSH APLIKASI (FIREBASE CLOUD MESSAGING)</h3>
+                                    <p class="text-[10px] text-slate-500 font-semibold">Warta, Chat Dinas &amp; panggilan tetap berdering di HP walau aplikasi ditutup</p>
+                                </div>
+                            </div>
+                            <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                                <input type="checkbox" class="rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+                                       :checked="form.fcm_enabled === '1'"
+                                       @change="form.fcm_enabled = $event.target.checked ? '1' : '0'" />
+                                <span class="text-[10px] font-extrabold uppercase tracking-wider" :class="props.settings.fcm_ready && form.fcm_enabled === '1' ? 'text-emerald-700' : 'text-slate-500'">
+                                    {{ props.settings.fcm_ready && form.fcm_enabled === '1' ? 'Aktif' : 'Belum aktif' }}
+                                </span>
+                            </label>
+                        </div>
+
+                        <div class="bg-gradient-to-br from-slate-50 to-amber-50/30 p-6 rounded-3xl border border-slate-200 space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider ms-1">1. google-services.json (aplikasi Android)</label>
+                                    <input type="file" accept=".json,application/json" @change="readJsonFile($event, 'fcm_google_services')"
+                                           class="block w-full text-[10px] text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:bg-amber-100 file:text-amber-800 file:font-bold" />
+                                    <textarea v-model="form.fcm_google_services" rows="3"
+                                              class="w-full rounded-2xl border-slate-200 bg-white font-mono text-[10px] px-3 py-2 text-slate-700"
+                                              placeholder="Pilih berkas atau tempel isi google-services.json"></textarea>
+                                    <p class="text-[9px] font-medium ms-1" :class="props.settings.fcm_client_project ? 'text-emerald-600' : 'text-rose-500'">
+                                        {{ props.settings.fcm_client_project ? 'Tersimpan — project: ' + props.settings.fcm_client_project : 'Belum diatur.' }}
+                                    </p>
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider ms-1">2. Service account (rahasia)</label>
+                                    <input type="file" accept=".json,application/json" @change="readJsonFile($event, 'fcm_service_account')"
+                                           class="block w-full text-[10px] text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:bg-amber-100 file:text-amber-800 file:font-bold" />
+                                    <textarea v-model="form.fcm_service_account" rows="3" autocomplete="off"
+                                              class="w-full rounded-2xl border-slate-200 bg-white font-mono text-[10px] px-3 py-2 text-slate-700"
+                                              :placeholder="props.settings.fcm_service_account_project ? 'Tersimpan (terenkripsi) — pilih berkas baru untuk mengganti' : 'Pilih berkas JSON service account Firebase'"></textarea>
+                                    <p class="text-[9px] font-medium ms-1" :class="props.settings.fcm_service_account_project ? 'text-emerald-600' : 'text-rose-500'">
+                                        {{ props.settings.fcm_service_account_project ? 'Tersimpan terenkripsi — project: ' + props.settings.fcm_service_account_project : 'Belum diatur.' }}
+                                    </p>
+                                </div>
+                            </div>
+                            <label v-if="props.settings.fcm_service_account_project || props.settings.fcm_client_project" class="inline-flex items-center gap-2 text-[9px] text-slate-500 ms-1">
+                                <input type="checkbox" v-model="form.fcm_clear" class="rounded border-slate-300 text-rose-600" /> Hapus konfigurasi Firebase tersimpan
+                            </label>
+                            <div class="p-4 bg-white rounded-2xl border border-amber-100 space-y-2">
+                                <p class="font-bold text-amber-900 text-xs">Panduan Firebase (gratis):</p>
+                                <ul class="list-disc list-inside space-y-1 text-[10px] text-slate-600 font-medium pl-1">
+                                    <li>Buka <b>console.firebase.google.com</b> &rarr; <b>Add project</b> (Google Analytics boleh dimatikan).</li>
+                                    <li>Tambahkan aplikasi <b>Android</b> dengan package <b>id.my.sisinden.app</b> &rarr; unduh <b>google-services.json</b> &rarr; pilih di kolom 1.</li>
+                                    <li><b>Project settings &rarr; Service accounts &rarr; Generate new private key</b> &rarr; pilih berkas JSON itu di kolom 2.</li>
+                                    <li>Simpan. Aplikasi otomatis mendaftar notifikasi saat dibuka berikutnya &mdash; tanpa memperbarui APK.</li>
                                 </ul>
                             </div>
                         </div>

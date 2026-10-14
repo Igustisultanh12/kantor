@@ -213,6 +213,9 @@ Route::get('/api/mobile/config', function () {
         'mobile_show_quick_actions' => ($settings['mobile_show_quick_actions'] ?? '1') === '1',
         'turnstile_site_key' => Turnstile::siteKey(),
         'turnstile_enabled' => Turnstile::enabled(),
+        // Konfigurasi klien Firebase (publik, sama seperti isi google-services.json).
+        'push' => \App\Support\PushNotifier::clientConfig(),
+        'push_enabled' => \App\Support\PushNotifier::enabled(),
         'server_time' => now()->toIso8601String(),
     ]);
 })->middleware('throttle:60,1');
@@ -1455,3 +1458,28 @@ Route::get('/api/mobile/pdf/signature/{id}', [MobileCommsController::class, 'sig
 Route::get('/api/mobile/duty-roster/pending', [MobileCommsController::class, 'pendingSpJaga'])->middleware('mobile.auth:duty_roster.sign');
 Route::post('/api/mobile/duty-roster/{id}/approve', [MobileCommsController::class, 'approveSpJaga'])
     ->whereNumber('id')->middleware('mobile.auth:duty_roster.sign');
+
+// =====================================================================
+// NOTIFIKASI PUSH (FIREBASE CLOUD MESSAGING) — v1.5
+// =====================================================================
+Route::post('/api/mobile/push/register', function (Request $request) {
+    $data = $request->validate([
+        'token' => 'required|string|min:20|max:4096',
+        'app_version' => 'nullable|string|max:20',
+        'device_name' => 'nullable|string|max:100',
+    ]);
+    if (!\Illuminate\Support\Facades\Schema::hasTable('device_tokens')) {
+        return response()->json(['status' => 'error', 'message' => 'Server belum diperbarui (php artisan migrate).'], 503);
+    }
+    \App\Models\DeviceToken::register($request->user()->id, $data['token'], $data['app_version'] ?? null, $data['device_name'] ?? null);
+    return response()->json(['status' => 'success', 'push_enabled' => \App\Support\PushNotifier::enabled()]);
+})->middleware(['mobile.auth', 'throttle:30,1']);
+
+Route::post('/api/mobile/push/unregister', function (Request $request) {
+    $data = $request->validate(['token' => 'required|string|max:4096']);
+    if (\Illuminate\Support\Facades\Schema::hasTable('device_tokens')) {
+        \App\Models\DeviceToken::where('user_id', $request->user()->id)
+            ->where('token_hash', \App\Models\DeviceToken::hashOf($data['token']))->delete();
+    }
+    return response()->json(['status' => 'success']);
+})->middleware(['mobile.auth', 'throttle:30,1']);

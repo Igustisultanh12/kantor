@@ -114,6 +114,8 @@ fun CallScreen(
 
     DisposableEffect(threadUuid) {
         CommsState.activeCallThread = threadUuid
+        // Layar panggilan sudah tampil → hentikan dering notifikasi.
+        id.my.sisinden.app.core.notification.CallNotifications.cancel(context)
         onDispose {
             CommsState.activeCallThread = null
             audio.release()

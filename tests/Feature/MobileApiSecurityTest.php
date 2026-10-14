@@ -102,6 +102,7 @@ class MobileApiSecurityTest extends TestCase
             $t->boolean('is_read')->default(false);
             $t->timestamps();
         });
+        (require database_path('migrations/2026_10_14_110000_create_device_tokens_table.php'))->up();
         Schema::create('sp_jagas', function (Blueprint $t) {
             $t->id();
             $t->string('nomor_sprin')->nullable();
@@ -713,5 +714,129 @@ class MobileApiSecurityTest extends TestCase
 
         $titlesU = collect($this->withToken($tokU)->getJson('/api/mobile/notifications')->json('notifications'))->pluck('title');
         $this->assertContains('Jadwal jaga terbit', $titlesU);
+    }
+
+    private function configurePush($fcmResponse = null): void
+    {
+        $key = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+        openssl_pkey_export($key, $pem);
+        $this->assertNull(\App\Support\PushNotifier::storeServiceAccount(json_encode([
+            'type' => 'service_account', 'project_id' => 'sinden-test', 'client_email' => 'fcm@sinden-test.iam.gserviceaccount.com',
+            'private_key' => $pem, 'token_uri' => 'https://oauth2.googleapis.com/token',
+        ])));
+        $cfg = \App\Support\PushNotifier::parseGoogleServices(json_encode([
+            'project_info' => ['project_number' => '123456789', 'project_id' => 'sinden-test'],
+            'client' => [[
+                'client_info' => ['mobilesdk_app_id' => '1:123456789:android:abc', 'android_client_info' => ['package_name' => 'id.my.sisinden.app']],
+                'api_key' => [['current_key' => 'AIzaPUBLICKEY']],
+            ]],
+        ]));
+        $this->assertIsArray($cfg);
+        \App\Models\Setting::updateOrCreate(['key' => 'fcm_client_config'], ['value' => json_encode($cfg)]);
+        \Illuminate\Support\Facades\Cache::forget('fcm:access_token');
+        Http::fake([
+            'oauth2.googleapis.com/*' => Http::response(['access_token' => 'ya29.test', 'expires_in' => 3600]),
+            'fcm.googleapis.com/*' => $fcmResponse ?? Http::response(['name' => 'projects/sinden-test/messages/1']),
+        ]);
+    }
+
+    /** @return array<int, array> data FCM yang terkirim, per token. */
+    private function pushesSent(): array
+    {
+        return collect(Http::recorded())
+            ->filter(fn ($pair) => str_contains($pair[0]->url(), 'fcm.googleapis.com'))
+            ->map(fn ($pair) => ['token' => $pair[0]['message']['token'], 'data' => $pair[0]['message']['data'], 'auth' => $pair[0]->header('Authorization')[0] ?? null])
+            ->values()->all();
+    }
+
+    public function test_push_config_and_device_registration(): void
+    {
+        $this->getJson('/api/mobile/config')->assertOk()->assertJsonPath('push', null)->assertJsonPath('push_enabled', false);
+        $this->postJson('/api/mobile/push/register', ['token' => str_repeat('x', 40)])->assertStatus(401);
+
+        $this->configurePush();
+        $cfg = $this->getJson('/api/mobile/config')->assertOk()
+            ->assertJsonPath('push.project_id', 'sinden-test')
+            ->assertJsonPath('push.sender_id', '123456789')
+            ->assertJsonPath('push_enabled', true);
+        $this->assertStringNotContainsString('PRIVATE KEY', $cfg->getContent());
+        $stored = \App\Models\Setting::where('key', 'fcm_service_account')->value('value');
+        $this->assertStringNotContainsString('PRIVATE KEY', $stored, 'service account harus terenkripsi');
+        $public = \App\Http\Middleware\HandleInertiaRequests::publicSettings(\App\Models\Setting::pluck('value', 'key')->toArray());
+        $this->assertArrayNotHasKey('fcm_service_account', $public);
+
+        $u = $this->makeUser();
+        $tok = $this->tokenFor($u);
+        $this->withToken($tok)->postJson('/api/mobile/push/register', ['token' => 'fcm-token-' . str_repeat('a', 30), 'app_version' => '1.5.0'])
+            ->assertOk()->assertJsonPath('push_enabled', true);
+        $this->assertSame(1, \App\Models\DeviceToken::where('user_id', $u->id)->count());
+        // Token yang sama dipindah ke akun lain (satu token = satu pemilik).
+        $v = $this->makeUser();
+        $this->withToken($this->tokenFor($v))->postJson('/api/mobile/push/register', ['token' => 'fcm-token-' . str_repeat('a', 30)])->assertOk();
+        $this->assertSame(0, \App\Models\DeviceToken::where('user_id', $u->id)->count());
+        $this->assertSame(1, \App\Models\DeviceToken::where('user_id', $v->id)->count());
+        // Keluar → token perangkat dihapus.
+        $this->withToken($this->tokenFor($v))->postJson('/api/mobile/logout', ['push_token' => 'fcm-token-' . str_repeat('a', 30)])->assertOk();
+        $this->assertSame(0, \App\Models\DeviceToken::count());
+
+        // google-services.json untuk paket lain ditolak.
+        $this->assertIsString(\App\Support\PushNotifier::parseGoogleServices(json_encode(['project_info' => ['project_id' => 'x'], 'client' => [['client_info' => ['android_client_info' => ['package_name' => 'com.lain']]]]])));
+    }
+
+    public function test_push_is_sent_for_notifications_chat_and_calls(): void
+    {
+        $this->configurePush();
+        $a = $this->makeUser(['name' => 'Bambang', 'pangkat' => 'Peltu']);
+        $admin = $this->makeUser(['role' => 'admin', 'name' => 'Operator']);
+        $pasops = $this->makeUser(['role' => 'pasops']);
+        \App\Models\DeviceToken::register($a->id, 'tok-personel-' . str_repeat('p', 20));
+        \App\Models\DeviceToken::register($admin->id, 'tok-admin-' . str_repeat('q', 20));
+        \App\Models\DeviceToken::register($pasops->id, 'tok-pasops-' . str_repeat('r', 20));
+        $tokA = $this->tokenFor($a);
+        $tokAdmin = $this->tokenFor($admin);
+
+        // Chat personel → operator menerima push (pengirim tidak).
+        $uuid = $this->withToken($tokA)->getJson('/api/mobile/chat')->json('thread.uuid');
+        $this->withToken($tokA)->postJson("/api/mobile/chat/{$uuid}/send", ['message' => 'Izin lapor'])->assertOk();
+        $sent = $this->pushesSent();
+        $this->assertCount(1, $sent);
+        $this->assertStringStartsWith('tok-admin-', $sent[0]['token']);
+        $this->assertSame('chat', $sent[0]['data']['type']);
+        $this->assertSame('Izin lapor', $sent[0]['data']['body']);
+        $this->assertSame($uuid, $sent[0]['data']['thread_uuid']);
+        $this->assertSame('Bearer ya29.test', $sent[0]['auth']);
+
+        // Panggilan personel → dering di HP operator; diakhiri → batal dering.
+        $this->withToken($tokA)->postJson("/api/mobile/chat/{$uuid}/call/initiate", ['call_type' => 'audio'])->assertOk();
+        $call = collect($this->pushesSent())->firstWhere('data.type', 'call');
+        $this->assertNotNull($call);
+        $this->assertStringStartsWith('tok-admin-', $call['token']);
+        $this->assertSame('audio', $call['data']['call_type']);
+        $this->assertSame('Peltu Bambang', $call['data']['caller_name']);
+        $this->withToken($tokA)->postJson("/api/mobile/chat/{$uuid}/call/end", ['reason' => 'canceled'])->assertOk();
+        $cancel = collect($this->pushesSent())->firstWhere('data.type', 'call_cancel');
+        $this->assertNotNull($cancel);
+        $this->assertStringStartsWith('tok-admin-', $cancel['token']);
+        // Dering di cache operator juga dibersihkan.
+        $this->withToken($tokAdmin)->getJson('/api/mobile/chat/incoming-call')->assertJsonPath('call', null);
+
+        // Warta berbasis role → hanya pasops.
+        $before = count($this->pushesSent());
+        $this->withToken($tokA)->getJson('/api/mobile/me')->assertOk(); // memicu defer dalam siklus request
+        \App\Models\AppNotification::notify(null, 'pasops', 'Pengajuan TTE SP Jaga', 'Mohon TTE', 'warning', '/sp-jaga');
+        $this->withToken($tokA)->getJson('/api/mobile/me')->assertOk();
+        $notif = array_slice($this->pushesSent(), $before);
+        $this->assertCount(1, $notif);
+        $this->assertStringStartsWith('tok-pasops-', $notif[0]['token']);
+        $this->assertSame('/sp-jaga', $notif[0]['data']['link']);
+    }
+
+    public function test_unregistered_fcm_token_is_removed(): void
+    {
+        $this->configurePush(Http::response(['error' => ['code' => 404, 'status' => 'NOT_FOUND', 'details' => [['errorCode' => 'UNREGISTERED']]]], 404));
+        $u = $this->makeUser();
+        \App\Models\DeviceToken::register($u->id, 'tok-lama-' . str_repeat('z', 20));
+        $this->assertSame(0, \App\Support\PushNotifier::sendNow([$u->id], ['type' => 'notification']));
+        $this->assertSame(0, \App\Models\DeviceToken::count());
     }
 }
