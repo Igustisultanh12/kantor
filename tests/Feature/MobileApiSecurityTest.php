@@ -581,6 +581,22 @@ class MobileApiSecurityTest extends TestCase
         $this->postJson('/api/mobile/login', ['username' => '7373', 'password' => 'rahasia123'])->assertOk();
     }
 
+    public function test_settings_value_column_is_widened_for_encrypted_secret(): void
+    {
+        // Skema produksi lama: settings.value VARCHAR(255) → secret terenkripsi tidak muat (error 500).
+        Schema::drop('settings');
+        (require database_path('migrations/2026_02_05_070818_create_settings_table.php'))->up();
+        $this->assertSame('varchar', Schema::getColumnType('settings', 'value'));
+
+        (require database_path('migrations/2026_10_14_090000_change_settings_value_to_text.php'))->up();
+        $this->assertSame('text', Schema::getColumnType('settings', 'value'));
+
+        \App\Support\Turnstile::storeSecret('0x4AAAAAAA-contoh-secret-35-karakter');
+        $stored = (string) \App\Models\Setting::where('key', 'turnstile_secret_key')->value('value');
+        $this->assertGreaterThan(255, strlen($stored), 'nilai terenkripsi memang lebih panjang dari VARCHAR(255)');
+        $this->assertSame('0x4AAAAAAA-contoh-secret-35-karakter', \App\Support\Turnstile::secretKey());
+    }
+
     public function test_chat_personel_gets_own_thread_and_cannot_touch_other_threads(): void
     {
         $a = $this->makeUser(['name' => 'Pers A']);

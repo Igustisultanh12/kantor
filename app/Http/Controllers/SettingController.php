@@ -63,7 +63,13 @@ class SettingController extends Controller
 
         // Secret key Turnstile disimpan terenkripsi; kolom kosong = tidak diubah.
         if (filled($request->input('turnstile_secret_key'))) {
-            \App\Support\Turnstile::storeSecret(trim((string) $request->input('turnstile_secret_key')));
+            try {
+                \App\Support\Turnstile::storeSecret(trim((string) $request->input('turnstile_secret_key')));
+            } catch (\Illuminate\Database\QueryException $e) {
+                // Biasanya karena migrasi kolom settings.value (TEXT) belum dijalankan.
+                \Illuminate\Support\Facades\Log::error('[SETTINGS] Gagal menyimpan secret Turnstile: kolom settings.value terlalu pendek? Jalankan php artisan migrate.');
+                return back()->with('error', 'Secret key Turnstile belum tersimpan: database belum diperbarui. Jalankan "php artisan migrate --force" di server lalu simpan ulang.');
+            }
         }
         if ($request->boolean('turnstile_secret_clear')) {
             Setting::where('key', 'turnstile_secret_key')->delete();
