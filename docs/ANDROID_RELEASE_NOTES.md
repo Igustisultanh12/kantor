@@ -1,3 +1,14 @@
+# SISINDEN Android v1.6.1 (versionCode 15)
+
+Perbaikan pemeriksa pembaruan dalam aplikasi.
+
+- Versi terbaru kini dicek langsung dari berkas rilis (`SHA256SUMS.txt`), tidak lagi bergantung pada API GitHub yang dibatasi 60 permintaan/jam per jaringan.
+- Pesan kegagalan kini menyebut tahap & penyebabnya (memeriksa versi / mengunduh / memasang; mis. github.com diblokir jaringan, batas akses tercapai, jam HP salah).
+- Bila izin **"Instal aplikasi tidak dikenal"** belum diberikan, muncul tombol **Izinkan pemasangan** yang langsung membuka pengaturannya; berkas yang sudah diunduh dipakai ulang.
+- Dari v1.5.0/v1.6.0: pasang APK ini di atas versi lama, tanpa uninstall.
+
+---
+
 # SISINDEN Android v1.6.0 (versionCode 14)
 
 Perbaikan notifikasi & panggilan, TTE (pratinjau QR dan posisi QR), serta Turnstile.

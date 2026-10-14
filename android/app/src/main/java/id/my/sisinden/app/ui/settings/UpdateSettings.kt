@@ -27,6 +27,7 @@ import id.my.sisinden.app.core.ui.components.SindenCard
 import id.my.sisinden.app.core.ui.theme.Spacing
 import id.my.sisinden.app.core.update.AppUpdater
 import id.my.sisinden.app.core.update.UpdateState
+import id.my.sisinden.app.core.security.expectExternalActivity
 import kotlinx.coroutines.launch
 
 /** Kartu "Pembaruan aplikasi": versi terpasang, cek manual, unduh & pasang otomatis. */
@@ -51,6 +52,7 @@ internal fun UpdateCard() {
             is UpdateState.UpToDate -> "Aplikasi sudah versi terbaru (v${s.version})."
             is UpdateState.Downloading -> "Mengunduh v${s.version}… ${s.percent}%"
             is UpdateState.Installing -> "Memasang v${s.version}… Jika diminta, ketuk \"Perbarui\"."
+            is UpdateState.NeedsInstallPermission -> "Versi ${s.version} sudah diunduh. Izinkan \"Instal aplikasi tidak dikenal\" untuk SiNDEN, lalu ketuk \"Periksa pembaruan sekarang\" lagi."
             is UpdateState.Failed -> s.message
         }
         Text(

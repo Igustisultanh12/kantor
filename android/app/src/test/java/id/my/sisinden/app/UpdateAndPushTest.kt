@@ -49,6 +49,17 @@ class UpdateAndPushTest {
     }
 
     @Test
+    fun `versi terbaru dari SHA256SUMS tanpa API GitHub`() {
+        val r = AppUpdater.parseSums("abc  SISINDEN-1.6.1.aab\ndef  SISINDEN-1.6.1.apk\n")
+        assertNotNull(r)
+        assertEquals("1.6.1", r!!.version)
+        assertEquals("SISINDEN-1.6.1.apk", r.apkName)
+        assertTrue(r.apkUrl.endsWith("/releases/latest/download/SISINDEN-1.6.1.apk"))
+        assertNull(AppUpdater.parseSums("abc  SISINDEN-1.6.1-debugsigned.apk\n"))
+        assertTrue(AppUpdater.reason(java.net.UnknownHostException("api.github.com")).contains("internet"))
+    }
+
+    @Test
     fun `konfigurasi push dari server`() {
         val cfg = Gson().fromJson(
             """{"status":"success","push":{"api_key":"AIza","app_id":"1:1:android:a","project_id":"p","sender_id":"1"},"push_enabled":true}""",

@@ -31,6 +31,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
+import java.io.IOException
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
@@ -51,6 +52,8 @@ sealed interface UpdateState {
     data class UpToDate(val version: String) : UpdateState
     data class Downloading(val version: String, val percent: Int) : UpdateState
     data class Installing(val version: String) : UpdateState
+    /** Izin "Instal aplikasi tidak dikenal" untuk SiNDEN belum diberikan. */
+    data class NeedsInstallPermission(val version: String) : UpdateState
     data class Failed(val message: String) : UpdateState
 }
 
@@ -64,6 +67,8 @@ sealed interface UpdateState {
 object AppUpdater {
     private const val REPO = "Igustisultanh12/kantor"
     private const val LATEST_URL = "https://api.github.com/repos/$REPO/releases/latest"
+    /** Unduhan langsung aset rilis terbaru (tanpa API GitHub & batas aksesnya). */
+    private const val LATEST_DL = "https://github.com/$REPO/releases/latest/download"
     private const val PREFS = "sinden_update"
     private const val K_AUTO = "auto_update"
     private const val K_LAST_CHECK = "last_check"
@@ -130,13 +135,41 @@ object AppUpdater {
 
     // ------------------------------------------------------------------ alur
 
-    suspend fun fetchLatest(): ReleaseInfo? = withContext(Dispatchers.IO) {
+    /**
+     * Versi terbaru dari SHA256SUMS.txt rilis terbaru (nama APK memuat nomor versi).
+     * Cara utama karena tidak terkena batas 60 permintaan/jam API GitHub.
+     */
+    private suspend fun fetchLatestFromSums(): ReleaseInfo? = withContext(Dispatchers.IO) {
+        val req = Request.Builder().url("$LATEST_DL/SHA256SUMS.txt")
+            .header("User-Agent", "SISINDEN-Android/${BuildConfig.VERSION_NAME}").build()
+        http.newCall(req).execute().use { res ->
+            if (!res.isSuccessful) throw IOException("HTTP ${res.code}")
+            parseSums(res.body?.string().orEmpty())
+        }
+    }
+
+    /** Ambil info rilis dari isi SHA256SUMS.txt ("<sha>  SISINDEN-1.6.0.apk"). */
+    fun parseSums(sums: String): ReleaseInfo? {
+        val name = sums.lineSequence().map { it.trim().split(Regex("\\s+")).lastOrNull().orEmpty().removePrefix("*") }
+            .firstOrNull { Regex("^SISINDEN-\\d+(\\.\\d+)*\\.apk$").matches(it) } ?: return null
+        val version = name.removePrefix("SISINDEN-").removeSuffix(".apk")
+        return ReleaseInfo(version, "$LATEST_DL/$name", name, 0L, "$LATEST_DL/SHA256SUMS.txt", "")
+    }
+
+    suspend fun fetchLatest(): ReleaseInfo? = try {
+        fetchLatestFromSums()
+    } catch (e: IOException) {
+        fetchLatestFromApi()
+    }
+
+    private suspend fun fetchLatestFromApi(): ReleaseInfo? = withContext(Dispatchers.IO) {
         val req = Request.Builder().url(LATEST_URL)
             .header("Accept", "application/vnd.github+json")
             .header("User-Agent", "SISINDEN-Android/${BuildConfig.VERSION_NAME}")
             .build()
         http.newCall(req).execute().use { res ->
-            if (!res.isSuccessful) throw IllegalStateException("Server rilis menjawab ${res.code}")
+            if (res.code == 403 || res.code == 429) throw UpdateException("Batas akses server rilis GitHub tercapai. Coba lagi sekitar 1 jam lagi.")
+            if (!res.isSuccessful) throw IOException("HTTP ${res.code}")
             parseRelease(res.body?.string().orEmpty())
         }
     }
@@ -150,28 +183,67 @@ object AppUpdater {
         if (_state.value is UpdateState.Downloading || _state.value is UpdateState.Installing) return _state.value
         _state.value = UpdateState.Checking
         val result = try {
-            val latest = fetchLatest()
+            val latest = try {
+                fetchLatest()
+            } catch (e: UpdateException) {
+                throw e
+            } catch (e: Exception) {
+                throw UpdateException("Tidak dapat memeriksa versi terbaru: ${reason(e)}")
+            }
             prefs(app).edit().putLong(K_LAST_CHECK, System.currentTimeMillis()).apply()
             if (latest == null || compareVersions(latest.version, BuildConfig.VERSION_NAME) <= 0) {
                 UpdateState.UpToDate(BuildConfig.VERSION_NAME)
             } else {
-                val apk = download(app, latest)
+                val apk = try {
+                    download(app, latest)
+                } catch (e: UpdateException) {
+                    throw e
+                } catch (e: Exception) {
+                    throw UpdateException("Unduhan v${latest.version} gagal: ${reason(e)}")
+                }
                 verify(app, apk, latest)
-                if (CommsState.activeCallThread != null) {
-                    UpdateState.Failed("Pembaruan ditunda karena sedang dalam panggilan.")
-                } else {
-                    install(app, apk, latest.version)
-                    UpdateState.Installing(latest.version)
+                when {
+                    CommsState.activeCallThread != null -> UpdateState.Failed("Pembaruan ditunda karena sedang dalam panggilan.")
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !app.packageManager.canRequestPackageInstalls() ->
+                        UpdateState.NeedsInstallPermission(latest.version)
+                    else -> {
+                        try {
+                            install(app, apk, latest.version)
+                        } catch (e: Exception) {
+                            throw UpdateException("Pemasangan v${latest.version} gagal: ${reason(e)}")
+                        }
+                        UpdateState.Installing(latest.version)
+                    }
                 }
             }
         } catch (e: UpdateException) {
             UpdateState.Failed(e.message ?: "Pembaruan gagal.")
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
-            UpdateState.Failed("Tidak dapat memeriksa pembaruan. Periksa koneksi internet.")
+            UpdateState.Failed("Pembaruan gagal: ${reason(e)}")
         }
         _state.value = if (!interactive && result is UpdateState.UpToDate) UpdateState.Idle else result
+        if (!interactive && result is UpdateState.NeedsInstallPermission) {
+            notify(app, "Pembaruan SiNDEN ${result.version} tersedia", "Buka Pengaturan → Pembaruan aplikasi untuk mengizinkan pemasangan.", null)
+        }
         return result
     }
+
+    /** Penjelasan singkat penyebab kegagalan untuk pengguna. */
+    internal fun reason(e: Throwable): String = when (e) {
+        is java.net.UnknownHostException -> "tidak ada internet atau github.com diblokir jaringan ini"
+        is java.net.SocketTimeoutException -> "koneksi terlalu lama"
+        is javax.net.ssl.SSLException -> "koneksi aman (HTTPS) gagal — periksa tanggal & jam HP"
+        is SecurityException -> "izin pemasangan ditolak Android"
+        is IOException -> e.message?.takeIf { it.isNotBlank() } ?: "gangguan jaringan"
+        else -> e.javaClass.simpleName + (e.message?.let { ": $it" } ?: "")
+    }
+
+    /** Buka layar izin "Instal aplikasi tidak dikenal" untuk SiNDEN. */
+    fun installPermissionIntent(context: Context): Intent =
+        Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, android.net.Uri.parse("package:${context.packageName}"))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
     /** Cek otomatis saat aplikasi dibuka (paling sering tiap 6 jam). */
     suspend fun autoCheckOnOpen(context: Context) {
@@ -187,6 +259,9 @@ object AppUpdater {
         val dir = File(context.cacheDir, "updates").apply { mkdirs() }
         dir.listFiles()?.filter { it.name != info.apkName }?.forEach { it.delete() }
         val target = File(dir, info.apkName)
+        if (target.exists() && target.length() > 1_000_000 && (info.apkSize <= 0 || target.length() == info.apkSize)) {
+            return@withContext target // sudah diunduh sebelumnya (diverifikasi ulang setelah ini)
+        }
         val part = File(dir, info.apkName + ".part")
         val req = Request.Builder().url(info.apkUrl).header("User-Agent", "SISINDEN-Android/${BuildConfig.VERSION_NAME}").build()
         http.newCall(req).execute().use { res ->
