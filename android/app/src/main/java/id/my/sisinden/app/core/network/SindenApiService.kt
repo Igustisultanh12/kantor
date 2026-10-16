@@ -151,6 +151,9 @@ interface SindenApiService {
     @POST("api/mobile/commander-account")
     suspend fun createCommanderTx(@Body request: CommanderTxRequest): Response<SimpleResponse>
 
+    @PUT("api/mobile/commander-account/{id}")
+    suspend fun updateCommanderTx(@Path("id") id: Int, @Body request: CommanderTxRequest): Response<SimpleResponse>
+
     @DELETE("api/mobile/commander-account/{id}")
     suspend fun deleteCommanderTx(@Path("id") id: Int): Response<SimpleResponse>
 

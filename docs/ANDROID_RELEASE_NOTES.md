@@ -1,3 +1,11 @@
+# SISINDEN Android v1.7.1 (versionCode 17)
+
+- **Rekening Komandan kini bisa diubah dari aplikasi** — ketuk transaksi (atau ikon pensil) untuk mengubah tanggal, jenis Masuk/Keluar, jumlah, dan keterangan. Penyimpanan memakai aturan web: keterangan huruf kapital, pencatat diberi tanda "(EDIT)".
+- Hak ubah sama dengan web: Admin & role *user* dapat mencatat/mengubah/menghapus; Komandan hanya melihat & mengunduh rekening koran.
+- Server: `git pull` saja (tidak ada migrasi / build ulang web).
+
+---
+
 # SISINDEN Android v1.7.0 (versionCode 16)
 
 Menu Rekening Ibu Beti di aplikasi, dan pembaruan aplikasi kini bersumber dari Pengaturan web (APK yang diunggah Admin).

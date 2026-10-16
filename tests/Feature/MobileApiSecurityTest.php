@@ -1110,4 +1110,32 @@ class MobileApiSecurityTest extends TestCase
         $this->getJson('/api/mobile/app-update')->assertJsonPath('available', false);
         $this->assertSame([], \Illuminate\Support\Facades\Storage::disk('local')->allFiles('app-updates'));
     }
+
+    public function test_commander_account_can_be_edited_from_app_by_managers_only(): void
+    {
+        foreach (glob(database_path('migrations/*create_commander_accounts_table.php')) as $m) {
+            (require $m)->up();
+        }
+        $tx = \App\Models\CommanderAccount::forceCreate(['tanggal' => '2026-10-01', 'keterangan' => 'TRANSFER', 'jenis' => 'MASUK', 'jumlah' => 500000, 'petugas_input' => 'Admin']);
+        $komandan = $this->makeUser(['role' => 'komandan']);
+        $admin = $this->makeUser(['role' => 'admin', 'name' => 'Suma']);
+        $payload = ['tanggal' => '2026-10-02', 'keterangan' => 'transfer koreksi', 'jenis' => 'keluar', 'jumlah' => 450000];
+
+        // Komandan hanya melihat (sama dengan web).
+        $this->withToken($this->tokenFor($komandan))->getJson('/api/mobile/commander-account')->assertOk()->assertJsonPath('can_manage', false);
+        $this->withToken($this->tokenFor($komandan))->putJson("/api/mobile/commander-account/{$tx->id}", $payload)->assertStatus(403);
+
+        $tok = $this->tokenFor($admin);
+        $this->withToken($tok)->putJson("/api/mobile/commander-account/{$tx->id}", $payload)->assertOk()->assertJsonPath('status', 'success');
+        $tx->refresh();
+        $this->assertSame('2026-10-02', substr((string) $tx->tanggal, 0, 10));
+        $this->assertSame('TRANSFER KOREKSI', $tx->keterangan);
+        $this->assertSame('KELUAR', $tx->jenis);
+        $this->assertEquals(450000, (float) $tx->jumlah);
+        $this->assertSame('Suma (EDIT)', $tx->petugas_input);
+
+        $this->withToken($tok)->putJson("/api/mobile/commander-account/{$tx->id}", ['tanggal' => '2026-10-02', 'jenis' => 'MASUK'])
+            ->assertStatus(422)->assertJsonPath('status', 'error');
+        $this->withToken($tok)->putJson('/api/mobile/commander-account/99999', $payload)->assertStatus(404);
+    }
 }

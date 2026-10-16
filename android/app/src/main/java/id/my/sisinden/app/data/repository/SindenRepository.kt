@@ -225,6 +225,7 @@ class SindenRepository(
 
     suspend fun commanderAccount(month: String?) = call { commanderAccount(month) }
     suspend fun createCommanderTx(request: CommanderTxRequest) = call { createCommanderTx(request) }
+    suspend fun updateCommanderTx(id: Int, request: CommanderTxRequest) = call { updateCommanderTx(id, request) }
     suspend fun deleteCommanderTx(id: Int) = call { deleteCommanderTx(id) }
 
     // ----------------------------------------------- Rekening Ibu Beti

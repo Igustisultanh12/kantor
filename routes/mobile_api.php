@@ -723,6 +723,23 @@ Route::post('/api/mobile/commander-account', function (Request $request) {
     }
 })->middleware('mobile.auth:commander_account.manage');
 
+// Ubah mutasi: memakai CommanderAccountController@update milik web (format & penanda "(EDIT)" sama).
+Route::put('/api/mobile/commander-account/{id}', function (Request $request, $id) {
+    \App\Models\CommanderAccount::findOrFail($id);
+    $data = mobile_payload($request);
+    if (isset($data['jenis'])) {
+        $data['jenis'] = strtoupper((string) $data['jenis']);
+    }
+    if (isset($data['tanggal'])) {
+        $data['tanggal'] = substr((string) $data['tanggal'], 0, 10);
+    }
+    $request->merge($data);
+    return mobile_delegate(
+        fn () => app(\App\Http\Controllers\CommanderAccountController::class)->update($request, $id),
+        'Transaksi Rekening Komandan berhasil diperbarui.'
+    );
+})->whereNumber('id')->middleware('mobile.auth:commander_account.manage');
+
 Route::delete('/api/mobile/commander-account/{id}', function ($id) {
     try {
         \App\Models\CommanderAccount::findOrFail($id)->delete();
