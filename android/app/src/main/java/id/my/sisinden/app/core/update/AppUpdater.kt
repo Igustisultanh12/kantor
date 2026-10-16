@@ -13,7 +13,9 @@ import androidx.core.app.NotificationCompat
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -21,6 +23,7 @@ import com.google.gson.JsonParser
 import id.my.sisinden.app.BuildConfig
 import id.my.sisinden.app.MainActivity
 import id.my.sisinden.app.R
+import id.my.sisinden.app.core.data.SessionStore
 import id.my.sisinden.app.core.notification.CommsState
 import id.my.sisinden.app.core.notification.NotificationHelper
 import kotlinx.coroutines.Dispatchers
@@ -35,43 +38,46 @@ import java.io.IOException
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
-/** Rilis terbaru di GitHub Releases. */
+/** Pembaruan terbaru yang diunggah Admin di Pengaturan web. */
 data class ReleaseInfo(
     val version: String,
+    val versionCode: Int,
     val apkUrl: String,
     val apkName: String,
     val apkSize: Long,
-    val sumsUrl: String?,
+    val sha256: String,
     val notes: String,
 )
 
-/** Status pembaruan untuk UI Pengaturan. */
+/** Status pembaruan untuk UI Pengaturan & dialog pemberitahuan. */
 sealed interface UpdateState {
     data object Idle : UpdateState
     data object Checking : UpdateState
     data class UpToDate(val version: String) : UpdateState
+    /** Versi baru tersedia di server — menunggu pengguna mengetuk "Unduh & pasang". */
+    data class Available(val info: ReleaseInfo) : UpdateState
     data class Downloading(val version: String, val percent: Int) : UpdateState
     data class Installing(val version: String) : UpdateState
     /** Izin "Instal aplikasi tidak dikenal" untuk SiNDEN belum diberikan. */
-    data class NeedsInstallPermission(val version: String) : UpdateState
-    data class Failed(val message: String) : UpdateState
+    data class NeedsInstallPermission(val info: ReleaseInfo) : UpdateState
+    data class Failed(val message: String, val info: ReleaseInfo? = null) : UpdateState
 }
 
 /**
- * Pembaruan dari dalam aplikasi: cek rilis terbaru di GitHub Releases,
- * unduh APK, cocokkan SHA-256 (SHA256SUMS.txt) & tanda tangan, lalu pasang
- * lewat PackageInstaller. Di Android 12+ pembaruan berikutnya dapat terpasang
- * otomatis tanpa konfirmasi (setelah sekali dipasang dari aplikasi ini);
- * selain itu Android menampilkan dialog "Perbarui" satu ketukan.
+ * Pembaruan dari dalam aplikasi. Sumbernya APK yang diunggah Admin di
+ * Pengaturan web (server SISINDEN): cek /api/mobile/app-update, unduh APK,
+ * cocokkan SHA-256 & tanda tangan dengan aplikasi terpasang, lalu pasang lewat
+ * PackageInstaller. Di Android 12+ pembaruan berikutnya dapat terpasang tanpa
+ * konfirmasi (setelah sekali dipasang dari aplikasi ini); selain itu Android
+ * menampilkan dialog "Perbarui" satu ketukan.
  */
 object AppUpdater {
-    private const val REPO = "Igustisultanh12/kantor"
-    private const val LATEST_URL = "https://api.github.com/repos/$REPO/releases/latest"
-    /** Unduhan langsung aset rilis terbaru (tanpa API GitHub & batas aksesnya). */
-    private const val LATEST_DL = "https://github.com/$REPO/releases/latest/download"
+    private const val INFO_PATH = "/api/mobile/app-update"
     private const val PREFS = "sinden_update"
     private const val K_AUTO = "auto_update"
     private const val K_LAST_CHECK = "last_check"
+    private const val K_NOTIFIED = "notified_version"
+    private const val K_DISMISSED = "dismissed_version"
     const val NOTIFICATION_ID = 0x0BDA7E
 
     private val _state = MutableStateFlow<UpdateState>(UpdateState.Idle)
@@ -85,6 +91,8 @@ object AppUpdater {
             .build()
     }
 
+    private val baseUrl: String get() = SessionStore.DEFAULT_BASE_URL.trimEnd('/')
+
     private fun prefs(context: Context) = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     fun isAutoEnabled(context: Context) = prefs(context).getBoolean(K_AUTO, true)
@@ -92,6 +100,13 @@ object AppUpdater {
         prefs(context).edit().putBoolean(K_AUTO, enabled).apply()
         if (enabled) schedule(context) else WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
     }
+
+    /** Pengguna memilih "Nanti" pada dialog versi ini → dialog tidak muncul lagi untuk versi tsb. */
+    fun dismissPrompt(context: Context, version: String) {
+        prefs(context).edit().putString(K_DISMISSED, version).apply()
+    }
+
+    fun isPromptDismissed(context: Context, version: String) = prefs(context).getString(K_DISMISSED, null) == version
 
     // ------------------------------------------------------------------ versi
 
@@ -107,132 +122,165 @@ object AppUpdater {
         return 0
     }
 
-    /** Ambil SHA-256 untuk [fileName] dari isi SHA256SUMS.txt. */
-    fun shaFor(sums: String, fileName: String): String? = sums.lineSequence()
-        .map { it.trim().split(Regex("\\s+")) }
-        .firstOrNull { it.size >= 2 && it.last().removePrefix("*") == fileName }
-        ?.first()?.lowercase()
-
-    /** Pilih APK rilis bertanda tangan dari daftar aset ("SISINDEN-1.5.0.apk"). */
-    fun parseRelease(json: String): ReleaseInfo? {
-        val obj = JsonParser.parseString(json).asJsonObject
-        if (obj.get("draft")?.asBoolean == true || obj.get("prerelease")?.asBoolean == true) return null
-        val version = obj.get("tag_name")?.asString?.removePrefix("v") ?: return null
-        var apk: Triple<String, String, Long>? = null
-        var sums: String? = null
-        obj.getAsJsonArray("assets")?.forEach { el ->
-            val a = el.asJsonObject
-            val name = a.get("name")?.asString ?: return@forEach
-            val url = a.get("browser_download_url")?.asString ?: return@forEach
-            when {
-                name == "SISINDEN-$version.apk" -> apk = Triple(name, url, a.get("size")?.asLong ?: 0L)
-                name == "SHA256SUMS.txt" -> sums = url
-            }
-        }
-        val chosen = apk ?: return null
-        return ReleaseInfo(version, chosen.second, chosen.first, chosen.third, sums, obj.get("body")?.takeIf { !it.isJsonNull }?.asString.orEmpty())
-    }
-
-    // ------------------------------------------------------------------ alur
-
     /**
-     * Versi terbaru dari SHA256SUMS.txt rilis terbaru (nama APK memuat nomor versi).
-     * Cara utama karena tidak terkena batas 60 permintaan/jam API GitHub.
+     * Baca respons /api/mobile/app-update. Unduhan hanya diizinkan dari server
+     * SISINDEN sendiri (HTTPS) dan wajib disertai SHA-256.
      */
-    private suspend fun fetchLatestFromSums(): ReleaseInfo? = withContext(Dispatchers.IO) {
-        val req = Request.Builder().url("$LATEST_DL/SHA256SUMS.txt")
-            .header("User-Agent", "SISINDEN-Android/${BuildConfig.VERSION_NAME}").build()
-        http.newCall(req).execute().use { res ->
-            if (!res.isSuccessful) throw IOException("HTTP ${res.code}")
-            parseSums(res.body?.string().orEmpty())
+    fun parseServer(json: String, base: String = SessionStore.DEFAULT_BASE_URL): ReleaseInfo? {
+        val obj = JsonParser.parseString(json).asJsonObject
+        if (obj.get("available")?.takeIf { !it.isJsonNull }?.asBoolean != true) return null
+        val version = obj.get("version")?.takeIf { !it.isJsonNull }?.asString?.trim().orEmpty()
+        if (!Regex("^\\d+(\\.\\d+){1,3}$").matches(version)) return null
+        val sha = obj.get("sha256")?.takeIf { !it.isJsonNull }?.asString?.lowercase().orEmpty()
+        if (!Regex("^[0-9a-f]{64}$").matches(sha)) return null
+        val root = base.trimEnd('/')
+        val raw = obj.get("download_url")?.takeIf { !it.isJsonNull }?.asString.orEmpty()
+        val url = when {
+            raw.startsWith("$root/") -> raw
+            raw.startsWith("/") -> root + raw
+            else -> "$root/api/mobile/app-update/download?v=$version"
         }
+        return ReleaseInfo(
+            version = version,
+            versionCode = obj.get("version_code")?.takeIf { !it.isJsonNull }?.asInt ?: 0,
+            apkUrl = url,
+            apkName = "SISINDEN-$version.apk",
+            apkSize = obj.get("size")?.takeIf { !it.isJsonNull }?.asLong ?: 0L,
+            sha256 = sha,
+            notes = obj.get("notes")?.takeIf { !it.isJsonNull }?.asString.orEmpty(),
+        )
     }
 
-    /** Ambil info rilis dari isi SHA256SUMS.txt ("<sha>  SISINDEN-1.6.0.apk"). */
-    fun parseSums(sums: String): ReleaseInfo? {
-        val name = sums.lineSequence().map { it.trim().split(Regex("\\s+")).lastOrNull().orEmpty().removePrefix("*") }
-            .firstOrNull { Regex("^SISINDEN-\\d+(\\.\\d+)*\\.apk$").matches(it) } ?: return null
-        val version = name.removePrefix("SISINDEN-").removeSuffix(".apk")
-        return ReleaseInfo(version, "$LATEST_DL/$name", name, 0L, "$LATEST_DL/SHA256SUMS.txt", "")
-    }
-
-    suspend fun fetchLatest(): ReleaseInfo? = try {
-        fetchLatestFromSums()
-    } catch (e: IOException) {
-        fetchLatestFromApi()
-    }
-
-    private suspend fun fetchLatestFromApi(): ReleaseInfo? = withContext(Dispatchers.IO) {
-        val req = Request.Builder().url(LATEST_URL)
-            .header("Accept", "application/vnd.github+json")
+    /** Info pembaruan dari server (null = belum ada APK yang diunggah Admin). */
+    suspend fun fetchLatest(): ReleaseInfo? = withContext(Dispatchers.IO) {
+        val req = Request.Builder().url(baseUrl + INFO_PATH)
+            .header("Accept", "application/json")
             .header("User-Agent", "SISINDEN-Android/${BuildConfig.VERSION_NAME}")
             .build()
         http.newCall(req).execute().use { res ->
-            if (res.code == 403 || res.code == 429) throw UpdateException("Batas akses server rilis GitHub tercapai. Coba lagi sekitar 1 jam lagi.")
-            if (!res.isSuccessful) throw IOException("HTTP ${res.code}")
-            parseRelease(res.body?.string().orEmpty())
+            if (res.code == 429) throw UpdateException("Terlalu sering memeriksa. Coba lagi sebentar lagi.")
+            if (!res.isSuccessful) throw IOException("server menjawab HTTP ${res.code}")
+            parseServer(res.body?.string().orEmpty())
         }
     }
 
-    /**
-     * Cek → unduh → pasang. [interactive] = dipicu pengguna (tampilkan status
-     * "sudah terbaru"); jika false hanya bertindak saat ada versi baru.
-     */
-    suspend fun checkAndUpdate(context: Context, interactive: Boolean): UpdateState {
+    private fun isNewer(info: ReleaseInfo?): Boolean =
+        info != null && compareVersions(info.version, BuildConfig.VERSION_NAME) > 0
+
+    // ------------------------------------------------------------------ alur
+
+    /** Hanya memeriksa (tanpa mengunduh). Hasil: UpToDate / Available / Failed. */
+    suspend fun check(context: Context): UpdateState {
         val app = context.applicationContext
-        if (_state.value is UpdateState.Downloading || _state.value is UpdateState.Installing) return _state.value
+        if (isBusy()) return _state.value
         _state.value = UpdateState.Checking
         val result = try {
-            val latest = try {
-                fetchLatest()
-            } catch (e: UpdateException) {
-                throw e
-            } catch (e: Exception) {
-                throw UpdateException("Tidak dapat memeriksa versi terbaru: ${reason(e)}")
-            }
+            val latest = fetchLatest()
             prefs(app).edit().putLong(K_LAST_CHECK, System.currentTimeMillis()).apply()
-            if (latest == null || compareVersions(latest.version, BuildConfig.VERSION_NAME) <= 0) {
-                UpdateState.UpToDate(BuildConfig.VERSION_NAME)
-            } else {
-                val apk = try {
-                    download(app, latest)
-                } catch (e: UpdateException) {
-                    throw e
-                } catch (e: Exception) {
-                    throw UpdateException("Unduhan v${latest.version} gagal: ${reason(e)}")
-                }
-                verify(app, apk, latest)
-                when {
-                    CommsState.activeCallThread != null -> UpdateState.Failed("Pembaruan ditunda karena sedang dalam panggilan.")
-                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !app.packageManager.canRequestPackageInstalls() ->
-                        UpdateState.NeedsInstallPermission(latest.version)
-                    else -> {
-                        try {
-                            install(app, apk, latest.version)
-                        } catch (e: Exception) {
-                            throw UpdateException("Pemasangan v${latest.version} gagal: ${reason(e)}")
-                        }
-                        UpdateState.Installing(latest.version)
-                    }
-                }
-            }
+            if (isNewer(latest)) UpdateState.Available(latest!!) else UpdateState.UpToDate(BuildConfig.VERSION_NAME)
         } catch (e: UpdateException) {
-            UpdateState.Failed(e.message ?: "Pembaruan gagal.")
+            UpdateState.Failed(e.message ?: "Pemeriksaan gagal.")
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            UpdateState.Failed("Pembaruan gagal: ${reason(e)}")
+            UpdateState.Failed("Tidak dapat memeriksa pembaruan: ${reason(e)}")
         }
-        _state.value = if (!interactive && result is UpdateState.UpToDate) UpdateState.Idle else result
-        if (!interactive && result is UpdateState.NeedsInstallPermission) {
-            notify(app, "Pembaruan SiNDEN ${result.version} tersedia", "Buka Pengaturan → Pembaruan aplikasi untuk mengizinkan pemasangan.", null)
+        _state.value = result
+        return result
+    }
+
+    /** Unduh → verifikasi → pasang versi [info]. */
+    suspend fun downloadAndInstall(context: Context, info: ReleaseInfo): UpdateState {
+        val app = context.applicationContext
+        if (_state.value is UpdateState.Downloading || _state.value is UpdateState.Installing) return _state.value
+        _state.value = UpdateState.Downloading(info.version, 0)
+        val result = try {
+            val apk = try {
+                download(app, info)
+            } catch (e: UpdateException) {
+                throw e
+            } catch (e: Exception) {
+                throw UpdateException("Unduhan v${info.version} gagal: ${reason(e)}")
+            }
+            verify(app, apk, info)
+            when {
+                CommsState.activeCallThread != null -> UpdateState.Failed("Pembaruan ditunda karena sedang dalam panggilan.", info)
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !app.packageManager.canRequestPackageInstalls() ->
+                    UpdateState.NeedsInstallPermission(info)
+                else -> {
+                    try {
+                        install(app, apk, info.version)
+                    } catch (e: Exception) {
+                        throw UpdateException("Pemasangan v${info.version} gagal: ${reason(e)}")
+                    }
+                    UpdateState.Installing(info.version)
+                }
+            }
+        } catch (e: UpdateException) {
+            UpdateState.Failed(e.message ?: "Pembaruan gagal.", info)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            _state.value = UpdateState.Available(info)
+            throw e
+        } catch (e: Exception) {
+            UpdateState.Failed("Pembaruan gagal: ${reason(e)}", info)
+        }
+        _state.value = result
+        if (result is UpdateState.NeedsInstallPermission && !CommsState.appForeground) {
+            notify(app, "Pembaruan SiNDEN ${info.version} siap dipasang", "Buka Pengaturan → Pembaruan aplikasi untuk mengizinkan pemasangan.", openIntent(app, "settings"))
         }
         return result
     }
 
+    /**
+     * Pemeriksaan latar belakang (WorkManager / push dari server). Bila ada
+     * versi baru: unduh & pasang otomatis jika "Perbarui otomatis" aktif dan
+     * jaringan Wi-Fi; selain itu tampilkan pemberitahuan sekali per versi.
+     */
+    suspend fun backgroundCheck(context: Context, allowDownload: Boolean): UpdateState {
+        val app = context.applicationContext
+        val result = check(app)
+        if (result !is UpdateState.Available) {
+            if (result is UpdateState.UpToDate) _state.value = UpdateState.Idle
+            return result
+        }
+        val info = result.info
+        return if (allowDownload && isAutoEnabled(app)) {
+            downloadAndInstall(app, info)
+        } else {
+            notifyAvailable(app, info)
+            result
+        }
+    }
+
+    /** Pemberitahuan "versi baru tersedia" di bilah notifikasi (sekali per versi). */
+    fun notifyAvailable(context: Context, info: ReleaseInfo, force: Boolean = false) {
+        val p = prefs(context)
+        if (!force && p.getString(K_NOTIFIED, null) == info.version) return
+        p.edit().putString(K_NOTIFIED, info.version).apply()
+        val text = info.notes.ifBlank { "Ketuk untuk mengunduh dan memasang versi terbaru." }
+        notify(context, "Pembaruan SiNDEN ${info.version} tersedia", text, openIntent(context, "settings"))
+    }
+
+    /** Push "app_update" dari server (Admin baru mengunggah APK). */
+    fun onServerPush(context: Context, version: String, title: String, body: String) {
+        val app = context.applicationContext
+        if (version.isNotBlank() && compareVersions(version, BuildConfig.VERSION_NAME) <= 0) return
+        prefs(app).edit().putString(K_NOTIFIED, version).apply()
+        notify(app, title.ifBlank { "Pembaruan SiNDEN $version tersedia" }, body.ifBlank { "Ketuk untuk mengunduh dan memasang versi terbaru." }, openIntent(app, "settings"))
+        if (isAutoEnabled(app) && !BuildConfig.DEBUG) {
+            // Unduh otomatis lewat Wi-Fi tanpa menunggu jadwal 6 jam.
+            val req = OneTimeWorkRequestBuilder<UpdateWorker>()
+                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.UNMETERED).build())
+                .build()
+            WorkManager.getInstance(app).enqueueUniqueWork(WORK_NOW, ExistingWorkPolicy.REPLACE, req)
+        }
+    }
+
+    private fun isBusy() = _state.value.let { it is UpdateState.Checking || it is UpdateState.Downloading || it is UpdateState.Installing }
+
     /** Penjelasan singkat penyebab kegagalan untuk pengguna. */
     internal fun reason(e: Throwable): String = when (e) {
-        is java.net.UnknownHostException -> "tidak ada internet atau github.com diblokir jaringan ini"
+        is java.net.UnknownHostException -> "tidak ada koneksi internet ke server SISINDEN"
         is java.net.SocketTimeoutException -> "koneksi terlalu lama"
         is javax.net.ssl.SSLException -> "koneksi aman (HTTPS) gagal — periksa tanggal & jam HP"
         is SecurityException -> "izin pemasangan ditolak Android"
@@ -245,27 +293,36 @@ object AppUpdater {
         Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, android.net.Uri.parse("package:${context.packageName}"))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
-    /** Cek otomatis saat aplikasi dibuka (paling sering tiap 6 jam). */
+    /** Cek saat aplikasi dibuka (paling sering tiap 30 menit). Hasil ditampilkan sebagai dialog. */
     suspend fun autoCheckOnOpen(context: Context) {
-        if (!isAutoEnabled(context) || BuildConfig.DEBUG) return
+        if (BuildConfig.DEBUG) return
         val last = prefs(context).getLong(K_LAST_CHECK, 0L)
-        if (System.currentTimeMillis() - last < 6 * 3_600_000L) return
-        checkAndUpdate(context, interactive = false)
+        if (System.currentTimeMillis() - last < 30 * 60_000L && _state.value !is UpdateState.Available) return
+        val r = check(context)
+        if (r is UpdateState.UpToDate) _state.value = UpdateState.Idle
     }
 
     class UpdateException(message: String) : Exception(message)
 
+    private fun openIntent(context: Context, route: String): PendingIntent = PendingIntent.getActivity(
+        context, NOTIFICATION_ID,
+        Intent(Intent.ACTION_VIEW, android.net.Uri.parse("sisinden://app/$route"), context, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+
     private suspend fun download(context: Context, info: ReleaseInfo): File = withContext(Dispatchers.IO) {
         val dir = File(context.cacheDir, "updates").apply { mkdirs() }
-        dir.listFiles()?.filter { it.name != info.apkName }?.forEach { it.delete() }
+        dir.listFiles()?.filter { !it.name.startsWith(info.apkName) }?.forEach { it.delete() }
         val target = File(dir, info.apkName)
-        if (target.exists() && target.length() > 1_000_000 && (info.apkSize <= 0 || target.length() == info.apkSize)) {
-            return@withContext target // sudah diunduh sebelumnya (diverifikasi ulang setelah ini)
+        if (target.exists() && sha256(target) == info.sha256) {
+            return@withContext target // sudah diunduh sebelumnya & utuh
         }
         val part = File(dir, info.apkName + ".part")
         val req = Request.Builder().url(info.apkUrl).header("User-Agent", "SISINDEN-Android/${BuildConfig.VERSION_NAME}").build()
         http.newCall(req).execute().use { res ->
-            if (!res.isSuccessful) throw UpdateException("Unduhan pembaruan gagal (${res.code}).")
+            if (res.code == 404) throw UpdateException("APK pembaruan sudah tidak ada di server. Periksa ulang beberapa saat lagi.")
+            if (!res.isSuccessful) throw UpdateException("Unduhan pembaruan gagal (HTTP ${res.code}).")
             val body = res.body ?: throw UpdateException("Berkas pembaruan kosong.")
             val total = body.contentLength().takeIf { it > 0 } ?: info.apkSize
             var done = 0L
@@ -293,23 +350,20 @@ object AppUpdater {
     }
 
     private suspend fun verify(context: Context, apk: File, info: ReleaseInfo) = withContext(Dispatchers.IO) {
-        // 1) Integritas berkas terhadap SHA256SUMS.txt rilis.
-        info.sumsUrl?.let { url ->
-            val sums = http.newCall(Request.Builder().url(url).build()).execute().use { it.body?.string().orEmpty() }
-            val expected = shaFor(sums, info.apkName)
-            if (expected != null && expected != sha256(apk)) {
-                apk.delete()
-                throw UpdateException("Berkas pembaruan rusak (SHA-256 tidak cocok). Coba lagi.")
-            }
+        // 1) Integritas berkas: SHA-256 harus sama dengan yang dicatat server saat Admin mengunggah.
+        if (sha256(apk) != info.sha256) {
+            apk.delete()
+            throw UpdateException("Berkas pembaruan rusak (SHA-256 tidak cocok). Coba unduh lagi.")
         }
         // 2) Paket & tanda tangan harus sama dengan aplikasi terpasang.
         val pm = context.packageManager
-        val archive = archiveInfo(pm, apk.absolutePath) ?: throw UpdateException("Berkas pembaruan tidak valid.")
+        val archive = archiveInfo(pm, apk.absolutePath) ?: throw UpdateException("Berkas pembaruan bukan APK yang valid.")
         if (archive.packageName != context.packageName) throw UpdateException("Berkas pembaruan bukan untuk aplikasi ini.")
         val installed = installedInfo(pm, context.packageName)
         if (installed != null && signerDigests(archive).intersect(signerDigests(installed)).isEmpty()) {
+            apk.delete()
             throw UpdateException(
-                "Versi ${info.version} memakai kunci tanda tangan resmi yang baru. Untuk sekali ini, uninstall SiNDEN lalu pasang APK ${info.version} dari GitHub Releases. Pembaruan berikutnya otomatis."
+                "APK v${info.version} di server ditandatangani kunci yang berbeda dengan aplikasi ini, sehingga tidak dapat dipasang sebagai pembaruan. Hubungi Admin agar mengunggah APK rilis resmi SiNDEN."
             )
         }
     }
@@ -403,32 +457,38 @@ object AppUpdater {
 
     // ------------------------------------------------------------------ latar belakang
 
-    private const val WORK_NAME = "sinden_app_update"
+    private const val WORK_NAME = "sinden_app_update_v2"
+    private const val WORK_NOW = "sinden_app_update_now"
 
+    /** Pemeriksaan berkala tiap ±6 jam (unduhan otomatis hanya lewat Wi-Fi). */
     fun schedule(context: Context) {
-        if (!isAutoEnabled(context) || BuildConfig.DEBUG) return
-        val req = PeriodicWorkRequestBuilder<UpdateWorker>(12, TimeUnit.HOURS)
-            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.UNMETERED).build())
+        if (BuildConfig.DEBUG) return
+        val wm = WorkManager.getInstance(context)
+        wm.cancelUniqueWork("sinden_app_update") // jadwal lama (GitHub, v1.5–v1.6)
+        val req = PeriodicWorkRequestBuilder<UpdateWorker>(6, TimeUnit.HOURS)
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .build()
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, req)
+        wm.enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, req)
+    }
+
+    /** true bila jaringan saat ini tidak berbayar per kuota (Wi-Fi/ethernet). */
+    fun isUnmetered(context: Context): Boolean {
+        val cm = context.getSystemService(android.net.ConnectivityManager::class.java) ?: return false
+        return !cm.isActiveNetworkMetered
     }
 
     /** Dipanggil setelah aplikasi diperbarui (MY_PACKAGE_REPLACED). */
     fun onPackageReplaced(context: Context) {
         File(context.cacheDir, "updates").listFiles()?.forEach { it.delete() }
-        val open = PendingIntent.getActivity(
-            context, NOTIFICATION_ID,
-            Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-        notify(context, "SiNDEN diperbarui", "Versi ${BuildConfig.VERSION_NAME} sudah terpasang. Ketuk untuk membuka.", open)
+        _state.value = UpdateState.Idle
+        notify(context, "SiNDEN diperbarui", "Versi ${BuildConfig.VERSION_NAME} sudah terpasang. Ketuk untuk membuka.", openIntent(context, "home"))
     }
 }
 
-/** Unduh & pasang pembaruan di latar belakang (Wi-Fi), tiap ±12 jam. */
+/** Periksa pembaruan di latar belakang; unduh & pasang otomatis bila lewat Wi-Fi. */
 class UpdateWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
-        AppUpdater.checkAndUpdate(applicationContext, interactive = false)
+        AppUpdater.backgroundCheck(applicationContext, allowDownload = AppUpdater.isUnmetered(applicationContext))
         return Result.success()
     }
 }

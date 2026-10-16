@@ -151,6 +151,34 @@ data class CommanderTxRequest(
     @SerializedName("keterangan") val keterangan: String,
 )
 
+// ===================================================== Rekening Ibu Beti
+
+data class IbuBetiTxDto(
+    @SerializedName("id") val id: Int = 0,
+    @SerializedName("tanggal") val tanggal: String? = null,
+    @SerializedName("keterangan") val keterangan: String? = null,
+    @SerializedName("jenis") val jenis: String? = null,
+    @SerializedName("jumlah") val jumlah: Double = 0.0,
+    @SerializedName("saldo_berjalan") val saldoBerjalan: Double = 0.0,
+    @SerializedName("has_bukti") val hasBukti: Boolean = false,
+    @SerializedName("bukti_is_pdf") val buktiIsPdf: Boolean = false,
+    @SerializedName("petugas_input") val petugasInput: String? = null,
+) {
+    val isIncome: Boolean get() = jenis.equals("MASUK", ignoreCase = true)
+    val dateOnly: String? get() = tanggal?.take(10)
+}
+
+data class IbuBetiResponse(
+    @SerializedName("status") val status: String? = null,
+    @SerializedName("saldo_awal") val saldoAwal: Double = 0.0,
+    @SerializedName("total_masuk") val totalMasuk: Double = 0.0,
+    @SerializedName("total_keluar") val totalKeluar: Double = 0.0,
+    @SerializedName("saldo_akhir") val saldoAkhir: Double = 0.0,
+    @SerializedName("saldo_keseluruhan") val saldoKeseluruhan: Double = 0.0,
+    @SerializedName("is_monthly") val isMonthly: Boolean = false,
+    @SerializedName("data") val data: List<IbuBetiTxDto>? = null,
+)
+
 // ================================================================= Mitra
 
 data class MitraDto(

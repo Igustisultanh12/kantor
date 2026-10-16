@@ -37,6 +37,7 @@ import id.my.sisinden.app.core.notification.CommsState
 import id.my.sisinden.app.core.notification.NotificationSync
 import id.my.sisinden.app.core.notification.PushManager
 import id.my.sisinden.app.core.update.AppUpdater
+import id.my.sisinden.app.ui.settings.UpdatePromptHost
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import id.my.sisinden.app.ui.call.CallScreen
 import id.my.sisinden.app.ui.chat.ChatHomeScreen
@@ -65,6 +66,7 @@ import id.my.sisinden.app.data.repository.SindenRepository
 import id.my.sisinden.app.ui.attendance.AttendanceScreen
 import id.my.sisinden.app.ui.cash.CashScreen
 import id.my.sisinden.app.ui.commander.CommanderScreen
+import id.my.sisinden.app.ui.ibubeti.IbuBetiScreen
 import id.my.sisinden.app.ui.common.AccessDeniedScreen
 import id.my.sisinden.app.ui.dashboard.DashboardScreen
 import id.my.sisinden.app.ui.duty.DutyRosterScreen
@@ -152,10 +154,11 @@ fun MainNavigation(
         }
         PushManager.configure(context, cfg?.push)
         PushManager.register(context, repository)
-        // Pembaruan aplikasi otomatis (GitHub Releases).
+        // Pembaruan aplikasi dari APK yang diunggah Admin di Pengaturan web.
         AppUpdater.schedule(context)
         AppUpdater.autoCheckOnOpen(context)
     }
+    UpdatePromptHost()
 
     // Notifikasi bersuara: WorkManager di latar belakang + sinkron cepat saat aplikasi terbuka.
     LaunchedEffect(Unit) {
@@ -319,6 +322,11 @@ fun MainNavigation(
                     CommanderScreen(repository, currentPerms(), onBack = back, onOpenPdf = openPdf)
                 }
             }
+            composable(Routes.IBU_BETI, deepLinks = appDeepLink("ibu_beti")) {
+                Guard(currentPerms(), Perm.IBU_BETI_VIEW, back) {
+                    IbuBetiScreen(repository, currentPerms(), onBack = back, onOpenPdf = openPdf)
+                }
+            }
             composable(Routes.MITRA, deepLinks = appDeepLink("mitra")) {
                 Guard(currentPerms(), Perm.MITRA_VIEW, back) { MitraScreen(repository, currentPerms(), onBack = back) }
             }
@@ -341,7 +349,7 @@ fun MainNavigation(
             composable(Routes.USERS, deepLinks = appDeepLink("users")) {
                 Guard(currentPerms(), Perm.USERS_VIEW, back) { UsersScreen(repository, currentPerms(), onBack = back) }
             }
-            composable(Routes.SETTINGS) {
+            composable(Routes.SETTINGS, deepLinks = appDeepLink("settings")) {
                 SettingsScreen(repository, onBack = back)
             }
 

@@ -431,6 +431,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
         Route::put('/settings', [SettingController::class, 'update'])->name('settings.update');
         Route::post('/settings/update-stamp', [SettingController::class, 'updateStamp'])->name('settings.update-stamp');
+        Route::post('/settings/app-update', [\App\Http\Controllers\AppUpdateController::class, 'store'])->name('settings.app-update.store');
+        Route::delete('/settings/app-update', [\App\Http\Controllers\AppUpdateController::class, 'destroy'])->name('settings.app-update.destroy');
         Route::get('/visitor-logs', [VisitorLogController::class, 'index'])->name('visitor-logs.index');
         Route::match(['delete', 'post'], '/visitor-logs/clear', [VisitorLogController::class, 'clearAll'])->name('visitor-logs.clear');
         Route::delete('/visitor-logs/{id}', [VisitorLogController::class, 'destroy'])->name('visitor-logs.destroy');

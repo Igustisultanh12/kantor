@@ -169,6 +169,7 @@ object NotificationHelper {
             path.startsWith("/violation") -> "violations"
             path.startsWith("/cash") -> "cash"
             path.startsWith("/mitra") -> "mitra"
+            path.startsWith("/rekening-ibu-beti") -> "ibu_beti"
             else -> "notifications"
         }
     }

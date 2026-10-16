@@ -45,6 +45,10 @@ object Perm {
     const val COMMANDER_MANAGE = "commander_account.manage"
     const val COMMANDER_PDF = "commander_account.pdf"
 
+    const val IBU_BETI_VIEW = "ibu_beti.view"
+    const val IBU_BETI_MANAGE = "ibu_beti.manage"
+    const val IBU_BETI_PDF = "ibu_beti.pdf"
+
     const val MITRA_VIEW = "mitra.view"
     const val MITRA_MANAGE = "mitra.manage"
 

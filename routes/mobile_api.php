@@ -19,6 +19,7 @@
 
 use App\Http\Controllers\Mobile\MobileApiController;
 use App\Http\Controllers\Mobile\MobileCommsController;
+use App\Http\Controllers\Mobile\MobileIbuBetiController;
 use App\Models\User;
 use App\Support\MobileAccess;
 use App\Support\Turnstile;
@@ -219,6 +220,12 @@ Route::get('/api/mobile/config', function () {
         'server_time' => now()->toIso8601String(),
     ]);
 })->middleware('throttle:60,1');
+
+// Pembaruan aplikasi Android dari APK yang diunggah Admin (Pengaturan web).
+// Publik agar HP tetap bisa diperbarui walau sesi login bermasalah; aplikasi
+// memverifikasi SHA-256 & tanda tangan APK sebelum memasang.
+Route::get('/api/mobile/app-update', [\App\Http\Controllers\AppUpdateController::class, 'latest'])->middleware('throttle:60,1');
+Route::get('/api/mobile/app-update/download', [\App\Http\Controllers\AppUpdateController::class, 'download'])->middleware('throttle:30,1');
 
 // Halaman widget Cloudflare Turnstile yang dimuat WebView aplikasi Android
 // (origin = domain SISINDEN, sehingga cocok dengan daftar hostname widget).
@@ -724,6 +731,18 @@ Route::delete('/api/mobile/commander-account/{id}', function ($id) {
         return mobile_error($e, 'Gagal menghapus transaksi.');
     }
 })->middleware('mobile.auth:commander_account.manage');
+
+// =====================================================================
+// 4b. REKENING IBU BETI (App\Models\IbuBetiAccount)
+// =====================================================================
+Route::get('/api/mobile/ibu-beti', [MobileIbuBetiController::class, 'index'])->middleware('mobile.auth:ibu_beti.view');
+Route::post('/api/mobile/ibu-beti', [MobileIbuBetiController::class, 'store'])->middleware(['mobile.auth:ibu_beti.manage', 'throttle:30,1']);
+Route::post('/api/mobile/ibu-beti/{id}', [MobileIbuBetiController::class, 'update'])->whereNumber('id')->middleware(['mobile.auth:ibu_beti.manage', 'throttle:30,1']);
+Route::delete('/api/mobile/ibu-beti/{id}', [MobileIbuBetiController::class, 'destroy'])->whereNumber('id')->middleware('mobile.auth:ibu_beti.manage');
+Route::get('/api/mobile/ibu-beti/{id}/bukti', [MobileIbuBetiController::class, 'bukti'])->whereNumber('id')->middleware('mobile.auth:ibu_beti.view');
+Route::get('/api/mobile/pdf/ibu-beti', [MobileIbuBetiController::class, 'pdf'])->middleware('mobile.auth:ibu_beti.pdf');
+// Bukti berformat PDF dibuka di penampil PDF aplikasi (hanya menerima jalur api/mobile/pdf/*).
+Route::get('/api/mobile/pdf/ibu-beti/bukti/{id}', [MobileIbuBetiController::class, 'bukti'])->whereNumber('id')->middleware('mobile.auth:ibu_beti.view');
 
 // =====================================================================
 // 5. MITRA (App\Models\Mitra & App\Models\MitraPayment)

@@ -227,6 +227,47 @@ class SindenRepository(
     suspend fun createCommanderTx(request: CommanderTxRequest) = call { createCommanderTx(request) }
     suspend fun deleteCommanderTx(id: Int) = call { deleteCommanderTx(id) }
 
+    // ----------------------------------------------- Rekening Ibu Beti
+
+    suspend fun ibuBeti(month: String?, jenis: String?, search: String?) =
+        call { ibuBeti(month, jenis, search?.trim()?.takeIf { it.isNotEmpty() }) }
+
+    /** Tambah ([id] null) atau ubah mutasi; [bukti] opsional (JPG/PNG/PDF ≤ 5 MB). */
+    suspend fun saveIbuBeti(id: Int?, tanggal: String, jenis: String, jumlah: Double, keterangan: String, bukti: UploadImage?): ApiResult<SimpleResponse> {
+        val text = "text/plain".toMediaType()
+        val fields = linkedMapOf(
+            "tanggal" to tanggal.toRequestBody(text),
+            "jenis" to jenis.toRequestBody(text),
+            "jumlah" to java.math.BigDecimal.valueOf(jumlah).toPlainString().toRequestBody(text),
+            "keterangan" to keterangan.toRequestBody(text),
+        )
+        val files = listOfNotNull(bukti?.let { MultipartBody.Part.createFormData("bukti", it.fileName, it.bytes.toRequestBody(it.mimeType.toMediaType())) })
+        return call { if (id == null) createIbuBeti(fields, files) else updateIbuBeti(id, fields, files) }
+    }
+
+    suspend fun deleteIbuBeti(id: Int) = call { deleteIbuBeti(id) }
+
+    /** Foto bukti transaksi (berkas privat, lewat token sesi). */
+    suspend fun ibuBetiBuktiImage(id: Int): ApiResult<ByteArray> = withContext(Dispatchers.IO) {
+        try {
+            val response = svc().downloadFile("api/mobile/ibu-beti/$id/bukti")
+            if (!response.isSuccessful) {
+                val raw = try { response.errorBody()?.string() } catch (_: Exception) { null }
+                return@withContext ApiResult.Failure(ApiErrors.fromHttp(response.code(), raw))
+            }
+            val body = response.body() ?: return@withContext ApiResult.Failure(ApiError(ErrorKind.SERVER, "Server tidak mengirim berkas."))
+            if (!body.contentType()?.type.equals("image", ignoreCase = true)) {
+                body.close()
+                return@withContext ApiResult.Failure(ApiError(ErrorKind.SERVER, "Bukti bukan berkas gambar."))
+            }
+            ApiResult.Success(body.bytes())
+        } catch (c: CancellationException) {
+            throw c
+        } catch (t: Throwable) {
+            ApiResult.Failure(ApiErrors.fromThrowable(t))
+        }
+    }
+
     // ----------------------------------------------------------- Mitra
 
     suspend fun mitra(year: Int) = call { mitra(year) }

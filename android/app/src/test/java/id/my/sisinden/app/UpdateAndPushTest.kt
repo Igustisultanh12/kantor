@@ -21,42 +21,38 @@ class UpdateAndPushTest {
         assertTrue(AppUpdater.compareVersions("1.4.9", "1.5.0") < 0)
     }
 
+    private fun fixture(name: String): String =
+        requireNotNull(javaClass.classLoader?.getResource("fixtures/$name.json")) { "fixture $name" }.readText()
+
     @Test
-    fun `memilih apk rilis resmi dan sha256`() {
-        val json = """
-            {"tag_name":"v1.6.0","draft":false,"prerelease":false,"body":"Catatan rilis",
-             "assets":[
-               {"name":"SISINDEN-1.6.0.aab","browser_download_url":"https://github.com/x/1.6.0.aab","size":10},
-               {"name":"SISINDEN-1.6.0-debug.apk","browser_download_url":"https://github.com/x/debug.apk","size":11},
-               {"name":"SISINDEN-1.6.0.apk","browser_download_url":"https://github.com/x/SISINDEN-1.6.0.apk","size":13920859},
-               {"name":"SHA256SUMS.txt","browser_download_url":"https://github.com/x/SHA256SUMS.txt","size":261}
-             ]}
-        """.trimIndent()
-        val r = AppUpdater.parseRelease(json)
+    fun `info pembaruan dari Pengaturan web`() {
+        val r = AppUpdater.parseServer(fixture("app_update"), "https://sisinden.my.id")
         assertNotNull(r)
-        assertEquals("1.6.0", r!!.version)
-        assertEquals("https://github.com/x/SISINDEN-1.6.0.apk", r.apkUrl)
-        assertEquals(13920859L, r.apkSize)
-        assertEquals("https://github.com/x/SHA256SUMS.txt", r.sumsUrl)
+        assertEquals("1.7.0", r!!.version)
+        assertEquals(16, r.versionCode)
+        assertEquals("SISINDEN-1.7.0.apk", r.apkName)
+        assertEquals(14_800_000L, r.apkSize)
+        assertEquals("ab".repeat(32), r.sha256)
+        assertEquals("https://sisinden.my.id/api/mobile/app-update/download?v=1.7.0", r.apkUrl)
+        assertTrue(r.notes.contains("Ibu Beti"))
 
-        val sums = "abc123  SISINDEN-1.6.0.aab\nDEF456  SISINDEN-1.6.0.apk\n"
-        assertEquals("def456", AppUpdater.shaFor(sums, "SISINDEN-1.6.0.apk"))
-        assertNull(AppUpdater.shaFor(sums, "lain.apk"))
-
-        // Rilis draft/prerelease atau tanpa APK resmi diabaikan.
-        assertNull(AppUpdater.parseRelease("""{"tag_name":"v2.0.0","prerelease":true,"assets":[]}"""))
-        assertNull(AppUpdater.parseRelease("""{"tag_name":"v2.0.0","assets":[{"name":"SISINDEN-2.0.0-debugsigned.apk","browser_download_url":"u"}]}"""))
+        // Belum ada APK di server.
+        assertNull(AppUpdater.parseServer(fixture("app_update_none")))
     }
 
     @Test
-    fun `versi terbaru dari SHA256SUMS tanpa API GitHub`() {
-        val r = AppUpdater.parseSums("abc  SISINDEN-1.6.1.aab\ndef  SISINDEN-1.6.1.apk\n")
-        assertNotNull(r)
-        assertEquals("1.6.1", r!!.version)
-        assertEquals("SISINDEN-1.6.1.apk", r.apkName)
-        assertTrue(r.apkUrl.endsWith("/releases/latest/download/SISINDEN-1.6.1.apk"))
-        assertNull(AppUpdater.parseSums("abc  SISINDEN-1.6.1-debugsigned.apk\n"))
-        assertTrue(AppUpdater.reason(java.net.UnknownHostException("api.github.com")).contains("internet"))
+    fun `unduhan hanya dari server SISINDEN dan wajib SHA-256`() {
+        val base = "https://sisinden.my.id"
+        val sha = "c".repeat(64)
+        // URL server lain diabaikan → dipaksa ke endpoint server sendiri.
+        val foreign = AppUpdater.parseServer("""{"available":true,"version":"1.8.0","sha256":"$sha","download_url":"https://contoh.lain/x.apk"}""", base)
+        assertEquals("$base/api/mobile/app-update/download?v=1.8.0", foreign!!.apkUrl)
+        val relative = AppUpdater.parseServer("""{"available":true,"version":"1.8.0","sha256":"$sha","download_url":"/api/mobile/app-update/download?v=1.8.0"}""", base)
+        assertEquals("$base/api/mobile/app-update/download?v=1.8.0", relative!!.apkUrl)
+        // Tanpa SHA-256 / versi tidak valid → ditolak.
+        assertNull(AppUpdater.parseServer("""{"available":true,"version":"1.8.0","sha256":""}""", base))
+        assertNull(AppUpdater.parseServer("""{"available":true,"version":"terbaru","sha256":"$sha"}""", base))
+        assertTrue(AppUpdater.reason(java.net.UnknownHostException("sisinden.my.id")).contains("internet"))
     }
 
     @Test

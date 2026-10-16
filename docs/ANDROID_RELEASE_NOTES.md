@@ -1,3 +1,28 @@
+# SISINDEN Android v1.7.0 (versionCode 16)
+
+Menu Rekening Ibu Beti di aplikasi, dan pembaruan aplikasi kini bersumber dari Pengaturan web (APK yang diunggah Admin).
+
+## Baru
+
+- **Rekening Ibu Beti** (menu Keuangan) — tampil otomatis bagi Admin dan personel yang diberi akses "Rekening Ibu Beti" di Kelola Pengguna web; akses yang dicabut langsung berlaku. Fitur sama dengan web:
+  - mutasi per bulan dengan saldo awal, total masuk/keluar, saldo akhir, saldo berjalan per transaksi;
+  - filter Masuk/Keluar dan cari keterangan;
+  - catat, ubah, hapus mutasi beserta bukti (foto JPG/PNG atau PDF, maks. 5 MB);
+  - lihat bukti dan unduh Rekening Koran PDF.
+- **Pembaruan dari Pengaturan web** — Admin mengunggah APK di *Pengaturan → Pembaruan Aplikasi Android*. Nomor versi dibaca otomatis dari APK; APK aplikasi lain atau versi yang lebih lama ditolak.
+  - Saat diunggah, semua HP menerima **pemberitahuan pembaruan** (notifikasi push); ketuk untuk langsung mengunduh & memasang.
+  - Saat aplikasi dibuka dan ada versi baru, muncul dialog **"Pembaruan SiNDEN tersedia"** dengan tombol **Unduh & pasang** (pilih "Nanti" agar tidak muncul lagi untuk versi itu).
+  - Bila **Perbarui otomatis** aktif, versi baru diunduh & dipasang sendiri di latar belakang lewat Wi-Fi.
+  - APK diverifikasi SHA-256 dan tanda tangannya harus sama dengan aplikasi terpasang sebelum dipasang.
+- Dari v1.5.0 ke atas: pasang APK ini di atas versi lama, tanpa uninstall. HP v1.5.0–v1.6.1 masih memeriksa GitHub Releases dan akan menemukan v1.7.0 di sana. Mulai v1.7.0, sumber pembaruan adalah server SISINDEN.
+
+## Server
+
+- `git pull`, `php artisan config:clear`, `npm run build` (halaman Pengaturan berubah). Tidak ada migrasi baru.
+- Agar APK (~15 MB) bisa diunggah, batas unggah PHP harus cukup besar: `upload_max_filesize` dan `post_max_size` ≥ 50M (aaPanel → PHP → Konfigurasi), serta `client_max_body_size` Nginx ≥ 50m. Halaman Pengaturan menampilkan batas yang berlaku.
+
+---
+
 # SISINDEN Android v1.6.1 (versionCode 15)
 
 Perbaikan pemeriksa pembaruan dalam aplikasi.

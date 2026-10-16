@@ -4,6 +4,7 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import id.my.sisinden.app.SindenApplication
 import id.my.sisinden.app.core.data.SessionState
+import id.my.sisinden.app.core.update.AppUpdater
 
 /**
  * Penerima pesan push FCM. Server mengirim pesan data berprioritas tinggi
@@ -57,6 +58,8 @@ class SindenMessagingService : FirebaseMessagingService() {
                 )
             }
             "call_cancel" -> CallNotifications.cancel(this)
+            // Admin mengunggah APK baru di Pengaturan web.
+            "app_update" -> AppUpdater.onServerPush(this, d["version"].orEmpty(), d["title"].orEmpty(), d["body"].orEmpty())
         }
     }
 }

@@ -102,6 +102,8 @@ class MobileAccess
         $technicalCash = $admin || $danUnitTeknis || (bool) $user->can_access_technical_cash || $dev;
         // SkhppController@approve / SignatureRequestController
         $commanderApproval = $admin || $komandan || $dev;
+        // IbuBetiAccountController@checkAccess: admin, developer, atau diberi akses (can_access_ibu_beti).
+        $ibuBeti = $admin || $dev || (bool) $user->can_access_ibu_beti;
         // SpJagaController@index
         $spJagaAdmin = $admin || in_array($user->name, self::SP_JAGA_ADMIN_NAMES, true);
 
@@ -149,6 +151,10 @@ class MobileAccess
             'commander_account.view' => $commanderView,
             'commander_account.manage' => $commanderManage,
             'commander_account.pdf' => $commanderView,
+
+            'ibu_beti.view' => $ibuBeti,
+            'ibu_beti.manage' => $ibuBeti,
+            'ibu_beti.pdf' => $ibuBeti,
 
             'mitra.view' => $mitra,
             'mitra.manage' => $mitra,
@@ -224,7 +230,7 @@ class MobileAccess
             'can_access_commander' => $p['commander_account.view'],
             'can_access_mitra' => $p['mitra.view'],
             'can_access_technical_cash' => $p['technical_cash.view'],
-            'can_access_ibu_beti' => self::isAdmin($user) || self::isDeveloper($user) || (bool) $user->can_access_ibu_beti,
+            'can_access_ibu_beti' => $p['ibu_beti.view'],
             'can_access_violations' => $p['violations.view'],
             'can_access_activities' => $p['activities.view'],
             'can_access_users' => $p['users.view'],

@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { useForm, Head, router } from '@inertiajs/vue3';
+import { useForm, Head, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, onMounted, onUnmounted } from 'vue'; 
 import axios from 'axios';
 import QrcodeVue from 'qrcode.vue';
@@ -44,6 +44,47 @@ const form = useForm({
     favicon: null,
     _method: 'PUT' 
 });
+
+// Pesan hasil simpan dari server (sukses / gagal).
+const page = usePage();
+const flash = computed(() => page.props.flash || {});
+
+// --- PEMBARUAN APLIKASI ANDROID (unggah APK) ---
+const appUpdate = computed(() => props.settings.app_update || null);
+const uploadLimit = computed(() => Number(props.settings.app_update_limit || 0));
+const uploadLimitLabel = computed(() => (uploadLimit.value > 0 && uploadLimit.value < 1e15 ? fmtSize(uploadLimit.value) : 'tanpa batas'));
+const apkForm = useForm({ apk: null, notes: '', version: '', notify: true });
+const apkError = ref('');
+const apkInput = ref(null);
+const fmtSize = (b) => (b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
+const fmtDate = (iso) => { try { return new Date(iso).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }); } catch (e) { return iso; } };
+const pickApk = (event) => {
+    apkError.value = '';
+    const file = event.target.files && event.target.files[0];
+    if (!file) { apkForm.apk = null; return; }
+    if (!file.name.toLowerCase().endsWith('.apk')) {
+        apkError.value = 'Pilih berkas berekstensi .apk.';
+        apkForm.apk = null; event.target.value = ''; return;
+    }
+    if (uploadLimit.value > 0 && file.size > uploadLimit.value) {
+        apkError.value = `Ukuran APK ${fmtSize(file.size)} melebihi batas unggah server (${fmtSize(uploadLimit.value)}). Naikkan upload_max_filesize & post_max_size PHP (mis. 100M) dan client_max_body_size Nginx di aaPanel.`;
+        apkForm.apk = null; event.target.value = ''; return;
+    }
+    apkForm.apk = file;
+};
+const uploadApk = () => {
+    if (!apkForm.apk) { apkError.value = 'Pilih berkas APK terlebih dahulu.'; return; }
+    apkForm.post(route('settings.app-update.store'), {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => { apkForm.reset(); if (apkInput.value) apkInput.value.value = ''; },
+        onError: (errors) => { apkError.value = Object.values(errors)[0] || 'Unggah APK gagal.'; },
+    });
+};
+const deleteApk = () => {
+    if (!confirm('Hapus APK pembaruan dari server? Aplikasi di HP tidak akan ditawari pembaruan ini lagi.')) return;
+    router.delete(route('settings.app-update.destroy'), { preserveScroll: true });
+};
 
 const showClientSecret = ref(false);
 const showAgoraCertificate = ref(false);
@@ -172,6 +213,11 @@ onUnmounted(() => { if (waInterval) clearInterval(waInterval); });
     <AuthenticatedLayout>
         <div class="max-w-5xl mx-auto py-6 space-y-8 font-sans">
             
+            <div v-if="flash.success || flash.error" class="p-4 rounded-2xl border text-xs font-bold"
+                 :class="flash.error ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'">
+                {{ flash.error || flash.success }}
+            </div>
+
             <div class="flex justify-between items-center bg-white p-6 rounded-3xl border border-slate-200 shadow-xs">
                 <div>
                     <h2 class="font-extrabold text-xl text-slate-900 uppercase tracking-tight">Pengaturan Sistem SINDEN</h2>
@@ -776,7 +822,55 @@ onUnmounted(() => { if (waInterval) clearInterval(waInterval); });
                     </div>
                 </form>
             </div>
-            
+
+            <!-- Pembaruan Aplikasi Android (APK diunggah Admin, diunduh aplikasi di HP) -->
+            <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-5">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-black">&#8593;</div>
+                    <div>
+                        <h3 class="text-xs font-black text-slate-900 uppercase tracking-wider">PEMBARUAN APLIKASI ANDROID (UNGGAH APK)</h3>
+                        <p class="text-[10px] text-slate-500 font-semibold">APK yang diunggah di sini menjadi sumber pembaruan di aplikasi SiNDEN. Personel menerima pemberitahuan dan dapat langsung mengunduh &amp; memasangnya.</p>
+                    </div>
+                </div>
+
+                <div v-if="appUpdate" class="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100 flex flex-col md:flex-row md:items-center gap-3">
+                    <div class="flex-1 space-y-1">
+                        <p class="text-xs font-black text-emerald-900">Versi aktif di server: v{{ appUpdate.version }} <span class="font-semibold text-emerald-700">(kode {{ appUpdate.version_code }}, {{ fmtSize(appUpdate.size) }})</span></p>
+                        <p class="text-[10px] text-emerald-800 font-semibold">Diunggah {{ fmtDate(appUpdate.uploaded_at) }} oleh {{ appUpdate.uploaded_by }}<span v-if="appUpdate.notified"> &middot; pemberitahuan ke {{ appUpdate.notified }} personel</span></p>
+                        <p v-if="appUpdate.notes" class="text-[10px] text-slate-600 whitespace-pre-line">{{ appUpdate.notes }}</p>
+                        <p class="text-[9px] font-mono text-slate-400 break-all">SHA-256 {{ appUpdate.sha256 }}</p>
+                    </div>
+                    <button type="button" @click="deleteApk" class="self-start md:self-center px-4 py-2 rounded-xl border border-rose-200 text-rose-600 text-[10px] font-extrabold uppercase tracking-wider hover:bg-rose-50">Hapus APK</button>
+                </div>
+                <p v-else class="text-[11px] text-slate-500 font-semibold">Belum ada APK pembaruan di server.</p>
+
+                <form @submit.prevent="uploadApk" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider ms-1">Berkas APK (SISINDEN-x.y.z.apk)</label>
+                        <input ref="apkInput" type="file" accept=".apk,application/vnd.android.package-archive" @change="pickApk"
+                               class="block w-full text-xs text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-emerald-600 file:px-4 file:py-2 file:text-xs file:font-bold file:text-white hover:file:bg-emerald-700" />
+                        <p class="text-[9px] text-slate-500 font-bold ms-1">Nomor versi dibaca otomatis dari APK. Batas unggah server: {{ uploadLimitLabel }}.</p>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider ms-1">Catatan pembaruan (ditampilkan di HP)</label>
+                        <textarea v-model="apkForm.notes" rows="3" maxlength="2000" class="w-full rounded-2xl border-slate-200 bg-slate-50 focus:bg-white text-xs px-4 py-3" placeholder="Contoh: Menu Rekening Ibu Beti, perbaikan notifikasi."></textarea>
+                    </div>
+                    <label class="flex items-center gap-2 text-[11px] font-bold text-slate-700">
+                        <input type="checkbox" v-model="apkForm.notify" class="rounded border-slate-300 text-emerald-600" /> Kirim pemberitahuan pembaruan ke HP semua personel
+                    </label>
+                    <div class="flex items-center justify-end gap-3">
+                        <div v-if="apkForm.progress" class="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+                            <div class="h-full bg-emerald-500 transition-all" :style="{ width: apkForm.progress.percentage + '%' }"></div>
+                        </div>
+                        <button :disabled="apkForm.processing || !apkForm.apk" class="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-extrabold uppercase text-xs tracking-wider hover:bg-emerald-700 disabled:opacity-50">
+                            {{ apkForm.processing ? `Mengunggah ${apkForm.progress ? apkForm.progress.percentage + '%' : '…'}` : 'Unggah Pembaruan' }}
+                        </button>
+                    </div>
+                    <p v-if="apkError" class="md:col-span-2 text-[11px] font-bold text-rose-600">{{ apkError }}</p>
+                </form>
+                <p class="text-[9px] text-slate-400 font-semibold">APK harus ditandatangani kunci resmi SiNDEN (hasil rilis GitHub Actions). HP menolak APK dengan tanda tangan berbeda.</p>
+            </div>
+
             <!-- Quick Link Stamp Setting -->
             <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex items-center justify-between group hover:border-blue-500 transition cursor-pointer" 
                  @click="router.get(route('stamp.setting'))">

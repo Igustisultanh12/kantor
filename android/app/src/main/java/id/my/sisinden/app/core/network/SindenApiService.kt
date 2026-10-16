@@ -154,6 +154,32 @@ interface SindenApiService {
     @DELETE("api/mobile/commander-account/{id}")
     suspend fun deleteCommanderTx(@Path("id") id: Int): Response<SimpleResponse>
 
+    // ------------------------------------------------------ Rekening Ibu Beti
+    @GET("api/mobile/ibu-beti")
+    suspend fun ibuBeti(
+        @Query("month") month: String? = null,
+        @Query("jenis") jenis: String? = null,
+        @Query("search") search: String? = null,
+    ): Response<IbuBetiResponse>
+
+    @Multipart
+    @POST("api/mobile/ibu-beti")
+    suspend fun createIbuBeti(
+        @PartMap fields: Map<String, @JvmSuppressWildcards RequestBody>,
+        @Part bukti: List<MultipartBody.Part>,
+    ): Response<SimpleResponse>
+
+    @Multipart
+    @POST("api/mobile/ibu-beti/{id}")
+    suspend fun updateIbuBeti(
+        @Path("id") id: Int,
+        @PartMap fields: Map<String, @JvmSuppressWildcards RequestBody>,
+        @Part bukti: List<MultipartBody.Part>,
+    ): Response<SimpleResponse>
+
+    @DELETE("api/mobile/ibu-beti/{id}")
+    suspend fun deleteIbuBeti(@Path("id") id: Int): Response<SimpleResponse>
+
     // ------------------------------------------------------ Mitra
     @GET("api/mobile/mitra")
     suspend fun mitra(@Query("tahun") tahun: Int): Response<MitraResponse>

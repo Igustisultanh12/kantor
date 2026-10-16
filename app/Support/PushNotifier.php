@@ -231,6 +231,30 @@ class PushNotifier
         ], 60);
     }
 
+    /**
+     * Pemberitahuan pembaruan aplikasi ke seluruh personel aktif.
+     *
+     * @return int jumlah personel yang dituju (0 bila push belum aktif)
+     */
+    public static function appUpdate(string $version, string $notes): int
+    {
+        if (!self::enabled()) {
+            return 0;
+        }
+        $q = User::query();
+        if (Schema::hasColumn('users', 'is_active')) {
+            $q->where('is_active', true);
+        }
+        $ids = $q->pluck('id')->map(fn ($id) => (int) $id)->all();
+        self::queue($ids, [
+            'type' => 'app_update',
+            'version' => $version,
+            'title' => "Pembaruan SiNDEN {$version} tersedia",
+            'body' => mb_substr(trim($notes) !== '' ? trim($notes) : 'Ketuk untuk mengunduh dan memasang versi terbaru.', 0, 240),
+        ], 7 * 86400);
+        return count($ids);
+    }
+
     // ---------------------------------------------------------------- pengiriman
 
     /** Kirim setelah respons selesai. Data FCM wajib berupa string. */

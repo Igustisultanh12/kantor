@@ -945,4 +945,169 @@ class MobileApiSecurityTest extends TestCase
         $this->assertSame(1, $page1['draws']);
         $this->assertSame([1], $page1['draw_pages'], 'QR hasil TTE di halaman pilihan pengaju');
     }
+
+    private function auditLogsTable(): void
+    {
+        foreach (glob(database_path('migrations/*audit_logs*.php')) as $m) {
+            if (!Schema::hasTable('audit_logs')) {
+                (require $m)->up();
+            }
+        }
+    }
+
+    public function test_ibu_beti_account_follows_web_access_flag(): void
+    {
+        foreach (glob(database_path('migrations/*create_ibu_beti_accounts_table.php')) as $m) {
+            (require $m)->up();
+        }
+        $this->auditLogsTable();
+        \Illuminate\Support\Facades\Storage::fake('public');
+
+        $biasa = $this->makeUser();
+        $this->withToken($this->tokenFor($biasa))->getJson('/api/mobile/ibu-beti')->assertStatus(403);
+
+        // Diberi akses oleh Admin (Kelola Pengguna → Rekening Ibu Beti) → menu & data muncul.
+        $diberi = $this->makeUser(['can_access_ibu_beti' => true]);
+        $login = $this->postJson('/api/mobile/login', ['username' => $diberi->email, 'password' => 'rahasia123'])->assertOk();
+        $this->assertContains('ibu_beti.view', $login->json('user.permissions'));
+        $this->assertContains('ibu_beti.manage', $login->json('user.permissions'));
+        $this->assertTrue($login->json('user.can_access_ibu_beti'));
+        $tok = $login->json('token');
+
+        \App\Models\IbuBetiAccount::forceCreate(['tanggal' => '2026-09-20', 'keterangan' => 'SALDO SEPTEMBER', 'jenis' => 'MASUK', 'jumlah' => 1000000, 'petugas_input' => 'Admin']);
+        $this->withToken($tok)->post('/api/mobile/ibu-beti', [
+            'tanggal' => '2026-10-05', 'keterangan' => 'iuran', 'jenis' => 'MASUK', 'jumlah' => 250000,
+            'bukti' => \Illuminate\Http\UploadedFile::fake()->image('bukti.jpg'),
+        ], ['Accept' => 'application/json'])->assertOk()->assertJsonPath('status', 'success');
+        $this->withToken($tok)->postJson('/api/mobile/ibu-beti', ['tanggal' => '2026-10-06', 'keterangan' => 'belanja', 'jenis' => 'KELUAR', 'jumlah' => 50000])
+            ->assertOk();
+        $this->withToken($tok)->postJson('/api/mobile/ibu-beti', ['tanggal' => '2026-10-06', 'jenis' => 'KELUAR'])
+            ->assertStatus(422)->assertJsonPath('status', 'error');
+
+        $r = $this->withToken($tok)->getJson('/api/mobile/ibu-beti?month=2026-10')->assertOk();
+        $this->assertEquals(1000000, $r->json('saldo_awal'));
+        $this->assertEquals(250000, $r->json('total_masuk'));
+        $this->assertEquals(50000, $r->json('total_keluar'));
+        $this->assertEquals(1200000, $r->json('saldo_akhir'));
+        $this->assertCount(2, $r->json('data'));
+        $this->assertSame('BELANJA', $r->json('data.0.keterangan'), 'terbaru di atas');
+        $this->assertEquals(1200000, $r->json('data.0.saldo_berjalan'));
+        $iuran = collect($r->json('data'))->firstWhere('keterangan', 'IURAN');
+        $this->assertTrue($iuran['has_bukti']);
+        $this->assertSame($diberi->name, $iuran['petugas_input']);
+
+        // Bukti hanya untuk pemegang akses.
+        $this->withToken($tok)->get("/api/mobile/ibu-beti/{$iuran['id']}/bukti")->assertOk()->assertHeader('Content-Type', 'image/jpeg');
+        $this->withToken($this->tokenFor($biasa))->get("/api/mobile/ibu-beti/{$iuran['id']}/bukti")->assertStatus(403);
+
+        $this->withToken($tok)->postJson("/api/mobile/ibu-beti/{$iuran['id']}", ['tanggal' => '2026-10-05', 'keterangan' => 'iuran oktober', 'jenis' => 'MASUK', 'jumlah' => 300000])
+            ->assertOk();
+        $this->assertEquals(300000, (float) \App\Models\IbuBetiAccount::find($iuran['id'])->jumlah);
+        $this->withToken($tok)->deleteJson("/api/mobile/ibu-beti/{$iuran['id']}")->assertOk();
+        $this->assertNull(\App\Models\IbuBetiAccount::find($iuran['id']));
+
+        // Akses dicabut Admin → langsung ditolak pada permintaan berikutnya.
+        $diberi->forceFill(['can_access_ibu_beti' => false])->save();
+        $this->withToken($tok)->getJson('/api/mobile/ibu-beti')->assertStatus(403);
+        // Admin selalu punya akses.
+        $admin = $this->makeUser(['role' => 'admin']);
+        $this->withToken($this->tokenFor($admin))->getJson('/api/mobile/ibu-beti')->assertOk();
+    }
+
+    /** Login web lewat sesi (call() di kelas ini mereset guard, jadi actingAs tidak bertahan). */
+    private function asWebUser(User $user): static
+    {
+        if (!Schema::hasTable('visitor_logs')) {
+            Schema::create('visitor_logs', function (Blueprint $t) {
+                $t->id();
+                $t->unsignedBigInteger('user_id')->nullable();
+                foreach (['user_name', 'nrp', 'ip_address', 'location', 'latitude', 'longitude', 'device', 'user_agent'] as $c) {
+                    $t->string($c)->nullable();
+                }
+                $t->boolean('is_suspicious')->default(false);
+                $t->timestamp('login_at')->nullable();
+                $t->timestamp('logout_at')->nullable();
+                $t->timestamps();
+            });
+        }
+        return $this->withSession(['login_web_' . sha1(\Illuminate\Auth\SessionGuard::class) => $user->id]);
+    }
+
+    private function fakeApk(string $dir, string $name, ?string $manifest): string
+    {
+        $path = $dir . '/' . $name;
+        $zip = new \ZipArchive();
+        $zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+        if ($manifest !== null) {
+            $zip->addFromString('AndroidManifest.xml', $manifest);
+        }
+        $zip->addFromString('classes.dex', random_bytes(2048));
+        $zip->close();
+        return $path;
+    }
+
+    public function test_app_update_uploaded_in_web_settings_is_served_to_app(): void
+    {
+        $this->auditLogsTable();
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $manifest = file_get_contents(base_path('tests/Fixtures/AndroidManifest-1.5.0.bin'));
+        $info = \App\Support\ApkInspector::parseManifest($manifest);
+        $this->assertSame(['package' => 'id.my.sisinden.app', 'version_name' => '1.5.0', 'version_code' => 13], $info);
+
+        $this->getJson('/api/mobile/app-update')->assertOk()->assertJsonPath('available', false);
+        $this->get('/api/mobile/app-update/download')->assertStatus(404);
+
+        $dir = sys_get_temp_dir() . '/apk-' . uniqid();
+        mkdir($dir);
+        $apk = $this->fakeApk($dir, 'SISINDEN-1.5.0.apk', $manifest);
+        $upload = fn ($path, $name, $extra = []) => new \Illuminate\Http\UploadedFile($path, $name, 'application/vnd.android.package-archive', null, true);
+
+        $personel = $this->makeUser();
+        $admin = $this->makeUser(['role' => 'admin']);
+        // Hanya Admin yang boleh mengunggah.
+        $this->asWebUser($personel)->post('/settings/app-update', ['apk' => $upload($apk, 'SISINDEN-1.5.0.apk')])->assertStatus(403);
+
+        $this->configurePush();
+        \App\Models\DeviceToken::register($personel->id, 'tok-hp-' . str_repeat('h', 20));
+        // Bukan APK SiNDEN / bukan APK → ditolak.
+        $this->asWebUser($admin)->post('/settings/app-update', ['apk' => $upload($this->fakeApk($dir, 'lain.apk', null), 'lain.apk')])
+            ->assertSessionHas('error');
+        $this->asWebUser($admin)->post('/settings/app-update', ['apk' => $upload($apk, 'SISINDEN-1.5.0.apk'), 'notes' => 'Menu Rekening Ibu Beti', 'notify' => '1'])
+            ->assertSessionHas('success');
+
+        $meta = $this->getJson('/api/mobile/app-update')->assertOk()
+            ->assertJsonPath('available', true)
+            ->assertJsonPath('version', '1.5.0')
+            ->assertJsonPath('version_code', 13)
+            ->assertJsonPath('notes', 'Menu Rekening Ibu Beti')
+            ->json();
+        $this->assertSame(hash_file('sha256', $apk), $meta['sha256']);
+        $this->assertSame(filesize($apk), $meta['size']);
+        $this->assertStringContainsString('/api/mobile/app-update/download', $meta['download_url']);
+        $this->assertStringNotContainsString('app-updates/', json_encode($meta), 'lokasi berkas server tidak dibocorkan');
+
+        $dl = $this->get('/api/mobile/app-update/download')->assertOk();
+        $this->assertSame('application/vnd.android.package-archive', $dl->headers->get('Content-Type'));
+        $this->assertSame($meta['sha256'], hash_file('sha256', $dl->baseResponse->getFile()->getPathname()));
+
+        // Pemberitahuan pembaruan ke HP personel.
+        $push = collect($this->pushesSent())->firstWhere('data.type', 'app_update');
+        $this->assertNotNull($push);
+        $this->assertSame('1.5.0', $push['data']['version']);
+
+        // Metadata (berisi lokasi berkas) tidak ikut dibagikan ke halaman lain.
+        $public = \App\Http\Middleware\HandleInertiaRequests::publicSettings(\App\Models\Setting::pluck('value', 'key')->toArray());
+        $this->assertArrayNotHasKey('app_update_meta', $public);
+
+        // Versi lebih lama ditolak.
+        $old = str_replace(mb_convert_encoding('1.5.0', 'UTF-16LE'), mb_convert_encoding('1.4.0', 'UTF-16LE'), $manifest); // panjang sama
+        $this->assertSame('1.4.0', \App\Support\ApkInspector::parseManifest($old)['version_name']);
+        $this->asWebUser($admin)->post('/settings/app-update', ['apk' => $upload($this->fakeApk($dir, 'old.apk', $old), 'old.apk')])
+            ->assertSessionHas('error');
+        $this->getJson('/api/mobile/app-update')->assertJsonPath('version', '1.5.0');
+
+        $this->asWebUser($admin)->delete('/settings/app-update')->assertSessionHas('success');
+        $this->getJson('/api/mobile/app-update')->assertJsonPath('available', false);
+        $this->assertSame([], \Illuminate\Support\Facades\Storage::disk('local')->allFiles('app-updates'));
+    }
 }

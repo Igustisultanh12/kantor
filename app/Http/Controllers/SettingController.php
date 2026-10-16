@@ -23,6 +23,10 @@ class SettingController extends Controller
         $settings['fcm_ready'] = \App\Support\PushNotifier::enabled();
         unset($settings['fcm_service_account'], $settings['fcm_client_config']);
         $settings['turnstile_site_key'] = $settings['turnstile_site_key'] ?? \App\Support\Turnstile::siteKey();
+        // Pembaruan aplikasi Android (APK yang diunggah Admin).
+        unset($settings[\App\Support\AppRelease::KEY]);
+        $settings['app_update'] = \App\Support\AppRelease::adminSummary();
+        $settings['app_update_limit'] = \App\Http\Controllers\AppUpdateController::uploadLimitBytes();
         return Inertia::render('Settings/Index', [
             'settings' => $settings
         ]);

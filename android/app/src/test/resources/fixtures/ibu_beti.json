@@ -1,0 +1,35 @@
+{
+    "status": "success",
+    "saldo_awal": 1000000,
+    "total_masuk": 250000.5,
+    "total_keluar": 50000,
+    "saldo_akhir": 1200000.5,
+    "saldo_keseluruhan": 1200000.5,
+    "is_monthly": true,
+    "data": [
+        {
+            "id": 3,
+            "tanggal": "2026-10-05",
+            "keterangan": "BELANJA",
+            "jenis": "KELUAR",
+            "jumlah": 50000,
+            "saldo_berjalan": 1200000.5,
+            "has_bukti": true,
+            "bukti_is_pdf": true,
+            "petugas_input": "Suma",
+            "created_at": "2026-10-16 13:49"
+        },
+        {
+            "id": 2,
+            "tanggal": "2026-10-02",
+            "keterangan": "IURAN ANGGOTA",
+            "jenis": "MASUK",
+            "jumlah": 250000.5,
+            "saldo_berjalan": 1250000.5,
+            "has_bukti": true,
+            "bukti_is_pdf": false,
+            "petugas_input": "Suma",
+            "created_at": "2026-10-16 13:49"
+        }
+    ]
+}

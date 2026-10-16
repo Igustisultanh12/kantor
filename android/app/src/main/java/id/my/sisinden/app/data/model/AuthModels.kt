@@ -57,6 +57,7 @@ data class UserProfile(
     @SerializedName("can_access_commander") val legacyCommander: Boolean? = null,
     @SerializedName("can_access_mitra") val legacyMitra: Boolean? = null,
     @SerializedName("can_access_technical_cash") val legacyTechnicalCash: Boolean? = null,
+    @SerializedName("can_access_ibu_beti") val legacyIbuBeti: Boolean? = null,
     @SerializedName("can_access_violations") val legacyViolations: Boolean? = null,
     @SerializedName("can_access_users") val legacyUsers: Boolean? = null,
 ) {
@@ -105,6 +106,7 @@ data class UserProfile(
         if (legacyCommander == true) p += Perm.COMMANDER_VIEW
         if (legacyMitra == true) p += listOf(Perm.MITRA_VIEW, Perm.MITRA_MANAGE)
         if (legacyTechnicalCash == true) p += listOf(Perm.TECHNICAL_CASH_VIEW, Perm.TECHNICAL_CASH_MANAGE)
+        if (legacyIbuBeti == true) p += listOf(Perm.IBU_BETI_VIEW, Perm.IBU_BETI_MANAGE, Perm.IBU_BETI_PDF)
         if (legacyViolations == true) p += Perm.VIOLATIONS_VIEW
         if (legacyUsers == true) p += Perm.USERS_VIEW
         return PermissionSet(p)

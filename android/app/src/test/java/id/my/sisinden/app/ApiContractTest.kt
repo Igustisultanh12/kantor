@@ -9,6 +9,7 @@ import id.my.sisinden.app.data.model.CashLedgerResponse
 import id.my.sisinden.app.data.model.ConfigResponse
 import id.my.sisinden.app.data.model.DashboardResponse
 import id.my.sisinden.app.data.model.DutyRosterResponse
+import id.my.sisinden.app.data.model.IbuBetiResponse
 import id.my.sisinden.app.data.model.LoginResponse
 import id.my.sisinden.app.data.model.MeResponse
 import id.my.sisinden.app.data.model.MitraDto
@@ -17,6 +18,7 @@ import id.my.sisinden.app.data.model.UserProfile
 import id.my.sisinden.app.ui.duty.DutyTiming
 import id.my.sisinden.app.ui.duty.myDutiesOf
 import id.my.sisinden.app.ui.duty.timingOf
+import id.my.sisinden.app.ui.navigation.Feature
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -178,5 +180,37 @@ class ApiContractTest {
         assertFalse(m.isPaid(2))
         assertTrue(m.isPaid(10))
         assertEquals(2, m.paidCount)
+    }
+
+    @Test
+    fun ibuBetiAccessFromServerShowsMenu() {
+        val user = requireNotNull(gson.fromJson(fixture("login_ibu_beti"), LoginResponse::class.java).user)
+        val perms = user.permissionSet()
+        assertTrue(perms.has(Perm.IBU_BETI_VIEW))
+        assertTrue(perms.has(Perm.IBU_BETI_MANAGE))
+        assertTrue(Feature.IBU_BETI in Feature.permitted(perms))
+        // Personel tanpa akses tidak melihat menu.
+        val biasa = requireNotNull(gson.fromJson(fixture("login_personel"), LoginResponse::class.java).user).permissionSet()
+        assertFalse(Feature.IBU_BETI in Feature.permitted(biasa))
+        // Klien lama tanpa daftar permission: flag can_access_ibu_beti tetap dihormati.
+        val legacy = gson.fromJson("""{"name":"Suma","can_access_ibu_beti":true}""", UserProfile::class.java).permissionSet()
+        assertTrue(legacy.has(Perm.IBU_BETI_VIEW))
+    }
+
+    @Test
+    fun ibuBetiLedgerParsesMonthlyBalances() {
+        val r = gson.fromJson(fixture("ibu_beti"), IbuBetiResponse::class.java)
+        assertTrue(r.isMonthly)
+        assertEquals(1_000_000.0, r.saldoAwal, 0.001)
+        assertEquals(250_000.5, r.totalMasuk, 0.001)
+        assertEquals(50_000.0, r.totalKeluar, 0.001)
+        assertEquals(1_200_000.5, r.saldoAkhir, 0.001)
+        val rows = r.data.orEmpty()
+        assertEquals(2, rows.size)
+        assertFalse(rows[0].isIncome)
+        assertTrue(rows[0].buktiIsPdf)
+        assertTrue(rows[1].isIncome && rows[1].hasBukti && !rows[1].buktiIsPdf)
+        assertEquals(1_250_000.5, rows[1].saldoBerjalan, 0.001)
+        assertEquals("2026-10-02", rows[1].dateOnly)
     }
 }

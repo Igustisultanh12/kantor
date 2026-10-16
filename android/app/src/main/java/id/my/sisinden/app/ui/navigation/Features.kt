@@ -14,6 +14,7 @@ import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.ui.graphics.vector.ImageVector
 import id.my.sisinden.app.core.security.Perm
@@ -53,6 +54,7 @@ enum class Feature(
     CASH(Routes.CASH, "Buku Kas", "Kas pangkalan Denintel", Icons.Outlined.AccountBalanceWallet, Perm.CASH_VIEW, FeatureGroup.KEUANGAN, Tone.SUCCESS),
     TECHNICAL_CASH(Routes.TECHNICAL_CASH, "Kas Unit Teknis", "Dana Dan Unit Teknis", Icons.Outlined.Build, Perm.TECHNICAL_CASH_VIEW, FeatureGroup.KEUANGAN, Tone.INFO),
     COMMANDER(Routes.COMMANDER, "Rekening Komandan", "Mutasi rekening komandan", Icons.Outlined.AccountBalance, Perm.COMMANDER_VIEW, FeatureGroup.KEUANGAN, Tone.NEUTRAL),
+    IBU_BETI(Routes.IBU_BETI, "Rekening Ibu Beti", "Mutasi & rekening koran Ibu Beti", Icons.Outlined.Savings, Perm.IBU_BETI_VIEW, FeatureGroup.KEUANGAN, Tone.SUCCESS),
     MITRA(Routes.MITRA, "Mitra", "Pembayaran mitra bulanan", Icons.Outlined.People, Perm.MITRA_VIEW, FeatureGroup.KEUANGAN, Tone.WARNING),
     VIOLATIONS(Routes.VIOLATIONS, "Pelanggaran", "Catatan disiplin prajurit", Icons.Outlined.Gavel, Perm.VIOLATIONS_VIEW, FeatureGroup.PERSONEL, Tone.DANGER),
     USERS(Routes.USERS, "Kelola Pengguna", "Akun & status personel", Icons.Outlined.Group, Perm.USERS_VIEW, FeatureGroup.PERSONEL, Tone.NEUTRAL);
@@ -70,6 +72,7 @@ enum class Feature(
             CASH -> TilePalette.Teal
             TECHNICAL_CASH -> TilePalette.Lime
             COMMANDER -> TilePalette.Blue
+            IBU_BETI -> TilePalette.Rose
             MITRA -> TilePalette.Sky
             VIOLATIONS -> TilePalette.Rose
             USERS -> TilePalette.Slate
@@ -101,6 +104,7 @@ object Routes {
     const val CASH = "cash"
     const val TECHNICAL_CASH = "technical_cash"
     const val COMMANDER = "commander"
+    const val IBU_BETI = "ibu_beti"
     const val MITRA = "mitra"
     const val VIOLATIONS = "violations"
     const val VIOLATION_FORM = "violation_form"
