@@ -39,6 +39,7 @@ use App\Http\Controllers\SystemCheckController;
 use App\Http\Controllers\PrintServiceController;
 use App\Http\Controllers\Chat\LiveChatController;
 use App\Http\Controllers\WhatsAppController;
+use App\Http\Controllers\OpenMeetingController;
 use App\Models\User;
 use App\Models\LetterLog;
 use App\Models\Letter;
@@ -74,6 +75,10 @@ Route::get('/tracking-sc', [PublicTrackingController::class, 'index'])->name('tr
 Route::post('/tracking-sc/token', [PublicTrackingController::class, 'generatePreviewToken'])->name('tracking-sc.token');
 Route::get('/tracking-sc/stream/{token}', [PublicTrackingController::class, 'streamSecurePdf'])->name('tracking-sc.stream');
 Route::get('/tracking-sc/{tracking_code}/preview-pdf', [PublicTrackingController::class, 'previewPdf'])->name('tracking-sc.preview-pdf');
+
+// --- FITUR ABSENSI RAPAT TERBUKA (AKSES PUBLIK TANPA LOGIN) ---
+Route::get('/absen/{uuid}', [OpenMeetingController::class, 'publicForm'])->name('absen.public');
+Route::post('/absen/{uuid}', [OpenMeetingController::class, 'publicSubmit'])->name('absen.submit');
 
 // --- AKSES DASHBOARD UTAMA ---
 Route::get('/dashboard', function () {
@@ -286,6 +291,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/sp-jaga/{id}/approve-tte', [SpJagaController::class, 'approveTte'])->name('sp-jaga.approve-tte');
     Route::post('/sp-jaga/{id}/upload-manual-signed', [SpJagaController::class, 'uploadManualSigned'])->name('sp-jaga.upload-manual-signed');
     Route::get('/sp-jaga/{id}/download-pdf', [SpJagaController::class, 'downloadPdf'])->name('sp-jaga.download-pdf');
+    
+    // --- MODUL ABSENSI RAPAT TERBUKA ---
+    Route::resource('rapat-terbuka', OpenMeetingController::class);
+    Route::post('/rapat-terbuka/{id}/toggle-status', [OpenMeetingController::class, 'toggleStatus'])->name('rapat-terbuka.toggle');
+    Route::delete('/rapat-terbuka/{id}/attendees/{attendeeId}', [OpenMeetingController::class, 'destroyAttendee'])->name('rapat-terbuka.destroy-attendee');
+    Route::get('/rapat-terbuka/{id}/pdf', [OpenMeetingController::class, 'downloadPdf'])->name('rapat-terbuka.pdf');
     
     // Modul TTD Komandan (Otoritas Permohonan Surat)
     Route::get('/signature-requests', [SignatureRequestController::class, 'index'])->name('signature.index');
