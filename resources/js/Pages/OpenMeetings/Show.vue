@@ -204,8 +204,18 @@ const refreshData = () => {
                             </button>
                         </div>
 
-                        <!-- Tombol Mode Proyektor & Info -->
+                        <!-- Tombol Mode Proyektor & Info & Cetak PDF -->
                         <div class="flex items-center gap-3 pt-1 flex-wrap">
+                            <!-- Tombol Cetak PDF Dinas -->
+                            <a
+                                :href="route('rapat-terbuka.pdf', meeting.id)"
+                                target="_blank"
+                                class="inline-flex items-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition shadow-sm"
+                            >
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                <span>Cetak Dokumen PDF Dinas</span>
+                            </a>
+
                             <button
                                 @click="isProjectorModalOpen = true"
                                 class="inline-flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition border border-white/10"
@@ -265,6 +275,16 @@ const refreshData = () => {
                         >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                         </button>
+
+                        <!-- Tombol Cetak PDF di Tabel -->
+                        <a
+                            :href="route('rapat-terbuka.pdf', meeting.id)"
+                            target="_blank"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            <span>Cetak PDF</span>
+                        </a>
                     </div>
                 </div>
 

@@ -420,12 +420,11 @@
                             id="inputName" 
                             name="name" 
                             class="form-control" 
-                            placeholder="Contoh: Letda (KC) I Gusti Sultan H.A, A.Md.Kom" 
+                            placeholder="Nama Lengkap" 
                             value="{{ old('name') }}" 
                             required 
                             autofocus 
                         />
-                        <div class="form-hint">Tuliskan nama lengkap beserta gelar jika ada.</div>
                     </div>
 
                     <!-- 2. PANGKAT / NRP -->
@@ -438,10 +437,9 @@
                             id="inputPangkatNrp" 
                             name="pangkat_nrp" 
                             class="form-control" 
-                            placeholder="Contoh: Letda Laut (E) NRP 120000... (atau '-' jika tamu sipil)" 
+                            placeholder="Pangkat / NRP / NIP (isi '-' jika sipil)" 
                             value="{{ old('pangkat_nrp') }}" 
                         />
-                        <div class="form-hint">Isi dengan pangkat korps dan NRP bagi TNI/Polri, atau tanda hubung (-) jika instansi sipil.</div>
                     </div>
 
                     <!-- 3. JABATAN / INSTANSI -->
@@ -454,7 +452,7 @@
                             id="inputJabatan" 
                             name="jabatan" 
                             class="form-control" 
-                            placeholder="Contoh: Pasiops / Staf Lid / Tamu Undangan" 
+                            placeholder="Jabatan / Kesatuan / Instansi" 
                             value="{{ old('jabatan') }}" 
                         />
                     </div>
