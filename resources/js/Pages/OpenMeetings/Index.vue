@@ -110,7 +110,7 @@ const deleteMeeting = (meeting) => {
                     </div>
                     <div>
                         <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Agenda</div>
-                        <div class="text-xl font-black text-slate-800">{{ stats.total_meetings || 0 }}</div>
+                        <div class="text-xl font-black text-slate-800">{{ stats?.total_meetings || 0 }}</div>
                     </div>
                 </div>
 
@@ -120,7 +120,7 @@ const deleteMeeting = (meeting) => {
                     </div>
                     <div>
                         <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Sesi Terbuka</div>
-                        <div class="text-xl font-black text-emerald-600">{{ stats.open_meetings || 0 }}</div>
+                        <div class="text-xl font-black text-emerald-600">{{ stats?.open_meetings || 0 }}</div>
                     </div>
                 </div>
 
@@ -130,7 +130,7 @@ const deleteMeeting = (meeting) => {
                     </div>
                     <div>
                         <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Selesai / Tutup</div>
-                        <div class="text-xl font-black text-slate-700">{{ stats.closed_meetings || 0 }}</div>
+                        <div class="text-xl font-black text-slate-700">{{ stats?.closed_meetings || 0 }}</div>
                     </div>
                 </div>
 
@@ -140,7 +140,7 @@ const deleteMeeting = (meeting) => {
                     </div>
                     <div>
                         <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Peserta Hadir</div>
-                        <div class="text-xl font-black text-violet-600">{{ stats.total_attendees || 0 }}</div>
+                        <div class="text-xl font-black text-violet-600">{{ stats?.total_attendees || 0 }}</div>
                     </div>
                 </div>
             </div>
@@ -181,7 +181,7 @@ const deleteMeeting = (meeting) => {
             </div>
 
             <!-- DAFTAR RAPAT -->
-            <div v-if="meetings.data && meetings.data.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div v-if="meetings && meetings.data && meetings.data.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 <div
                     v-for="meeting in meetings.data"
                     :key="meeting.id"
@@ -218,7 +218,7 @@ const deleteMeeting = (meeting) => {
 
                             <div v-if="meeting.time_start" class="flex items-center gap-2">
                                 <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                <span>Pukul {{ meeting.time_start }} {{ meeting.time_end ? 's.d. ' . meeting.time_end : '' }} WIB</span>
+                                <span>Pukul {{ meeting.time_start }}{{ meeting.time_end ? (' s.d. ' + meeting.time_end) : '' }} WIB</span>
                             </div>
 
                             <div v-if="meeting.location" class="flex items-center gap-2">
