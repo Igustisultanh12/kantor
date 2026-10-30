@@ -4,7 +4,7 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import Swal from 'sweetalert2';
 import {
-    buildPerwiraTable, buildDivisiTexts, resolvePerwiraStart, resolveDivisiStart, findPerwiraOnDay, findDivisiOnDay,
+    buildPerwiraTable, buildDivisiTexts, resolvePerwiraPhase, resolveDivisiStart, phaseFromTable, findDivisiOnDay,
 } from '@/Utils/spJagaRotation';
 
 const props = defineProps({
@@ -271,14 +271,15 @@ const generateJadwalJaga = (showNotification = true) => {
     const startDay = (mulaiParts[0] === y && mulaiParts[1] === m && mulaiParts[2] <= endDay) ? mulaiParts[2] : 1;
     const startDate = `${y}-${String(m).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`;
 
-    // Titik awal: lanjutan dari SP sebelumnya; jika tidak ada, pertahankan yang jaga di hari pertama saat ini
-    let perwiraStart = resolvePerwiraStart(props.rotationAnchor, form.perwiras, startDate);
-    if (perwiraStart === null) perwiraStart = Math.max(0, findPerwiraOnDay(form.perwiras, startDay));
+    // Titik awal: lanjutan dari SP sebelumnya; jika tidak ada, pertahankan posisi siklus tabel saat ini
+    const perwiraPhase = props.rotationAnchor
+        ? resolvePerwiraPhase(props.rotationAnchor, form.perwiras, startDate)
+        : (phaseFromTable(form.perwiras, y, m, startDate) ?? resolvePerwiraPhase(null, form.perwiras, startDate));
     let divisiStart = resolveDivisiStart(props.rotationAnchor, form.anggotas.length, startDate);
     if (divisiStart === null) divisiStart = Math.max(0, findDivisiOnDay(form.anggotas, startDay));
 
-    // 1. Tanggal Perwira Jaga: giliran berurutan, bersambung dari bulan sebelumnya
-    const { rows, columns } = buildPerwiraTable(form.perwiras.length, perwiraStart, startDay, endDay);
+    // 1. Tanggal Perwira Jaga: siklus putaran penuh + putaran off bergiliran, bersambung dari bulan sebelumnya
+    const { rows, columns } = buildPerwiraTable(form.perwiras.length, perwiraPhase, startDay, endDay);
     form.perwiras.forEach((p, r) => {
         for (let colIdx = 1; colIdx <= 7; colIdx++) {
             p[`tgl_${colIdx}`] = rows[r][colIdx - 1];

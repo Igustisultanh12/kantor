@@ -248,11 +248,18 @@ class DutyRoster
         $endDay = (int) $end->format('j');
         $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
 
+        $rawStart = $sp->getAttributes()['tmt_mulai'] ?? null;
+        $start = $rawStart ? Carbon::parse($rawStart) : Carbon::create($year, $month, 1);
+
         $anchor = [
             'sp_id' => $sp->id,
             'periode_label' => (self::BULAN[$month] ?? '') . ' ' . $year,
+            'start_date' => $start->toDateString(),
             'end_date' => $end->toDateString(),
             'perwira' => null,
+            'perwiras' => [],
+            // Jadwal perwira lengkap [tanggal, index perwira] untuk melanjutkan posisi siklus (termasuk putaran off)
+            'perwira_days' => [],
             'divisi' => null,
         ];
 
@@ -261,6 +268,7 @@ class DutyRoster
         $lastIdx = null;
         $lastDay = 0;
         foreach ($perwiras as $i => $p) {
+            $anchor['perwiras'][] = ['nama' => $p->nama, 'nrp' => $p->nrp];
             $values = [];
             for ($k = 1; $k <= 7; $k++) {
                 $values[] = $p->{"tgl_{$k}"};
@@ -269,6 +277,7 @@ class DutyRoster
                 $values = array_merge($values, $p->tgl_list);
             }
             foreach (self::dayNumbers($values, min($endDay, $daysInMonth)) as $d) {
+                $anchor['perwira_days'][] = [Carbon::create($year, $month, $d)->toDateString(), $i];
                 if ($d > $lastDay) {
                     $lastDay = $d;
                     $lastIdx = $i;

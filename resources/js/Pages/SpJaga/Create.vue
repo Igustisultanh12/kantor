@@ -3,7 +3,9 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ref, computed, watch } from 'vue';
 import Swal from 'sweetalert2';
-import { buildPerwiraTable, buildDivisiTexts, resolvePerwiraStart, resolveDivisiStart } from '@/Utils/spJagaRotation';
+import {
+    buildPerwiraTable, buildDivisiTexts, resolvePerwiraPhase, resolveDivisiStart, defaultDivisiStart, perwiraAtPhase, phaseForPerwira,
+} from '@/Utils/spJagaRotation';
 
 const props = defineProps({
     personels: Array,
@@ -44,7 +46,7 @@ const emptyTgl = { tgl_1: '-', tgl_2: '-', tgl_3: '-', tgl_4: '-', tgl_5: '-', t
 const defaultPerwiras = [
     { user_id: '', nama: 'Bambang', pangkat_korps: 'Peltu Saa', nrp: '82068' },
     { user_id: '', nama: 'Rizal Nurdin W.', pangkat_korps: 'Kapten Laut (P)', nrp: '20873/P' },
-    { user_id: '', nama: 'Bayu Aji K', pangkat_korps: 'Kapten Laut (P)', nrp: '22029/P' },
+    { user_id: '', nama: 'Bayu Aji K', pangkat_korps: 'Kapten Laut (P)', nrp: '21103/P' },
     { user_id: '', nama: 'Indra Gunawan', pangkat_korps: 'Kapten Laut (P)', nrp: '19739/P' },
     { user_id: '', nama: 'Erwan Junaidi', pangkat_korps: 'Peltu Ttg', nrp: '84025' },
     { user_id: '', nama: "Agus Sub'chan", pangkat_korps: 'Lettu Laut (T)', nrp: '25724/P' },
@@ -256,19 +258,24 @@ const hasCol7 = computed(() => {
 
 let isSyncingDates = false;
 
-// Index perwira & divisi yang jaga pada tanggal TMT mulai (titik awal rotasi bulan ini)
-const perwiraStart = ref(0);
+// Posisi siklus perwira & index divisi pada tanggal TMT mulai (titik awal rotasi bulan ini)
+const perwiraPhase = ref(0);
 const divisiStart = ref(0);
+
+// Pilihan "Jaga hari pertama": tampilkan perwira pada posisi siklus, pilih = maju ke gilirannya
+const perwiraStart = computed({
+    get: () => perwiraAtPhase(form.perwiras.length, perwiraPhase.value),
+    set: (idx) => { perwiraPhase.value = phaseForPerwira(form.perwiras.length, perwiraPhase.value, idx); },
+});
 
 // Lanjutkan rotasi dari SP sebelumnya sesuai tanggal TMT mulai yang dipilih
 const syncStartFromAnchor = () => {
-    const p = resolvePerwiraStart(rotationAnchor, form.perwiras, form.tmt_mulai);
-    if (p !== null) perwiraStart.value = p;
-    const d = resolveDivisiStart(rotationAnchor, form.anggotas.length, form.tmt_mulai);
-    if (d !== null) divisiStart.value = d;
+    perwiraPhase.value = resolvePerwiraPhase(rotationAnchor, form.perwiras, form.tmt_mulai);
+    divisiStart.value = resolveDivisiStart(rotationAnchor, form.anggotas.length, form.tmt_mulai)
+        ?? defaultDivisiStart(form.anggotas.length, form.tmt_mulai);
 };
 
-// Fungsi Otomatis Hitung Ulang Tanggal Jaga Perwira & Anggota (rotasi berurutan, bersambung antar-bulan)
+// Fungsi Otomatis Hitung Ulang Tanggal Jaga Perwira & Anggota (alur siklus SP Jaga, bersambung antar-bulan)
 const generateJadwalJaga = (showNotification = true) => {
     let y = parseInt(form.tahun, 10);
     let m = parseInt(form.bulan, 10);
@@ -303,8 +310,8 @@ const generateJadwalJaga = (showNotification = true) => {
 
     const mName = (monthNames[m] || '').toUpperCase();
 
-    // 1. Tanggal Perwira Jaga: giliran berurutan mulai dari perwiraStart
-    const { rows, columns } = buildPerwiraTable(form.perwiras.length, perwiraStart.value, startDay, endDay);
+    // 1. Tanggal Perwira Jaga: siklus putaran penuh + putaran off bergiliran, mulai dari perwiraPhase
+    const { rows, columns } = buildPerwiraTable(form.perwiras.length, perwiraPhase.value, startDay, endDay);
     form.perwiras.forEach((p, r) => {
         for (let colIdx = 1; colIdx <= 7; colIdx++) {
             p[`tgl_${colIdx}`] = rows[r][colIdx - 1];
@@ -492,12 +499,12 @@ const submit = () => {
                     <!-- Info Lanjutan Rotasi dari SP Sebelumnya -->
                     <div v-if="rotationAnchor" class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-900">
                         <span class="font-black uppercase tracking-wider">Rotasi dilanjutkan dari SP {{ rotationAnchor.periode_label }}:</span>
-                        <span v-if="rotationAnchor.perwira"> hari terakhir dijaga {{ rotationAnchor.perwira.last_nama }}, giliran berikutnya {{ rotationAnchor.perwira.nama }}.</span>
-                        <span v-if="rotationAnchor.divisi"> Divisi terakhir: Divisi {{ rotationAnchor.divisi.last_divisi_no }}.</span>
+                        <span v-if="rotationAnchor.perwira"> hari terakhir dijaga {{ rotationAnchor.perwira.last_nama }}, hari pertama periode ini {{ form.perwiras[perwiraStart]?.nama || '-' }}.</span>
+                        <span v-if="rotationAnchor.divisi"> Divisi terakhir: Divisi {{ rotationAnchor.divisi.last_divisi_no }}, hari pertama Divisi {{ form.anggotas[divisiStart]?.divisi_no }}.</span>
                         Susunan personel disalin dari SP tersebut.
                     </div>
                     <div v-else class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900">
-                        Belum ada SP Jaga sebelumnya. Pilih perwira & divisi yang jaga pada hari pertama di Lampiran 1 dan 2.
+                        Belum ada SP Jaga sebelumnya. Rotasi dihitung dari siklus SP resmi (putaran penuh 5 Agustus 2026); periksa perwira & divisi hari pertama di Lampiran 1 dan 2.
                     </div>
 
                     <!-- Dedicated Card: Pemilihan Perwira Tertua (Pater / Penerima Perintah) -->
