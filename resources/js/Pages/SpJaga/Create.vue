@@ -3,11 +3,13 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ref, computed, watch } from 'vue';
 import Swal from 'sweetalert2';
+import { buildPerwiraTable, buildDivisiTexts, resolvePerwiraStart, resolveDivisiStart } from '@/Utils/spJagaRotation';
 
 const props = defineProps({
     personels: Array,
     defaultMonth: Number,
     defaultYear: Number,
+    previous: Object, // SP terakhir: daftar personel + anchor rotasi (null jika belum ada SP)
 });
 
 const monthNames = [
@@ -36,101 +38,72 @@ const daysInInitMonth = new Date(initYear, initMonth, 0).getDate();
 const initPrevMonth = initMonth === 1 ? 12 : initMonth - 1;
 const initPrevYear = initMonth === 1 ? initYear - 1 : initYear;
 const daysInInitPrevMonth = new Date(initPrevYear, initPrevMonth, 0).getDate();
-const initMonthNameUpper = (monthNames[initMonth] || '').toUpperCase();
+const emptyTgl = { tgl_1: '-', tgl_2: '-', tgl_3: '-', tgl_4: '-', tgl_5: '-', tgl_6: '-', tgl_7: '-' };
 
-// Definisi Pola Rotasi Matriks Perwira Jaga (Mega-siklus 49 hari / 8 siklus kolom)
-// Berdasarkan perbandingan resmi jadwal jaga Sintel Kodaeral V
-const cycleDefs = [
-    { skip: null, rows: [0, 1, 2, 3, 4, 5, 6] },
-    { skip: 0,    rows: [1, 2, 3, 4, 5, 6] },
-    { skip: 1,    rows: [0, 2, 3, 4, 5, 6] },
-    { skip: 2,    rows: [0, 1, 3, 4, 5, 6] },
-    { skip: 3,    rows: [0, 1, 2, 4, 5, 6] },
-    { skip: 4,    rows: [0, 1, 2, 3, 5, 6] },
-    { skip: 5,    rows: [0, 1, 2, 3, 4, 6] },
-    { skip: 6,    rows: [0, 1, 2, 3, 4, 5] },
+// Daftar default jika belum ada SP sebelumnya (Format Resmi PDF)
+const defaultPerwiras = [
+    { user_id: '', nama: 'Bambang', pangkat_korps: 'Peltu Saa', nrp: '82068' },
+    { user_id: '', nama: 'Rizal Nurdin W.', pangkat_korps: 'Kapten Laut (P)', nrp: '20873/P' },
+    { user_id: '', nama: 'Bayu Aji K', pangkat_korps: 'Kapten Laut (P)', nrp: '22029/P' },
+    { user_id: '', nama: 'Indra Gunawan', pangkat_korps: 'Kapten Laut (P)', nrp: '19739/P' },
+    { user_id: '', nama: 'Erwan Junaidi', pangkat_korps: 'Peltu Ttg', nrp: '84025' },
+    { user_id: '', nama: "Agus Sub'chan", pangkat_korps: 'Lettu Laut (T)', nrp: '25724/P' },
+    { user_id: '', nama: 'Agus Musonif', pangkat_korps: 'Lettu Laut (P)', nrp: '26327/P' },
 ];
 
-const mod = (n, m) => ((n % m) + m) % m;
+const defaultAnggotas = [
+    {
+        divisi_no: 1,
+        anggota_items: [
+            { user_id: '', nama: 'HASAN BASRI', pangkat_korps: 'PELDA MAR', nrp_nip: '106737', role_jaga: 'BAGA' },
+            { user_id: '', nama: 'ADITYA H.', pangkat_korps: 'SERMA KOM', nrp_nip: '115980', role_jaga: 'ANGGOTA' },
+            { user_id: '', nama: 'ACHMAD H.', pangkat_korps: 'KOPKA LIS', nrp_nip: '89853', role_jaga: 'ANGGOTA' },
+            { user_id: '', nama: 'SUNARKO, S.H', pangkat_korps: 'PENATA III/C', nrp_nip: '197308261994011001', role_jaga: 'ANGGOTA' },
+        ]
+    },
+    {
+        divisi_no: 2,
+        anggota_items: [
+            { user_id: '', nama: 'ANDIS Y.', pangkat_korps: 'SERKA EKO', nrp_nip: '114153', role_jaga: 'BAGA' },
+            { user_id: '', nama: 'PUJIANTO', pangkat_korps: 'SERKA TKU', nrp_nip: '117387', role_jaga: 'ANGGOTA' },
+            { user_id: '', nama: 'RINO Y', pangkat_korps: 'KOPTU TLG', nrp_nip: '113623', role_jaga: 'ANGGOTA' },
+            { user_id: '', nama: 'HADIS S.', pangkat_korps: 'PENDA TK I III/B', nrp_nip: '197101311994031002', role_jaga: 'ANGGOTA' },
+        ]
+    },
+    {
+        divisi_no: 3,
+        anggota_items: [
+            { user_id: '', nama: 'HARTANTO', pangkat_korps: 'PELTU NAV', nrp_nip: '98486', role_jaga: 'BAGA' },
+            { user_id: '', nama: 'DWI PURNOMO', pangkat_korps: 'SERTU TTU', nrp_nip: '105224', role_jaga: 'ANGGOTA' },
+            { user_id: '', nama: 'RUMADI', pangkat_korps: 'SERTU TTU', nrp_nip: '88386', role_jaga: 'ANGGOTA' },
+            { user_id: '', nama: 'EKO YANUAR', pangkat_korps: 'PENG TK I II/D', nrp_nip: '197201141998031003', role_jaga: 'ANGGOTA' },
+        ]
+    },
+    {
+        divisi_no: 4,
+        anggota_items: [
+            { user_id: '', nama: 'TRI WINDARTO', pangkat_korps: 'SERMA PDK', nrp_nip: '114222', role_jaga: 'BAGA' },
+            { user_id: '', nama: 'KARIYADI', pangkat_korps: 'SERKA JAS', nrp_nip: '85822', role_jaga: 'ANGGOTA' },
+            { user_id: '', nama: 'IFAN SUSANTO', pangkat_korps: 'KOPKA MES', nrp_nip: '99018', role_jaga: 'ANGGOTA' },
+            { user_id: '', nama: 'SAGUS N', pangkat_korps: 'PENATA TK I III/D', nrp_nip: '19701221994021001', role_jaga: 'ANGGOTA' },
+        ]
+    },
+    {
+        divisi_no: 5,
+        anggota_items: [
+            { user_id: '', nama: 'RIBUT JOHAN P', pangkat_korps: 'SERMA KEU', nrp_nip: '112631', role_jaga: 'BAGA' },
+            { user_id: '', nama: 'HENDRA S', pangkat_korps: 'SERMA KOM', nrp_nip: '114931', role_jaga: 'ANGGOTA' },
+            { user_id: '', nama: 'HERI WARSITO', pangkat_korps: 'PENDA TK I III/B', nrp_nip: '197502022002122006', role_jaga: 'ANGGOTA' },
+            { user_id: '', nama: 'GUNAWAN', pangkat_korps: 'PENDA III/A', nrp_nip: '197810062005011005', role_jaga: 'ANGGOTA' },
+        ]
+    },
+];
 
-const getDaysDiff = (y, m, d, refY, refM, refD) => {
-    const utc1 = Date.UTC(y, m - 1, d);
-    const utc2 = Date.UTC(refY, refM - 1, refD);
-    return Math.floor((utc1 - utc2) / (1000 * 60 * 60 * 24));
-};
-
-const calculatePerwiraMatrix = (year, month, endDay) => {
-    const monthDaysInfo = [];
-    for (let d = 1; d <= endDay; d++) {
-        const diff = getDaysDiff(year, month, d, 2026, 8, 5);
-        const megaId = Math.floor(diff / 49);
-        const remD = mod(diff, 49);
-
-        let cIdx = 0;
-        let row = 0;
-        let skip = null;
-        let remAcc = remD;
-        for (let i = 0; i < cycleDefs.length; i++) {
-            if (remAcc < cycleDefs[i].rows.length) {
-                cIdx = i;
-                row = cycleDefs[i].rows[remAcc];
-                skip = cycleDefs[i].skip;
-                break;
-            }
-            remAcc -= cycleDefs[i].rows.length;
-        }
-        const globalCycleId = megaId * 8 + cIdx;
-        monthDaysInfo.push({
-            day: d,
-            globalCycleId,
-            cIdx,
-            row,
-            skip,
-        });
-    }
-
-    const cyclesInMonth = [];
-    for (const info of monthDaysInfo) {
-        if (cyclesInMonth.length === 0 || cyclesInMonth[cyclesInMonth.length - 1].globalCycleId !== info.globalCycleId) {
-            cyclesInMonth.push({
-                globalCycleId: info.globalCycleId,
-                cIdx: info.cIdx,
-                skip: info.skip,
-                days: {},
-            });
-        }
-        cyclesInMonth[cyclesInMonth.length - 1].days[info.row] = String(info.day).padStart(2, '0');
-    }
-
-    const table = Array.from({ length: 7 }, () => Array(7).fill('-'));
-    for (let colIdx = 0; colIdx < cyclesInMonth.length && colIdx < 7; colIdx++) {
-        const cyc = cyclesInMonth[colIdx];
-        for (let r = 0; r < 7; r++) {
-            if (cyc.days[r] !== undefined) {
-                table[r][colIdx] = cyc.days[r];
-            } else {
-                table[r][colIdx] = '-';
-            }
-        }
-    }
-    return table;
-};
-
-const calculateAnggotaDates = (year, month, endDay) => {
-    const mName = (monthNames[month] || '').toUpperCase();
-    const divDates = Array.from({ length: 5 }, () => []);
-
-    for (let d = 1; d <= endDay; d++) {
-        const diff = getDaysDiff(year, month, d, 2026, 8, 1);
-        const divIdx = mod(3 + diff, 5);
-        divDates[divIdx].push(String(d).padStart(2, '0'));
-    }
-
-    return divDates.map(dates => `${dates.join(', ')} ${mName} ${year}`);
-};
-
-const initPerwiraTable = calculatePerwiraMatrix(initYear, initMonth, daysInInitMonth);
-const initAnggotaDates = calculateAnggotaDates(initYear, initMonth, daysInInitMonth);
+// Personel diambil dari SP sebelumnya agar susunan & urutan rotasi berlanjut
+const prev = props.previous || null;
+const rotationAnchor = prev?.anchor || null;
+const basePerwiras = prev?.perwiras?.length ? prev.perwiras : defaultPerwiras;
+const baseAnggotas = prev?.anggotas?.length ? prev.anggotas : defaultAnggotas;
 
 // Data Form SP Jaga
 const form = useForm({
@@ -143,75 +116,18 @@ const form = useForm({
     ttd_type: 'tte', // 'tte' atau 'manual'
     
     // Perwira Tertua (Pater / Penerima Perintah)
-    perwira_tertua_user_id: '',
-    perwira_tertua_nama: 'Indra Gunawan',
-    perwira_tertua_pangkat_nrp: 'Kapten Laut (P) NRP 19739/P',
-    perwira_tertua_jabatan: 'Dan Unit 1 Lid Den Intel Kodaeral V',
-    
-    // Perwira Jaga (Default 7 Baris Sesuai Format Resmi PDF)
-    perwiras: [
-        { user_id: '', nama: 'Bambang', pangkat_korps: 'Peltu Saa', nrp: '82068', tgl_1: initPerwiraTable[0][0], tgl_2: initPerwiraTable[0][1], tgl_3: initPerwiraTable[0][2], tgl_4: initPerwiraTable[0][3], tgl_5: initPerwiraTable[0][4], tgl_6: initPerwiraTable[0][5], tgl_7: initPerwiraTable[0][6] },
-        { user_id: '', nama: 'Rizal Nurdin W.', pangkat_korps: 'Kapten Laut (P)', nrp: '20873/P', tgl_1: initPerwiraTable[1][0], tgl_2: initPerwiraTable[1][1], tgl_3: initPerwiraTable[1][2], tgl_4: initPerwiraTable[1][3], tgl_5: initPerwiraTable[1][4], tgl_6: initPerwiraTable[1][5], tgl_7: initPerwiraTable[1][6] },
-        { user_id: '', nama: 'Bayu Aji K', pangkat_korps: 'Kapten Laut (P)', nrp: '22029/P', tgl_1: initPerwiraTable[2][0], tgl_2: initPerwiraTable[2][1], tgl_3: initPerwiraTable[2][2], tgl_4: initPerwiraTable[2][3], tgl_5: initPerwiraTable[2][4], tgl_6: initPerwiraTable[2][5], tgl_7: initPerwiraTable[2][6] },
-        { user_id: '', nama: 'Indra Gunawan', pangkat_korps: 'Kapten Laut (P)', nrp: '19739/P', tgl_1: initPerwiraTable[3][0], tgl_2: initPerwiraTable[3][1], tgl_3: initPerwiraTable[3][2], tgl_4: initPerwiraTable[3][3], tgl_5: initPerwiraTable[3][4], tgl_6: initPerwiraTable[3][5], tgl_7: initPerwiraTable[3][6] },
-        { user_id: '', nama: 'Erwan Junaidi', pangkat_korps: 'Peltu Ttg', nrp: '84025', tgl_1: initPerwiraTable[4][0], tgl_2: initPerwiraTable[4][1], tgl_3: initPerwiraTable[4][2], tgl_4: initPerwiraTable[4][3], tgl_5: initPerwiraTable[4][4], tgl_6: initPerwiraTable[4][5], tgl_7: initPerwiraTable[4][6] },
-        { user_id: '', nama: "Agus Sub'chan", pangkat_korps: 'Lettu Laut (T)', nrp: '25724/P', tgl_1: initPerwiraTable[5][0], tgl_2: initPerwiraTable[5][1], tgl_3: initPerwiraTable[5][2], tgl_4: initPerwiraTable[5][3], tgl_5: initPerwiraTable[5][4], tgl_6: initPerwiraTable[5][5], tgl_7: initPerwiraTable[5][6] },
-        { user_id: '', nama: 'Agus Musonif', pangkat_korps: 'Lettu Laut (P)', nrp: '26327/P', tgl_1: initPerwiraTable[6][0], tgl_2: initPerwiraTable[6][1], tgl_3: initPerwiraTable[6][2], tgl_4: initPerwiraTable[6][3], tgl_5: initPerwiraTable[6][4], tgl_6: initPerwiraTable[6][5], tgl_7: initPerwiraTable[6][6] },
-    ],
+    perwira_tertua_user_id: prev?.perwira_tertua_user_id || '',
+    perwira_tertua_nama: prev?.perwira_tertua_nama || 'Indra Gunawan',
+    perwira_tertua_pangkat_nrp: prev?.perwira_tertua_pangkat_nrp || 'Kapten Laut (P) NRP 19739/P',
+    perwira_tertua_jabatan: prev?.perwira_tertua_jabatan || 'Dan Unit 1 Lid Den Intel Kodaeral V',
 
-    // Anggota Jaga Divisi (Default 5 Divisi Sesuai Format Resmi PDF)
-    anggotas: [
-        {
-            divisi_no: 1,
-            tanggal_list_text: initAnggotaDates[0],
-            anggota_items: [
-                { user_id: '', nama: 'HASAN BASRI', pangkat_korps: 'PELDA MAR', nrp_nip: '106737', role_jaga: 'BAGA' },
-                { user_id: '', nama: 'ADITYA H.', pangkat_korps: 'SERMA KOM', nrp_nip: '115980', role_jaga: 'ANGGOTA' },
-                { user_id: '', nama: 'ACHMAD H.', pangkat_korps: 'KOPKA LIS', nrp_nip: '89853', role_jaga: 'ANGGOTA' },
-                { user_id: '', nama: 'SUNARKO, S.H', pangkat_korps: 'PENATA III/C', nrp_nip: '197308261994011001', role_jaga: 'ANGGOTA' },
-            ]
-        },
-        {
-            divisi_no: 2,
-            tanggal_list_text: initAnggotaDates[1],
-            anggota_items: [
-                { user_id: '', nama: 'ANDIS Y.', pangkat_korps: 'SERKA EKO', nrp_nip: '114153', role_jaga: 'BAGA' },
-                { user_id: '', nama: 'PUJIANTO', pangkat_korps: 'SERKA TKU', nrp_nip: '117387', role_jaga: 'ANGGOTA' },
-                { user_id: '', nama: 'RINO Y', pangkat_korps: 'KOPTU TLG', nrp_nip: '113623', role_jaga: 'ANGGOTA' },
-                { user_id: '', nama: 'HADIS S.', pangkat_korps: 'PENDA TK I III/B', nrp_nip: '197101311994031002', role_jaga: 'ANGGOTA' },
-            ]
-        },
-        {
-            divisi_no: 3,
-            tanggal_list_text: initAnggotaDates[2],
-            anggota_items: [
-                { user_id: '', nama: 'HARTANTO', pangkat_korps: 'PELTU NAV', nrp_nip: '98486', role_jaga: 'BAGA' },
-                { user_id: '', nama: 'DWI PURNOMO', pangkat_korps: 'SERTU TTU', nrp_nip: '105224', role_jaga: 'ANGGOTA' },
-                { user_id: '', nama: 'RUMADI', pangkat_korps: 'SERTU TTU', nrp_nip: '88386', role_jaga: 'ANGGOTA' },
-                { user_id: '', nama: 'EKO YANUAR', pangkat_korps: 'PENG TK I II/D', nrp_nip: '197201141998031003', role_jaga: 'ANGGOTA' },
-            ]
-        },
-        {
-            divisi_no: 4,
-            tanggal_list_text: initAnggotaDates[3],
-            anggota_items: [
-                { user_id: '', nama: 'TRI WINDARTO', pangkat_korps: 'SERMA PDK', nrp_nip: '114222', role_jaga: 'BAGA' },
-                { user_id: '', nama: 'KARIYADI', pangkat_korps: 'SERKA JAS', nrp_nip: '85822', role_jaga: 'ANGGOTA' },
-                { user_id: '', nama: 'IFAN SUSANTO', pangkat_korps: 'KOPKA MES', nrp_nip: '99018', role_jaga: 'ANGGOTA' },
-                { user_id: '', nama: 'SAGUS N', pangkat_korps: 'PENATA TK I III/D', nrp_nip: '19701221994021001', role_jaga: 'ANGGOTA' },
-            ]
-        },
-        {
-            divisi_no: 5,
-            tanggal_list_text: initAnggotaDates[4],
-            anggota_items: [
-                { user_id: '', nama: 'RIBUT JOHAN P', pangkat_korps: 'SERMA KEU', nrp_nip: '112631', role_jaga: 'BAGA' },
-                { user_id: '', nama: 'HENDRA S', pangkat_korps: 'SERMA KOM', nrp_nip: '114931', role_jaga: 'ANGGOTA' },
-                { user_id: '', nama: 'HERI WARSITO', pangkat_korps: 'PENDA TK I III/B', nrp_nip: '197502022002122006', role_jaga: 'ANGGOTA' },
-                { user_id: '', nama: 'GUNAWAN', pangkat_korps: 'PENDA III/A', nrp_nip: '197810062005011005', role_jaga: 'ANGGOTA' },
-            ]
-        },
-    ]
+    // Perwira Jaga & Anggota Divisi (tanggal diisi oleh generateJadwalJaga)
+    perwiras: basePerwiras.map(p => ({ ...p, user_id: p.user_id || '', ...emptyTgl })),
+    anggotas: baseAnggotas.map((a, idx) => ({
+        divisi_no: a.divisi_no || idx + 1,
+        tanggal_list_text: '',
+        anggota_items: (a.anggota_items || []).map(item => ({ ...item })),
+    })),
 });
 
 // Menetapkan baris perwira jaga sebagai Perwira Tertua
@@ -340,7 +256,19 @@ const hasCol7 = computed(() => {
 
 let isSyncingDates = false;
 
-// Fungsi Otomatis Hitung Ulang Tanggal Jaga Perwira & Anggota (Sesuai Perbandingan Siklus Resmi)
+// Index perwira & divisi yang jaga pada tanggal TMT mulai (titik awal rotasi bulan ini)
+const perwiraStart = ref(0);
+const divisiStart = ref(0);
+
+// Lanjutkan rotasi dari SP sebelumnya sesuai tanggal TMT mulai yang dipilih
+const syncStartFromAnchor = () => {
+    const p = resolvePerwiraStart(rotationAnchor, form.perwiras, form.tmt_mulai);
+    if (p !== null) perwiraStart.value = p;
+    const d = resolveDivisiStart(rotationAnchor, form.anggotas.length, form.tmt_mulai);
+    if (d !== null) divisiStart.value = d;
+};
+
+// Fungsi Otomatis Hitung Ulang Tanggal Jaga Perwira & Anggota (rotasi berurutan, bersambung antar-bulan)
 const generateJadwalJaga = (showNotification = true) => {
     let y = parseInt(form.tahun, 10);
     let m = parseInt(form.bulan, 10);
@@ -363,6 +291,10 @@ const generateJadwalJaga = (showNotification = true) => {
         form.tmt_mulai = `${y}-${String(m).padStart(2, '0')}-01`;
     }
 
+    // Hari pertama jaga mengikuti TMT mulai jika berada di bulan yang sama
+    const mulaiParts = form.tmt_mulai.split('-').map(v => parseInt(v, 10));
+    const startDay = (mulaiParts[0] === y && mulaiParts[1] === m && mulaiParts[2] <= endDay) ? mulaiParts[2] : 1;
+
     // Tanggal Surat Dikeluarkan (Akhir Bulan Sebelumnya)
     const prevMonth = m === 1 ? 12 : m - 1;
     const prevYear = m === 1 ? y - 1 : y;
@@ -371,41 +303,43 @@ const generateJadwalJaga = (showNotification = true) => {
 
     const mName = (monthNames[m] || '').toUpperCase();
 
-    // 1. Generate Tanggal Perwira Jaga (Matriks Rotasi Kontinu Antar-Bulan)
-    if (form.perwiras && form.perwiras.length >= 7) {
-        const perwiraMatrix = calculatePerwiraMatrix(y, m, endDay);
-        for (let r = 0; r < 7; r++) {
-            for (let colIdx = 1; colIdx <= 7; colIdx++) {
-                form.perwiras[r][`tgl_${colIdx}`] = perwiraMatrix[r][colIdx - 1];
-            }
+    // 1. Tanggal Perwira Jaga: giliran berurutan mulai dari perwiraStart
+    const { rows, columns } = buildPerwiraTable(form.perwiras.length, perwiraStart.value, startDay, endDay);
+    form.perwiras.forEach((p, r) => {
+        for (let colIdx = 1; colIdx <= 7; colIdx++) {
+            p[`tgl_${colIdx}`] = rows[r][colIdx - 1];
         }
-        for (let i = 7; i < form.perwiras.length; i++) {
-            for (let colIdx = 1; colIdx <= 7; colIdx++) {
-                form.perwiras[i][`tgl_${colIdx}`] = '-';
-            }
-        }
-    }
+    });
 
-    // 2. Generate Tanggal Anggota Jaga 5 Divisi (Rotasi Kontinu Antar-Bulan)
-    if (form.anggotas && form.anggotas.length >= 5) {
-        const anggotaDates = calculateAnggotaDates(y, m, endDay);
-        form.anggotas.forEach((div, idx) => {
-            if (idx < 5) {
-                div.tanggal_list_text = anggotaDates[idx];
-            }
+    // 2. Tanggal Anggota Jaga per Divisi: giliran berurutan mulai dari divisiStart
+    const divisiTexts = buildDivisiTexts(form.anggotas.length, divisiStart.value, startDay, endDay, mName, y);
+    form.anggotas.forEach((div, idx) => {
+        div.tanggal_list_text = divisiTexts[idx];
+    });
+
+    if (columns > 7) {
+        Swal.fire({
+            title: 'Kolom Tanggal Tidak Cukup',
+            text: `Dengan ${form.perwiras.length} perwira dibutuhkan ${columns} kolom tanggal, sedangkan format lampiran maksimal 7 kolom. Tambahkan perwira atau sesuaikan tanggal secara manual.`,
+            icon: 'warning',
+            confirmButtonColor: '#2563eb',
         });
-    }
-
-    if (showNotification) {
+    } else if (showNotification) {
         Swal.fire({
             title: 'Jadwal Jaga Berhasil Di-generate',
-            text: `Tanggal jaga perwira dan anggota telah dihitung otomatis untuk periode 1 s.d. ${endDay} ${mName} ${y}.`,
+            text: `Tanggal jaga perwira dan anggota telah dihitung otomatis untuk periode ${startDay} s.d. ${endDay} ${mName} ${y}.`,
             icon: 'success',
             confirmButtonColor: '#2563eb',
             timer: 2000,
             showConfirmButton: false,
         });
     }
+};
+
+// Tombol Generate: hitung ulang titik awal dari SP sebelumnya, lalu susun tanggal
+const regenerateFromAnchor = () => {
+    syncStartFromAnchor();
+    generateJadwalJaga(true);
 };
 
 // Fungsi Otomatis Hitung Ulang Tanggal Berdasarkan Pilihan Bulan & Tahun
@@ -419,6 +353,7 @@ const recalculateDatesForMonth = () => {
     form.tmt_mulai = `${y}-${String(b).padStart(2, '0')}-01`;
     form.tmt_selesai = `${y}-${String(b).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
 
+    syncStartFromAnchor();
     generateJadwalJaga(false);
 
     setTimeout(() => {
@@ -449,6 +384,10 @@ watch(() => form.tmt_mulai, (newVal) => {
         }
     }
 });
+
+// Isi tanggal awal saat form dibuka (melanjutkan rotasi SP sebelumnya)
+syncStartFromAnchor();
+generateJadwalJaga(false);
 
 const submit = () => {
     form.post(route('sp-jaga.store'), {
@@ -531,7 +470,7 @@ const submit = () => {
                                 />
                                 <button 
                                     type="button" 
-                                    @click="generateJadwalJaga(true)" 
+                                    @click="regenerateFromAnchor"
                                     class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-extrabold text-xs rounded-xl shadow-sm transition flex items-center gap-1.5 shrink-0 cursor-pointer"
                                     title="Generate otomatis tanggal jaga perwira dan anggota sesuai pola rotasi dinas"
                                 >
@@ -548,6 +487,17 @@ const submit = () => {
                             <label class="text-xs font-bold text-slate-700 block">Tanggal Dikeluarkan di Surabaya</label>
                             <input type="date" v-model="form.tanggal_surat" class="w-full p-2.5 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500" />
                         </div>
+                    </div>
+
+                    <!-- Info Lanjutan Rotasi dari SP Sebelumnya -->
+                    <div v-if="rotationAnchor" class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-900">
+                        <span class="font-black uppercase tracking-wider">Rotasi dilanjutkan dari SP {{ rotationAnchor.periode_label }}:</span>
+                        <span v-if="rotationAnchor.perwira"> hari terakhir dijaga {{ rotationAnchor.perwira.last_nama }}, giliran berikutnya {{ rotationAnchor.perwira.nama }}.</span>
+                        <span v-if="rotationAnchor.divisi"> Divisi terakhir: Divisi {{ rotationAnchor.divisi.last_divisi_no }}.</span>
+                        Susunan personel disalin dari SP tersebut.
+                    </div>
+                    <div v-else class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900">
+                        Belum ada SP Jaga sebelumnya. Pilih perwira & divisi yang jaga pada hari pertama di Lampiran 1 dan 2.
                     </div>
 
                     <!-- Dedicated Card: Pemilihan Perwira Tertua (Pater / Penerima Perintah) -->
@@ -679,6 +629,16 @@ const submit = () => {
                             <p class="text-xs text-slate-500">Daftar perwira siaga dan jadwal rotasi tanggal dinas selama bulan berjalan. Anda juga dapat memilih Perwira Tertua (Pater) langsung dari tabel.</p>
                         </div>
                         <div class="flex items-center gap-2">
+                            <label class="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                                Jaga hari pertama:
+                                <select
+                                    v-model.number="perwiraStart"
+                                    @change="generateJadwalJaga(false)"
+                                    class="p-1.5 text-xs border border-slate-300 rounded-lg bg-slate-50 font-bold text-blue-700"
+                                >
+                                    <option v-for="(p, idx) in form.perwiras" :key="'ps-' + idx" :value="idx">{{ idx + 1 }}. {{ p.nama || '(tanpa nama)' }}</option>
+                                </select>
+                            </label>
                             <button 
                                 type="button" 
                                 @click="showCol7 = !showCol7" 
@@ -779,9 +739,21 @@ const submit = () => {
 
                 <!-- BAGIAN 3: DAFTAR ANGGOTA JAGA DIVISI (LAMPIRAN 2) -->
                 <div class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xs space-y-6">
-                    <div class="border-b border-slate-100 pb-4">
-                        <h2 class="text-base font-extrabold text-slate-900">3. Lampiran 2: Daftar Nama Anggota Jaga (5 Kelompok Divisi)</h2>
-                        <p class="text-xs text-slate-500">Kelompok regu divisi jaga (1 BAGA + 3 Anggota per regu) dan jadwal tanggal bertugas.</p>
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                        <div>
+                            <h2 class="text-base font-extrabold text-slate-900">3. Lampiran 2: Daftar Nama Anggota Jaga (5 Kelompok Divisi)</h2>
+                            <p class="text-xs text-slate-500">Kelompok regu divisi jaga (1 BAGA + 3 Anggota per regu) dan jadwal tanggal bertugas.</p>
+                        </div>
+                        <label class="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                            Divisi jaga hari pertama:
+                            <select
+                                v-model.number="divisiStart"
+                                @change="generateJadwalJaga(false)"
+                                class="p-1.5 text-xs border border-slate-300 rounded-lg bg-slate-50 font-bold text-blue-700"
+                            >
+                                <option v-for="(d, idx) in form.anggotas" :key="'ds-' + idx" :value="idx">Divisi {{ d.divisi_no }}</option>
+                            </select>
+                        </label>
                     </div>
 
                     <div class="space-y-6">

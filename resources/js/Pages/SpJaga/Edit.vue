@@ -3,10 +3,14 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import Swal from 'sweetalert2';
+import {
+    buildPerwiraTable, buildDivisiTexts, resolvePerwiraStart, resolveDivisiStart, findPerwiraOnDay, findDivisiOnDay,
+} from '@/Utils/spJagaRotation';
 
 const props = defineProps({
     spJaga: Object,
     personels: Array,
+    rotationAnchor: Object, // titik lanjut rotasi dari SP bulan sebelumnya (null jika tidak ada)
 });
 
 const monthNames = [
@@ -222,98 +226,6 @@ const removeAnggotaFromDivisi = (divIdx, itemIdx) => {
     }
 };
 
-
-// Definisi Pola Rotasi Matriks Perwira Jaga (Mega-siklus 49 hari / 8 siklus kolom)
-// Berdasarkan perbandingan resmi jadwal jaga Sintel Kodaeral V
-const cycleDefs = [
-    { skip: null, rows: [0, 1, 2, 3, 4, 5, 6] },
-    { skip: 0,    rows: [1, 2, 3, 4, 5, 6] },
-    { skip: 1,    rows: [0, 2, 3, 4, 5, 6] },
-    { skip: 2,    rows: [0, 1, 3, 4, 5, 6] },
-    { skip: 3,    rows: [0, 1, 2, 4, 5, 6] },
-    { skip: 4,    rows: [0, 1, 2, 3, 5, 6] },
-    { skip: 5,    rows: [0, 1, 2, 3, 4, 6] },
-    { skip: 6,    rows: [0, 1, 2, 3, 4, 5] },
-];
-
-const mod = (n, m) => ((n % m) + m) % m;
-
-const getDaysDiff = (y, m, d, refY, refM, refD) => {
-    const utc1 = Date.UTC(y, m - 1, d);
-    const utc2 = Date.UTC(refY, refM - 1, refD);
-    return Math.floor((utc1 - utc2) / (1000 * 60 * 60 * 24));
-};
-
-const calculatePerwiraMatrix = (year, month, endDay) => {
-    const monthDaysInfo = [];
-    for (let d = 1; d <= endDay; d++) {
-        const diff = getDaysDiff(year, month, d, 2026, 8, 5);
-        const megaId = Math.floor(diff / 49);
-        const remD = mod(diff, 49);
-
-        let cIdx = 0;
-        let row = 0;
-        let skip = null;
-        let remAcc = remD;
-        for (let i = 0; i < cycleDefs.length; i++) {
-            if (remAcc < cycleDefs[i].rows.length) {
-                cIdx = i;
-                row = cycleDefs[i].rows[remAcc];
-                skip = cycleDefs[i].skip;
-                break;
-            }
-            remAcc -= cycleDefs[i].rows.length;
-        }
-        const globalCycleId = megaId * 8 + cIdx;
-        monthDaysInfo.push({
-            day: d,
-            globalCycleId,
-            cIdx,
-            row,
-            skip,
-        });
-    }
-
-    const cyclesInMonth = [];
-    for (const info of monthDaysInfo) {
-        if (cyclesInMonth.length === 0 || cyclesInMonth[cyclesInMonth.length - 1].globalCycleId !== info.globalCycleId) {
-            cyclesInMonth.push({
-                globalCycleId: info.globalCycleId,
-                cIdx: info.cIdx,
-                skip: info.skip,
-                days: {},
-            });
-        }
-        cyclesInMonth[cyclesInMonth.length - 1].days[info.row] = String(info.day).padStart(2, '0');
-    }
-
-    const table = Array.from({ length: 7 }, () => Array(7).fill('-'));
-    for (let colIdx = 0; colIdx < cyclesInMonth.length && colIdx < 7; colIdx++) {
-        const cyc = cyclesInMonth[colIdx];
-        for (let r = 0; r < 7; r++) {
-            if (cyc.days[r] !== undefined) {
-                table[r][colIdx] = cyc.days[r];
-            } else {
-                table[r][colIdx] = '-';
-            }
-        }
-    }
-    return table;
-};
-
-const calculateAnggotaDates = (year, month, endDay) => {
-    const mName = (monthNames[month] || '').toUpperCase();
-    const divDates = Array.from({ length: 5 }, () => []);
-
-    for (let d = 1; d <= endDay; d++) {
-        const diff = getDaysDiff(year, month, d, 2026, 8, 1);
-        const divIdx = mod(3 + diff, 5);
-        divDates[divIdx].push(String(d).padStart(2, '0'));
-    }
-
-    return divDates.map(dates => `${dates.join(', ')} ${mName} ${year}`);
-};
-
 const showCol7 = ref(false);
 const hasCol7 = computed(() => {
     return showCol7.value || form.perwiras.some(p => p.tgl_7 && p.tgl_7.trim() !== '' && p.tgl_7.trim() !== '-');
@@ -321,7 +233,7 @@ const hasCol7 = computed(() => {
 
 let isSyncingDates = false;
 
-// Fungsi Otomatis Hitung Ulang Tanggal Jaga Perwira & Anggota (Sesuai Perbandingan Siklus Resmi)
+// Fungsi Otomatis Hitung Ulang Tanggal Jaga Perwira & Anggota (rotasi berurutan, bersambung antar-bulan)
 const generateJadwalJaga = (showNotification = true) => {
     let y = parseInt(form.tahun, 10);
     let m = parseInt(form.bulan, 10);
@@ -354,35 +266,45 @@ const generateJadwalJaga = (showNotification = true) => {
 
     const mName = (monthNames[m] || '').toUpperCase();
 
-    // 1. Generate Tanggal Perwira Jaga (Matriks Rotasi Kontinu Antar-Bulan)
-    if (form.perwiras && form.perwiras.length >= 7) {
-        const perwiraMatrix = calculatePerwiraMatrix(y, m, endDay);
-        for (let r = 0; r < 7; r++) {
-            for (let colIdx = 1; colIdx <= 7; colIdx++) {
-                form.perwiras[r][`tgl_${colIdx}`] = perwiraMatrix[r][colIdx - 1];
-            }
-        }
-        for (let i = 7; i < form.perwiras.length; i++) {
-            for (let colIdx = 1; colIdx <= 7; colIdx++) {
-                form.perwiras[i][`tgl_${colIdx}`] = '-';
-            }
-        }
-    }
+    // Hari pertama jaga mengikuti TMT mulai jika berada di bulan yang sama
+    const mulaiParts = form.tmt_mulai.split('-').map(v => parseInt(v, 10));
+    const startDay = (mulaiParts[0] === y && mulaiParts[1] === m && mulaiParts[2] <= endDay) ? mulaiParts[2] : 1;
+    const startDate = `${y}-${String(m).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`;
 
-    // 2. Generate Tanggal Anggota Jaga 5 Divisi (Rotasi Kontinu Antar-Bulan)
-    if (form.anggotas && form.anggotas.length >= 5) {
-        const anggotaDates = calculateAnggotaDates(y, m, endDay);
-        form.anggotas.forEach((div, idx) => {
-            if (idx < 5) {
-                div.tanggal_list_text = anggotaDates[idx];
-            }
+    // Titik awal: lanjutan dari SP sebelumnya; jika tidak ada, pertahankan yang jaga di hari pertama saat ini
+    let perwiraStart = resolvePerwiraStart(props.rotationAnchor, form.perwiras, startDate);
+    if (perwiraStart === null) perwiraStart = Math.max(0, findPerwiraOnDay(form.perwiras, startDay));
+    let divisiStart = resolveDivisiStart(props.rotationAnchor, form.anggotas.length, startDate);
+    if (divisiStart === null) divisiStart = Math.max(0, findDivisiOnDay(form.anggotas, startDay));
+
+    // 1. Tanggal Perwira Jaga: giliran berurutan, bersambung dari bulan sebelumnya
+    const { rows, columns } = buildPerwiraTable(form.perwiras.length, perwiraStart, startDay, endDay);
+    form.perwiras.forEach((p, r) => {
+        for (let colIdx = 1; colIdx <= 7; colIdx++) {
+            p[`tgl_${colIdx}`] = rows[r][colIdx - 1];
+        }
+    });
+
+    // 2. Tanggal Anggota Jaga per Divisi
+    const divisiTexts = buildDivisiTexts(form.anggotas.length, divisiStart, startDay, endDay, mName, y);
+    form.anggotas.forEach((div, idx) => {
+        div.tanggal_list_text = divisiTexts[idx];
+    });
+
+    if (columns > 7) {
+        Swal.fire({
+            title: 'Kolom Tanggal Tidak Cukup',
+            text: `Dengan ${form.perwiras.length} perwira dibutuhkan ${columns} kolom tanggal, sedangkan format lampiran maksimal 7 kolom. Tambahkan perwira atau sesuaikan tanggal secara manual.`,
+            icon: 'warning',
+            confirmButtonColor: '#2563eb',
         });
+        return;
     }
 
     if (showNotification) {
         Swal.fire({
             title: 'Jadwal Jaga Berhasil Di-generate',
-            text: `Tanggal jaga perwira dan anggota telah dihitung otomatis untuk periode 1 s.d. ${endDay} ${mName} ${y}.`,
+            text: `Tanggal jaga perwira dan anggota telah dihitung otomatis untuk periode ${startDay} s.d. ${endDay} ${mName} ${y}.`,
             icon: 'success',
             confirmButtonColor: '#2563eb',
             timer: 2000,

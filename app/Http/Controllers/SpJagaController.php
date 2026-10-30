@@ -7,6 +7,7 @@ use App\Models\SpJagaPerwira;
 use App\Models\SpJagaAnggota;
 use App\Models\User;
 use App\Services\WhatsappService;
+use App\Support\DutyRoster;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -194,10 +195,38 @@ class SpJagaController extends Controller
         $currentMonth = (int)date('n');
         $currentYear = (int)date('Y');
 
+        // SP baru otomatis untuk bulan setelah SP terakhir & melanjutkan rotasinya
+        $previousSp = DutyRoster::previous();
+        $previous = null;
+        if ($previousSp) {
+            [$prevMonth, $prevYear] = DutyRoster::period($previousSp);
+            $currentMonth = $prevMonth === 12 ? 1 : $prevMonth + 1;
+            $currentYear = $prevMonth === 12 ? $prevYear + 1 : $prevYear;
+
+            $previous = [
+                'anchor' => DutyRoster::rotationAnchor($previousSp),
+                'perwira_tertua_user_id' => $previousSp->perwira_tertua_user_id,
+                'perwira_tertua_nama' => $previousSp->perwira_tertua_nama,
+                'perwira_tertua_pangkat_nrp' => $previousSp->perwira_tertua_pangkat_nrp,
+                'perwira_tertua_jabatan' => $previousSp->perwira_tertua_jabatan,
+                'perwiras' => $previousSp->perwiras->map(fn ($p) => [
+                    'user_id' => $p->user_id ?? '',
+                    'nama' => $p->nama,
+                    'pangkat_korps' => $p->pangkat_korps ?? '',
+                    'nrp' => $p->nrp ?? '',
+                ])->values(),
+                'anggotas' => $previousSp->anggotas->map(fn ($a) => [
+                    'divisi_no' => (int) $a->divisi_no,
+                    'anggota_items' => is_array($a->anggota_items) ? $a->anggota_items : (json_decode((string) $a->anggota_items, true) ?: []),
+                ])->values(),
+            ];
+        }
+
         return Inertia::render('SpJaga/Create', [
             'personels' => $personels,
             'defaultMonth' => $currentMonth,
             'defaultYear' => $currentYear,
+            'previous' => $previous,
         ]);
     }
 
@@ -352,9 +381,12 @@ class SpJagaController extends Controller
             ->orderBy('name', 'asc')
             ->get();
 
+        $previousSp = DutyRoster::previous($spJaga);
+
         return Inertia::render('SpJaga/Edit', [
             'spJaga' => $spJaga,
             'personels' => $personels,
+            'rotationAnchor' => $previousSp ? DutyRoster::rotationAnchor($previousSp) : null,
         ]);
     }
 

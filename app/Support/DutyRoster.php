@@ -210,6 +210,111 @@ class DutyRoster
     }
 
     /**
+     * SP dengan periode terakhir sebelum $before (atau SP terakhir jika $before null).
+     */
+    public static function previous(?SpJaga $before = null): ?SpJaga
+    {
+        $limit = null;
+        if ($before) {
+            [$bm, $by] = self::period($before);
+            $limit = $by * 12 + $bm;
+        }
+
+        return SpJaga::with(['perwiras', 'anggotas'])
+            ->when($before, fn ($q) => $q->where('id', '!=', $before->id))
+            ->get()
+            ->filter(function (SpJaga $s) use ($limit) {
+                [$m, $y] = self::period($s);
+                return $limit === null || $y * 12 + $m < $limit;
+            })
+            ->sortByDesc(function (SpJaga $s) {
+                [$m, $y] = self::period($s);
+                return sprintf('%06d-%010d', $y * 12 + $m, $s->id);
+            })
+            ->first();
+    }
+
+    /**
+     * Titik lanjut rotasi dari sebuah SP: siapa perwira & divisi yang mendapat giliran
+     * pada hari setelah TMT selesai SP tersebut. Dipakai agar SP berikutnya melanjutkan
+     * siklus, bukan mengulang dari orang yang sama setiap tanggal 1.
+     */
+    public static function rotationAnchor(SpJaga $sp): array
+    {
+        $sp->loadMissing(['perwiras', 'anggotas']);
+        [$month, $year] = self::period($sp);
+        $rawEnd = $sp->getAttributes()['tmt_selesai'] ?? null;
+        $end = $rawEnd ? Carbon::parse($rawEnd) : Carbon::create($year, $month, 1)->endOfMonth();
+        $endDay = (int) $end->format('j');
+        $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
+
+        $anchor = [
+            'sp_id' => $sp->id,
+            'periode_label' => (self::BULAN[$month] ?? '') . ' ' . $year,
+            'end_date' => $end->toDateString(),
+            'perwira' => null,
+            'divisi' => null,
+        ];
+
+        // Perwira dengan tanggal jaga terakhir; jika hari terakhir kosong, giliran tetap bergeser.
+        $perwiras = $sp->perwiras->values();
+        $lastIdx = null;
+        $lastDay = 0;
+        foreach ($perwiras as $i => $p) {
+            $values = [];
+            for ($k = 1; $k <= 7; $k++) {
+                $values[] = $p->{"tgl_{$k}"};
+            }
+            if (is_array($p->tgl_list)) {
+                $values = array_merge($values, $p->tgl_list);
+            }
+            foreach (self::dayNumbers($values, min($endDay, $daysInMonth)) as $d) {
+                if ($d > $lastDay) {
+                    $lastDay = $d;
+                    $lastIdx = $i;
+                }
+            }
+        }
+        if ($lastIdx !== null) {
+            $count = $perwiras->count();
+            $nextIdx = ($lastIdx + 1 + ($endDay - $lastDay)) % $count;
+            $next = $perwiras[$nextIdx];
+            $anchor['perwira'] = [
+                'index' => $nextIdx,
+                'nama' => $next->nama,
+                'nrp' => $next->nrp,
+                'last_nama' => $perwiras[$lastIdx]->nama,
+            ];
+        }
+
+        $divisis = $sp->anggotas->values();
+        $lastIdx = null;
+        $lastDay = 0;
+        foreach ($divisis as $i => $div) {
+            $days = self::dayNumbers(is_array($div->tanggal_array) ? $div->tanggal_array : [], $daysInMonth);
+            if (empty($days) && !empty($div->tanggal_list_text)) {
+                preg_match_all('/\b(\d{1,2})\b/', (string) $div->tanggal_list_text, $m);
+                $days = self::dayNumbers($m[1] ?? [], $daysInMonth);
+            }
+            foreach ($days as $d) {
+                if ($d <= $endDay && $d > $lastDay) {
+                    $lastDay = $d;
+                    $lastIdx = $i;
+                }
+            }
+        }
+        if ($lastIdx !== null) {
+            $count = $divisis->count();
+            $anchor['divisi'] = [
+                'index' => ($lastIdx + 1 + ($endDay - $lastDay)) % $count,
+                'last_divisi_no' => (int) $divisis[$lastIdx]->divisi_no,
+            ];
+        }
+
+        return $anchor;
+    }
+
+    /**
      * Pilih SP yang relevan: by id, by bulan/tahun, atau SP periode berjalan.
      */
     public static function resolve(User $user, ?int $spId, ?int $month, ?int $year): ?SpJaga
