@@ -13,10 +13,36 @@ data class CashEntryDto(
     @SerializedName("credit") val credit: Double = 0.0,
     @SerializedName("balance") val balance: Double = 0.0,
     @SerializedName("receipt_urls") val receiptUrls: List<String>? = null,
+    @SerializedName("receipts") val receipts: List<CashReceiptDto>? = null,
 ) {
     val isIncome: Boolean get() = debit > 0.0
     val amount: Double get() = if (debit > 0.0) debit else credit
+
+    /** Lampiran struk (server baru: [receipts]; server lama hanya [receiptUrls]). */
+    val receiptList: List<CashReceiptDto>
+        get() = receipts ?: receiptUrls.orEmpty().map { url ->
+            CashReceiptDto(path = null, url = url, name = url.substringAfterLast('/'), isPdf = url.lowercase().endsWith(".pdf"))
+        }
 }
+
+data class CashReceiptDto(
+    @SerializedName("path") val path: String? = null,
+    @SerializedName("url") val url: String? = null,
+    @SerializedName("name") val name: String? = null,
+    @SerializedName("is_pdf") val isPdf: Boolean = false,
+)
+
+data class CashReceiptsResponse(
+    @SerializedName("status") val status: String? = null,
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("receipts") val receipts: List<CashReceiptDto>? = null,
+)
+
+data class CashSaveResponse(
+    @SerializedName("status") val status: String? = null,
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("data") val data: CashEntryDto? = null,
+)
 
 data class CashLedgerResponse(
     @SerializedName("status") val status: String? = null,

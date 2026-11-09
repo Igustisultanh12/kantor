@@ -368,7 +368,8 @@ Route::get('/api/mobile/backup', [MobileBackupController::class, 'overview'])->m
 Route::get('/api/mobile/backup/pcs/{pc}/files', [MobileBackupController::class, 'files'])->whereNumber('pc')->middleware('mobile.auth:backup.view');
 Route::get('/api/mobile/backup/files/{id}/thumbnail', [MobileBackupController::class, 'thumbnail'])->whereNumber('id')->middleware(['mobile.auth:backup.view', 'throttle:240,1']);
 Route::get('/api/mobile/backup/files/{id}/content', [MobileBackupController::class, 'content'])->whereNumber('id')->middleware(['mobile.auth:backup.view', 'throttle:60,1']);
-Route::get('/api/mobile/backup/files/{id}/download', [MobileBackupController::class, 'download'])->whereNumber('id')->middleware(['mobile.auth:backup.view', 'throttle:30,1']);
+Route::get('/api/mobile/backup/files/{id}/office-pdf', [MobileBackupController::class, 'officePdf'])->whereNumber('id')->middleware(['mobile.auth:backup.view', 'throttle:20,1']);
+Route::get('/api/mobile/backup/files/{id}/download',[MobileBackupController::class, 'download'])->whereNumber('id')->middleware(['mobile.auth:backup.view', 'throttle:30,1']);
 Route::post('/api/mobile/backup/pcs/{pc}/access', [MobileBackupController::class, 'requestAccess'])->whereNumber('pc')->middleware(['mobile.auth:backup.view', 'throttle:10,1']);
 Route::post('/api/mobile/backup/access/{accessRequest}/resend', [MobileBackupController::class, 'resend'])->whereNumber('accessRequest')->middleware(['mobile.auth:backup.view', 'throttle:6,1']);
 Route::post('/api/mobile/backup/access/{accessRequest}/verify', [MobileBackupController::class, 'verify'])->whereNumber('accessRequest')->middleware(['mobile.auth:backup.view', 'throttle:10,1']);
@@ -391,18 +392,7 @@ Route::get('/api/mobile/cash', function () {
         $totalCredit = (float) $allCashes->sum('credit');
 
         $cashes = $allCashes->map(function ($cash) {
-            $urls = [];
-            $rawPath = $cash->receipt_path;
-            if (!empty($rawPath)) {
-                $decoded = is_array($rawPath) ? $rawPath : json_decode($rawPath, true);
-                if (is_array($decoded)) {
-                    foreach ($decoded as $path) {
-                        if (!empty($path)) $urls[] = asset('storage/' . $path);
-                    }
-                } else {
-                    $urls[] = asset('storage/' . $rawPath);
-                }
-            }
+            $receipts = \App\Support\CashReceipts::payload($cash);
             return [
                 'id' => $cash->id,
                 'date' => substr((string) ($cash->getRawOriginal('date') ?? $cash->date), 0, 10),
@@ -410,7 +400,8 @@ Route::get('/api/mobile/cash', function () {
                 'debit' => (float) ($cash->debit ?? 0),
                 'credit' => (float) ($cash->credit ?? 0),
                 'balance' => (float) ($cash->balance ?? 0),
-                'receipt_urls' => $urls,
+                'receipts' => $receipts,
+                'receipt_urls' => array_column($receipts, 'url'),
             ];
         });
 
@@ -492,13 +483,49 @@ Route::put('/api/mobile/cash/{id}', function (Request $request, $id) use ($cashR
 
 Route::delete('/api/mobile/cash/{id}', function ($id) {
     try {
-        \App\Models\Cash::findOrFail($id)->delete();
+        $cash = \App\Models\Cash::findOrFail($id);
+        \App\Support\CashReceipts::deleteAll($cash);
+        $cash->delete();
         mobile_recalculate_balances(\App\Models\Cash::class);
         return response()->json(['status' => 'success', 'message' => 'Data kas berhasil dihapus']);
     } catch (\Throwable $e) {
         return mobile_error($e, 'Gagal menghapus transaksi kas.');
     }
 })->middleware('mobile.auth:cash.manage');
+
+// Lampiran struk/nota (sama dengan unggah struk di web). Multipart:
+//   keep[] = path lampiran lama yang dipertahankan, receipt_files[] = berkas baru (JPG/PNG/PDF, maks. 20 MB).
+if (!function_exists('mobile_sync_receipts')) {
+    function mobile_sync_receipts(Request $request, \Illuminate\Database\Eloquent\Model $cash, string $dir)
+    {
+        try {
+            $v = Validator::make($request->all(), \App\Support\CashReceipts::RULES, [
+                'receipt_files.*.mimes' => 'Struk harus berupa foto JPG/PNG atau PDF.',
+                'receipt_files.*.max' => 'Ukuran tiap struk maksimal 20 MB.',
+            ]);
+            if ($v->fails()) return mobile_validation_error($v);
+            $receipts = \App\Support\CashReceipts::sync(
+                $cash,
+                (array) $request->input('keep', []),
+                (array) ($request->file('receipt_files') ?? []),
+                $dir
+            );
+            return response()->json(['status' => 'success', 'message' => 'Struk tersimpan.', 'receipts' => $receipts]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            return mobile_error($e, 'Gagal menyimpan struk.');
+        }
+    }
+}
+
+Route::post('/api/mobile/cash/{id}/receipts', function (Request $request, $id) {
+    return mobile_sync_receipts($request, \App\Models\Cash::findOrFail($id), 'receipts');
+})->whereNumber('id')->middleware(['mobile.auth:cash.manage', 'throttle:30,1']);
+
+Route::post('/api/mobile/technical-cash/{id}/receipts', function (Request $request, $id) {
+    return mobile_sync_receipts($request, \App\Models\TechnicalUnitCash::findOrFail($id), 'receipts_technical_unit');
+})->whereNumber('id')->middleware(['mobile.auth:technical_cash.manage', 'throttle:30,1']);
 
 // =====================================================================
 // 2. AGENDA SURAT (App\Models\LetterLog)
@@ -1240,6 +1267,8 @@ Route::get('/api/mobile/technical-cash', function () {
             'debit' => (float) ($cash->debit ?? 0),
             'credit' => (float) ($cash->credit ?? 0),
             'balance' => (float) ($cash->balance ?? 0),
+            'receipts' => \App\Support\CashReceipts::payload($cash),
+            'receipt_urls' => array_column(\App\Support\CashReceipts::payload($cash), 'url'),
         ])->reverse()->values();
 
         return response()->json([
@@ -1305,7 +1334,9 @@ Route::put('/api/mobile/technical-cash/{id}', function (Request $request, $id) u
 
 Route::delete('/api/mobile/technical-cash/{id}', function ($id) {
     try {
-        \App\Models\TechnicalUnitCash::findOrFail($id)->delete();
+        $cash = \App\Models\TechnicalUnitCash::findOrFail($id);
+        \App\Support\CashReceipts::deleteAll($cash);
+        $cash->delete();
         mobile_recalculate_balances(\App\Models\TechnicalUnitCash::class);
         return response()->json(['status' => 'success', 'message' => 'Kas Dan Unit Teknis berhasil dihapus']);
     } catch (\Throwable $e) {

@@ -172,6 +172,40 @@ class SindenRepository(
         if (kind == CashKind.BASE) deleteCash(id) else deleteTechnicalCash(id)
     }
 
+    /** Simpan susunan struk transaksi: [keep] path lama yang dipertahankan + [files] berkas baru. */
+    suspend fun syncCashReceipts(kind: CashKind, id: Int, keep: List<String>, files: List<UploadImage>): ApiResult<CashReceiptsResponse> {
+        val parts = buildList {
+            keep.forEach { add(MultipartBody.Part.createFormData("keep[]", it)) }
+            files.forEach { f ->
+                add(MultipartBody.Part.createFormData("receipt_files[]", f.fileName, f.bytes.toRequestBody(f.mimeType.toMediaType())))
+            }
+            // Agar request tetap multipart walau semua struk dihapus.
+            if (isEmpty()) add(MultipartBody.Part.createFormData("clear", "1"))
+        }
+        return call { if (kind == CashKind.BASE) syncCashReceipts(id, parts) else syncTechnicalCashReceipts(id, parts) }
+    }
+
+    /** Unduh berkas dari URL server SISINDEN (mis. struk PDF) ke cache privat. */
+    suspend fun downloadToCache(url: String, fileName: String, subdir: String = "receipts"): ApiResult<File> = withContext(Dispatchers.IO) {
+        val dir = File(appContext.cacheDir, subdir).apply { mkdirs() }
+        val safe = fileName.replace(Regex("[\\\\/:*?\"<>|\\u0000-\\u001F]+"), "_").trim().take(120).ifEmpty { "berkas" }
+        val target = File(dir, safe)
+        try {
+            val response = svc().downloadFile(url)
+            if (!response.isSuccessful) {
+                val raw = try { response.errorBody()?.string() } catch (_: Exception) { null }
+                return@withContext ApiResult.Failure(ApiErrors.fromHttp(response.code(), raw))
+            }
+            val body = response.body() ?: return@withContext ApiResult.Failure(ApiError(ErrorKind.SERVER, "Server tidak mengirim berkas."))
+            body.byteStream().use { input -> target.outputStream().use { input.copyTo(it) } }
+            ApiResult.Success(target)
+        } catch (c: CancellationException) {
+            throw c
+        } catch (t: Throwable) {
+            ApiResult.Failure(ApiErrors.fromThrowable(t))
+        }
+    }
+
     // --------------------------------------------------- Agenda Surat
 
     suspend fun letterLogs(search: String?, categoryId: Int?) =
@@ -382,15 +416,67 @@ class SindenRepository(
      * Unduh berkas backup ke cache privat (folder "backup/") agar bisa dibuka
      * dengan aplikasi lain atau disimpan ke perangkat.
      */
-    suspend fun downloadBackupFile(fileId: Int, fileName: String): ApiResult<File> = withContext(Dispatchers.IO) {
+    /** URL streaming isi berkas backup + header token (untuk pemutar video/audio). */
+    suspend fun backupStreamSource(fileId: Int): Pair<String, Map<String, String>> {
+        val base = store.baseUrl().trimEnd('/')
+        val headers = buildMap {
+            session.token?.let { put("Authorization", "Bearer $it") }
+            put("User-Agent", "SISINDEN-Android/${id.my.sisinden.app.BuildConfig.VERSION_NAME}")
+        }
+        return "$base/api/mobile/backup/files/$fileId/content" to headers
+    }
+
+    /** Isi berkas teks (txt/csv/log/json…) untuk dibaca langsung, dibatasi [maxBytes]. */
+    suspend fun backupText(fileId: Int, maxBytes: Int = 512 * 1024): ApiResult<Pair<String, Boolean>> = withContext(Dispatchers.IO) {
+        try {
+            val response = svc().downloadFile("api/mobile/backup/files/$fileId/content")
+            if (!response.isSuccessful) {
+                val raw = try { response.errorBody()?.string() } catch (_: Exception) { null }
+                return@withContext ApiResult.Failure(ApiErrors.fromHttp(response.code(), raw))
+            }
+            val body = response.body() ?: return@withContext ApiResult.Failure(ApiError(ErrorKind.SERVER, "Server tidak mengirim berkas."))
+            body.use { b ->
+                val buf = ByteArray(maxBytes + 1)
+                var read = 0
+                b.byteStream().use { input ->
+                    while (read < buf.size) {
+                        val n = input.read(buf, read, buf.size - read)
+                        if (n < 0) break
+                        read += n
+                    }
+                }
+                val truncated = read > maxBytes
+                ApiResult.Success(String(buf, 0, minOf(read, maxBytes), Charsets.UTF_8) to truncated)
+            }
+        } catch (c: CancellationException) {
+            throw c
+        } catch (t: Throwable) {
+            ApiResult.Failure(ApiErrors.fromThrowable(t))
+        }
+    }
+
+    /** PDF berkas backup: PDF asli, atau dokumen Office yang dikonversi server ([office] = true). */
+    suspend fun backupPdf(fileId: Int, fileName: String, office: Boolean): ApiResult<File> {
+        val res = downloadBackupFile(fileId, if (office) "$fileName.pdf" else fileName, if (office) "office-pdf" else "content")
+        if (res is ApiResult.Success) {
+            val head = ByteArray(4)
+            val n = withContext(Dispatchers.IO) { res.data.inputStream().use { it.read(head) } }
+            if (n < 4 || String(head, Charsets.US_ASCII) != "%PDF") {
+                return ApiResult.Failure(ApiError(ErrorKind.SERVER, "Pratinjau dokumen belum tersedia. Unduh berkasnya untuk membuka."))
+            }
+        }
+        return res
+    }
+
+    suspend fun downloadBackupFile(fileId: Int, fileName: String, endpoint: String = "download"): ApiResult<File> = withContext(Dispatchers.IO) {
         val dir = File(appContext.cacheDir, "backup").apply { mkdirs() }
         // Bersihkan unduhan lama (> 1 hari) agar cache tidak membengkak.
-        dir.listFiles()?.filter { System.currentTimeMillis() - it.lastModified() > 86_400_000L }?.forEach { it.delete() }
+        dir.walkBottomUp().filter { it.isFile && System.currentTimeMillis() - it.lastModified() > 86_400_000L }.forEach { it.delete() }
         val safe = fileName.replace(Regex("[\\\\/:*?\"<>|\\u0000-\\u001F]+"), "_").trim().take(120).ifEmpty { "berkas" }
-        val target = File(dir, "${fileId}_$safe")
+        val target = File(File(dir, endpoint).apply { mkdirs() }, "${fileId}_$safe")
         val temp = File(dir, target.name + ".part")
         try {
-            val response = svc().downloadFile("api/mobile/backup/files/$fileId/download")
+            val response = svc().downloadFile("api/mobile/backup/files/$fileId/$endpoint")
             if (!response.isSuccessful) {
                 val raw = try { response.errorBody()?.string() } catch (_: Exception) { null }
                 return@withContext ApiResult.Failure(ApiErrors.fromHttp(response.code(), raw))

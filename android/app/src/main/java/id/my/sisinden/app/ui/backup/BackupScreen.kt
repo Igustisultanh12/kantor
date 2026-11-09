@@ -1,7 +1,33 @@
 package id.my.sisinden.app.ui.backup
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.CloudQueue
+import androidx.compose.material.icons.rounded.Groups
+import androidx.compose.material.icons.rounded.HourglassTop
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.LockOpen
+import androidx.compose.material.icons.rounded.Sms
+import androidx.compose.material.icons.rounded.Storage
+import androidx.compose.material.icons.rounded.VerifiedUser
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import id.my.sisinden.app.core.ui.components.LivelyIconTile
+import id.my.sisinden.app.core.ui.components.PulseDot
+import id.my.sisinden.app.core.ui.components.appear
+import id.my.sisinden.app.core.ui.components.bouncyPress
+import id.my.sisinden.app.core.ui.components.floating
+import id.my.sisinden.app.core.ui.theme.TileGradient
+import id.my.sisinden.app.core.ui.theme.TilePalette
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,9 +38,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CloudQueue
-import androidx.compose.material.icons.outlined.Group
-import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -205,6 +228,7 @@ fun BackupScreen(
                         contentPadding = PaddingValues(start = Spacing.screen, end = Spacing.screen, bottom = 96.dp),
                         verticalArrangement = Arrangement.spacedBy(Spacing.sm),
                     ) {
+                        item(key = "hero") { BackupHero(overview, tab) }
                         when (tab) {
                             BackupTab.MINE -> {
                                 val mine = overview.myPcs.orEmpty()
@@ -213,11 +237,13 @@ fun BackupScreen(
                                         EmptyState(
                                             "Belum punya ruang penyimpanan",
                                             "Ajukan ruang penyimpanan backup ke Admin lewat menu Backup di web SINDEN.",
-                                            icon = Icons.Outlined.CloudQueue,
+                                            icon = Icons.Rounded.CloudQueue,
                                         )
                                     }
                                 } else {
-                                    items(mine, key = { it.id }) { pc -> MyPcCard(pc) { onOpenPc(pc.id, pc.name ?: "Penyimpanan") } }
+                                    itemsIndexed(mine, key = { _, it -> "mine-${it.id}" }) { i, pc ->
+                                        MyPcCard(pc, Modifier.appear(i, key = tab).bouncyPress()) { onOpenPc(pc.id, pc.name ?: "Penyimpanan") }
+                                    }
                                 }
                             }
 
@@ -236,17 +262,18 @@ fun BackupScreen(
                                     q.isEmpty() || it.name.orEmpty().lowercase().contains(q) || it.owner?.label.orEmpty().lowercase().contains(q)
                                 }
                                 if (others.isEmpty()) {
-                                    item { EmptyState("Tidak ada penyimpanan", "Belum ada penyimpanan rekan yang cocok.", icon = Icons.Outlined.Group) }
+                                    item { EmptyState("Tidak ada penyimpanan", "Belum ada penyimpanan rekan yang cocok.", icon = Icons.Rounded.Groups) }
                                 } else {
-                                    items(others, key = { it.id }) { pc ->
+                                    itemsIndexed(others, key = { _, it -> "other-${it.id}" }) { i, pc ->
                                         val (chip, tone) = accessChip(pc.accessState)
                                         ListRowCard(
                                             title = pc.owner?.label ?: "-",
                                             subtitle = pc.name,
                                             supporting = actionHint(pc.accessState),
-                                            leading = { InitialsAvatar(initials(pc.owner?.name), size = 40.dp) },
+                                            leading = { LivelyIconTile(accessIcon(pc.accessState), accessGradient(pc.accessState), key = "${pc.id}-${pc.accessState}") },
                                             trailing = { StatusChip(chip, tone) },
                                             onClick = { openPc(pc) },
+                                            modifier = Modifier.appear(i, key = tab).bouncyPress(),
                                         )
                                     }
                                 }
@@ -259,12 +286,13 @@ fun BackupScreen(
                                 if (incoming.isEmpty()) {
                                     item { Text("Tidak ada permintaan baru.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                 } else {
-                                    items(incoming, key = { "in-${it.id}" }) { req ->
+                                    itemsIndexed(incoming, key = { _, it -> "in-${it.id}" }) { i, req ->
                                         IncomingRequestCard(
                                             req = req,
                                             busy = working,
                                             onApprove = { deciding = req to true },
                                             onReject = { deciding = req to false },
+                                            modifier = Modifier.appear(i, key = tab),
                                         )
                                     }
                                 }
@@ -275,7 +303,7 @@ fun BackupScreen(
                                 if (grants.isEmpty()) {
                                     item { Text("Belum ada rekan yang diberi akses.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                 } else {
-                                    items(grants, key = { "gr-${it.id}" }) { g ->
+                                    itemsIndexed(grants, key = { _, it -> "gr-${it.id}" }) { i, g ->
                                         ListRowCard(
                                             title = g.requester?.label ?: "-",
                                             subtitle = listOfNotNull(g.pcName, g.decidedHuman?.let { "sejak $it" }).joinToString(" · "),
@@ -285,6 +313,7 @@ fun BackupScreen(
                                                     Text("Cabut", color = MaterialTheme.colorScheme.error)
                                                 }
                                             },
+                                            modifier = Modifier.appear(i + incoming.size + 1, key = tab),
                                         )
                                     }
                                 }
@@ -424,19 +453,91 @@ private fun CodeSheet(pending: PendingCode, working: Boolean, vm: BackupViewMode
     }
 }
 
+/** Kartu pembuka bergradasi dengan ikon awan mengambang dan ringkasan. */
 @Composable
-private fun MyPcCard(pc: BackupPcDto, onOpen: () -> Unit) {
-    SindenCard(Modifier.fillMaxWidth(), onClick = onOpen) {
+private fun BackupHero(overview: BackupOverviewResponse, tab: BackupTab) {
+    val mine = overview.myPcs.orEmpty().size
+    val granted = overview.otherPcs.orEmpty().count { it.accessState == BackupAccessState.GRANTED }
+    val incoming = overview.incomingRequests.orEmpty().size
+    Box(
+        Modifier.fillMaxWidth().appear(key = "hero")
+            .clip(RoundedCornerShape(24.dp))
+            .background(Brush.linearGradient(listOf(TilePalette.Blue.top, TilePalette.Violet.bottom)))
+            .padding(Spacing.lg),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            androidx.compose.material3.Icon(Icons.Outlined.Storage, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.width(Spacing.sm))
-            Text(pc.name.orEmpty(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    when (tab) {
+                        BackupTab.MINE -> "Penyimpanan Anda"
+                        BackupTab.OTHERS -> "Penyimpanan rekan"
+                        BackupTab.ACCESS -> "Izin akses"
+                    },
+                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White,
+                )
+                Spacer(Modifier.height(Spacing.xxs))
+                Text(
+                    when (tab) {
+                        BackupTab.MINE -> "$mine ruang penyimpanan"
+                        BackupTab.OTHERS -> "$granted penyimpanan rekan bisa Anda buka"
+                        BackupTab.ACCESS -> if (incoming > 0) "$incoming permintaan menunggu keputusan Anda" else "Tidak ada permintaan baru"
+                    },
+                    style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.85f),
+                )
+            }
+            Box(contentAlignment = Alignment.TopEnd) {
+                LivelyIconTile(
+                    when (tab) {
+                        BackupTab.MINE -> Icons.Rounded.CloudQueue
+                        BackupTab.OTHERS -> Icons.Rounded.Groups
+                        BackupTab.ACCESS -> Icons.Rounded.VerifiedUser
+                    },
+                    TileGradient(Color.White.copy(alpha = 0.35f), Color.White.copy(alpha = 0.12f)),
+                    size = 56.dp, iconSize = 30.dp, corner = 18.dp, key = tab,
+                    modifier = Modifier.floating(),
+                )
+                if (incoming > 0) PulseDot(MaterialTheme.colorScheme.error, size = 8.dp)
+            }
+        }
+    }
+}
+
+private fun accessIcon(state: String?): ImageVector = when (state) {
+    BackupAccessState.GRANTED, BackupAccessState.ADMIN -> Icons.Rounded.LockOpen
+    BackupAccessState.PENDING -> Icons.Rounded.HourglassTop
+    BackupAccessState.VERIFYING -> Icons.Rounded.Sms
+    BackupAccessState.REJECTED -> Icons.Rounded.Block
+    else -> Icons.Rounded.Lock
+}
+
+private fun accessGradient(state: String?): TileGradient = when (state) {
+    BackupAccessState.GRANTED, BackupAccessState.ADMIN -> TilePalette.Teal
+    BackupAccessState.PENDING -> TilePalette.Orange
+    BackupAccessState.VERIFYING -> TilePalette.Sky
+    BackupAccessState.REJECTED -> TilePalette.Rose
+    else -> TilePalette.Slate
+}
+
+@Composable
+private fun MyPcCard(pc: BackupPcDto, modifier: Modifier = Modifier, onOpen: () -> Unit) {
+    val target = (pc.usagePercentage / 100.0).toFloat().coerceIn(0f, 1f)
+    var started by remember { mutableStateOf(false) }
+    LaunchedEffect(pc.id) { started = true }
+    val progress by animateFloatAsState(if (started) target else 0f, tween(900), label = "usage")
+    SindenCard(modifier.fillMaxWidth(), onClick = onOpen) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            LivelyIconTile(Icons.Rounded.Storage, TilePalette.Blue, key = pc.id)
+            Spacer(Modifier.width(Spacing.md))
+            Column(Modifier.weight(1f)) {
+                Text(pc.name.orEmpty(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("Ketuk untuk membuka", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             Text("${pc.usagePercentage}%", style = MaterialTheme.typography.labelLarge, color = if (pc.usagePercentage > 90) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
         }
-        Spacer(Modifier.height(Spacing.sm))
+        Spacer(Modifier.height(Spacing.md))
         LinearProgressIndicator(
-            progress = { (pc.usagePercentage / 100.0).toFloat().coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth().height(6.dp),
+            progress = { progress },
+            modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(8.dp)),
         )
         Spacer(Modifier.height(Spacing.xs))
         Text(
@@ -453,10 +554,14 @@ private fun IncomingRequestCard(
     busy: Boolean,
     onApprove: () -> Unit,
     onReject: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    SindenCard(Modifier.fillMaxWidth()) {
+    SindenCard(modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            InitialsAvatar(initials(req.requester?.name), size = 40.dp)
+            Box(contentAlignment = Alignment.TopEnd) {
+                InitialsAvatar(initials(req.requester?.name), size = 40.dp)
+                PulseDot(TilePalette.Orange.bottom, size = 7.dp)
+            }
             Spacer(Modifier.width(Spacing.sm))
             Column(Modifier.weight(1f)) {
                 Text(req.requester?.label.orEmpty(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
@@ -473,10 +578,10 @@ private fun IncomingRequestCard(
         }
         Spacer(Modifier.height(Spacing.md))
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-            OutlinedButton(onClick = onReject, enabled = !busy, modifier = Modifier.weight(1f)) {
+            OutlinedButton(onClick = onReject, enabled = !busy, modifier = Modifier.weight(1f).bouncyPress()) {
                 Text("Tolak", color = MaterialTheme.colorScheme.error)
             }
-            androidx.compose.material3.Button(onClick = onApprove, enabled = !busy, modifier = Modifier.weight(1f)) {
+            androidx.compose.material3.Button(onClick = onApprove, enabled = !busy, modifier = Modifier.weight(1f).bouncyPress()) {
                 Text("Setujui")
             }
         }

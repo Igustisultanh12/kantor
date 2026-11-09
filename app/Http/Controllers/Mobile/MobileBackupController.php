@@ -29,7 +29,8 @@ class MobileBackupController extends Controller
     private const IMAGE_EXT = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif'];
     private const VIDEO_EXT = ['mp4', 'mov', 'mkv', 'avi', '3gp', 'webm', 'm4v'];
     private const AUDIO_EXT = ['mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac', 'opus'];
-    private const DOC_EXT = ['doc', 'docx', 'xls', 'xlsx', 'csv', 'ppt', 'pptx', 'txt', 'rtf', 'odt', 'ods'];
+    private const DOC_EXT = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'rtf', 'odt', 'ods', 'odp'];
+    private const TEXT_EXT = ['txt', 'csv', 'log', 'md', 'json', 'xml'];
     private const ARCHIVE_EXT = ['zip', 'rar', '7z', 'tar', 'gz'];
 
     public function __construct(private readonly PcAccessService $access)
@@ -139,7 +140,31 @@ class MobileBackupController extends Controller
         if ($this->isArw($backup)) {
             return ArwService::previewResponse($fullPath, $backup->file_name);
         }
+        $ext = strtolower(pathinfo((string) $backup->file_name, PATHINFO_EXTENSION));
+        if (in_array($ext, self::VIDEO_EXT, true) || in_array($ext, self::AUDIO_EXT, true)) {
+            // Mendukung HTTP Range agar video/audio bisa diputar & digeser di aplikasi.
+            return FileSecurityService::streamMediaWithRange($fullPath, $backup->file_name);
+        }
         return FileSecurityService::streamDecryptedInline($fullPath, $backup->file_name);
+    }
+
+    /** Dokumen Office (Word/Excel/PowerPoint) dikonversi ke PDF di server, sama seperti pratinjau web. */
+    public function officePdf(Request $request, $id)
+    {
+        [$backup, , $error] = $this->resolveFile($request, $id);
+        if ($error) {
+            return $error;
+        }
+        $response = app(\App\Http\Controllers\BackupController::class)->viewOffice($backup->id);
+        $type = (string) $response->headers->get('Content-Type');
+        if (!str_contains($type, 'pdf')) {
+            return response()->json([
+                'status' => 'error',
+                'code' => 'preview_unavailable',
+                'message' => 'Pratinjau dokumen ini belum tersedia di server. Unduh berkasnya untuk membuka.',
+            ], 422);
+        }
+        return $response;
     }
 
     public function download(Request $request, $id)
@@ -285,6 +310,7 @@ class MobileBackupController extends Controller
             in_array($ext, self::VIDEO_EXT, true) => 'video',
             in_array($ext, self::AUDIO_EXT, true) => 'audio',
             in_array($ext, self::DOC_EXT, true) => 'document',
+            in_array($ext, self::TEXT_EXT, true) => 'text',
             in_array($ext, self::ARCHIVE_EXT, true) => 'archive',
             default => 'file',
         };

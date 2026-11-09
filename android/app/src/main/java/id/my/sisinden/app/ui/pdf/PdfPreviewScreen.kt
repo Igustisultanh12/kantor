@@ -241,7 +241,7 @@ private fun openWithExternalApp(
 }
 
 @Composable
-private fun PdfPager(document: PdfDocument) {
+internal fun PdfPager(document: PdfDocument) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     var scale by remember { mutableFloatStateOf(1f) }

@@ -69,10 +69,19 @@ interface SindenApiService {
     suspend fun cash(): Response<CashLedgerResponse>
 
     @POST("api/mobile/cash")
-    suspend fun createCash(@Body request: CashEntryRequest): Response<SimpleResponse>
+    suspend fun createCash(@Body request: CashEntryRequest): Response<CashSaveResponse>
 
     @PUT("api/mobile/cash/{id}")
-    suspend fun updateCash(@Path("id") id: Int, @Body request: CashEntryRequest): Response<SimpleResponse>
+    suspend fun updateCash(@Path("id") id: Int, @Body request: CashEntryRequest): Response<CashSaveResponse>
+
+    /** Susun ulang struk: keep[] = path lama yang dipertahankan, receipt_files[] = berkas baru. */
+    @Multipart
+    @POST("api/mobile/cash/{id}/receipts")
+    suspend fun syncCashReceipts(@Path("id") id: Int, @Part parts: List<MultipartBody.Part>): Response<CashReceiptsResponse>
+
+    @Multipart
+    @POST("api/mobile/technical-cash/{id}/receipts")
+    suspend fun syncTechnicalCashReceipts(@Path("id") id: Int, @Part parts: List<MultipartBody.Part>): Response<CashReceiptsResponse>
 
     @DELETE("api/mobile/cash/{id}")
     suspend fun deleteCash(@Path("id") id: Int): Response<SimpleResponse>
@@ -82,10 +91,10 @@ interface SindenApiService {
     suspend fun technicalCash(): Response<CashLedgerResponse>
 
     @POST("api/mobile/technical-cash")
-    suspend fun createTechnicalCash(@Body request: CashEntryRequest): Response<SimpleResponse>
+    suspend fun createTechnicalCash(@Body request: CashEntryRequest): Response<CashSaveResponse>
 
     @PUT("api/mobile/technical-cash/{id}")
-    suspend fun updateTechnicalCash(@Path("id") id: Int, @Body request: CashEntryRequest): Response<SimpleResponse>
+    suspend fun updateTechnicalCash(@Path("id") id: Int, @Body request: CashEntryRequest): Response<CashSaveResponse>
 
     @DELETE("api/mobile/technical-cash/{id}")
     suspend fun deleteTechnicalCash(@Path("id") id: Int): Response<SimpleResponse>

@@ -1,3 +1,17 @@
+# SISINDEN Android v1.8.2 (versionCode 20)
+
+## Baru
+
+- **Struk / nota di Buku Kas & Kas Unit Teknis** (sama seperti di web): saat mencatat atau mengubah transaksi, tambahkan struk lewat **Foto struk** (kamera) atau **Pilih berkas** (foto/PDF), maksimal 10 per transaksi. Struk lama bisa dihapus satu per satu. Di detail transaksi, struk tampil sebagai galeri; ketuk untuk melihat foto (cubit untuk zoom) atau PDF langsung di aplikasi. Foto diperkecil otomatis agar unggahan ringan.
+- **Pratinjau Backup seperti di web**: foto & Sony RAW (zoom), PDF, dokumen Word/Excel/PowerPoint (dikonversi server ke PDF), video & audio (diputar langsung, bisa digeser), dan berkas teks (txt/csv/log/json). Berkas lain tetap bisa dibuka dengan aplikasi lain atau disimpan.
+- **Tampilan lebih hidup**: kartu & daftar muncul bertahap dengan animasi, efek memantul saat ditekan, ikon dalam ubin berwarna yang ikut beranimasi (gaya SISFOPERS KC), angka saldo kas menghitung naik, penanda berdenyut untuk permintaan akses yang menunggu.
+
+## Server
+
+- `git pull` (endpoint baru: `POST /api/mobile/cash/{id}/receipts`, `POST /api/mobile/technical-cash/{id}/receipts`, `GET /api/mobile/backup/files/{id}/office-pdf`). Tidak ada migrasi. Menghapus transaksi kas dari aplikasi kini ikut menghapus berkas struknya (sama dengan web).
+
+---
+
 # SISINDEN Android v1.8.1 (versionCode 19)
 
 - **Pembaruan otomatis dari GitHub Release** (seperti SISFOPERS KC): selain APK yang diunggah Admin di Pengaturan web, aplikasi kini juga memeriksa rilis terbaru di GitHub. Versi tertinggi dari kedua sumber yang dipasang (APK Admin diutamakan bila versinya sama). Setiap rilis baru dari workflow langsung sampai ke HP tanpa perlu diunggah manual.

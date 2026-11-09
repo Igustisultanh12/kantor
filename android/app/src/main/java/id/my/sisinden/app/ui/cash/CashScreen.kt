@@ -1,5 +1,23 @@
 package id.my.sisinden.app.ui.cash
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.rounded.AccountBalanceWallet
+import androidx.compose.material.icons.rounded.NorthEast
+import androidx.compose.material.icons.rounded.SouthWest
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import id.my.sisinden.app.core.ui.components.LivelyIconTile
+import id.my.sisinden.app.core.ui.components.appear
+import id.my.sisinden.app.core.ui.components.bouncyPress
+import id.my.sisinden.app.core.ui.components.floating
+import id.my.sisinden.app.core.ui.theme.TileGradient
+import id.my.sisinden.app.core.ui.theme.TilePalette
+import id.my.sisinden.app.data.model.CashReceiptDto
+import id.my.sisinden.app.data.model.SimpleResponse
+import id.my.sisinden.app.data.repository.UploadImage
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -84,10 +102,31 @@ class CashViewModel(
 
     override suspend fun fetch(): ApiResult<CashLedgerResponse> = repository.cashLedger(kind)
 
-    fun save(id: Int?, date: String, description: String, income: Boolean, amount: Double, onDone: () -> Unit) =
-        action(if (id == null) "Transaksi tersimpan." else "Transaksi diperbarui.", onDone) {
-            repository.saveCash(kind, id, CashEntryRequest(date, description.trim(), if (income) "masuk" else "keluar", amount))
+    /**
+     * Simpan transaksi, lalu susunan struknya bila berubah ([keep] path lama yang
+     * dipertahankan + [newFiles]). Struk diunggah setelah transaksi tersimpan agar
+     * transaksi baru sudah punya id.
+     */
+    fun save(
+        id: Int?, date: String, description: String, income: Boolean, amount: Double,
+        keep: List<String>, newFiles: List<UploadImage>, receiptsChanged: Boolean,
+        onDone: () -> Unit,
+    ) = action(if (id == null) "Transaksi tersimpan." else "Transaksi diperbarui.", onDone) {
+        when (val saved = repository.saveCash(kind, id, CashEntryRequest(date, description.trim(), if (income) "masuk" else "keluar", amount))) {
+            is ApiResult.Failure -> saved
+            is ApiResult.Success -> {
+                val targetId = id ?: saved.data.data?.id
+                val baseMessage = saved.data.message ?: if (id == null) "Transaksi tersimpan." else "Transaksi diperbarui."
+                if (!receiptsChanged || targetId == null || targetId == 0) {
+                    ApiResult.Success(SimpleResponse("success", baseMessage))
+                } else when (val up = repository.syncCashReceipts(kind, targetId, keep, newFiles)) {
+                    is ApiResult.Success -> ApiResult.Success(SimpleResponse("success", "$baseMessage Struk tersimpan."))
+                    // Transaksi sudah tersimpan: tutup formulir, beri tahu struknya gagal.
+                    is ApiResult.Failure -> ApiResult.Success(SimpleResponse("success", "Transaksi tersimpan, tetapi struk gagal diunggah: ${up.error.message}"))
+                }
+            }
         }
+    }
 
     fun delete(id: Int, onDone: () -> Unit) = action("Transaksi dihapus.", onDone) { repository.deleteCash(kind, id) }
 }
@@ -119,6 +158,7 @@ fun CashScreen(
     var creating by rememberSaveable { mutableStateOf(false) }
     var detail by remember { mutableStateOf<CashEntryDto?>(null) }
     var confirmDelete by remember { mutableStateOf<CashEntryDto?>(null) }
+    var viewingReceipt by remember { mutableStateOf<CashReceiptDto?>(null) }
 
     SindenScaffold(
         title = kind.title,
@@ -169,18 +209,20 @@ fun CashScreen(
                     if (entries.isEmpty()) {
                         item { EmptyState("Belum ada transaksi", "Transaksi yang tercatat akan tampil di sini.") }
                     } else {
-                        items(entries, key = { it.id }) { e ->
+                        itemsIndexed(entries, key = { _, it -> it.id }) { index, e ->
+                            val receipts = e.receiptList.size
                             ListRowCard(
                                 title = e.description.orEmpty().ifBlank { "-" },
                                 subtitle = Fmt.longDate(e.date),
-                                supporting = "Saldo: ${Fmt.rupiah(e.balance, hide)}",
+                                supporting = "Saldo: ${Fmt.rupiah(e.balance, hide)}" + if (receipts > 0) "  ·  $receipts struk" else "",
                                 leading = {
-                                    IconBadge(
-                                        if (e.isIncome) Icons.Outlined.ArrowDownward else Icons.Outlined.ArrowUpward,
-                                        toneAccent(if (e.isIncome) Tone.SUCCESS else Tone.DANGER),
-                                        size = 40.dp, iconSize = 20.dp,
+                                    LivelyIconTile(
+                                        if (e.isIncome) Icons.Rounded.SouthWest else Icons.Rounded.NorthEast,
+                                        if (e.isIncome) TilePalette.Teal else TilePalette.Rose,
+                                        key = "${filter.name}-${e.id}",
                                     )
                                 },
+                                modifier = Modifier.appear(index, key = filter).bouncyPress(),
                                 trailing = {
                                     Text(
                                         (if (e.isIncome) "+" else "−") + Fmt.rupiah(e.amount, hide).removePrefix("-"),
@@ -204,7 +246,14 @@ fun CashScreen(
             InfoRow("Jenis", if (e.isIncome) "Pemasukan (debit)" else "Pengeluaran (kredit)")
             InfoRow("Nominal", Fmt.rupiah(e.amount))
             InfoRow("Saldo setelah", Fmt.rupiah(e.balance))
-            if (!e.receiptUrls.isNullOrEmpty()) InfoRow("Nota", "${e.receiptUrls.size} lampiran (lihat di web)")
+            val receipts = e.receiptList
+            if (receipts.isNotEmpty()) {
+                Spacer(Modifier.height(Spacing.md))
+                ReceiptGallery(receipts) { viewingReceipt = it }
+            } else if (canManage) {
+                Spacer(Modifier.height(Spacing.sm))
+                Text("Belum ada struk. Ketuk Ubah untuk menambahkan.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             if (canManage) {
                 Spacer(Modifier.height(Spacing.lg))
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
@@ -228,11 +277,13 @@ fun CashScreen(
             initial = editing,
             busy = busy,
             onDismiss = { creating = false; editing = null },
-            onSubmit = { date, desc, income, amount ->
-                vm.save(editing?.id, date, desc, income, amount) { creating = false; editing = null }
+            onSubmit = { date, desc, income, amount, keep, newFiles, changed ->
+                vm.save(editing?.id, date, desc, income, amount, keep, newFiles, changed) { creating = false; editing = null }
             },
         )
     }
+
+    viewingReceipt?.let { r -> ReceiptViewer(r, repository) { viewingReceipt = null } }
 
     confirmDelete?.let { e ->
         ConfirmDialog(
@@ -249,10 +300,21 @@ fun CashScreen(
 
 @Composable
 private fun BalanceCard(ledger: CashLedgerResponse, hide: Boolean) {
-    SindenCard(Modifier.fillMaxWidth(), containerColor = MaterialTheme.colorScheme.primary, border = null) {
-        Text("Saldo saat ini", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f))
+    // Angka saldo "menghitung naik" saat tampil / berubah.
+    var started by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { started = true }
+    val shown by animateFloatAsState(if (started) ledger.balance.toFloat() else 0f, tween(900), label = "saldo")
+    SindenCard(Modifier.fillMaxWidth().appear(), containerColor = MaterialTheme.colorScheme.primary, border = null) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Saldo saat ini", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f), modifier = Modifier.weight(1f))
+            LivelyIconTile(
+                Icons.Rounded.AccountBalanceWallet,
+                TileGradient(Color.White.copy(alpha = 0.35f), Color.White.copy(alpha = 0.12f)),
+                size = 40.dp, iconSize = 22.dp, corner = 14.dp, modifier = Modifier.floating(4f),
+            )
+        }
         Text(
-            Fmt.rupiah(ledger.balance, hide),
+            Fmt.rupiah(if (started && shown == ledger.balance.toFloat()) ledger.balance else shown.toDouble(), hide),
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onPrimary,
             fontWeight = FontWeight.Bold,
@@ -277,8 +339,15 @@ private fun CashForm(
     initial: CashEntryDto?,
     busy: Boolean,
     onDismiss: () -> Unit,
-    onSubmit: (date: String, description: String, income: Boolean, amount: Double) -> Unit,
+    onSubmit: (
+        date: String, description: String, income: Boolean, amount: Double,
+        keep: List<String>, newFiles: List<UploadImage>, receiptsChanged: Boolean,
+    ) -> Unit,
 ) {
+    val originalReceipts = remember(initial?.id) { initial?.receiptList.orEmpty() }
+    var keptReceipts by remember(initial?.id) { mutableStateOf(originalReceipts) }
+    var pickedReceipts by remember(initial?.id) { mutableStateOf(emptyList<PickedReceipt>()) }
+    var receiptError by remember { mutableStateOf<String?>(null) }
     var date by rememberSaveable { mutableStateOf(initial?.date?.take(10) ?: LocalDate.now().toString()) }
     var description by rememberSaveable { mutableStateOf(initial?.description.orEmpty()) }
     var income by rememberSaveable { mutableStateOf(initial?.isIncome ?: true) }
@@ -308,6 +377,19 @@ private fun CashForm(
             error = errors["amount"], keyboardType = KeyboardType.Decimal,
             supporting = Fmt.parseAmount(amountText)?.let { Fmt.rupiah(it) },
         )
+        Spacer(Modifier.height(Spacing.md))
+        ReceiptEditor(
+            existing = keptReceipts,
+            picked = pickedReceipts,
+            onRemoveExisting = { r -> keptReceipts = keptReceipts - r },
+            onRemovePicked = { p -> pickedReceipts = pickedReceipts - p },
+            onAdd = { p -> if (keptReceipts.size + pickedReceipts.size < MAX_RECEIPTS) pickedReceipts = pickedReceipts + p; receiptError = null },
+            onError = { receiptError = it },
+        )
+        receiptError?.let {
+            Spacer(Modifier.height(Spacing.xs))
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        }
         Spacer(Modifier.height(Spacing.lg))
         PrimaryButton(text = "Simpan", loading = busy, onClick = {
             val amount = Fmt.parseAmount(amountText)
@@ -316,7 +398,12 @@ private fun CashForm(
                 if (description.isBlank()) put("description", "Uraian wajib diisi")
                 if (amount == null || amount <= 0.0) put("amount", "Nominal harus lebih dari 0")
             }
-            if (errors.isEmpty() && amount != null) onSubmit(date, description, income, amount)
+            if (errors.isEmpty() && amount != null) {
+                val changed = pickedReceipts.isNotEmpty() || keptReceipts != originalReceipts
+                // Data dari server lama (tanpa path) tidak bisa dipertahankan sebagian.
+                val keep = keptReceipts.mapNotNull { it.path }
+                onSubmit(date, description, income, amount, keep, pickedReceipts.map { it.upload }, changed)
+            }
         })
     }
 }

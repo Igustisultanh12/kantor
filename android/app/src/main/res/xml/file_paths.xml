@@ -4,4 +4,7 @@
     <cache-path name="pdf_cache" path="pdf/" />
     <!-- Berkas backup yang diunduh untuk dibuka di aplikasi lain -->
     <cache-path name="backup_cache" path="backup/" />
+    <!-- Struk kas: PDF yang dibuka di aplikasi lain & foto kamera -->
+    <cache-path name="receipt_cache" path="receipts/" />
+    <cache-path name="camera_cache" path="camera/" />
 </paths>
