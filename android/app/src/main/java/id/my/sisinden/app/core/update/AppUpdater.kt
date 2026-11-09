@@ -38,7 +38,7 @@ import java.io.IOException
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
-/** Pembaruan terbaru yang diunggah Admin di Pengaturan web. */
+/** Versi terbaru dari server SISINDEN (APK unggahan Admin) atau GitHub Release. */
 data class ReleaseInfo(
     val version: String,
     val versionCode: Int,
@@ -47,6 +47,8 @@ data class ReleaseInfo(
     val apkSize: Long,
     val sha256: String,
     val notes: String,
+    /** "server" atau "github" */
+    val source: String = AppUpdater.SOURCE_SERVER,
 )
 
 /** Status pembaruan untuk UI Pengaturan & dialog pemberitahuan. */
@@ -64,15 +66,22 @@ sealed interface UpdateState {
 }
 
 /**
- * Pembaruan dari dalam aplikasi. Sumbernya APK yang diunggah Admin di
- * Pengaturan web (server SISINDEN): cek /api/mobile/app-update, unduh APK,
- * cocokkan SHA-256 & tanda tangan dengan aplikasi terpasang, lalu pasang lewat
- * PackageInstaller. Di Android 12+ pembaruan berikutnya dapat terpasang tanpa
- * konfirmasi (setelah sekali dipasang dari aplikasi ini); selain itu Android
- * menampilkan dialog "Perbarui" satu ketukan.
+ * Pembaruan dari dalam aplikasi (seperti SISFOPERS KC). Dua sumber diperiksa:
+ *  1. APK yang diunggah Admin di Pengaturan web (/api/mobile/app-update);
+ *  2. GitHub Release terbaru repo SISINDEN (tag v<versi>, aset .apk) — terisi
+ *     otomatis oleh workflow setiap ada rilis, tanpa perlu diunggah manual.
+ * Versi tertinggi yang dipakai (server diutamakan bila sama). APK diverifikasi
+ * SHA-256 & tanda tangannya harus sama dengan aplikasi terpasang, lalu dipasang
+ * lewat PackageInstaller. Di Android 12+ pembaruan berikutnya dapat terpasang
+ * tanpa konfirmasi (setelah sekali dipasang dari aplikasi ini).
  */
 object AppUpdater {
+    const val SOURCE_SERVER = "server"
+    const val SOURCE_GITHUB = "github"
     private const val INFO_PATH = "/api/mobile/app-update"
+    private const val GITHUB_RELEASES = "https://api.github.com/repos/Igustisultanh12/kantor/releases?per_page=15"
+    private val VERSION_RE = Regex("^\\d+(\\.\\d+){1,3}$")
+    private val SHA_RE = Regex("^[0-9a-f]{64}$")
     private const val PREFS = "sinden_update"
     private const val K_AUTO = "auto_update"
     private const val K_LAST_CHECK = "last_check"
@@ -151,18 +160,87 @@ object AppUpdater {
         )
     }
 
-    /** Info pembaruan dari server (null = belum ada APK yang diunggah Admin). */
-    suspend fun fetchLatest(): ReleaseInfo? = withContext(Dispatchers.IO) {
-        val req = Request.Builder().url(baseUrl + INFO_PATH)
-            .header("Accept", "application/json")
+    /**
+     * Baca daftar GitHub Release (API /releases). Ambil rilis non-draft &
+     * non-prerelease terbaru bertag v<versi> yang punya aset .apk. SHA-256 dari
+     * kolom `digest` aset; bila tidak ada, dicari lewat [sumsLookup] (isi SHA256SUMS.txt).
+     */
+    fun parseGitHub(json: String, sumsLookup: (url: String) -> String? = { null }): ReleaseInfo? {
+        val list = JsonParser.parseString(json).takeIf { it.isJsonArray }?.asJsonArray ?: return null
+        for (el in list) {
+            val r = el.takeIf { it.isJsonObject }?.asJsonObject ?: continue
+            if (r.get("draft")?.takeIf { !it.isJsonNull }?.asBoolean == true) continue
+            if (r.get("prerelease")?.takeIf { !it.isJsonNull }?.asBoolean == true) continue
+            val tag = r.get("tag_name")?.takeIf { !it.isJsonNull }?.asString.orEmpty()
+            val version = tag.removePrefix("android-v").removePrefix("v").trim()
+            if (!VERSION_RE.matches(version)) continue
+            val assets = r.getAsJsonArray("assets")?.mapNotNull { it.takeIf { a -> a.isJsonObject }?.asJsonObject } ?: continue
+            fun str(o: com.google.gson.JsonObject, k: String) = o.get(k)?.takeIf { !it.isJsonNull }?.asString.orEmpty()
+            val apk = assets.firstOrNull { str(it, "name").endsWith(".apk", true) && !str(it, "name").contains("debug", true) } ?: continue
+            val url = str(apk, "browser_download_url")
+            if (!url.startsWith("https://github.com/")) continue
+            val name = str(apk, "name")
+            var sha = str(apk, "digest").removePrefix("sha256:").lowercase()
+            if (!SHA_RE.matches(sha)) {
+                val sumsUrl = assets.firstOrNull { str(it, "name").equals("SHA256SUMS.txt", true) }?.let { str(it, "browser_download_url") }
+                val sums = sumsUrl?.takeIf { it.startsWith("https://github.com/") }?.let(sumsLookup).orEmpty()
+                sha = sums.lines().map { it.trim().split(Regex("\\s+")) }
+                    .firstOrNull { it.size >= 2 && it.last().removePrefix("*") == name }?.first()?.lowercase().orEmpty()
+            }
+            if (!SHA_RE.matches(sha)) continue // tanpa SHA-256 tidak dipasang
+            return ReleaseInfo(
+                version = version,
+                versionCode = 0,
+                apkUrl = url,
+                apkName = "SISINDEN-$version.apk",
+                apkSize = apk.get("size")?.takeIf { !it.isJsonNull }?.asLong ?: 0L,
+                sha256 = sha,
+                notes = str(r, "body").lines().map { it.trim() }
+                    .filter { it.isNotBlank() && !it.startsWith("#") && it != "---" }
+                    .take(8).joinToString("\n").take(600),
+                source = SOURCE_GITHUB,
+            )
+        }
+        return null
+    }
+
+    private fun fetchText(url: String, accept: String): String? {
+        val req = Request.Builder().url(url)
+            .header("Accept", accept)
             .header("User-Agent", "SISINDEN-Android/${BuildConfig.VERSION_NAME}")
             .build()
         http.newCall(req).execute().use { res ->
             if (res.code == 429) throw UpdateException("Terlalu sering memeriksa. Coba lagi sebentar lagi.")
             if (!res.isSuccessful) throw IOException("server menjawab HTTP ${res.code}")
-            parseServer(res.body?.string().orEmpty())
+            return res.body?.string()
         }
     }
+
+    private fun fromServer(): ReleaseInfo? = parseServer(fetchText(baseUrl + INFO_PATH, "application/json").orEmpty())
+
+    private fun fromGitHub(): ReleaseInfo? {
+        val text = fetchText(GITHUB_RELEASES, "application/vnd.github+json") ?: return null
+        return parseGitHub(text) { url -> runCatching { fetchText(url, "text/plain") }.getOrNull() }
+    }
+
+    /**
+     * Versi terbaru dari server SISINDEN & GitHub Release (yang tertinggi menang,
+     * server diutamakan bila sama). Gagal hanya bila kedua sumber tidak terjangkau.
+     */
+    suspend fun fetchLatest(): ReleaseInfo? = withContext(Dispatchers.IO) {
+        var serverError: Exception? = null
+        val server = try { fromServer() } catch (e: Exception) { serverError = e; null }
+        val github = try { fromGitHub() } catch (e: Exception) { if (serverError != null) throw serverError!!; null }
+        if (server == null && github == null && serverError != null) throw serverError!!
+        pickLatest(server, github)
+    }
+
+    /** Pilih versi tertinggi; bila sama, APK unggahan Admin di server diutamakan. */
+    fun pickLatest(server: ReleaseInfo?, github: ReleaseInfo?): ReleaseInfo? =
+        listOfNotNull(server, github).maxWithOrNull { a, b ->
+            val c = compareVersions(a.version, b.version)
+            if (c != 0) c else if (a.source == SOURCE_SERVER) 1 else -1
+        }
 
     private fun isNewer(info: ReleaseInfo?): Boolean =
         info != null && compareVersions(info.version, BuildConfig.VERSION_NAME) > 0
@@ -321,7 +399,10 @@ object AppUpdater {
         val part = File(dir, info.apkName + ".part")
         val req = Request.Builder().url(info.apkUrl).header("User-Agent", "SISINDEN-Android/${BuildConfig.VERSION_NAME}").build()
         http.newCall(req).execute().use { res ->
-            if (res.code == 404) throw UpdateException("APK pembaruan sudah tidak ada di server. Periksa ulang beberapa saat lagi.")
+            if (res.code == 404) throw UpdateException(
+                if (info.source == SOURCE_GITHUB) "APK pembaruan tidak ditemukan di GitHub Release. Periksa ulang beberapa saat lagi."
+                else "APK pembaruan sudah tidak ada di server. Periksa ulang beberapa saat lagi."
+            )
             if (!res.isSuccessful) throw UpdateException("Unduhan pembaruan gagal (HTTP ${res.code}).")
             val body = res.body ?: throw UpdateException("Berkas pembaruan kosong.")
             val total = body.contentLength().takeIf { it > 0 } ?: info.apkSize
@@ -363,7 +444,10 @@ object AppUpdater {
         if (installed != null && signerDigests(archive).intersect(signerDigests(installed)).isEmpty()) {
             apk.delete()
             throw UpdateException(
-                "APK v${info.version} di server ditandatangani kunci yang berbeda dengan aplikasi ini, sehingga tidak dapat dipasang sebagai pembaruan. Hubungi Admin agar mengunggah APK rilis resmi SiNDEN."
+                if (info.source == SOURCE_GITHUB)
+                    "APK v${info.version} dari GitHub ditandatangani kunci yang berbeda dengan aplikasi ini, sehingga tidak dapat dipasang sebagai pembaruan. Uninstall aplikasi sekali, lalu pasang APK v${info.version}."
+                else
+                    "APK v${info.version} di server ditandatangani kunci yang berbeda dengan aplikasi ini, sehingga tidak dapat dipasang sebagai pembaruan. Hubungi Admin agar mengunggah APK rilis resmi SiNDEN."
             )
         }
     }

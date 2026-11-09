@@ -1,3 +1,12 @@
+# SISINDEN Android v1.8.1 (versionCode 19)
+
+- **Pembaruan otomatis dari GitHub Release** (seperti SISFOPERS KC): selain APK yang diunggah Admin di Pengaturan web, aplikasi kini juga memeriksa rilis terbaru di GitHub. Versi tertinggi dari kedua sumber yang dipasang (APK Admin diutamakan bila versinya sama). Setiap rilis baru dari workflow langsung sampai ke HP tanpa perlu diunggah manual.
+- APK dari GitHub tetap diverifikasi SHA-256 (dari data rilis GitHub / SHA256SUMS.txt) dan tanda tangannya harus sama dengan aplikasi terpasang.
+- Pemeriksaan tetap tiap ±6 jam dan saat aplikasi dibuka; unduh & pasang otomatis hanya lewat Wi-Fi bila "Perbarui otomatis" aktif.
+- Server: tidak ada perubahan.
+
+---
+
 # SISINDEN Android v1.8.0 (versionCode 18)
 
 Menu **Backup** kini ada di aplikasi, dan akses ke penyimpanan rekan harus seizin pemiliknya.

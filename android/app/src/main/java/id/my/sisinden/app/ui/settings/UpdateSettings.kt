@@ -76,10 +76,11 @@ internal fun UpdateCard() {
         }
         Spacer(Modifier.height(Spacing.sm))
         val status = when (val s = state) {
-            UpdateState.Idle -> "Pembaruan disediakan Admin melalui Pengaturan web SISINDEN."
+            UpdateState.Idle -> "Pembaruan diambil dari server SISINDEN (unggahan Admin) dan GitHub Release secara otomatis."
             UpdateState.Checking -> "Memeriksa pembaruan…"
             is UpdateState.UpToDate -> "Aplikasi sudah versi terbaru (v${s.version})."
-            is UpdateState.Available -> "Versi ${s.info.version} tersedia" + sizeLabel(s.info.apkSize).let { if (it.isEmpty()) "." else " ($it)." }
+            is UpdateState.Available -> "Versi ${s.info.version} tersedia" + sizeLabel(s.info.apkSize).let { if (it.isEmpty()) "" else " ($it)" } +
+                (if (s.info.source == AppUpdater.SOURCE_GITHUB) " dari GitHub Release." else " dari server SISINDEN.")
             is UpdateState.Downloading -> "Mengunduh v${s.version}… ${s.percent}%"
             is UpdateState.Installing -> "Memasang v${s.version}… Jika diminta, ketuk \"Perbarui\"."
             is UpdateState.NeedsInstallPermission -> "Versi ${s.info.version} sudah diunduh. Izinkan \"Instal aplikasi tidak dikenal\" untuk SiNDEN, lalu ketuk \"Pasang sekarang\"."
@@ -115,7 +116,7 @@ internal fun UpdateCard() {
         }
         SwitchRow(
             title = "Perbarui otomatis",
-            subtitle = "Saat Admin mengunggah versi baru, unduh & pasang otomatis di latar belakang (hanya lewat Wi-Fi)",
+            subtitle = "Saat ada versi baru (rilis GitHub atau unggahan Admin), unduh & pasang otomatis di latar belakang (hanya lewat Wi-Fi)",
             checked = auto,
             onChange = {
                 auto = it

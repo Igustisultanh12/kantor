@@ -56,6 +56,50 @@ class UpdateAndPushTest {
     }
 
     @Test
+    fun `pembaruan dari GitHub Release`() {
+        val sha = "d76b28ba57032945678f6ff758f4c0032044c2ccaf0455bdc2a91086beb23fe6"
+        val json = """
+            [
+              {"tag_name":"v1.9.0-beta","draft":false,"prerelease":true,"body":"","assets":[]},
+              {"tag_name":"v1.8.0","draft":false,"prerelease":false,"body":"# SISINDEN\n\n- Menu Backup\n---\n- Minta akses via WA",
+               "assets":[
+                 {"name":"SISINDEN-1.8.0.aab","size":1,"digest":"sha256:${"a".repeat(64)}","browser_download_url":"https://github.com/Igustisultanh12/kantor/releases/download/v1.8.0/SISINDEN-1.8.0.aab"},
+                 {"name":"SISINDEN-1.8.0.apk","size":14816095,"digest":"sha256:$sha","browser_download_url":"https://github.com/Igustisultanh12/kantor/releases/download/v1.8.0/SISINDEN-1.8.0.apk"}
+               ]},
+              {"tag_name":"v1.7.1","draft":false,"prerelease":false,"body":"","assets":[]}
+            ]
+        """.trimIndent()
+        val r = AppUpdater.parseGitHub(json)!!
+        assertEquals("1.8.0", r.version)
+        assertEquals(sha, r.sha256)
+        assertEquals(AppUpdater.SOURCE_GITHUB, r.source)
+        assertEquals(14_816_095L, r.apkSize)
+        assertTrue(r.apkUrl.endsWith("SISINDEN-1.8.0.apk"))
+        assertEquals("- Menu Backup\n- Minta akses via WA", r.notes)
+
+        // Tanpa digest: SHA-256 diambil dari SHA256SUMS.txt.
+        val noDigest = """[{"tag_name":"v1.8.1","draft":false,"prerelease":false,"body":"","assets":[
+            {"name":"SISINDEN-1.8.1.apk","size":5,"browser_download_url":"https://github.com/Igustisultanh12/kantor/releases/download/v1.8.1/SISINDEN-1.8.1.apk"},
+            {"name":"SHA256SUMS.txt","size":5,"browser_download_url":"https://github.com/Igustisultanh12/kantor/releases/download/v1.8.1/SHA256SUMS.txt"}]}]"""
+        val sums = "${"1".repeat(64)}  SISINDEN-1.8.1-debug.apk\n${"2".repeat(64)}  SISINDEN-1.8.1.apk\n"
+        assertEquals("2".repeat(64), AppUpdater.parseGitHub(noDigest) { sums }!!.sha256)
+        // Tanpa SHA-256 sama sekali → tidak dipakai.
+        assertNull(AppUpdater.parseGitHub(noDigest))
+        // URL di luar github.com ditolak.
+        assertNull(AppUpdater.parseGitHub("""[{"tag_name":"v2.0.0","assets":[{"name":"x.apk","digest":"sha256:$sha","browser_download_url":"https://contoh.lain/x.apk"}]}]"""))
+    }
+
+    @Test
+    fun `versi tertinggi dipilih, server diutamakan bila sama`() {
+        val server = AppUpdater.parseServer("""{"available":true,"version":"1.8.0","sha256":"${"c".repeat(64)}"}""", "https://sisinden.my.id")!!
+        val github = server.copy(version = "1.8.1", source = AppUpdater.SOURCE_GITHUB)
+        assertEquals("1.8.1", AppUpdater.pickLatest(server, github)!!.version)
+        assertEquals(AppUpdater.SOURCE_SERVER, AppUpdater.pickLatest(server, github.copy(version = "1.8.0"))!!.source)
+        assertEquals(AppUpdater.SOURCE_GITHUB, AppUpdater.pickLatest(null, github)!!.source)
+        assertNull(AppUpdater.pickLatest(null, null))
+    }
+
+    @Test
     fun `konfigurasi push dari server`() {
         val cfg = Gson().fromJson(
             """{"status":"success","push":{"api_key":"AIza","app_id":"1:1:android:a","project_id":"p","sender_id":"1"},"push_enabled":true}""",
