@@ -307,13 +307,8 @@ class BackupController extends Controller
      */
     public function viewOffice($id)
     {
+        // Akses lihat terbuka untuk semua personel yang login (sama seperti halaman explore).
         $backup = Backup::findOrFail($id);
-
-        $user = Auth::user();
-        $pc = Pc::findOrFail($backup->pc_id);
-        if ($pc->user_id !== $user->id && $user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
-            abort(403, 'Akses Ditolak: Anda tidak memiliki otoritas atas berkas PC ini.');
-        }
 
         if ($backup->is_folder) {
             abort(400, 'Folder tidak dapat dipratinjau.');
@@ -442,13 +437,8 @@ class BackupController extends Controller
             abort(403, 'Akses Ditolak: Pratinjau berkas hanya diizinkan melalui antarmuka aplikasi internal.');
         }
 
+        // Akses lihat terbuka untuk semua personel yang login (sama seperti halaman explore).
         $backup = Backup::findOrFail($id);
-
-        $user = Auth::user();
-        $pc = Pc::findOrFail($backup->pc_id);
-        if ($pc->user_id !== $user->id && $user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
-            abort(403, 'Akses Ditolak: Anda tidak memiliki otoritas atas berkas PC ini.');
-        }
 
         if ($backup->is_folder) {
             abort(400, 'Folder tidak dapat dipratinjau.');
@@ -476,13 +466,8 @@ class BackupController extends Controller
             abort(403, 'Akses Ditolak: Pratinjau Sony RAW hanya diizinkan melalui antarmuka aplikasi internal.');
         }
 
+        // Akses lihat terbuka untuk semua personel yang login (sama seperti halaman explore).
         $backup = Backup::findOrFail($id);
-
-        $user = Auth::user();
-        $pc = Pc::findOrFail($backup->pc_id);
-        if ($pc->user_id !== $user->id && $user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
-            abort(403, 'Akses Ditolak: Anda tidak memiliki otoritas atas berkas PC ini.');
-        }
 
         $fullPath = FileSecurityService::verifySafeStoragePath($backup->file_path);
 
@@ -502,13 +487,8 @@ class BackupController extends Controller
             abort(403, 'Akses Ditolak.');
         }
 
+        // Akses lihat terbuka untuk semua personel yang login (sama seperti halaman explore).
         $backup = Backup::findOrFail($id);
-
-        $user = Auth::user();
-        $pc = Pc::findOrFail($backup->pc_id);
-        if ($pc->user_id !== $user->id && $user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
-            abort(403, 'Akses Ditolak.');
-        }
 
         if ($backup->is_folder) {
             abort(400, 'Folder tidak memiliki thumbnail.');
