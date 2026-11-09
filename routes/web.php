@@ -20,6 +20,7 @@ use App\Http\Controllers\CommunityActivityController;
 use App\Http\Controllers\StampController;
 use App\Http\Controllers\BackupController; 
 use App\Http\Controllers\BackupShareController;
+use App\Http\Controllers\PcAccessController;
 use App\Http\Controllers\CashController;
 use App\Http\Controllers\KoperasiController;
 use App\Http\Controllers\PersonnelController;
@@ -186,6 +187,14 @@ Route::middleware(['auth', 'office.only'])->group(function () {
     Route::get('/pc-backup/preview-arw/{id}', [BackupController::class, 'previewArw'])->name('backup.preview-arw');
     Route::post('/pc-backup/convert-arw/{id}', [BackupController::class, 'convertArw'])->name('backup.convert-arw');
     Route::get('/pc-backup/download-arw-jpg/{id}', [BackupController::class, 'downloadArwJpg'])->name('backup.download-arw-jpg');
+
+    // --- MINTA AKSES KE PENYIMPANAN REKAN (VERIFIKASI WA -> PERSETUJUAN PEMILIK) ---
+    Route::post('/pc-backup/{pc}/access', [PcAccessController::class, 'store'])->whereNumber('pc')->middleware('throttle:10,1')->name('backup.access.request');
+    Route::post('/pc-backup/access/{accessRequest}/resend', [PcAccessController::class, 'resend'])->whereNumber('accessRequest')->middleware('throttle:6,1')->name('backup.access.resend');
+    Route::post('/pc-backup/access/{accessRequest}/verify', [PcAccessController::class, 'verify'])->whereNumber('accessRequest')->middleware('throttle:10,1')->name('backup.access.verify');
+    Route::post('/pc-backup/access/{accessRequest}/approve', [PcAccessController::class, 'approve'])->whereNumber('accessRequest')->name('backup.access.approve');
+    Route::post('/pc-backup/access/{accessRequest}/reject', [PcAccessController::class, 'reject'])->whereNumber('accessRequest')->name('backup.access.reject');
+    Route::delete('/pc-backup/access/{accessRequest}', [PcAccessController::class, 'destroy'])->whereNumber('accessRequest')->name('backup.access.destroy');
 
     // --- FITUR MULTI-SELEKSI & BULK ACTIONS (MOVE, COPY, DELETE, ZIP) ---
     Route::post('/pc-backup/bulk-move', [BackupController::class, 'bulkMove'])->name('backup.bulk-move');

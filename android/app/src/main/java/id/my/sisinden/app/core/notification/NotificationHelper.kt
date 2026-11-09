@@ -170,6 +170,7 @@ object NotificationHelper {
             path.startsWith("/cash") -> "cash"
             path.startsWith("/mitra") -> "mitra"
             path.startsWith("/rekening-ibu-beti") -> "ibu_beti"
+            path.startsWith("/pc-backup") -> "backup"
             else -> "notifications"
         }
     }

@@ -14,11 +14,25 @@ const props = defineProps({
     searchQuery: String,
     currentShare: Object,
     isAdmin: Boolean,
+    // false = rekan yang diberi akses oleh pemilik: hanya lihat & unduh.
+    canManage: { type: Boolean, default: true },
 });
+
+// Aksi yang mengubah isi penyimpanan hanya untuk pemilik/admin.
+const ensureCanManage = () => {
+    if (props.canManage) return true;
+    Swal.fire({
+        title: 'Hanya bisa melihat',
+        text: 'Anda diberi akses lihat oleh pemilik penyimpanan ini. Mengunggah, mengubah, atau menghapus berkas hanya bisa dilakukan pemiliknya.',
+        icon: 'info',
+        confirmButtonColor: '#2563eb',
+    });
+    return false;
+};
 
 // --- STATE FITUR BAGIKAN LINK (GOOGLE DRIVE STYLE DENGAN PIN) ---
 const isShareModalOpen = ref(false);
-const shareTarget = ref(null); // null jika membagikan folder saat ini / root pangkalan
+const shareTarget = ref(null); // null jika membagikan folder saat ini / seluruh penyimpanan
 const isSavingShare = ref(false);
 const isCopiedLink = ref(false);
 const isCopiedGuestLink = ref(false);
@@ -40,6 +54,7 @@ const shareForm = ref({
 });
 
 const openShareModal = (item = null) => {
+    if (!ensureCanManage()) return;
     shareTarget.value = item;
     const existing = item ? item.share_info : props.currentShare;
 
@@ -365,6 +380,7 @@ watch(clipboard, (val) => {
 }, { deep: true });
 
 const copySelectedItems = () => {
+    if (!ensureCanManage()) return;
     if (selectedCount.value === 0) return;
     clipboard.value = {
         mode: 'copy',
@@ -382,6 +398,7 @@ const copySelectedItems = () => {
 };
 
 const cutSelectedItems = () => {
+    if (!ensureCanManage()) return;
     if (selectedCount.value === 0) return;
     clipboard.value = {
         mode: 'cut',
@@ -406,6 +423,7 @@ const cancelClipboard = () => {
 };
 
 const executePaste = async (overrideTargetFolderId = null) => {
+    if (!ensureCanManage()) return;
     if (!clipboard.value.mode || !clipboard.value.items || clipboard.value.items.length === 0) return;
     const ids = clipboard.value.items.map(i => i.id);
 
@@ -475,6 +493,10 @@ const draggedItems = ref([]);
 const dragTargetFolderId = ref(null);
 
 const handleItemDragStart = (e, item) => {
+    if (!props.canManage) {
+        e.preventDefault();
+        return;
+    }
     if (!selectedItemIds.value.includes(item.id)) {
         selectedItemIds.value = [item.id];
         draggedItems.value = [item];
@@ -575,6 +597,7 @@ const handleFolderDrop = async (e, targetFolder) => {
     e.preventDefault();
     e.stopPropagation();
     dragTargetFolderId.value = null;
+    if (!props.canManage) return;
 
     let ids = [];
     try {
@@ -624,6 +647,7 @@ const handleFolderDrop = async (e, targetFolder) => {
 
 // --- LOGIKA BULK DELETE & BULK DOWNLOAD ZIP ---
 const deleteSelectedItems = () => {
+    if (!ensureCanManage()) return;
     if (selectedCount.value === 0) return;
     Swal.fire({
         title: `Hapus ${selectedCount.value} Item Terpilih?`,
@@ -843,6 +867,7 @@ const filteredContents = computed(() => {
 
 // --- LOGIKA FILE & ANTREAN UNGGAH BULK (RAMAH SISTEM) ---
 const triggerFileInput = () => {
+    if (!ensureCanManage()) return;
     const input = document.getElementById('file-input');
     if (input) input.click();
 };
@@ -875,6 +900,7 @@ const enqueueFiles = (fileList) => {
 };
 
 const handleFileInputChange = (event) => {
+    if (!ensureCanManage()) return;
     const files = event.target.files;
     if (files && files.length > 0) {
         enqueueFiles(files);
@@ -884,6 +910,7 @@ const handleFileInputChange = (event) => {
 
 // --- LOGIKA DRAG AND DROP (GLOBAL PER AREA EXPLORER) ---
 const handleDragEnter = (e) => {
+    if (!props.canManage) return;
     dragCounter++;
     if (e.dataTransfer?.types?.includes('Files')) {
         isDraggingOver.value = true;
@@ -909,6 +936,7 @@ const handleDrop = (e) => {
     e.preventDefault();
     isDraggingOver.value = false;
     dragCounter = 0;
+    if (!props.canManage) return;
     if (e.dataTransfer?.files?.length > 0) {
         enqueueFiles(e.dataTransfer.files);
     }
@@ -1156,6 +1184,10 @@ const closeUploadDrawer = () => {
 
 // --- LOGIKA EKSTRAKSI CERDAS ---
 const handleExtract = (item) => {
+    if (!props.canManage) {
+        // Mode lihat: arsip tidak bisa diekstrak, tawarkan unduh saja.
+        return downloadItem(item);
+    }
     activeExtractItem.value = item;
     const baseName = item.file_name.replace(/\.[^/.]+$/, "");
     extractionDestination.value = 'EXTRACTED_' + baseName.toUpperCase();
@@ -1237,6 +1269,7 @@ const stopRadar = () => {
 
 // --- LOGIKA DASAR EXPLORER ---
 const createFolder = () => {
+    if (!ensureCanManage()) return;
     Swal.fire({
         title: 'Buat Folder Baru',
         input: 'text',
@@ -1254,6 +1287,7 @@ const createFolder = () => {
 };
 
 const deleteItem = (item) => {
+    if (!ensureCanManage()) return;
     Swal.fire({
         title: 'Hapus ?',
         text: `Apakah anda yakin ingin menghapus ${item.file_name}?`,
@@ -1294,6 +1328,7 @@ const closeContextMenu = () => {
 };
 
 const handleRename = (item) => {
+    if (!ensureCanManage()) return;
     Swal.fire({
         title: 'Ubah Nama',
         input: 'text',
@@ -1372,6 +1407,7 @@ const videoPlayerRef = ref(null);
 const isConvertingArw = ref(false);
 
 const promptConvertArw = (item) => {
+    if (!ensureCanManage()) return;
     Swal.fire({
         title: 'Konversi Sony RAW (.ARW)',
         html: `
@@ -1995,6 +2031,7 @@ const deleteSheetPrompt = (sheetName) => {
 };
 
 const saveExcelChanges = async () => {
+    if (!ensureCanManage()) return;
     if (!editingExcelItem.value || !currentWorkbook.value) return;
     isExcelSaving.value = true;
     try {
@@ -2072,6 +2109,7 @@ const closeExcelEditor = () => {
 };
 
 const createNewExcelPrompt = () => {
+    if (!ensureCanManage()) return;
     Swal.fire({
         title: 'Buat Berkas Excel Baru',
         input: 'text',
@@ -2179,14 +2217,22 @@ onUnmounted(() => {
                     </Link>
 
                     <div>
-                        <h2 class="font-extrabold text-xl text-slate-900 uppercase tracking-tight"> Explorer: {{ pc.pc_name }}
+                        <h2 class="font-extrabold text-xl text-slate-900 uppercase tracking-tight">{{ pc.pc_name }}
                         </h2>
-                        <p class="text-xs text-slate-500 font-semibold mt-0.5">Sistem Manajemen File & Penyimpanan Cadangan Logistik SINDEN</p>
+                        <p class="text-xs text-slate-500 font-semibold mt-0.5">
+                            <template v-if="pc.user?.name">Milik {{ [pc.user?.pangkat, pc.user?.name].filter(Boolean).join(' ') }} &middot; </template>{{ pc.usage_human }} dari {{ pc.quota_human }} terpakai
+                        </p>
                     </div>
                 </div>
-                
-                <Link :href="route('backup.index')" class="bg-slate-900 hover:bg-slate-800 text-white px-5 py-3 rounded-2xl text-xs font-extrabold uppercase shadow-sm transition tracking-wider"> Kembali ke Radar
+
+                <Link :href="route('backup.index')" class="bg-slate-900 hover:bg-slate-800 text-white px-5 py-3 rounded-2xl text-xs font-extrabold uppercase shadow-sm transition tracking-wider">Kembali
                 </Link>
+            </div>
+
+            <!-- Penanda mode lihat untuk rekan yang diberi akses -->
+            <div v-if="!canManage" class="px-5 py-3.5 bg-blue-50 border border-blue-200 rounded-2xl text-xs text-blue-900 flex items-start gap-3">
+                <svg class="w-5 h-5 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                <span><b>Mode lihat.</b> Pemilik penyimpanan memberi Anda akses untuk melihat dan mengunduh berkas. Unggah, ubah nama, pindah, dan hapus hanya bisa dilakukan pemiliknya.</span>
             </div>
 
             <!-- Deep Scan Search Bar & Breadcrumbs -->
@@ -2252,6 +2298,7 @@ onUnmounted(() => {
                     <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                         <!-- Grup Tombol Aksi Kiri -->
                         <div class="flex items-center gap-2 flex-wrap">
+                            <template v-if="canManage">
                             <button @click="createFolder" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3.5 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-1.5 transition shadow-xs cursor-pointer">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path></svg>
                                 <span>Folder Baru</span>
@@ -2260,15 +2307,16 @@ onUnmounted(() => {
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 4h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                 <span>Excel Baru</span>
                             </button>
-                            <!-- Tombol Bagikan Folder Ini / Pangkalan -->
-                            <button @click="openShareModal(null)" 
-                                    :class="currentShare?.is_active ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500 shadow-sm' : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500 shadow-sm'" 
+                            <!-- Tombol Bagikan Folder Ini / Seluruh Penyimpanan -->
+                            <button @click="openShareModal(null)"
+                                    :class="currentShare?.is_active ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500 shadow-sm' : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500 shadow-sm'"
                                     class="px-3.5 py-2 rounded-xl text-xs font-black uppercase flex items-center gap-1.5 transition cursor-pointer border"
-                                    :title="currentFolderId ? 'Bagikan Folder Ini via Tautan' : 'Bagikan Pangkalan Ini via Tautan'">
+                                    :title="currentFolderId ? 'Bagikan folder ini lewat tautan' : 'Bagikan seluruh penyimpanan lewat tautan'">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
-                                <span>{{ currentFolderId ? 'Bagikan Folder Ini' : 'Bagikan Pangkalan' }}</span>
+                                <span>{{ currentFolderId ? 'Bagikan Folder Ini' : 'Bagikan Penyimpanan' }}</span>
                                 <span v-if="currentShare?.is_active" class="px-1.5 py-0.2 text-[9px] bg-emerald-950 text-emerald-300 rounded-md font-bold uppercase">Aktif</span>
                             </button>
+                            </template>
 
                             <!-- Tombol Toggle Pilih Semua -->
                             <button @click="toggleSelectAll" 
@@ -2326,7 +2374,8 @@ onUnmounted(() => {
                             />
                             
                             <!-- Tombol Unggah Berkas Bulk -->
-                            <button 
+                            <button
+                                v-if="canManage"
                                 type="button"
                                 @click="triggerFileInput" 
                                 class="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-xl text-xs font-black uppercase transition flex items-center gap-2 shadow-xs cursor-pointer active:scale-95"
@@ -2851,6 +2900,7 @@ onUnmounted(() => {
                     <span>DOWNLOAD (UNDUH)</span>
                 </div>
 
+                <template v-if="canManage">
                 <div class="border-t my-1 border-slate-100"></div>
 
                 <!-- Jika Item ini Adalah Folder dan Ada Item di Clipboard: Opsi Tempel ke Dalam Folder Ini -->
@@ -2905,9 +2955,10 @@ onUnmounted(() => {
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
                     <span>EKSTRAK ARSIP (ZIP / RAR)</span>
                 </div>
-                
+                </template>
+
                 <div class="border-t my-1 border-slate-100"></div>
-                <div @click="handleRename(contextMenu.item)" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
+                <div v-if="canManage" @click="handleRename(contextMenu.item)" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
                     <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                     <span>UBAH NAMA</span>
                 </div>
@@ -2915,8 +2966,8 @@ onUnmounted(() => {
                     <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     <span>PROPERTIES</span>
                 </div>
-                <div class="border-t my-1 border-slate-100"></div>
-                <div @click="selectedItemIds.length > 1 ? deleteSelectedItems() : deleteItem(contextMenu.item)" class="px-4 py-2 hover:bg-red-600 hover:text-white cursor-pointer flex items-center gap-3 transition text-red-600">
+                <div v-if="canManage" class="border-t my-1 border-slate-100"></div>
+                <div v-if="canManage" @click="selectedItemIds.length > 1 ? deleteSelectedItems() : deleteItem(contextMenu.item)" class="px-4 py-2 hover:bg-red-600 hover:text-white cursor-pointer flex items-center gap-3 transition text-red-600">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     <span>HAPUS</span>
                 </div>
@@ -2950,6 +3001,7 @@ onUnmounted(() => {
 
                 <div v-if="clipboard.items.length > 0" class="border-t my-1 border-slate-100"></div>
 
+                <template v-if="canManage">
                 <div @click="createFolder" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
                     <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>
                     <span>BUAT FOLDER BARU</span>
@@ -2961,6 +3013,7 @@ onUnmounted(() => {
                 </div>
 
                 <div class="border-t my-1 border-slate-100"></div>
+                </template>
 
                 <div @click="toggleSelectAll" class="px-4 py-2 hover:bg-blue-600 hover:text-white cursor-pointer flex items-center gap-3 transition">
                     <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
@@ -3529,7 +3582,7 @@ onUnmounted(() => {
                             <div class="flex-1 min-w-0">
                                 <p class="text-[11px] font-black uppercase text-slate-400 tracking-wider">Target Folder</p>
                                 <p class="text-sm font-black text-slate-800 truncate uppercase">{{ shareForm.share_name }}</p>
-                                <p class="text-[10px] text-slate-500 font-bold">Pangkalan: {{ pc.pc_name }}</p>
+                                <p class="text-[10px] text-slate-500 font-bold">Penyimpanan: {{ pc.pc_name }}</p>
                             </div>
                             <div>
                                 <span v-if="shareForm.is_active" class="px-2.5 py-1 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full text-[10px] font-black uppercase flex items-center gap-1">

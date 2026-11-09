@@ -64,6 +64,8 @@ import id.my.sisinden.app.core.security.PermissionSet
 import id.my.sisinden.app.data.repository.CashKind
 import id.my.sisinden.app.data.repository.SindenRepository
 import id.my.sisinden.app.ui.attendance.AttendanceScreen
+import id.my.sisinden.app.ui.backup.BackupFilesScreen
+import id.my.sisinden.app.ui.backup.BackupScreen
 import id.my.sisinden.app.ui.cash.CashScreen
 import id.my.sisinden.app.ui.commander.CommanderScreen
 import id.my.sisinden.app.ui.ibubeti.IbuBetiScreen
@@ -351,6 +353,33 @@ fun MainNavigation(
             }
             composable(Routes.SETTINGS, deepLinks = appDeepLink("settings")) {
                 SettingsScreen(repository, onBack = back)
+            }
+
+            // ------------------------------------------------------ Backup
+            composable(Routes.BACKUP, deepLinks = appDeepLink("backup")) {
+                Guard(currentPerms(), Perm.BACKUP_VIEW, back) {
+                    BackupScreen(
+                        repository = repository,
+                        onBack = back,
+                        onOpenPc = { pcId, title -> nav.navigate(Routes.backupFiles(pcId, title)) { launchSingleTop = true } },
+                    )
+                }
+            }
+            composable(
+                Routes.BACKUP_FILES,
+                arguments = listOf(
+                    navArgument("pc") { type = NavType.IntType },
+                    navArgument("title") { type = NavType.StringType; defaultValue = "Penyimpanan" },
+                ),
+            ) { entry ->
+                Guard(currentPerms(), Perm.BACKUP_VIEW, back) {
+                    BackupFilesScreen(
+                        repository = repository,
+                        pcId = entry.arguments?.getInt("pc") ?: 0,
+                        title = entry.arguments?.getString("title").orEmpty().ifBlank { "Penyimpanan" },
+                        onBack = back,
+                    )
+                }
             }
 
             // ------------------------------------------------------ Chat Dinas & Vicon

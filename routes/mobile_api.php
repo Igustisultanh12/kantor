@@ -18,6 +18,7 @@
 */
 
 use App\Http\Controllers\Mobile\MobileApiController;
+use App\Http\Controllers\Mobile\MobileBackupController;
 use App\Http\Controllers\Mobile\MobileCommsController;
 use App\Http\Controllers\Mobile\MobileIbuBetiController;
 use App\Models\User;
@@ -359,6 +360,21 @@ Route::get('/api/mobile/pdf/cash', [MobileApiController::class, 'cashPdf'])->mid
 Route::get('/api/mobile/pdf/letter-logs', [MobileApiController::class, 'letterLogsPdf'])->middleware('mobile.auth:letter_logs.pdf');
 Route::get('/api/mobile/pdf/skhpp/{id}', [MobileApiController::class, 'skhppPdf'])->whereNumber('id')->middleware('mobile.auth:skhpp.pdf');
 Route::get('/api/mobile/pdf/commander-account', [MobileApiController::class, 'commanderAccountPdf'])->middleware('mobile.auth:commander_account.pdf');
+
+// =====================================================================
+// BACKUP: PENYIMPANAN SAYA, PENYIMPANAN REKAN & MINTA AKSES (VERIFIKASI WA)
+// =====================================================================
+Route::get('/api/mobile/backup', [MobileBackupController::class, 'overview'])->middleware('mobile.auth:backup.view');
+Route::get('/api/mobile/backup/pcs/{pc}/files', [MobileBackupController::class, 'files'])->whereNumber('pc')->middleware('mobile.auth:backup.view');
+Route::get('/api/mobile/backup/files/{id}/thumbnail', [MobileBackupController::class, 'thumbnail'])->whereNumber('id')->middleware(['mobile.auth:backup.view', 'throttle:240,1']);
+Route::get('/api/mobile/backup/files/{id}/content', [MobileBackupController::class, 'content'])->whereNumber('id')->middleware(['mobile.auth:backup.view', 'throttle:60,1']);
+Route::get('/api/mobile/backup/files/{id}/download', [MobileBackupController::class, 'download'])->whereNumber('id')->middleware(['mobile.auth:backup.view', 'throttle:30,1']);
+Route::post('/api/mobile/backup/pcs/{pc}/access', [MobileBackupController::class, 'requestAccess'])->whereNumber('pc')->middleware(['mobile.auth:backup.view', 'throttle:10,1']);
+Route::post('/api/mobile/backup/access/{accessRequest}/resend', [MobileBackupController::class, 'resend'])->whereNumber('accessRequest')->middleware(['mobile.auth:backup.view', 'throttle:6,1']);
+Route::post('/api/mobile/backup/access/{accessRequest}/verify', [MobileBackupController::class, 'verify'])->whereNumber('accessRequest')->middleware(['mobile.auth:backup.view', 'throttle:10,1']);
+Route::post('/api/mobile/backup/access/{accessRequest}/approve', [MobileBackupController::class, 'approve'])->whereNumber('accessRequest')->middleware('mobile.auth:backup.view');
+Route::post('/api/mobile/backup/access/{accessRequest}/reject', [MobileBackupController::class, 'reject'])->whereNumber('accessRequest')->middleware('mobile.auth:backup.view');
+Route::delete('/api/mobile/backup/access/{accessRequest}', [MobileBackupController::class, 'withdraw'])->whereNumber('accessRequest')->middleware('mobile.auth:backup.view');
 
 Route::get('/api/mobile/notifications', [MobileApiController::class, 'notifications'])->middleware('mobile.auth:notifications.view');
 Route::post('/api/mobile/notifications/read-all', [MobileApiController::class, 'markAllNotificationsRead'])->middleware('mobile.auth:notifications.view');
@@ -1298,35 +1314,10 @@ Route::delete('/api/mobile/technical-cash/{id}', function ($id) {
 })->middleware('mobile.auth:technical_cash.manage');
 
 // =====================================================================
-// 13. BACKUP (ringkasan Admin) & PENGAJUAN AKSES
+// 13. PENGAJUAN RUANG PENYIMPANAN BACKUP KE ADMIN
+//     (Daftar penyimpanan & minta akses ke penyimpanan rekan: lihat bagian
+//      "BACKUP" di atas -> MobileBackupController.)
 // =====================================================================
-Route::get('/api/mobile/backup', function () {
-    try {
-        $pcs = \App\Models\Pc::with('user:id,name,pangkat,nrp')->latest()->get()->map(fn ($pc) => [
-            'id' => $pc->id,
-            'name' => $pc->name ?? $pc->pc_name ?? 'PC Kedinasan',
-            'user_name' => $pc->user?->name ?? '-',
-            'status' => $pc->is_online ? 'ONLINE' : 'OFFLINE',
-            'last_backup' => $pc->last_backup_at ? \Carbon\Carbon::parse($pc->last_backup_at)->format('d/m/Y H:i') : null,
-        ]);
-        $requests = \App\Models\AccessRequest::with('user:id,name')->latest()->take(20)->get()->map(fn ($r) => [
-            'id' => $r->id,
-            'user_name' => $r->user?->name ?? '-',
-            'pc_name' => $r->pc_name,
-            'status' => strtoupper($r->status ?? 'PENDING'),
-            'created_at' => optional($r->created_at)->format('d/m/Y H:i'),
-        ]);
-        return response()->json([
-            'status' => 'success',
-            'pcs' => $pcs,
-            'access_requests' => $requests,
-            'stats' => ['total_pcs' => \App\Models\Pc::count()],
-        ]);
-    } catch (\Throwable $e) {
-        return mobile_error($e, 'Gagal memuat data backup.');
-    }
-})->middleware('mobile.auth:backup.view');
-
 Route::post('/api/mobile/backup/request-access', function (Request $request) {
     try {
         $req = \App\Models\AccessRequest::create([

@@ -26,8 +26,8 @@ android {
         applicationId = "id.my.sisinden.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 17
-        versionName = "1.7.1"
+        versionCode = 18
+        versionName = "1.8.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

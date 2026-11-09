@@ -174,7 +174,9 @@ class MobileAccess
             'users.manage' => $admin,
 
             'audit_logs.view' => $admin,
-            'backup.view' => $admin,
+            // Semua personel punya menu Backup; isi tiap penyimpanan dijaga App\Support\BackupAccess
+            // (pemilik, admin, atau rekan yang permintaan aksesnya disetujui pemilik).
+            'backup.view' => true,
         ];
     }
 

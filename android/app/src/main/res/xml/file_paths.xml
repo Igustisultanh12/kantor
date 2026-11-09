@@ -2,4 +2,6 @@
 <paths>
     <!-- Hanya folder cache PDF yang dapat dibagikan ke aplikasi lain -->
     <cache-path name="pdf_cache" path="pdf/" />
+    <!-- Berkas backup yang diunduh untuk dibuka di aplikasi lain -->
+    <cache-path name="backup_cache" path="backup/" />
 </paths>

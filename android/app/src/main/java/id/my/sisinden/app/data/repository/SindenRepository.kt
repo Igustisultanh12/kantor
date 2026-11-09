@@ -333,6 +333,89 @@ class SindenRepository(
     suspend fun pendingSpJaga() = call { pendingSpJaga() }
     suspend fun approveSpJaga(id: Int) = call { approveSpJaga(id) }
 
+    // ---------------------------------------------------------- Backup
+
+    suspend fun backupOverview() = call { backupOverview() }
+    suspend fun backupFiles(pcId: Int, folderId: Int?, search: String?) =
+        call { backupFiles(pcId, folderId, search?.trim()?.takeIf { it.isNotEmpty() }) }
+    suspend fun backupRequestAccess(pcId: Int, reason: String?) =
+        call { backupRequestAccess(pcId, BackupAccessReasonRequest(reason?.trim()?.takeIf { it.isNotEmpty() })) }
+    suspend fun backupVerifyAccess(requestId: Int, code: String) =
+        call { backupVerifyAccess(requestId, BackupAccessCodeRequest(code.filter { it.isDigit() })) }
+    suspend fun backupResendCode(requestId: Int) = call { backupResendCode(requestId) }
+    suspend fun backupDecide(requestId: Int, approve: Boolean, note: String?) = call {
+        val body = BackupAccessNoteRequest(note?.trim()?.takeIf { it.isNotEmpty() })
+        if (approve) backupApproveAccess(requestId, body) else backupRejectAccess(requestId, body)
+    }
+    suspend fun backupWithdrawAccess(requestId: Int) = call { backupWithdrawAccess(requestId) }
+
+    /**
+     * Gambar berkas backup (thumbnail atau pratinjau penuh) lewat token sesi.
+     * Success(null) = server masih membuat thumbnail (HTTP 202), coba lagi sebentar.
+     */
+    suspend fun backupImage(fileId: Int, thumbnail: Boolean): ApiResult<ByteArray?> = withContext(Dispatchers.IO) {
+        val path = "api/mobile/backup/files/$fileId/" + if (thumbnail) "thumbnail" else "content"
+        try {
+            val response = svc().downloadFile(path)
+            if (!response.isSuccessful) {
+                val raw = try { response.errorBody()?.string() } catch (_: Exception) { null }
+                return@withContext ApiResult.Failure(ApiErrors.fromHttp(response.code(), raw))
+            }
+            val body = response.body() ?: return@withContext ApiResult.Failure(ApiError(ErrorKind.SERVER, "Server tidak mengirim berkas."))
+            if (response.code() == 202) {
+                body.close()
+                return@withContext ApiResult.Success(null)
+            }
+            if (!body.contentType()?.type.equals("image", ignoreCase = true)) {
+                body.close()
+                return@withContext ApiResult.Failure(ApiError(ErrorKind.SERVER, "Berkas bukan gambar."))
+            }
+            ApiResult.Success(body.bytes())
+        } catch (c: CancellationException) {
+            throw c
+        } catch (t: Throwable) {
+            ApiResult.Failure(ApiErrors.fromThrowable(t))
+        }
+    }
+
+    /**
+     * Unduh berkas backup ke cache privat (folder "backup/") agar bisa dibuka
+     * dengan aplikasi lain atau disimpan ke perangkat.
+     */
+    suspend fun downloadBackupFile(fileId: Int, fileName: String): ApiResult<File> = withContext(Dispatchers.IO) {
+        val dir = File(appContext.cacheDir, "backup").apply { mkdirs() }
+        // Bersihkan unduhan lama (> 1 hari) agar cache tidak membengkak.
+        dir.listFiles()?.filter { System.currentTimeMillis() - it.lastModified() > 86_400_000L }?.forEach { it.delete() }
+        val safe = fileName.replace(Regex("[\\\\/:*?\"<>|\\u0000-\\u001F]+"), "_").trim().take(120).ifEmpty { "berkas" }
+        val target = File(dir, "${fileId}_$safe")
+        val temp = File(dir, target.name + ".part")
+        try {
+            val response = svc().downloadFile("api/mobile/backup/files/$fileId/download")
+            if (!response.isSuccessful) {
+                val raw = try { response.errorBody()?.string() } catch (_: Exception) { null }
+                return@withContext ApiResult.Failure(ApiErrors.fromHttp(response.code(), raw))
+            }
+            val body = response.body() ?: return@withContext ApiResult.Failure(ApiError(ErrorKind.SERVER, "Server tidak mengirim berkas."))
+            body.byteStream().use { input -> temp.outputStream().use { output -> input.copyTo(output) } }
+            if (temp.length() == 0L) {
+                temp.delete()
+                return@withContext ApiResult.Failure(ApiError(ErrorKind.SERVER, "Berkas kosong atau gagal diunduh."))
+            }
+            if (target.exists()) target.delete()
+            if (!temp.renameTo(target)) {
+                temp.copyTo(target, overwrite = true)
+                temp.delete()
+            }
+            ApiResult.Success(target)
+        } catch (c: CancellationException) {
+            temp.delete()
+            throw c
+        } catch (t: Throwable) {
+            temp.delete()
+            ApiResult.Failure(ApiErrors.fromThrowable(t))
+        }
+    }
+
     // ------------------------------------------------------------- PDF
 
     /**

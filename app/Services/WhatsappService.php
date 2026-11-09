@@ -9,19 +9,23 @@ class WhatsappService
 {
     /**
      * Mengirim pesan WA via Server Node.js Internal (Port 3000)
+     *
+     * @param  bool  $essential  true untuk pesan wajib (mis. kode verifikasi) yang
+     *                           tetap dikirim walau notifikasi WA dimatikan Admin.
+     * @return bool  true bila gateway menerima pesan.
      */
-    public static function sendMessage($target, $message, $sessionId = null)
+    public static function sendMessage($target, $message, $sessionId = null, bool $essential = false): bool
     {
         // 0. Cek Pengaturan Master Admin (wa_notifications_enabled)
         $enabled = \App\Models\Setting::where('key', 'wa_notifications_enabled')->value('value') ?? '1';
-        if ($enabled === '0') {
+        if ($enabled === '0' && !$essential) {
             Log::info("WhatsappService: Notifikasi WA diblokir oleh Admin (Status Master: NONAKTIF). Target: {$target}");
-            return;
+            return false;
         }
 
         if (empty($target)) {
             Log::warning("WhatsappService: Target phone number is empty.");
-            return;
+            return false;
         }
 
         // 1. Bersihkan nomor (hilangkan spasi, strip, tanda plus, dll)
@@ -46,12 +50,14 @@ class WhatsappService
 
             if ($response->successful()) {
                 Log::info("WA Terkirim ke: {$phone}");
-            } else {
-                Log::error("Server WA Port 3000 merespon gagal: " . $response->body());
+                return true;
             }
+            Log::error("Server WA Port 3000 merespon gagal: " . $response->body());
 
         } catch (\Exception $e) {
             Log::error("Koneksi ke Server WA Gagal: " . $e->getMessage());
         }
+
+        return false;
     }
 }

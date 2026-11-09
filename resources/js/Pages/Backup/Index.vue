@@ -18,15 +18,182 @@ const props = defineProps({
     allUsers: {
         type: Array,
         default: () => []
-    }
+    },
+    incomingRequests: { type: Array, default: () => [] }, // rekan yang minta akses ke penyimpanan saya
+    activeGrants: { type: Array, default: () => [] },     // rekan yang sudah saya beri akses
 });
+
+// =====================================================================
+// MINTA AKSES KE PENYIMPANAN REKAN (VERIFIKASI WA -> PERSETUJUAN PEMILIK)
+// =====================================================================
+const errorText = (err, fallback = 'Terjadi kendala. Coba lagi.') =>
+    err?.response?.data?.message || Object.values(err?.response?.data?.errors || {})[0]?.[0] || fallback;
+
+const reloadAccessData = () => router.reload({ only: ['publicPcs', 'incomingRequests', 'activeGrants'], preserveScroll: true });
+
+const ownerLabel = (pc) => [pc.user?.pangkat, pc.user?.name].filter(Boolean).join(' ') || pc.pc_name;
+
+const askAccess = async (pc) => {
+    const result = await Swal.fire({
+        title: 'Minta akses penyimpanan',
+        html: `Anda akan meminta izin melihat isi penyimpanan <b>${pc.pc_name}</b> milik <b>${ownerLabel(pc)}</b>.<br><br>Kami kirim kode verifikasi ke WhatsApp Anda dulu, lalu permintaan diteruskan ke pemiliknya.`,
+        input: 'textarea',
+        inputLabel: 'Keperluan (opsional)',
+        inputPlaceholder: 'Contoh: perlu file laporan bulan Oktober',
+        inputAttributes: { maxlength: 500 },
+        showCancelButton: true,
+        confirmButtonText: 'Kirim kode WA',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#2563eb',
+        showLoaderOnConfirm: true,
+        allowOutsideClick: () => !Swal.isLoading(),
+        preConfirm: async (reason) => {
+            try {
+                const res = await axios.post(route('backup.access.request', pc.id), { reason: reason || null });
+                return res.data.request;
+            } catch (err) {
+                Swal.showValidationMessage(errorText(err));
+                return false;
+            }
+        },
+    });
+    if (result.isConfirmed && result.value) {
+        await enterAccessCode(result.value);
+    }
+};
+
+const enterAccessCode = async (req) => {
+    const result = await Swal.fire({
+        title: 'Masukkan kode WhatsApp',
+        html: `Kode 6 digit sudah dikirim ke WhatsApp <b>${req.phone_hint || 'Anda'}</b>. Kode berlaku 10 menit.`,
+        input: 'text',
+        inputAttributes: { maxlength: 6, inputmode: 'numeric', autocomplete: 'one-time-code', style: 'text-align:center;letter-spacing:8px;font-size:22px;font-weight:800' },
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: 'Verifikasi',
+        denyButtonText: 'Kirim ulang kode',
+        cancelButtonText: 'Nanti saja',
+        confirmButtonColor: '#2563eb',
+        denyButtonColor: '#64748b',
+        showLoaderOnConfirm: true,
+        allowOutsideClick: () => !Swal.isLoading(),
+        inputValidator: (value) => (!value || value.replace(/\D/g, '').length !== 6) ? 'Masukkan 6 digit kode dari WhatsApp.' : undefined,
+        preConfirm: async (code) => {
+            try {
+                const res = await axios.post(route('backup.access.verify', req.id), { code });
+                return res.data;
+            } catch (err) {
+                Swal.showValidationMessage(errorText(err));
+                return false;
+            }
+        },
+    });
+
+    if (result.isConfirmed && result.value) {
+        await Swal.fire({
+            title: 'Permintaan terkirim',
+            text: 'Pemilik penyimpanan sudah diberi tahu lewat WhatsApp dan aplikasi. Anda akan mendapat kabar begitu permintaan disetujui atau ditolak.',
+            icon: 'success',
+            confirmButtonColor: '#2563eb',
+        });
+        reloadAccessData();
+    } else if (result.isDenied) {
+        try {
+            const res = await axios.post(route('backup.access.resend', req.id));
+            await enterAccessCode(res.data.request);
+        } catch (err) {
+            await Swal.fire('Belum bisa kirim ulang', errorText(err), 'warning');
+            await enterAccessCode(req);
+        }
+    } else {
+        reloadAccessData();
+    }
+};
+
+// Lanjutkan permintaan yang kodenya belum dimasukkan.
+const continueAccessRequest = (pc) => {
+    if (!pc.access_request_id) return askAccess(pc);
+    enterAccessCode({ id: pc.access_request_id, phone_hint: null });
+};
+
+const cancelAccessRequest = async (pc) => {
+    const ok = await Swal.fire({
+        title: 'Batalkan permintaan?',
+        text: `Permintaan akses ke ${pc.pc_name} akan dibatalkan.`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, batalkan',
+        cancelButtonText: 'Tidak',
+        confirmButtonColor: '#dc2626',
+    });
+    if (!ok.isConfirmed) return;
+    try {
+        await axios.delete(route('backup.access.destroy', pc.access_request_id));
+        reloadAccessData();
+    } catch (err) {
+        Swal.fire('Gagal', errorText(err), 'error');
+    }
+};
+
+const requesterLabel = (req) => [req.requester?.pangkat, req.requester?.name].filter(Boolean).join(' ');
+
+const decideRequest = async (req, approve) => {
+    const result = await Swal.fire({
+        title: approve ? 'Beri akses?' : 'Tolak permintaan?',
+        html: approve
+            ? `<b>${requesterLabel(req)}</b> akan bisa melihat dan mengunduh isi <b>${req.pc_name}</b>. Ia tidak bisa mengubah atau menghapus berkas. Akses bisa Anda cabut kapan saja.`
+            : `Permintaan <b>${requesterLabel(req)}</b> untuk <b>${req.pc_name}</b> akan ditolak.`,
+        input: 'text',
+        inputLabel: 'Pesan untuk rekan (opsional)',
+        inputAttributes: { maxlength: 500 },
+        showCancelButton: true,
+        confirmButtonText: approve ? 'Ya, beri akses' : 'Ya, tolak',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: approve ? '#059669' : '#dc2626',
+        showLoaderOnConfirm: true,
+        allowOutsideClick: () => !Swal.isLoading(),
+        preConfirm: async (note) => {
+            try {
+                const res = await axios.post(route(approve ? 'backup.access.approve' : 'backup.access.reject', req.id), { note: note || null });
+                return res.data;
+            } catch (err) {
+                Swal.showValidationMessage(errorText(err));
+                return false;
+            }
+        },
+    });
+    if (result.isConfirmed && result.value) {
+        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: result.value.message, showConfirmButton: false, timer: 2500 });
+        reloadAccessData();
+    }
+};
+
+const revokeGrant = async (req) => {
+    const ok = await Swal.fire({
+        title: 'Cabut akses?',
+        html: `<b>${requesterLabel(req)}</b> tidak akan bisa membuka <b>${req.pc_name}</b> lagi.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, cabut',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#dc2626',
+    });
+    if (!ok.isConfirmed) return;
+    try {
+        const res = await axios.delete(route('backup.access.destroy', req.id));
+        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: res.data.message, showConfirmButton: false, timer: 2500 });
+        reloadAccessData();
+    } catch (err) {
+        Swal.fire('Gagal', errorText(err), 'error');
+    }
+};
 
 const networkForm = useForm({
     location_name: '',
     ip_address: '',
 });
 
-// --- OPERASI ADMIN: BUAT PANGKALAN PC DENGAN KUOTA GB KUSTOM ---
+// --- ADMIN: BUAT PENYIMPANAN BARU DENGAN KUOTA GB KUSTOM ---
 const isCreatePcModalOpen = ref(false);
 const createPcForm = useForm({
     pc_name: '',
@@ -48,19 +215,19 @@ const submitCreatePc = () => {
             isCreatePcModalOpen.value = false;
             createPcForm.reset();
             Swal.fire({
-                title: 'Pangkalan Siap!',
-                text: 'Pangkalan Backup baru berhasil dibangun sesuai jatah kuota.',
+                title: 'Penyimpanan siap',
+                text: 'Ruang penyimpanan baru sudah dibuat sesuai kuota.',
                 icon: 'success',
                 confirmButtonColor: '#2563eb'
             });
         },
         onError: (err) => {
-            Swal.fire('Gagal Membuat PC', Object.values(err)[0] || 'Terjadi kesalahan.', 'error');
+            Swal.fire('Gagal membuat penyimpanan', Object.values(err)[0] || 'Terjadi kesalahan.', 'error');
         }
     });
 };
 
-// --- OPERASI ADMIN: SESUAIKAN KUOTA GB PANGKALAN PC ---
+// --- ADMIN: SESUAIKAN KUOTA GB PENYIMPANAN ---
 const isEditQuotaModalOpen = ref(false);
 const activePcForQuota = ref(null);
 const editQuotaForm = useForm({
@@ -111,17 +278,17 @@ const checkAksesStatus = () => {
         // 1. Jika belum pernah mengajukan akses
         if (!props.authRequest) {
             Swal.fire({
-                title: 'Akses Ditolak',
-                text: "Anda belum memiliki pangkalan penyimpanan. Ajukan akses sekarang?",
+                title: 'Belum punya ruang penyimpanan',
+                text: "Anda belum punya ruang penyimpanan backup sendiri. Ajukan ke Admin sekarang?",
                 showCancelButton: true,
                 confirmButtonColor: '#3085d6',
                 cancelButtonColor: '#d33',
-                confirmButtonText: 'Ya, Ajukan Akses!',
-                cancelButtonText: 'Cancel'
+                confirmButtonText: 'Ya, ajukan',
+                cancelButtonText: 'Nanti'
             }).then((result) => {
                 if (result.isConfirmed) {
                     useForm({}).post(route('backup.request-access'), {
-                        onSuccess: () => Swal.fire('Berhasil', 'Laporan pengajuan telah dikirim.', 'success')
+                        onSuccess: () => Swal.fire('Berhasil', 'Pengajuan sudah dikirim ke Admin.', 'success')
                     });
                 }
             });
@@ -150,7 +317,7 @@ const checkAksesStatus = () => {
                     return new Promise((resolve) => {
                         useForm({ code: code }).post(route('backup.verify'), {
                             onSuccess: () => {
-                                Swal.fire('Berhasil', 'Pangkalan PC 200GB telah siap!', 'success');
+                                Swal.fire('Berhasil', 'Ruang penyimpanan 200 GB Anda sudah siap.', 'success');
                                 resolve();
                             },
                             onError: (errors) => {
@@ -369,21 +536,46 @@ onUnmounted(() => {
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight uppercase font-black"> Pusat Backup & Otoritas Akses</h2>
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight uppercase font-black">Backup & Penyimpanan</h2>
         </template>
 
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
 
+                <!-- PERMINTAAN AKSES MASUK: rekan yang ingin melihat penyimpanan saya -->
+                <div v-if="incomingRequests.length > 0" class="bg-white border border-amber-200 p-5 sm:p-6 shadow-sm rounded-2xl">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="relative flex h-2.5 w-2.5">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                        </span>
+                        <h3 class="text-base font-extrabold text-slate-900">Permintaan akses ke penyimpanan Anda</h3>
+                    </div>
+                    <p class="text-xs text-slate-500 mb-4">Rekan berikut sudah memverifikasi WhatsApp-nya dan menunggu persetujuan Anda. Akses yang Anda berikan hanya untuk melihat dan mengunduh.</p>
+                    <div class="grid grid-cols-1 gap-3">
+                        <div v-for="req in incomingRequests" :key="req.id" class="p-4 rounded-xl border border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="font-bold text-slate-900">{{ requesterLabel(req) }} <span class="text-xs font-normal text-slate-500">NRP {{ req.requester?.nrp || '-' }}</span></p>
+                                <p class="text-xs text-slate-500">Ingin membuka <b class="text-slate-700">{{ req.pc_name }}</b> &middot; {{ req.created_human }}</p>
+                                <p v-if="req.reason" class="text-xs text-slate-600 mt-1 italic">"{{ req.reason }}"</p>
+                            </div>
+                            <div class="flex gap-2 shrink-0">
+                                <button @click="decideRequest(req, false)" class="px-4 py-2 rounded-xl border border-red-200 bg-white text-red-600 hover:bg-red-50 text-xs font-bold transition cursor-pointer">Tolak</button>
+                                <button @click="decideRequest(req, true)" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-sm cursor-pointer">Setujui</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div v-if="isAdmin && pendingRequests.length > 0" class="bg-amber-50 border-l-4 border-amber-400 p-6 shadow-sm rounded-lg">
                     <h3 class="text-lg font-bold text-amber-800 mb-4 uppercase flex items-center gap-2">
-                        <span> Antrean Pengajuan Akses</span>
+                        <span>Pengajuan Ruang Penyimpanan Baru</span>
                     </h3>
                     <div class="grid grid-cols-1 gap-3">
                         <div v-for="req in pendingRequests" :key="req.id" class="bg-white p-4 rounded border flex justify-between items-center shadow-sm">
                             <div>
                                 <p class="font-bold text-gray-800">{{ req.user.name }} <span class="text-xs font-normal text-gray-500">({{ req.user.nrp }})</span></p>
-                                <p class="text-xs text-gray-400 italic">Meminta Akses: {{ req.pc_name }}</p>
+                                <p class="text-xs text-gray-400 italic">Mengajukan: {{ req.pc_name }}</p>
                             </div>
                             <div class="flex gap-2">
                                 <button @click="approvePersonel(req.id)" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-xs font-bold transition flex items-center gap-1"> Setujui
@@ -427,7 +619,7 @@ onUnmounted(() => {
 
                             <button @click="openCreatePcModal" class="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition shadow-sm flex items-center gap-2 cursor-pointer">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
-                                <span>Buat Pangkalan Backup Baru</span>
+                                <span>Buat Penyimpanan Baru</span>
                             </button>
                         </div>
                     </div>
@@ -455,7 +647,7 @@ onUnmounted(() => {
                             </div>
 
                             <div class="mt-6 space-y-2">
-                                <Link :href="route('backup.explore', pc.id)" class="block w-full text-center bg-blue-700 hover:bg-blue-800 text-white py-3 rounded-lg font-bold transition shadow-md uppercase text-sm"> MASUK DAFTAR PC
+                                <Link :href="route('backup.explore', pc.id)" class="block w-full text-center bg-blue-700 hover:bg-blue-800 text-white py-3 rounded-lg font-bold transition shadow-md uppercase text-sm">Buka Penyimpanan
                                 </Link>
                                 <div v-if="isAdmin" class="grid grid-cols-2 gap-2">
                                     <button @click="openEditQuotaModal(pc)" class="w-full text-center bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white py-2 rounded-lg font-bold text-xs transition uppercase border border-blue-200 flex items-center justify-center gap-1.5 cursor-pointer" title="Ubah kapasitas penyimpanan (GB)">
@@ -471,32 +663,59 @@ onUnmounted(() => {
                         </div>
                     </div>
                     <div v-else class="text-center py-10 bg-gray-50 rounded-xl border-2 border-dashed">
-                        <p class="text-gray-400 italic">Belum ada PC yang terdeteksi.</p>
+                        <p class="text-gray-400 italic">Anda belum punya ruang penyimpanan.</p>
                         <div class="mt-4 flex justify-center gap-3">
                             <button v-if="isAdmin" @click="openCreatePcModal" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition shadow-sm cursor-pointer flex items-center gap-2">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                <span>Buat Pangkalan Backup Mandiri (Atur Kuota GB)</span>
+                                <span>Buat Penyimpanan Sendiri (Atur Kuota GB)</span>
                             </button>
                             <button v-else @click="checkAksesStatus" class="bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-xs font-bold hover:bg-blue-200 transition">
-                                Ajukan Otoritas Akses
+                                Ajukan Ruang Penyimpanan
                             </button>
                         </div>
                     </div>
                 </div>
 
+                <!-- REKAN YANG SUDAH SAYA BERI AKSES -->
+                <div v-if="activeGrants.length > 0" class="bg-white shadow-sm sm:rounded-lg p-6">
+                    <h3 class="text-base font-extrabold text-slate-900">Rekan yang bisa melihat penyimpanan Anda</h3>
+                    <p class="text-xs text-slate-500 mb-4">Hanya bisa melihat dan mengunduh. Cabut aksesnya kapan saja bila sudah tidak diperlukan.</p>
+                    <div class="divide-y divide-slate-100 border border-slate-200 rounded-xl">
+                        <div v-for="g in activeGrants" :key="g.id" class="p-3.5 flex items-center justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="font-bold text-sm text-slate-800 truncate">{{ requesterLabel(g) }}</p>
+                                <p class="text-[11px] text-slate-500">{{ g.pc_name }} &middot; disetujui {{ g.decided_human || '-' }}</p>
+                            </div>
+                            <button @click="revokeGrant(g)" class="shrink-0 px-3 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold transition cursor-pointer">Cabut akses</button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                    <h3 class="text-lg font-bold mb-4 text-green-800 border-b pb-2 uppercase"> Penyimpanan Publik (Anggota)</h3>
+                    <h3 class="text-lg font-bold text-green-800 uppercase">Penyimpanan Rekan</h3>
+                    <p class="text-xs text-slate-500 mb-4 border-b pb-3">Untuk membuka penyimpanan rekan, minta akses dulu. Kode verifikasi dikirim ke WhatsApp Anda, lalu pemiliknya yang memutuskan.</p>
                     <div v-if="publicPcs.length > 0" class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div v-for="pc in publicPcs" :key="pc.id" class="border rounded-lg p-4 hover:border-green-500 transition-all bg-white shadow-sm relative">
                             <div class="flex justify-between items-start mb-1">
                                 <p class="text-[9px] font-bold text-gray-400 uppercase">{{ pc.pc_name }}</p>
                                 <span v-if="isAdmin" class="text-[9px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-1.5 py-0.5 rounded font-bold">{{ pc.quota_human }}</span>
+                                <span v-else-if="pc.access_state === 'granted'" class="text-[9px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-1.5 py-0.5 rounded font-bold">Akses diberikan</span>
+                                <span v-else-if="pc.access_state === 'pending'" class="text-[9px] bg-amber-50 border border-amber-200 text-amber-700 px-1.5 py-0.5 rounded font-bold">Menunggu pemilik</span>
+                                <span v-else-if="pc.access_state === 'rejected'" class="text-[9px] bg-red-50 border border-red-200 text-red-600 px-1.5 py-0.5 rounded font-bold">Ditolak</span>
                             </div>
-                            <p class="font-bold text-gray-800 leading-tight">{{ pc.user.name }}</p>
-                            <p class="text-[10px] text-gray-500 mb-3">{{ pc.user.pangkat }} / {{ pc.user.nrp }}</p>
-                            
+                            <p class="font-bold text-gray-800 leading-tight">{{ pc.user?.name }}</p>
+                            <p class="text-[10px] text-gray-500 mb-3">{{ pc.user?.pangkat }} / {{ pc.user?.nrp }}</p>
+
                             <div class="space-y-1.5">
-                                <button @click="openPcStorage(pc.id)" class="block w-full text-center bg-gray-50 hover:bg-green-600 hover:text-white text-gray-600 py-2 rounded font-bold text-[10px] transition uppercase border cursor-pointer"> Buka Penyimpanan
+                                <button v-if="pc.access_state === 'granted' || pc.access_state === 'admin'" @click="openPcStorage(pc.id)" class="block w-full text-center bg-gray-50 hover:bg-green-600 hover:text-white text-gray-600 py-2 rounded font-bold text-[10px] transition uppercase border cursor-pointer">Buka Penyimpanan
+                                </button>
+                                <div v-else-if="pc.access_state === 'pending'" class="grid grid-cols-3 gap-1.5">
+                                    <span class="col-span-2 text-center bg-amber-50 text-amber-700 py-2 rounded font-bold text-[10px] uppercase border border-amber-200">Menunggu persetujuan</span>
+                                    <button @click="cancelAccessRequest(pc)" class="text-center bg-white hover:bg-red-50 text-red-600 py-2 rounded font-bold text-[10px] uppercase border border-red-200 cursor-pointer">Batal</button>
+                                </div>
+                                <button v-else-if="pc.access_state === 'verifying'" @click="continueAccessRequest(pc)" class="block w-full text-center bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 py-2 rounded font-bold text-[10px] transition uppercase border border-blue-200 cursor-pointer">Masukkan kode WhatsApp
+                                </button>
+                                <button v-else @click="askAccess(pc)" class="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-bold text-[10px] transition uppercase cursor-pointer">{{ pc.access_state === 'rejected' ? 'Minta akses lagi' : 'Minta Akses' }}
                                 </button>
                                 <div v-if="isAdmin" class="grid grid-cols-2 gap-1.5">
                                     <button @click="openEditQuotaModal(pc)" class="block w-full text-center bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white py-1.5 rounded font-bold text-[10px] transition uppercase border border-blue-200 flex items-center justify-center gap-1 cursor-pointer" title="Sesuaikan Kuota GB">
@@ -511,7 +730,7 @@ onUnmounted(() => {
                             </div>
                         </div>
                     </div>
-                    <p v-else class="text-center text-gray-400 py-4 text-sm italic"> Belum ada personel lain dalam sistem.</p>
+                    <p v-else class="text-center text-gray-400 py-4 text-sm italic">Belum ada rekan yang punya ruang penyimpanan.</p>
                 </div>
 
                 <div v-if="isAdmin" class="bg-slate-900 overflow-hidden shadow-sm sm:rounded-lg p-6 text-white border-b-8 border-red-600">
@@ -561,14 +780,14 @@ onUnmounted(() => {
             </div>
         </div>
 
-        <!-- MODAL ADMIN: BUAT PANGKALAN PC BARU -->
+        <!-- MODAL ADMIN: BUAT PENYIMPANAN BARU -->
         <Teleport to="body">
             <div v-if="isCreatePcModalOpen" class="fixed inset-0 z-[160] bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
                 <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-100 overflow-hidden my-auto animate-in zoom-in-95 duration-150">
                     <div class="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
                         <div>
-                            <span class="text-[10px] font-black uppercase text-blue-600 tracking-wider block">Otoritas Administrator</span>
-                            <h3 class="text-base font-extrabold text-slate-900">Buat Pangkalan Backup Baru</h3>
+                            <span class="text-[10px] font-black uppercase text-blue-600 tracking-wider block">Khusus Admin</span>
+                            <h3 class="text-base font-extrabold text-slate-900">Buat Penyimpanan Baru</h3>
                         </div>
                         <button @click="isCreatePcModalOpen = false" class="w-8 h-8 rounded-xl bg-slate-200/70 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-black transition cursor-pointer">
                             &times;
@@ -577,7 +796,7 @@ onUnmounted(() => {
 
                     <form @submit.prevent="submitCreatePc" class="p-5 sm:p-6 space-y-4 text-xs font-semibold">
                         <div class="space-y-1">
-                            <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Nama Pangkalan / PC *</label>
+                            <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Nama Penyimpanan *</label>
                             <input 
                                 type="text" 
                                 v-model="createPcForm.pc_name" 
@@ -588,13 +807,13 @@ onUnmounted(() => {
                         </div>
 
                         <div class="space-y-1">
-                            <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Pemilik Pangkalan (Personel / Admin) *</label>
+                            <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">Pemilik Penyimpanan *</label>
                             <select 
                                 v-model="createPcForm.user_id" 
                                 required
                                 class="w-full text-xs font-bold p-3 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500"
                             >
-                                <option value="" disabled>-- Pilih Pemilik Pangkalan --</option>
+                                <option value="" disabled>-- Pilih pemilik --</option>
                                 <option v-for="u in allUsers" :key="u.id" :value="u.id">
                                     {{ u.name }} ({{ u.pangkat ? u.pangkat + ' - ' : '' }}{{ u.nrp || 'Staff' }})
                                 </option>
@@ -638,7 +857,7 @@ onUnmounted(() => {
                                 :disabled="createPcForm.processing"
                                 class="px-6 py-2.5 bg-blue-700 hover:bg-blue-800 text-white rounded-xl font-extrabold text-xs uppercase tracking-wider shadow-md shadow-blue-700/20 transition cursor-pointer disabled:opacity-50"
                             >
-                                {{ createPcForm.processing ? 'Membangun...' : 'Bangun Pangkalan PC' }}
+                                {{ createPcForm.processing ? 'Membuat...' : 'Buat Penyimpanan' }}
                             </button>
                         </div>
                     </form>
@@ -652,7 +871,7 @@ onUnmounted(() => {
                 <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-100 overflow-hidden my-auto animate-in zoom-in-95 duration-150">
                     <div class="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
                         <div>
-                            <span class="text-[10px] font-black uppercase text-blue-600 tracking-wider block">Otoritas Kuota</span>
+                            <span class="text-[10px] font-black uppercase text-blue-600 tracking-wider block">Kuota</span>
                             <h3 class="text-base font-extrabold text-slate-900">Sesuaikan Kuota Penyimpanan</h3>
                         </div>
                         <button @click="isEditQuotaModalOpen = false" class="w-8 h-8 rounded-xl bg-slate-200/70 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-black transition cursor-pointer">
@@ -662,7 +881,7 @@ onUnmounted(() => {
 
                     <form @submit.prevent="submitEditQuota" class="p-5 sm:p-6 space-y-4 text-xs font-semibold">
                         <div class="p-3 bg-slate-50 border border-slate-200/70 rounded-2xl space-y-1">
-                            <p class="text-[10px] font-bold text-slate-400 uppercase">Pangkalan PC Terpilih:</p>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Penyimpanan terpilih:</p>
                             <p class="font-extrabold text-slate-800 text-sm">{{ activePcForQuota.pc_name }}</p>
                             <div class="flex justify-between text-[11px] font-mono pt-1 text-slate-500">
                                 <span>Terpakai Saat Ini:</span>

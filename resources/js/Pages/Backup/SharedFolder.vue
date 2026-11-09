@@ -734,7 +734,7 @@ const exitAndLock = () => {
 
                     <div class="text-center pt-2 border-t border-slate-100 space-y-1.5">
                         <p class="text-[10px] text-slate-400">
-                            Identitas Anda dicatat ke dalam log pengunjung demi keamanan pangkalan berkas. Akses aktif selama {{ guestDurationHours || 24 }} jam.
+                            Identitas Anda dicatat ke dalam log pengunjung demi keamanan berkas. Akses aktif selama {{ guestDurationHours || 24 }} jam.
                         </p>
                         <p class="text-[11px] font-bold text-slate-600">
                             Personel SINDEN? 
@@ -840,7 +840,7 @@ const exitAndLock = () => {
 
                     <div class="text-center pt-1 space-y-2">
                         <p class="text-[10px] text-slate-400">
-                            PIN diberikan oleh pemilik pangkalan atau pengelola. Akses dibatasi hanya untuk melihat dan mengunduh berkas.
+                            PIN diberikan oleh pemilik penyimpanan atau pengelola. Akses dibatasi hanya untuk melihat dan mengunduh berkas.
                         </p>
                         <div v-if="allowGuest" class="pt-2 border-t border-slate-100">
                             <p class="text-[11px] font-bold text-slate-600">

@@ -6,6 +6,7 @@ import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Create
 import androidx.compose.material.icons.outlined.Build
+import androidx.compose.material.icons.outlined.CloudQueue
 import androidx.compose.material.icons.outlined.EventAvailable
 import androidx.compose.material.icons.outlined.Gavel
 import androidx.compose.material.icons.outlined.People
@@ -48,6 +49,7 @@ enum class Feature(
     ATTENDANCE(Routes.ATTENDANCE, "Presensi", "Lapor kehadiran harian", Icons.Outlined.HowToReg, Perm.ATTENDANCE_VIEW, FeatureGroup.OPERASIONAL, Tone.SUCCESS),
     NOTIFICATIONS(Routes.NOTIFICATIONS, "Notifikasi", "Warta & instruksi dinas", Icons.Outlined.Notifications, Perm.NOTIFICATIONS_VIEW, FeatureGroup.OPERASIONAL, Tone.WARNING),
     CHAT(Routes.CHAT, "Chat Dinas", "Pesan & panggilan video", Icons.Outlined.Forum, Perm.CHAT_VIEW, FeatureGroup.OPERASIONAL, Tone.INFO),
+    BACKUP(Routes.BACKUP, "Backup", "Penyimpanan berkas & akses rekan", Icons.Outlined.CloudQueue, Perm.BACKUP_VIEW, FeatureGroup.OPERASIONAL, Tone.INFO),
     LETTER_LOGS(Routes.LETTERS, "Agenda Surat", "Penomoran & rekap surat", Icons.Outlined.Email, Perm.LETTER_LOGS_VIEW, FeatureGroup.ADMINISTRASI, Tone.INFO),
     SKHPP(Routes.SKHPP, "SKHPP", "Hasil penelitian personel", Icons.Outlined.VerifiedUser, Perm.SKHPP_VIEW, FeatureGroup.ADMINISTRASI, Tone.SUCCESS),
     SIGNATURE(Routes.SIGNATURE, "Tanda Tangan", "Antrean TTE Komandan", Icons.Outlined.Create, Perm.SIGNATURE_VIEW, FeatureGroup.ADMINISTRASI, Tone.WARNING),
@@ -66,6 +68,7 @@ enum class Feature(
             ATTENDANCE -> TilePalette.Teal
             NOTIFICATIONS -> TilePalette.Orange
             CHAT -> TilePalette.Violet
+            BACKUP -> TilePalette.Sky
             LETTER_LOGS -> TilePalette.Sky
             SKHPP -> TilePalette.Violet
             SIGNATURE -> TilePalette.Orange
@@ -111,6 +114,11 @@ object Routes {
     const val USERS = "users"
     const val SETTINGS = "settings"
     const val CHAT = "chat"
+    const val BACKUP = "backup"
+
+    // Berparameter — Backup (isi penyimpanan)
+    const val BACKUP_FILES = "backup_files/{pc}?title={title}"
+    fun backupFiles(pcId: Int, title: String) = "backup_files/$pcId?title=${Uri.encode(title)}"
 
     // Berparameter — Chat & panggilan
     const val CHAT_THREAD = "chat_thread/{uuid}?title={title}"

@@ -1,3 +1,24 @@
+# SISINDEN Android v1.8.0 (versionCode 18)
+
+Menu **Backup** kini ada di aplikasi, dan akses ke penyimpanan rekan harus seizin pemiliknya.
+
+## Baru
+
+- **Backup** (menu Operasional) untuk semua personel:
+  - *Penyimpanan Saya*: buka penyimpanan sendiri, lihat pemakaian kuota.
+  - *Rekan*: daftar penyimpanan rekan beserta status akses (Terkunci, Kode WA, Menunggu, Diizinkan, Ditolak).
+  - *Izin Akses*: setujui/tolak permintaan rekan ke penyimpanan Anda, dan cabut akses yang sudah diberikan.
+  - Jelajah folder, cari berkas di semua folder, pratinjau foto (termasuk Sony RAW) dengan cubit-untuk-zoom, buka berkas dengan aplikasi lain, atau simpan ke perangkat.
+- **Minta akses ke penyimpanan rekan**: ketuk penyimpanan rekan -> isi keperluan (opsional) -> kode 6 digit dikirim ke WhatsApp Anda -> masukkan kode -> permintaan diteruskan ke pemilik. Pemilik mendapat WhatsApp + notifikasi aplikasi; peminta mendapat WhatsApp + notifikasi aplikasi saat disetujui, ditolak, atau dicabut.
+- Rekan yang diberi akses hanya bisa **melihat dan mengunduh**. Unggah, ubah nama, pindah, dan hapus tetap khusus pemilik (dan Admin) lewat web.
+
+## Server
+
+- `git pull`, `php artisan migrate --force` (tabel `pc_access_requests`; bila terlewat, tabel dibuat otomatis saat fitur pertama dipakai), `npm run build` (halaman Backup web berubah).
+- Endpoint mobile lama `GET /api/mobile/backup` (ringkasan khusus Admin) diganti ringkasan baru per pengguna.
+
+---
+
 # SISINDEN Android v1.7.1 (versionCode 17)
 
 - **Rekening Komandan kini bisa diubah dari aplikasi** — ketuk transaksi (atau ikon pensil) untuk mengubah tanggal, jenis Masuk/Keluar, jumlah, dan keterangan. Penyimpanan memakai aturan web: keterangan huruf kapital, pencatat diberi tanda "(EDIT)".

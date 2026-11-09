@@ -66,7 +66,7 @@ class BackupShareController extends Controller
                 $folder = Backup::find($validated['backup_id']);
                 $defaultName = $folder?->file_name ?: 'Folder Berkas';
             } else {
-                $defaultName = $pc->pc_name ?: 'Pangkalan Backup';
+                $defaultName = $pc->pc_name ?: 'Penyimpanan Backup';
             }
         }
 
@@ -540,7 +540,7 @@ class BackupShareController extends Controller
                 . "Tautan Akses :\n"
                 . "{$guestLink}\n\n"
                 . "Pemberitahuan Keamanan Kedinasan:\n"
-                . "1. Seluruh aktivitas penjelajahan dan pengunduhan berkas tercatat dalam log pangkalan berkas SINDEN.\n"
+                . "1. Seluruh aktivitas penjelajahan dan pengunduhan berkas tercatat dalam log penyimpanan SINDEN.\n"
                 . "2. Tautan folder ini aktif selama {$durationHours} jam dan otomatis terkunci/dihapus setelah batas waktu berakhir.\n"
                 . "━━━━━━━━━━━━━━━━━━━━\n"
                 . "_Sistem Informasi & Dokumen Elektronik (SINDEN)_";

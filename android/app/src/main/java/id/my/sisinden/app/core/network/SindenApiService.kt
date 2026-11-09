@@ -294,6 +294,35 @@ interface SindenApiService {
     @POST("api/mobile/duty-roster/{id}/approve")
     suspend fun approveSpJaga(@Path("id") id: Int): Response<SimpleResponse>
 
+    // ------------------------------------------------------ Backup
+    @GET("api/mobile/backup")
+    suspend fun backupOverview(): Response<BackupOverviewResponse>
+
+    @GET("api/mobile/backup/pcs/{pc}/files")
+    suspend fun backupFiles(
+        @Path("pc") pcId: Int,
+        @Query("folder") folderId: Int? = null,
+        @Query("search") search: String? = null,
+    ): Response<BackupFilesResponse>
+
+    @POST("api/mobile/backup/pcs/{pc}/access")
+    suspend fun backupRequestAccess(@Path("pc") pcId: Int, @Body body: BackupAccessReasonRequest): Response<BackupAccessResponse>
+
+    @POST("api/mobile/backup/access/{id}/verify")
+    suspend fun backupVerifyAccess(@Path("id") id: Int, @Body body: BackupAccessCodeRequest): Response<BackupAccessResponse>
+
+    @POST("api/mobile/backup/access/{id}/resend")
+    suspend fun backupResendCode(@Path("id") id: Int): Response<BackupAccessResponse>
+
+    @POST("api/mobile/backup/access/{id}/approve")
+    suspend fun backupApproveAccess(@Path("id") id: Int, @Body body: BackupAccessNoteRequest): Response<BackupAccessResponse>
+
+    @POST("api/mobile/backup/access/{id}/reject")
+    suspend fun backupRejectAccess(@Path("id") id: Int, @Body body: BackupAccessNoteRequest): Response<BackupAccessResponse>
+
+    @DELETE("api/mobile/backup/access/{id}")
+    suspend fun backupWithdrawAccess(@Path("id") id: Int): Response<BackupAccessResponse>
+
     // ------------------------------------------------------ PDF (stream)
     @Streaming
     @GET

@@ -8,7 +8,10 @@ use App\Models\AccessRequest;
 use App\Models\OfficeNetwork;
 use App\Models\User;
 use App\Models\BackupShare;
+use App\Models\PcAccessRequest;
 use App\Services\ArwService;
+use App\Services\PcAccessService;
+use App\Support\BackupAccess;
 use App\Services\FileSecurityService;
 use App\Services\StreamingZipService;
 use App\Services\ThumbnailService;
@@ -31,13 +34,35 @@ class BackupController extends Controller
     public function index()
     {
         $user = Auth::user();
-        // Kalibrasi Nama Komandan agar Bypass Terdeteksi
-        $isAdmin = $user->role === 'admin' || $user->name === 'I Gusti Sultan H.A, A.Md.Kom';
+        $isAdmin = BackupAccess::isAdmin($user);
+
+        $myPcs = Pc::where('user_id', $user->id)->get();
+        $otherPcs = Pc::where('user_id', '!=', $user->id)->with('user:id,name,pangkat,nrp')->get();
+        $states = BackupAccess::statesFor($user, $otherPcs);
+
+        // Permintaan akses dari rekan ke penyimpanan milik saya.
+        $accessService = app(PcAccessService::class);
+        $myPcIds = $myPcs->pluck('id');
+        $incomingRequests = PcAccessRequest::whereIn('pc_id', $myPcIds)
+            ->where('status', PcAccessRequest::STATUS_PENDING)
+            ->latest('id')->get()
+            ->map(fn ($r) => $accessService->payload($r))->values();
+        $activeGrants = PcAccessRequest::whereIn('pc_id', $myPcIds)
+            ->where('status', PcAccessRequest::STATUS_APPROVED)
+            ->latest('decided_at')->get()
+            ->map(fn ($r) => $accessService->payload($r))->values();
 
         return Inertia::render('Backup/Index', [
-            'myPcs' => Pc::where('user_id', $user->id)->get()->map(fn($pc) => $this->formatPcData($pc)),
-            'publicPcs' => Pc::where('user_id', '!=', $user->id)->with('user:id,name,pangkat,nrp')->get()->map(fn($pc) => $this->formatPcData($pc)),
-            
+            'myPcs' => $myPcs->map(fn($pc) => $this->formatPcData($pc)),
+            'publicPcs' => $otherPcs->map(function ($pc) use ($states) {
+                $pc = $this->formatPcData($pc);
+                $pc->access_state = $states[$pc->id]['state'] ?? 'none';
+                $pc->access_request_id = $states[$pc->id]['request_id'] ?? null;
+                return $pc;
+            }),
+            'incomingRequests' => $incomingRequests,
+            'activeGrants' => $activeGrants,
+
             'authRequest' => AccessRequest::where('user_id', $user->id)->latest()->first(),
             
             // Mengambil antrean yang statusnya pending atau approved (belum completed)
@@ -142,8 +167,12 @@ class BackupController extends Controller
     public function explore($id, Request $request)
     {
         $pc = Pc::with('user')->findOrFail($id);
-        $parentId = $request->query('folder'); 
-        $search = $request->query('search'); 
+        $viewer = Auth::user();
+        BackupAccess::authorizeView($viewer, $pc);
+        $canManage = BackupAccess::canManage($viewer, $pc);
+
+        $parentId = $request->query('folder');
+        $search = $request->query('search');
 
         $query = Backup::where('pc_id', $id);
 
@@ -165,13 +194,14 @@ class BackupController extends Controller
             ->get()
             ->keyBy('backup_id');
 
-        $contents = $contents->map(function($item) use ($folderShares) {
+        $contents = $contents->map(function($item) use ($folderShares, $canManage) {
             if ($item->is_folder) {
                 $totalSize = $this->getFolderSize($item->id);
                 $item->size_human = $totalSize > 0 ? $this->formatBytes($totalSize) : '0 B';
                 $item->file_size = $totalSize;
 
-                $share = $folderShares->get($item->id);
+                // PIN & tautan bagikan hanya untuk pemilik/admin.
+                $share = $canManage ? $folderShares->get($item->id) : null;
                 $item->share_info = $share ? [
                     'id' => $share->id,
                     'is_active' => (bool)$share->is_active,
@@ -225,7 +255,7 @@ class BackupController extends Controller
         $tempFolderId = $parentId;
 
         while ($tempFolderId) {
-            $folder = Backup::find($tempFolderId);
+            $folder = Backup::where('pc_id', $pc->id)->find($tempFolderId);
             if ($folder) {
                 array_unshift($breadcrumbs, [
                     'name' => $folder->file_name,
@@ -279,8 +309,10 @@ class BackupController extends Controller
             'currentFolderId' => $parentId,
             'breadcrumbs' => $breadcrumbs,
             'searchQuery' => $search,
-            'currentShare' => $currentShareInfo,
-            'isAdmin' => Auth::user()->role === 'admin' || Auth::user()->name === 'I Gusti Sultan H.A, A.Md.Kom',
+            'currentShare' => $canManage ? $currentShareInfo : null,
+            'isAdmin' => BackupAccess::isAdmin($viewer),
+            // false = rekan yang diberi akses: hanya lihat & unduh.
+            'canManage' => $canManage,
         ]);
     }
 
@@ -307,8 +339,8 @@ class BackupController extends Controller
      */
     public function viewOffice($id)
     {
-        // Akses lihat terbuka untuk semua personel yang login (sama seperti halaman explore).
         $backup = Backup::findOrFail($id);
+        BackupAccess::authorizeView(Auth::user(), BackupAccess::pcOf($backup));
 
         if ($backup->is_folder) {
             abort(400, 'Folder tidak dapat dipratinjau.');
@@ -437,8 +469,8 @@ class BackupController extends Controller
             abort(403, 'Akses Ditolak: Pratinjau berkas hanya diizinkan melalui antarmuka aplikasi internal.');
         }
 
-        // Akses lihat terbuka untuk semua personel yang login (sama seperti halaman explore).
         $backup = Backup::findOrFail($id);
+        BackupAccess::authorizeView(Auth::user(), BackupAccess::pcOf($backup));
 
         if ($backup->is_folder) {
             abort(400, 'Folder tidak dapat dipratinjau.');
@@ -466,8 +498,8 @@ class BackupController extends Controller
             abort(403, 'Akses Ditolak: Pratinjau Sony RAW hanya diizinkan melalui antarmuka aplikasi internal.');
         }
 
-        // Akses lihat terbuka untuk semua personel yang login (sama seperti halaman explore).
         $backup = Backup::findOrFail($id);
+        BackupAccess::authorizeView(Auth::user(), BackupAccess::pcOf($backup));
 
         $fullPath = FileSecurityService::verifySafeStoragePath($backup->file_path);
 
@@ -487,8 +519,8 @@ class BackupController extends Controller
             abort(403, 'Akses Ditolak.');
         }
 
-        // Akses lihat terbuka untuk semua personel yang login (sama seperti halaman explore).
         $backup = Backup::findOrFail($id);
+        BackupAccess::authorizeView(Auth::user(), BackupAccess::pcOf($backup));
 
         if ($backup->is_folder) {
             abort(400, 'Folder tidak memiliki thumbnail.');
@@ -508,9 +540,10 @@ class BackupController extends Controller
      */
     public function convertArw(Request $request, $id)
     {
-        try {
-            $backup = Backup::findOrFail($id);
+        $backup = Backup::findOrFail($id);
+        BackupAccess::authorizeManage(Auth::user(), BackupAccess::pcOf($backup));
 
+        try {
             if (!ArwService::isArw($backup->file_type ?: $backup->file_name)) {
                 return response()->json(['status' => 'error', 'message' => 'Berkas bukan format Sony RAW (.ARW).'], 400);
             }
@@ -549,6 +582,7 @@ class BackupController extends Controller
     public function downloadArwJpg($id)
     {
         $backup = Backup::findOrFail($id);
+        BackupAccess::authorizeView(Auth::user(), BackupAccess::pcOf($backup));
 
         if (!ArwService::isArw($backup->file_type ?: $backup->file_name)) {
             abort(400, 'Berkas bukan format Sony RAW (.ARW).');
@@ -563,10 +597,11 @@ class BackupController extends Controller
     public function createFolder(Request $request)
     {
         $request->validate([
-            'pc_id' => 'required',
+            'pc_id' => 'required|exists:pcs,id',
             'folder_name' => 'required|string|max:100',
             'parent_id' => 'nullable'
         ]);
+        BackupAccess::authorizeManage(Auth::user(), Pc::findOrFail($request->pc_id));
 
         Backup::create([
             'pc_id' => $request->pc_id,
@@ -588,6 +623,7 @@ class BackupController extends Controller
     {
         $request->validate(['new_name' => 'required|string|max:255']);
         $item = Backup::findOrFail($id);
+        BackupAccess::authorizeManage(Auth::user(), BackupAccess::pcOf($item));
         $name = $item->is_folder ? strtoupper($request->new_name) : $request->new_name;
         $item->update(['file_name' => $name]);
         return back()->with('success', 'Identitas berkas berhasil diperbarui.');
@@ -659,9 +695,7 @@ class BackupController extends Controller
         $user = Auth::user();
 
         $pc = Pc::findOrFail($backup->pc_id);
-        if ($pc->user_id !== $user->id && $user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
-            abort(403, 'Akses Ditolak: Anda tidak memiliki otoritas atas berkas PC ini.');
-        }
+        BackupAccess::authorizeManage($user, $pc);
 
         $fullPath = FileSecurityService::verifySafeStoragePath($backup->file_path);
         if (!file_exists($fullPath)) {
@@ -767,9 +801,7 @@ class BackupController extends Controller
         $user = Auth::user();
 
         $pc = Pc::findOrFail($backup->pc_id);
-        if ($pc->user_id !== $user->id && $user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
-            abort(403, 'Akses Ditolak: Anda tidak memiliki otoritas atas berkas PC ini.');
-        }
+        BackupAccess::authorizeManage($user, $pc);
 
         if ($backup->is_folder) {
             return response()->json(['status' => 'error', 'message' => 'Folder tidak dapat diekstrak.'], 400);
@@ -889,7 +921,7 @@ class BackupController extends Controller
             }
 
             Cache::put($cacheKey, 50, 600);
-            Cache::put($logKey, 'Mendaftarkan struktur berkas ke pangkalan data...', 600);
+            Cache::put($logKey, 'Mendaftarkan struktur berkas ke basis data...', 600);
 
             // Buat Folder Induk Hasil Ekstraksi
             $rootFolder = Backup::create([
@@ -959,6 +991,7 @@ class BackupController extends Controller
         ]);
 
         $pc = Pc::findOrFail($request->pc_id);
+        BackupAccess::authorizeManage(Auth::user(), $pc);
         $uploadedFile = $request->file('file');
         $fileSize = $uploadedFile->getSize();
         $cleanFileName = $uploadedFile->getClientOriginalName();
@@ -1069,6 +1102,7 @@ class BackupController extends Controller
 
         // 4. Verifikasi Kuota Penyimpanan PC
         $pc = Pc::findOrFail($validated['pc_id']);
+        BackupAccess::authorizeManage($user, $pc);
         if (($pc->current_usage + $totalFileSize) > $pc->max_quota) {
             $msg = 'Penyimpanan Penuh! Kapasitas ' . $this->formatBytes($pc->max_quota) . ' terlampaui.';
             return response()->json(['status' => 'error', 'message' => $msg], 422);
@@ -1261,9 +1295,10 @@ class BackupController extends Controller
 
     public function download($id)
     {
-        try {
-            $backup = Backup::findOrFail($id);
+        $backup = Backup::findOrFail($id);
+        BackupAccess::authorizeView(Auth::user(), BackupAccess::pcOf($backup));
 
+        try {
             if ($backup->is_folder) {
                 return back()->with('error', 'Folder tidak bisa diunduh langsung.');
             }
@@ -1287,6 +1322,7 @@ class BackupController extends Controller
     {
         $backup = Backup::findOrFail($id);
         $pc = Pc::findOrFail($backup->pc_id);
+        BackupAccess::authorizeManage(Auth::user(), $pc);
 
         if (!$backup->is_folder && Storage::disk('public')->exists($backup->file_path)) {
             Storage::disk('public')->delete($backup->file_path);
@@ -1359,9 +1395,10 @@ class BackupController extends Controller
             'base64_content' => 'required|string',
         ]);
 
-        try {
-            $backup = Backup::findOrFail($id);
+        $backup = Backup::findOrFail($id);
+        BackupAccess::authorizeManage(Auth::user(), BackupAccess::pcOf($backup));
 
+        try {
             if ($backup->is_folder) {
                 return response()->json(['status' => 'error', 'message' => 'Folder tidak dapat diedit sebagai spreadsheet.'], 400);
             }
@@ -1377,7 +1414,7 @@ class BackupController extends Controller
             $sizeDiff = $newSize - $oldSize;
 
             if ($sizeDiff > 0 && ($pc->current_usage + $sizeDiff) > $pc->max_quota) {
-                return response()->json(['status' => 'error', 'message' => 'Penyimpanan penuh! Kuota pangkalan PC terlampaui.'], 400);
+                return response()->json(['status' => 'error', 'message' => 'Penyimpanan penuh. Kuota penyimpanan sudah habis.'], 400);
             }
 
             // Simpan langsung menimpa berkas lama di public storage disk
@@ -1421,6 +1458,8 @@ class BackupController extends Controller
             'base64_content' => 'required|string'
         ]);
 
+        BackupAccess::authorizeManage(Auth::user(), Pc::findOrFail($request->pc_id));
+
         try {
             $pc = Pc::findOrFail($request->pc_id);
             $decoded = base64_decode($request->base64_content);
@@ -1430,7 +1469,7 @@ class BackupController extends Controller
 
             $fileSize = strlen($decoded);
             if (($pc->current_usage + $fileSize) > $pc->max_quota) {
-                return back()->with('error', 'Penyimpanan penuh! Kapasitas pangkalan PC terlampaui.');
+                return back()->with('error', 'Penyimpanan penuh. Kuota penyimpanan sudah habis.');
             }
 
             $fileName = trim($request->file_name);
@@ -1460,13 +1499,13 @@ class BackupController extends Controller
     }
 
     /**
-     * OPERASI KHUSUS ADMIN: BUAT PANGKALAN PC BARU DENGAN KUOTA GB KUSTOM
+     * KHUSUS ADMIN: BUAT PENYIMPANAN BARU DENGAN KUOTA GB KUSTOM
      */
     public function createPc(Request $request)
     {
         $user = Auth::user();
         if ($user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
-            return abort(403, 'Anda tidak memiliki otoritas membuat pangkalan PC.');
+            return abort(403, 'Hanya Admin yang bisa membuat penyimpanan baru.');
         }
 
         $validated = $request->validate([
@@ -1487,17 +1526,17 @@ class BackupController extends Controller
             'max_quota' => $maxQuotaBytes,
         ]);
 
-        return back()->with('success', "Pangkalan Backup '{$pc->pc_name}' dengan kuota {$validated['quota_gb']} GB berhasil dibangun.");
+        return back()->with('success', "Penyimpanan '{$pc->pc_name}' dengan kuota {$validated['quota_gb']} GB berhasil dibuat.");
     }
 
     /**
-     * OPERASI KHUSUS ADMIN: SESUAIKAN KUOTA GB PANGKALAN PC
+     * KHUSUS ADMIN: SESUAIKAN KUOTA GB PENYIMPANAN
      */
     public function updateQuota(Request $request, $id)
     {
         $user = Auth::user();
         if ($user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
-            return abort(403, 'Anda tidak memiliki otoritas mengubah kuota pangkalan.');
+            return abort(403, 'Hanya Admin yang bisa mengubah kuota penyimpanan.');
         }
 
         $validated = $request->validate([
@@ -1544,10 +1583,7 @@ class BackupController extends Controller
         ]);
 
         $pc = Pc::findOrFail($request->pc_id);
-        $user = Auth::user();
-        if ($pc->user_id !== $user->id && $user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
-            abort(403, 'Anda tidak memiliki otoritas atas pangkalan PC ini.');
-        }
+        BackupAccess::authorizeManage(Auth::user(), $pc);
 
         $rawTarget = $request->input('target_folder_id');
         $targetFolderId = (!empty($rawTarget) && is_numeric($rawTarget)) ? (int) $rawTarget : null;
@@ -1592,10 +1628,7 @@ class BackupController extends Controller
         ]);
 
         $pc = Pc::findOrFail($request->pc_id);
-        $user = Auth::user();
-        if ($pc->user_id !== $user->id && $user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
-            abort(403, 'Anda tidak memiliki otoritas atas pangkalan PC ini.');
-        }
+        BackupAccess::authorizeManage(Auth::user(), $pc);
 
         $rawTarget = $request->input('target_folder_id');
         $targetFolderId = (!empty($rawTarget) && is_numeric($rawTarget)) ? (int) $rawTarget : null;
@@ -1622,7 +1655,7 @@ class BackupController extends Controller
         if ($totalBytesNeeded > $remainingQuota) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Sisa kuota pangkalan (' . $this->formatBytes($remainingQuota) . ') tidak mencukupi untuk menduplikasi ' . $this->formatBytes($totalBytesNeeded) . '.'
+                'message' => 'Sisa kuota penyimpanan (' . $this->formatBytes($remainingQuota) . ') tidak mencukupi untuk menduplikasi ' . $this->formatBytes($totalBytesNeeded) . '.'
             ], 422);
         }
 
@@ -1650,10 +1683,7 @@ class BackupController extends Controller
         ]);
 
         $pc = Pc::findOrFail($request->pc_id);
-        $user = Auth::user();
-        if ($pc->user_id !== $user->id && $user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
-            abort(403, 'Anda tidak memiliki otoritas atas pangkalan PC ini.');
-        }
+        BackupAccess::authorizeManage(Auth::user(), $pc);
 
         $items = Backup::whereIn('id', $request->ids)->where('pc_id', $pc->id)->get();
         $deletedCount = 0;
@@ -1684,10 +1714,7 @@ class BackupController extends Controller
         ]);
 
         $pc = Pc::findOrFail($request->pc_id);
-        $user = Auth::user();
-        if ($pc->user_id !== $user->id && $user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
-            abort(403, 'Akses ditolak.');
-        }
+        BackupAccess::authorizeView(Auth::user(), $pc);
 
         $items = Backup::whereIn('id', $request->ids)->where('pc_id', $pc->id)->get();
         if ($items->isEmpty()) {
@@ -1729,7 +1756,7 @@ class BackupController extends Controller
             }
         }
 
-        // 5. Cadangan jika di root pangkalan
+        // 5. Cadangan jika di root penyimpanan
         if (!$folderTitle) {
             $folderTitle = $pc->pc_name;
         }

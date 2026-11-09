@@ -62,6 +62,8 @@ object Perm {
 
     const val USERS_VIEW = "users.view"
     const val USERS_MANAGE = "users.manage"
+
+    const val BACKUP_VIEW = "backup.view"
 }
 
 /** Kumpulan permission milik sesi aktif. */
