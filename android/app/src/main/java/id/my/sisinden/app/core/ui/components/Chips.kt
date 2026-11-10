@@ -127,7 +127,7 @@ fun PillChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Mod
             .heightIn(min = 44.dp)
             .semantics { this.selected = isSelected },
         shape = RoundedCornerShape(50),
-        color = scheme.surface.copy(alpha = if (dark) 0.07f else 0.85f),
+        color = scheme.surface.copy(alpha = if (dark) 0.92f else 0.85f),
         border = BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 1f - sel)),
     ) {
         Box(

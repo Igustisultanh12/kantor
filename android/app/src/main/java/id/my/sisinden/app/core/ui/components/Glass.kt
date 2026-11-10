@@ -72,7 +72,7 @@ fun Modifier.glass(
             // kilau specular: cahaya dari atas, memudar sebelum tengah
             drawRect(
                 Brush.verticalGradient(
-                    0f to Color.White.copy(alpha = if (dark) 0.10f else 0.55f),
+                    0f to Color.White.copy(alpha = if (dark) 0.035f else 0.55f),
                     0.45f to Color.Transparent,
                 ),
             )
@@ -134,6 +134,7 @@ fun GradientIconTile(
     contentDescription: String? = null,
 ) {
     val shape = RoundedCornerShape(corner)
+    val gloss = if (SindenTheme.isDark) 0.16f else 0.38f
     Box(
         modifier
             .size(size)
@@ -144,7 +145,7 @@ fun GradientIconTile(
                 drawContent()
                 drawRect(
                     Brush.verticalGradient(
-                        0f to Color.White.copy(alpha = 0.38f),
+                        0f to Color.White.copy(alpha = gloss),
                         0.5f to Color.White.copy(alpha = 0.04f),
                         0.5001f to Color.Transparent,
                     ),

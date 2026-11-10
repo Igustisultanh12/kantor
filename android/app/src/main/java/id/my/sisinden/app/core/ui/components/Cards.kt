@@ -91,7 +91,7 @@ fun SindenCard(
     } else modifier
     val sheen = Modifier.drawBehind {
         if (useGlass) {
-            drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = if (dark) 0.07f else 0.6f), 0.35f to Color.Transparent))
+            drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = if (dark) 0.03f else 0.6f), 0.35f to Color.Transparent))
         }
     }
     if (onClick != null) {

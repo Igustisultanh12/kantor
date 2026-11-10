@@ -80,11 +80,12 @@ private val DarkColors = darkColorScheme(
     onTertiary = Color(0xFF452400),
     tertiaryContainer = Color(0xFF4A2A00),
     onTertiaryContainer = Orange100,
+    // iOS dark: latar hampir hitam, permukaan abu bertingkat agar kartu/field terpisah jelas
     background = Night900,
     onBackground = Night100,
-    surface = Night850,
+    surface = Night800,
     onSurface = Night100,
-    surfaceVariant = Night800,
+    surfaceVariant = Night700,
     onSurfaceVariant = Night400,
     surfaceTint = Blue300,
     inverseSurface = Night100,
@@ -94,14 +95,14 @@ private val DarkColors = darkColorScheme(
     errorContainer = Color(0xFF7A1C1C),
     onErrorContainer = Red100,
     outline = Night600,
-    outlineVariant = Night700,
+    outlineVariant = Color(0xFF2E2F37),
     scrim = Color.Black,
     surfaceBright = Night700,
     surfaceDim = Night950,
     surfaceContainerLowest = Night950,
-    surfaceContainerLow = Night900,
-    surfaceContainer = Night850,
-    surfaceContainerHigh = Night800,
+    surfaceContainerLow = Night850,
+    surfaceContainer = Night800,
+    surfaceContainerHigh = Color(0xFF24252B),
     surfaceContainerHighest = Night700,
 )
 
@@ -133,15 +134,17 @@ private val LightGlass = GlassColors(
     glowC = Indigo500.copy(alpha = 0.24f),
 )
 
+// Kaca gelap = abu iOS (#1C1D22) agak tembus, bukan putih 8% yang "hilang" di atas hitam.
 private val DarkGlass = GlassColors(
-    fill = Color.White.copy(alpha = 0.08f),
-    fillStrong = Color(0xFF1C1D22).copy(alpha = 0.86f),
-    edgeTop = Color.White.copy(alpha = 0.28f),
+    fill = Color(0xFF1C1D22).copy(alpha = 0.82f),
+    fillStrong = Color(0xFF1C1D22).copy(alpha = 0.94f),
+    edgeTop = Color.White.copy(alpha = 0.18f),
     edgeBottom = Color.White.copy(alpha = 0.04f),
     shadow = Color.Black.copy(alpha = 0.6f),
-    glowA = Blue500.copy(alpha = 0.32f),
-    glowB = Cyan400.copy(alpha = 0.14f),
-    glowC = Indigo500.copy(alpha = 0.30f),
+    // Gelap yang elegan: cahaya sangat halus & satu nuansa (biru → indigo), tanpa cyan.
+    glowA = Blue500.copy(alpha = 0.13f),
+    glowB = Indigo500.copy(alpha = 0.07f),
+    glowC = Indigo500.copy(alpha = 0.11f),
 )
 
 private val LocalStatusColors = staticCompositionLocalOf { LightStatusColors }

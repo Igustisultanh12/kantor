@@ -99,6 +99,7 @@ fun SindenTopBar(
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     val hero = SindenTheme.heroGradient
+    val dark = SindenTheme.isDark
     val shape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
     val reduce = rememberReduceMotion()
     val enter = remember(title) { Animatable(if (reduce) 1f else 0f) }
@@ -107,18 +108,18 @@ fun SindenTopBar(
         Row(
             Modifier
                 .fillMaxWidth()
-                .shadow(16.dp, shape, clip = false, ambientColor = Indigo600.copy(alpha = 0.35f), spotColor = Indigo600.copy(alpha = 0.35f))
+                .shadow(if (dark) 0.dp else 16.dp, shape, clip = false, ambientColor = Indigo600.copy(alpha = 0.35f), spotColor = Indigo600.copy(alpha = 0.35f))
                 .clip(shape)
                 .background(Brush.linearGradient(hero, start = Offset.Zero, end = Offset.Infinite))
                 .drawBehind {
                     val r = size.width * 0.55f
                     drawCircle(
-                        Brush.radialGradient(listOf(Color.White.copy(alpha = 0.22f), Color.Transparent), center = Offset(size.width * 0.92f, 0f), radius = r),
+                        Brush.radialGradient(listOf(Color.White.copy(alpha = if (dark) 0.07f else 0.22f), Color.Transparent), center = Offset(size.width * 0.92f, 0f), radius = r),
                         radius = r,
                         center = Offset(size.width * 0.92f, 0f),
                     )
                     drawCircle(
-                        Brush.radialGradient(listOf(Cyan400.copy(alpha = 0.22f), Color.Transparent), center = Offset(0f, size.height), radius = r * 0.8f),
+                        Brush.radialGradient(listOf((if (dark) Indigo600 else Cyan400).copy(alpha = if (dark) 0.10f else 0.22f), Color.Transparent), center = Offset(0f, size.height), radius = r * 0.8f),
                         radius = r * 0.8f,
                         center = Offset(0f, size.height),
                     )

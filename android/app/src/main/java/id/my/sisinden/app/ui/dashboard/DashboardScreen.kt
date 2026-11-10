@@ -196,6 +196,7 @@ private fun HeaderWithAccount(
     onNavigate: (String) -> Unit,
 ) {
     val gradient = SindenTheme.heroGradient
+    val darkHero = SindenTheme.isDark
     Column(
         Modifier
             .fillMaxWidth()
@@ -204,8 +205,8 @@ private fun HeaderWithAccount(
             .drawBehind {
                 // cahaya aurora di dalam header
                 val r = size.width * 0.7f
-                drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.20f), Color.Transparent), center = Offset(size.width * 0.95f, size.height * 0.05f), radius = r), radius = r, center = Offset(size.width * 0.95f, size.height * 0.05f))
-                drawCircle(Brush.radialGradient(listOf(Cyan400.copy(alpha = 0.28f), Color.Transparent), center = Offset(0f, size.height * 0.85f), radius = r * 0.8f), radius = r * 0.8f, center = Offset(0f, size.height * 0.85f))
+                drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = if (darkHero) 0.06f else 0.20f), Color.Transparent), center = Offset(size.width * 0.95f, size.height * 0.05f), radius = r), radius = r, center = Offset(size.width * 0.95f, size.height * 0.05f))
+                drawCircle(Brush.radialGradient(listOf((if (darkHero) Indigo600 else Cyan400).copy(alpha = if (darkHero) 0.10f else 0.28f), Color.Transparent), center = Offset(0f, size.height * 0.85f), radius = r * 0.8f), radius = r * 0.8f, center = Offset(0f, size.height * 0.85f))
             }
             .statusBarsPadding()
             .padding(start = Spacing.lg, end = Spacing.lg, top = Spacing.sm, bottom = Spacing.xl),

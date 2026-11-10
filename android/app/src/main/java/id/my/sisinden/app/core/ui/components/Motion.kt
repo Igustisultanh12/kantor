@@ -71,28 +71,34 @@ fun rememberReduceMotion(): Boolean {
 
 /**
  * Animasi masuk bertahap untuk kartu & item daftar: fade + naik + membesar
- * sedikit + blur-in (API 31+). Jeda per item dibatasi agar tidak terasa lambat.
+ * sedikit. Sengaja TANPA blur: blur per kartu yang berjalan bersamaan dengan
+ * transisi halaman membuat GPU tersendat (terasa tidak mulus) di HP kelas menengah.
+ * Jeda per item dibatasi agar tidak terasa lambat.
  */
 @Composable
-fun Modifier.appear(index: Int = 0, key: Any? = Unit, distance: Float = 48f): Modifier {
+fun Modifier.appear(index: Int = 0, key: Any? = Unit, distance: Float = 36f): Modifier {
     val reduce = rememberReduceMotion()
     val anim = remember(key) { Animatable(if (reduce) 1f else 0f) }
     LaunchedEffect(key) {
         if (reduce) return@LaunchedEffect
-        delay(index.coerceIn(0, 8) * 55L)
-        anim.animateTo(1f, spring(dampingRatio = 0.82f, stiffness = 170f))
+        delay(120L + index.coerceIn(0, 6) * 45L) // mulai setelah transisi halaman reda
+        anim.animateTo(1f, spring(dampingRatio = 0.86f, stiffness = 200f))
     }
     return this.graphicsLayer {
-        val p = anim.value.coerceIn(0f, 1.05f)
-        alpha = p.coerceAtMost(1f)
-        translationY = (1f - anim.value) * distance
-        val s = 0.94f + 0.06f * anim.value
+        val p = anim.value
+        alpha = p.coerceIn(0f, 1f)
+        translationY = (1f - p) * distance
+        val s = 0.96f + 0.04f * p
         scaleX = s
         scaleY = s
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val r = ((1f - p) * 18f).coerceAtLeast(0f)
-            renderEffect = if (r > 0.5f) BlurEffect(r, r, TileMode.Decal) else null
-        }
+    }
+}
+
+/** Blur-in sekali pakai untuk elemen tunggal yang menonjol (logo splash/login), API 31+. */
+fun androidx.compose.ui.graphics.GraphicsLayerScope.blurIn(progress: Float, max: Float = 16f) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val r = ((1f - progress) * max).coerceAtLeast(0f)
+        renderEffect = if (r > 0.5f) BlurEffect(r, r, TileMode.Decal) else null
     }
 }
 

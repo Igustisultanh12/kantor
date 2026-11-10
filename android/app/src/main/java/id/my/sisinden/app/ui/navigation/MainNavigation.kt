@@ -248,21 +248,24 @@ fun MainNavigation(
             modifier = Modifier.padding(padding),
             // Transisi bergaya iOS: antar-tab = crossfade + zoom halus; masuk ke
             // halaman detail = push dari kanan dengan parallax halaman lama.
+            // Layar memakai latar transparan (aurora di belakang), jadi dua layar tidak
+            // boleh tampil bersamaan: layar lama memudar habis dengan cepat (≈110 ms)
+            // SEBELUM layar baru mulai terlihat — tidak ada lagi tulisan "berbayang".
             enterTransition = {
-                if (isTabSwitch()) fadeIn(tween(260)) + scaleIn(tween(320, easing = IosEase), initialScale = 0.97f)
-                else slideInHorizontally(iosSlideSpec()) { it } + fadeIn(tween(200))
+                if (isTabSwitch()) fadeIn(tween(200, delayMillis = 90, easing = IosEase)) + scaleIn(tween(300, delayMillis = 60, easing = IosEase), initialScale = 0.98f)
+                else slideInHorizontally(iosSlideSpec()) { it / 3 } + fadeIn(tween(220, delayMillis = 100, easing = IosEase))
             },
             exitTransition = {
-                if (isTabSwitch()) fadeOut(tween(160))
-                else slideOutHorizontally(iosSlideSpec()) { -it / 4 } + fadeOut(tween(320), targetAlpha = 0.55f)
+                if (isTabSwitch()) fadeOut(tween(90))
+                else slideOutHorizontally(iosSlideSpec()) { -it / 8 } + fadeOut(tween(110))
             },
             popEnterTransition = {
-                if (isTabSwitch()) fadeIn(tween(260)) + scaleIn(tween(320, easing = IosEase), initialScale = 0.97f)
-                else slideInHorizontally(iosSlideSpec()) { -it / 4 } + fadeIn(tween(260), initialAlpha = 0.55f)
+                if (isTabSwitch()) fadeIn(tween(200, delayMillis = 90, easing = IosEase)) + scaleIn(tween(300, delayMillis = 60, easing = IosEase), initialScale = 0.98f)
+                else slideInHorizontally(iosSlideSpec()) { -it / 8 } + fadeIn(tween(220, delayMillis = 100, easing = IosEase))
             },
             popExitTransition = {
-                if (isTabSwitch()) fadeOut(tween(160))
-                else slideOutHorizontally(iosSlideSpec()) { it } + fadeOut(tween(260, delayMillis = 80))
+                if (isTabSwitch()) fadeOut(tween(90))
+                else slideOutHorizontally(iosSlideSpec()) { it / 3 } + fadeOut(tween(110))
             },
         ) {
             // ------------------------------------------------------ Tab utama

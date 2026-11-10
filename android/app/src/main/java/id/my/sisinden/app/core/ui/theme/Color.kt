@@ -74,7 +74,8 @@ val Red900 = Color(0xFF5C1111)
  * di atasnya tetap ≥ 4,5:1 di seluruh rentang gradien.
  */
 val HeroGradientLight = listOf(Color(0xFF0A3A9E), Color(0xFF1D5FE0), Indigo600)
-val HeroGradientDark = listOf(Color(0xFF0A1F4D), Color(0xFF1A1F5E), Night900)
+// Gelap: biru tua → indigo redup (tidak memudar ke hitam agar bentuk header tetap terlihat)
+val HeroGradientDark = listOf(Color(0xFF0B2560), Color(0xFF1B2470), Color(0xFF2A1F68))
 
 /** Pasangan warna ubin fitur bergradien (atas → bawah), mengikuti kit Livin. */
 @Immutable

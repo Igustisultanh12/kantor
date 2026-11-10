@@ -170,7 +170,16 @@ private fun AuthNavigation(repository: SindenRepository, state: SessionState.Log
     val nav = rememberNavController()
     // Latar untuk layar autentikasi yang memakai SindenScaffold transparan (mis. Aktivasi).
     GlassBackground {
-    NavHost(navController = nav, startDestination = Routes.LOGIN) {
+    // Transisi tanpa tumpang tindih (bawaan NavHost = crossfade 700 ms yang membuat
+    // tulisan dua layar terlihat berbayang).
+    NavHost(
+        navController = nav,
+        startDestination = Routes.LOGIN,
+        enterTransition = { androidx.compose.animation.fadeIn(tween(220, delayMillis = 100)) },
+        exitTransition = { androidx.compose.animation.fadeOut(tween(110)) },
+        popEnterTransition = { androidx.compose.animation.fadeIn(tween(220, delayMillis = 100)) },
+        popExitTransition = { androidx.compose.animation.fadeOut(tween(110)) },
+    ) {
         composable(Routes.LOGIN) {
             LoginScreen(
                 repository = repository,

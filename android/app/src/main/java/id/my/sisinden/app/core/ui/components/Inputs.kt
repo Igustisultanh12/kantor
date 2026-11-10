@@ -119,10 +119,10 @@ fun SindenTextField(
 @Composable
 fun sindenFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedContainerColor = MaterialTheme.colorScheme.surface,
-    unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = if (SindenTheme.isDark) 0.06f else 0.82f),
+    unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = if (SindenTheme.isDark) 0.9f else 0.82f),
     disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
     focusedBorderColor = MaterialTheme.colorScheme.primary,
-    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.55f),
+    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = if (SindenTheme.isDark) 0.8f else 0.55f),
 )
 
 /** Kolom pencarian membulat. */
@@ -150,7 +150,7 @@ fun SearchField(
             unfocusedIndicatorColor = Color.Transparent,
             disabledIndicatorColor = Color.Transparent,
             focusedContainerColor = MaterialTheme.colorScheme.surface,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = if (SindenTheme.isDark) 0.08f else 0.85f),
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = if (SindenTheme.isDark) 0.9f else 0.85f),
         ),
     )
 }

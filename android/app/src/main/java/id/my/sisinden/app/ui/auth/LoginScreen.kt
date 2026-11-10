@@ -72,6 +72,7 @@ import id.my.sisinden.app.ui.common.Slate300
 import id.my.sisinden.app.ui.common.Slate400
 import id.my.sisinden.app.ui.common.Slate900
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.material3.CircularProgressIndicator
@@ -243,7 +244,15 @@ fun LoginScreen(
                         disabledContentColor = Color.White.copy(alpha = 0.85f),
                     ),
                 ) {
-                    AnimatedContent(targetState = state.busy, label = "signInLabel") { busy ->
+                    AnimatedContent(
+                        targetState = state.busy,
+                        // label lama hilang dulu, baru label baru muncul (tidak bertumpuk)
+                        transitionSpec = {
+                            androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(150, delayMillis = 90)) togetherWith
+                                androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(90))
+                        },
+                        label = "signInLabel",
+                    ) { busy ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             if (busy) {
                                 CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
