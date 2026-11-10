@@ -288,7 +288,7 @@ function installParallax(layer) {
 
 /** Penanda menu aktif yang "meluncur" dari posisi menu sebelumnya (antar kunjungan). */
 let lastPillY = null;
-function installNavPill(nav, pill) {
+export function installNavPill(nav, pill) {
     if (!nav || !pill) return;
     const active = nav.querySelector('a.font-bold');
     if (!active) { pill.style.opacity = '0'; return; }

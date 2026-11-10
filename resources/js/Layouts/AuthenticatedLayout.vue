@@ -5,7 +5,7 @@ import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import Swal from 'sweetalert2';
 import GlobalCommandPalette from '@/Components/GlobalCommandPalette.vue';
-import { animatePageEnter, drawerHooks, popHooks, installLivelyUI, applyMotionSetting } from '@/motion';
+import { animatePageEnter, drawerHooks, popHooks, installLivelyUI, applyMotionSetting, installNavPill } from '@/motion';
 
 const page = usePage();
 const mainEl = ref(null);
@@ -195,7 +195,73 @@ const deskNavEl = ref(null);
 const navPillEl = ref(null);
 let stopLively = null;
 
+/*
+ * SIDEBAR GAYA ERP
+ * - Dilipat jadi rail ikon (tombol di header sidebar / Ctrl+B). Pilihan disimpan per perangkat.
+ * - Belum pernah memilih: layar < 1280px otomatis terlipat.
+ * - Saat terlipat, sidebar "mengintip" (melayang di atas konten) bila disorot, lalu
+ *   tersembunyi lagi saat kursor pergi (auto-hide).
+ */
+const SIDE_KEY = 'sinden.sidebar.collapsed';
+const readSidePref = () => {
+    try {
+        const v = localStorage.getItem(SIDE_KEY);
+        if (v === '1' || v === '0') return v === '1';
+    } catch (e) {}
+    return typeof window !== 'undefined' && window.innerWidth < 1280;
+};
+const sideCollapsed = ref(readSidePref());
+const sidePeek = ref(false);
+let peekTimer = null;
+
+const resyncPill = () => setTimeout(() => installNavPill(deskNavEl.value, navPillEl.value), 380);
+const toggleSide = () => {
+    sideCollapsed.value = !sideCollapsed.value;
+    sidePeek.value = false;
+    try { localStorage.setItem(SIDE_KEY, sideCollapsed.value ? '1' : '0'); } catch (e) {}
+    resyncPill();
+};
+const onSideEnter = () => {
+    if (!sideCollapsed.value) return;
+    clearTimeout(peekTimer);
+    peekTimer = setTimeout(() => { sidePeek.value = true; resyncPill(); }, 140);
+};
+const onSideLeave = () => {
+    clearTimeout(peekTimer);
+    if (sidePeek.value) {
+        peekTimer = setTimeout(() => { sidePeek.value = false; resyncPill(); }, 220);
+    }
+};
+const onSideKey = (e) => {
+    if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'b') return;
+    const t = e.target;
+    if (t && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))) return;
+    e.preventDefault();
+    toggleSide();
+};
+// Nama menu sebagai tooltip saat sidebar terlipat (label tersembunyi).
+const labelNavLinks = () => {
+    deskNavEl.value?.querySelectorAll('a').forEach((a) => {
+        if (a.getAttribute('title')) return;
+        const label = a.querySelector('span')?.textContent?.trim();
+        if (label) a.setAttribute('title', label);
+    });
+};
+
+// Penanda menu aktif selalu mengikuti tata letak menu (lipat/bentang/intip/teks melipat).
+let navResize = null;
+
 onMounted(() => {
+    window.addEventListener('keydown', onSideKey);
+    labelNavLinks();
+    if (typeof ResizeObserver !== 'undefined' && deskNavEl.value) {
+        let raf = 0;
+        navResize = new ResizeObserver(() => {
+            cancelAnimationFrame(raf);
+            raf = requestAnimationFrame(() => installNavPill(deskNavEl.value, navPillEl.value));
+        });
+        deskNavEl.value.querySelectorAll(':scope > div').forEach((g) => navResize.observe(g));
+    }
     // Layout dipasang ulang di setiap kunjungan halaman → animasi masuk halaman (Framer Motion).
     animatePageEnter(mainEl.value);
     stopLively = installLivelyUI({
@@ -215,6 +281,9 @@ onMounted(() => {
 
 onUnmounted(() => {
     stopLively?.();
+    window.removeEventListener('keydown', onSideKey);
+    clearTimeout(peekTimer);
+    navResize?.disconnect();
     window.removeEventListener('resize', checkMobile);
     if (notifTimer) clearInterval(notifTimer);
 });
@@ -584,19 +653,45 @@ onUnmounted(() => {
         </div>
         </Transition>
 
-        <!-- Desktop Sidebar (SISFOPERSKC Style) -->
-        <aside class="sinden-glass hidden lg:flex w-72 border-r border-[#E2E8F0] flex-col justify-between shadow-sm shrink-0 z-30 sticky top-0 h-screen overflow-y-auto">
+        <!-- Desktop Sidebar gaya ERP: bisa dilipat jadi rail ikon & membuka saat disorot -->
+        <div
+            class="sinden-side-slot hidden lg:block shrink-0 relative z-30"
+            :class="{ 'is-collapsed': sideCollapsed }"
+            @mouseenter="onSideEnter"
+            @mouseleave="onSideLeave"
+        >
+        <aside
+            class="sinden-glass sinden-side flex border-r border-[#E2E8F0] flex-col justify-between shadow-sm sticky top-0 h-screen overflow-y-auto overflow-x-hidden"
+            :class="{ 'is-peek': sideCollapsed && sidePeek }"
+            aria-label="Navigasi utama"
+        >
             <div>
-                <!-- Brand Header & Logo -->
-                <div class="pt-8 pb-6 px-7 flex flex-col select-none border-b border-slate-100">
-                    <Link :href="isAnggotaSintel ? route('sc-submissions.index') : route('dashboard')" class="flex items-center gap-3">
-                        <img v-if="appLogo" :src="appLogo" alt="Logo" class="w-8 h-8 object-contain select-none shrink-0" />
-                        <div v-else class="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-extrabold text-base shadow-sm shrink-0"> S
-                        </div>
-                        <div class="text-2xl font-extrabold tracking-tight text-slate-900"> SINDEN<span class="text-[#2563EB]">.</span>
-                        </div>
-                    </Link>
-                    <span class="text-[9px] font-bold tracking-wider text-[#94A3B8] uppercase mt-2 truncate">
+                <!-- Brand Header & Logo + tombol lipat -->
+                <div class="sinden-side-brand pt-7 pb-5 px-6 flex flex-col select-none border-b border-slate-100">
+                    <div class="flex items-center gap-2">
+                        <Link :href="isAnggotaSintel ? route('sc-submissions.index') : route('dashboard')" class="flex items-center gap-3 min-w-0 flex-1">
+                            <img v-if="appLogo" :src="appLogo" alt="Logo" class="w-9 h-9 object-contain select-none shrink-0" />
+                            <div v-else class="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-extrabold text-base shadow-sm shrink-0"> S
+                            </div>
+                            <div class="sinden-side-label text-2xl font-extrabold tracking-tight text-slate-900"> SINDEN<span class="text-[#2563EB]">.</span>
+                            </div>
+                        </Link>
+                        <button
+                            type="button"
+                            class="sinden-side-toggle"
+                            @click="toggleSide"
+                            :aria-label="sideCollapsed ? 'Bentangkan sidebar' : 'Lipat sidebar'"
+                            :aria-expanded="!sideCollapsed"
+                            :title="(sideCollapsed ? 'Bentangkan' : 'Lipat') + ' sidebar (Ctrl+B)'"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true">
+                                <rect x="3" y="4" width="18" height="16" rx="3"/>
+                                <path stroke-linecap="round" d="M9 4v16"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" :d="sideCollapsed ? 'm13 10 2 2-2 2' : 'm16 10-2 2 2 2'"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <span class="sinden-side-label text-[9px] font-bold tracking-wider text-[#94A3B8] uppercase mt-2 truncate">
                         {{ agencyName }}
                     </span>
                 </div>
@@ -877,16 +972,17 @@ onUnmounted(() => {
             </div>
 
             <!-- Profile Widget Footer Sidebar -->
-            <div class="p-5 border-t border-[#E2E8F0] bg-slate-50/50">
-                <Link 
-                    :href="route('profile.edit')" 
+            <div class="sinden-side-foot p-5 border-t border-[#E2E8F0] bg-slate-50/50">
+                <Link
+                    :href="route('profile.edit')"
+                    :title="user.name"
                     :class="route().current('profile.edit') ? 'bg-[#2563EB]/5 text-[#2563EB]' : 'hover:bg-slate-100/80'"class="flex items-center gap-3.5 mb-3 p-2 rounded-xl transition duration-150 group cursor-pointer"
                 >
                     <div class="w-10 h-10 rounded-xl bg-[#2563EB]/10 flex items-center justify-center font-bold text-xs text-[#2563EB] uppercase select-none group-hover:bg-[#2563EB] group-hover:text-white transition duration-150 shrink-0 overflow-hidden">
                         <img v-if="user.avatar" :src="'/storage/' + user.avatar" class="w-full h-full object-cover" alt="Foto Profil" />
                         <span v-else>{{ user.name ? user.name.substring(0, 2).toUpperCase() : 'US' }}</span>
                     </div>
-                    <div class="text-xs truncate flex-1" v-if="user">
+                    <div class="sinden-side-label text-xs truncate flex-1" v-if="user">
                         <p class="font-bold text-slate-800 truncate group-hover:text-[#2563EB] transition duration-150">
                             {{ user.name }}
                         </p>
@@ -894,11 +990,14 @@ onUnmounted(() => {
                         </p>
                     </div>
                 </Link>
-                
-                <Link :href="route('logout')" method="post" as="button" class="w-full py-2.5 px-3 text-center text-xs text-[#EF4444] hover:bg-red-50 rounded-xl font-bold border border-transparent hover:border-red-100/50 transition duration-150 cursor-pointer block"> Keluar Sistem
+
+                <Link :href="route('logout')" method="post" as="button" title="Keluar Sistem" class="w-full py-2.5 px-3 text-xs text-[#EF4444] hover:bg-red-50 rounded-xl font-bold border border-transparent hover:border-red-100/50 transition duration-150 cursor-pointer flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17l5-5-5-5M20 12H9M12 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/></svg>
+                    <span class="sinden-side-label">Keluar Sistem</span>
                 </Link>
             </div>
         </aside>
+        </div>
 
         <!-- Main Content Area -->
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
