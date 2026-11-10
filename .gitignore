@@ -28,3 +28,11 @@ Thumbs.db
 *.keystore
 key.properties
 android/keystore.properties
+
+# Hasil build Android lokal
+android/.gradle/
+android/app/build/
+
+# Impeccable: binari diunduh otomatis saat pertama dipakai; setelan lokal tidak dibagikan
+**/impeccable/scripts/bin/
+.claude/settings.local.json
