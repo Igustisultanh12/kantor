@@ -8,7 +8,7 @@ import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import Swal from 'sweetalert2';
 import { animate, stagger } from 'framer-motion/dom';
-import { reduced, T } from '@/motion';
+import { reduced, T, applyMotionSetting } from '@/motion';
 
 const props = defineProps({
     canResetPassword: { type: Boolean },
@@ -233,6 +233,8 @@ watch(() => [form.errors.email, form.errors.password], ([a, b]) => {
 });
 
 onMounted(() => {
+    // Hormati saklar Admin "Animasi Interaktif" (Pengaturan → Tampilan Web).
+    applyMotionSetting(String(pageSettings.value.ui_motion_enabled ?? '1') !== '0');
     playEntrance();
     window.addEventListener('pointermove', onPointerMove, { passive: true });
     document.addEventListener('pointerleave', onPointerLeave);

@@ -55,6 +55,15 @@ class SettingController extends Controller
             'login_background' => 'nullable|image|max:5120', // Background login (Maks 5MB)
             'signature_file' => 'nullable|image|mimes:png|max:2048', // Validasi khusus PNG
             'favicon' => 'nullable|image|mimes:ico,png,jpg,jpeg|max:1024', // Tambahan validasi favicon (Maks 1MB)
+            // Tampilan web: latar & efek kaca (dibaca AuthenticatedLayout lewat props settings)
+            'ui_bg_style' => 'nullable|in:aurora,polos,gambar',
+            'ui_bg_animated' => 'nullable|in:0,1',
+            'ui_bg_blur' => 'nullable|integer|min:0|max:40',
+            'ui_glass_blur' => 'nullable|integer|min:0|max:40',
+            'ui_glass_opacity' => 'nullable|integer|min:20|max:100',
+            'ui_motion_enabled' => 'nullable|in:0,1',
+            'ui_background' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'ui_background_clear' => 'nullable|boolean',
         ]);
 
         // 1. Update pengaturan teks & integrasi (agency_name, copyright, google oauth, mobile api, wa, agora)
@@ -66,6 +75,7 @@ class SettingController extends Controller
             'google_client_id', 'google_client_secret', 'google_login_enabled',
             'agora_app_id', 'agora_app_certificate',
             'turnstile_enabled', 'turnstile_site_key', 'fcm_enabled',
+            'ui_bg_style', 'ui_bg_animated', 'ui_bg_blur', 'ui_glass_blur', 'ui_glass_opacity', 'ui_motion_enabled',
         ];
         foreach ($request->only($textFields) as $key => $value) {
             if ($value !== null) {
@@ -125,6 +135,23 @@ class SettingController extends Controller
 
             $path = $request->file('login_background')->store('backgrounds', 'public');
             Setting::updateOrCreate(['key' => 'login_background'], ['value' => $path]);
+        }
+
+        // 2c. Gambar latar aplikasi web (dipakai bila ui_bg_style = gambar)
+        if ($request->boolean('ui_background_clear')) {
+            $old = Setting::where('key', 'ui_background')->first();
+            if ($old && $old->value) {
+                Storage::disk('public')->delete($old->value);
+            }
+            Setting::where('key', 'ui_background')->delete();
+        }
+        if ($request->hasFile('ui_background')) {
+            $old = Setting::where('key', 'ui_background')->first();
+            if ($old && $old->value) {
+                Storage::disk('public')->delete($old->value);
+            }
+            $path = $request->file('ui_background')->store('backgrounds', 'public');
+            Setting::updateOrCreate(['key' => 'ui_background'], ['value' => $path]);
         }
 
         // 3. Logika Update Tanda Tangan Komandan (Fitur Baru)

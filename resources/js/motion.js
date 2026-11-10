@@ -11,7 +11,17 @@
 import { animate, stagger, inView, press, hover } from 'framer-motion/dom';
 
 const mq = typeof window !== 'undefined' ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
-export const reduced = () => Boolean(mq?.matches);
+// Gerak dimatikan bila pengguna memilih "kurangi gerak" di sistem, ATAU Admin
+// mematikan "Animasi Interaktif" di Pengaturan (data-motion="off" di <html>).
+export const reduced = () =>
+    Boolean(mq?.matches) || (typeof document !== 'undefined' && document.documentElement.dataset.motion === 'off');
+
+/** Terapkan pengaturan Admin ke <html> (dipanggil layout sebelum animasi berjalan). */
+export function applyMotionSetting(enabled) {
+    if (typeof document === 'undefined') return;
+    if (enabled) delete document.documentElement.dataset.motion;
+    else document.documentElement.dataset.motion = 'off';
+}
 
 // Spring bergaya iOS: dinyatakan sebagai durasi + bounce (mirip SwiftUI
 // .spring(response:dampingFraction:)) — lembut, nyaris tanpa mantul, tidak "kaku".

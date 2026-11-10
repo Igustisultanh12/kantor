@@ -5,10 +5,39 @@ import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import Swal from 'sweetalert2';
 import GlobalCommandPalette from '@/Components/GlobalCommandPalette.vue';
-import { animatePageEnter, drawerHooks, popHooks, installLivelyUI } from '@/motion';
+import { animatePageEnter, drawerHooks, popHooks, installLivelyUI, applyMotionSetting } from '@/motion';
 
 const page = usePage();
 const mainEl = ref(null);
+
+/**
+ * Tampilan web yang diatur Admin (Pengaturan → Tampilan Web):
+ * jenis latar, gambar + blur latar, blur & kepekatan panel kaca, animasi.
+ */
+const ui = computed(() => {
+    const s = page.props.settings || {};
+    const num = (v, d, min, max) => {
+        const n = Number(v);
+        return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : d;
+    };
+    const image = s.ui_background ? '/storage/' + s.ui_background : null;
+    let style = ['aurora', 'polos', 'gambar'].includes(s.ui_bg_style) ? s.ui_bg_style : 'aurora';
+    if (style === 'gambar' && !image) style = 'aurora';
+    return {
+        style,
+        image,
+        bgBlur: num(s.ui_bg_blur, 0, 0, 40),
+        glassBlur: num(s.ui_glass_blur, 26, 0, 40),
+        glassOpacity: num(s.ui_glass_opacity, 42, 20, 100),
+        animated: String(s.ui_bg_animated ?? '1') !== '0',
+        motion: String(s.ui_motion_enabled ?? '1') !== '0',
+    };
+});
+const shellVars = computed(() => ({
+    '--sinden-glass-a': (ui.value.glassOpacity / 100).toFixed(2),
+    '--sinden-blur': `${ui.value.glassBlur}px`,
+}));
+applyMotionSetting(ui.value.motion);
 
 /**
  * Data Pengaturan & Identitas Personel
@@ -173,7 +202,7 @@ onMounted(() => {
         main: mainEl.value,
         header: headerEl.value,
         progressBar: progressEl.value,
-        parallax: parallaxEl.value,
+        parallax: ui.value.animated ? parallaxEl.value : null,
         nav: deskNavEl.value,
         navPill: navPillEl.value,
     });
@@ -192,10 +221,20 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="sinden-shell min-h-screen flex text-[#334155] font-sans antialiased">
-        <!-- Latar dekoratif (gradasi lembut di belakang panel kaca) -->
+    <div
+        class="sinden-shell min-h-screen flex text-[#334155] font-sans antialiased"
+        :data-bg="ui.style"
+        :data-bg-static="ui.animated ? null : ''"
+        :style="shellVars"
+    >
+        <!-- Latar dekoratif (diatur Admin: Aurora / Polos / Gambar) -->
         <div class="sinden-bg" aria-hidden="true">
-            <div class="sinden-orbs" ref="parallaxEl"><i></i><i></i><i></i><i></i></div>
+            <div
+                v-if="ui.style === 'gambar'"
+                class="sinden-bg-image"
+                :style="{ backgroundImage: `url(${ui.image})`, filter: ui.bgBlur ? `blur(${ui.bgBlur}px)` : null }"
+            ></div>
+            <div v-if="ui.style === 'aurora'" class="sinden-orbs" ref="parallaxEl"><i></i><i></i><i></i><i></i></div>
         </div>
 
         <!-- Mobile Sidebar Drawer Overlay & Menu -->

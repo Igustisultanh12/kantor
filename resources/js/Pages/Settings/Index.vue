@@ -42,7 +42,50 @@ const form = useForm({
     login_background: null,
     signature_file: null,
     favicon: null,
-    _method: 'PUT' 
+    // Tampilan web: latar & efek kaca
+    ui_bg_style: props.settings.ui_bg_style || 'aurora',
+    ui_bg_animated: props.settings.ui_bg_animated !== undefined ? String(props.settings.ui_bg_animated) : '1',
+    ui_bg_blur: Number(props.settings.ui_bg_blur ?? 0),
+    ui_glass_blur: Number(props.settings.ui_glass_blur ?? 26),
+    ui_glass_opacity: Number(props.settings.ui_glass_opacity ?? 42),
+    ui_motion_enabled: props.settings.ui_motion_enabled !== undefined ? String(props.settings.ui_motion_enabled) : '1',
+    ui_background: null,
+    ui_background_clear: false,
+    _method: 'PUT'
+});
+
+// Pratinjau gambar latar aplikasi
+const uiBgPreview = ref(props.settings.ui_background ? '/storage/' + props.settings.ui_background : null);
+const handleUiBgChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        form.ui_background = file;
+        form.ui_background_clear = false;
+        form.ui_bg_style = 'gambar';
+        uiBgPreview.value = URL.createObjectURL(file);
+    }
+};
+const clearUiBg = () => {
+    form.ui_background = null;
+    form.ui_background_clear = true;
+    uiBgPreview.value = null;
+    if (form.ui_bg_style === 'gambar') form.ui_bg_style = 'aurora';
+};
+// Gaya pratinjau langsung (meniru AuthenticatedLayout)
+const uiPreviewBg = computed(() => {
+    if (form.ui_bg_style === 'gambar' && uiBgPreview.value) {
+        return { backgroundImage: `url(${uiBgPreview.value})`, backgroundSize: 'cover', backgroundPosition: 'center', filter: `blur(${form.ui_bg_blur}px)`, transform: 'scale(1.15)' };
+    }
+    if (form.ui_bg_style === 'polos') return { background: '#f4f6fb' };
+    return { background: 'radial-gradient(60% 70% at 15% 10%, #bfdbfe, transparent 60%), radial-gradient(50% 60% at 90% 30%, #c7d2fe, transparent 60%), radial-gradient(50% 50% at 40% 100%, #a7f3d0, transparent 60%), #f4f6fb' };
+});
+const uiPreviewGlass = computed(() => {
+    const a = form.ui_glass_opacity / 100;
+    return {
+        background: `rgba(255,255,255,${a})`,
+        backdropFilter: `blur(${form.ui_glass_blur}px) saturate(1.8)`,
+        WebkitBackdropFilter: `blur(${form.ui_glass_blur}px) saturate(1.8)`,
+    };
 });
 
 // Pesan hasil simpan dari server (sukses / gagal).
@@ -367,6 +410,110 @@ onUnmounted(() => { if (waInterval) clearInterval(waInterval); });
                                         <input type="file" @change="handleSignatureChange" class="hidden" accept="image/png" />
                                     </label>
                                     <p class="text-[8px] text-slate-400 leading-tight mt-0.5">Wajib PNG Tanpa Background agar tidak menutupi teks surat.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAMPILAN WEB: LATAR & EFEK KACA -->
+                    <div class="pt-8 border-t border-slate-100 space-y-5">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path stroke-linecap="round" stroke-linejoin="round" d="m3 16 5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.5"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-xs font-black text-slate-900 uppercase tracking-wider">TAMPILAN WEB: LATAR &amp; EFEK KACA</h3>
+                                <p class="text-[11px] text-slate-500 font-semibold">Berlaku untuk seluruh pengguna setelah disimpan. Pratinjau di kanan berubah langsung.</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="space-y-5">
+                                <!-- Jenis latar -->
+                                <div class="space-y-2">
+                                    <label class="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider ms-1">Jenis Latar</label>
+                                    <div class="grid grid-cols-3 gap-2">
+                                        <button v-for="opt in [{ v: 'aurora', l: 'Aurora' }, { v: 'polos', l: 'Polos' }, { v: 'gambar', l: 'Gambar' }]" :key="opt.v" type="button"
+                                            @click="form.ui_bg_style = opt.v"
+                                            :class="form.ui_bg_style === opt.v ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white text-slate-700 border-slate-200 hover:border-blue-400'"
+                                            class="py-2.5 rounded-2xl border text-xs font-bold transition">{{ opt.l }}</button>
+                                    </div>
+                                </div>
+
+                                <!-- Gambar latar -->
+                                <div v-if="form.ui_bg_style === 'gambar'" class="flex items-center gap-4 p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                                    <div class="w-20 h-14 rounded-xl overflow-hidden bg-slate-200 shrink-0">
+                                        <img v-if="uiBgPreview" :src="uiBgPreview" class="w-full h-full object-cover" alt="" />
+                                    </div>
+                                    <div class="flex-1 flex flex-wrap gap-2">
+                                        <label class="cursor-pointer bg-white px-3 py-2 rounded-xl border border-slate-200 text-[11px] font-extrabold uppercase tracking-wider text-blue-600 hover:bg-blue-600 hover:text-white transition">
+                                            {{ uiBgPreview ? 'Ganti Gambar' : 'Pilih Gambar' }}
+                                            <input type="file" @change="handleUiBgChange" class="hidden" accept="image/jpeg,image/png,image/webp" />
+                                        </label>
+                                        <button v-if="uiBgPreview" type="button" @click="clearUiBg" class="px-3 py-2 rounded-xl border border-red-200 text-[11px] font-extrabold uppercase tracking-wider text-red-600 hover:bg-red-50 transition">Hapus</button>
+                                        <p class="w-full text-[11px] text-slate-400 font-semibold">JPG/PNG/WEBP, maks. 5MB. Tanpa gambar, latar kembali ke Aurora.</p>
+                                    </div>
+                                </div>
+
+                                <!-- Blur gambar latar -->
+                                <div v-if="form.ui_bg_style === 'gambar'" class="space-y-1.5">
+                                    <label class="flex justify-between text-[11px] font-extrabold text-slate-500 uppercase tracking-wider ms-1">
+                                        <span>Blur Gambar Latar</span><span class="text-blue-600 tabular-nums">{{ form.ui_bg_blur }}px</span>
+                                    </label>
+                                    <input v-model.number="form.ui_bg_blur" type="range" min="0" max="40" step="1" class="w-full accent-blue-600" />
+                                </div>
+
+                                <!-- Blur kaca -->
+                                <div class="space-y-1.5">
+                                    <label class="flex justify-between text-[11px] font-extrabold text-slate-500 uppercase tracking-wider ms-1">
+                                        <span>Blur Panel Kaca (sidebar, header)</span><span class="text-blue-600 tabular-nums">{{ form.ui_glass_blur }}px</span>
+                                    </label>
+                                    <input v-model.number="form.ui_glass_blur" type="range" min="0" max="40" step="1" class="w-full accent-blue-600" />
+                                </div>
+
+                                <!-- Kepekatan kaca -->
+                                <div class="space-y-1.5">
+                                    <label class="flex justify-between text-[11px] font-extrabold text-slate-500 uppercase tracking-wider ms-1">
+                                        <span>Kepekatan Panel Kaca</span><span class="text-blue-600 tabular-nums">{{ form.ui_glass_opacity }}%</span>
+                                    </label>
+                                    <input v-model.number="form.ui_glass_opacity" type="range" min="20" max="100" step="1" class="w-full accent-blue-600" />
+                                    <p class="text-[11px] text-slate-400 font-semibold ms-1">Makin rendah makin bening. Di bawah 35% teks menu bisa kurang kontras di atas gambar yang ramai.</p>
+                                </div>
+
+                                <!-- Saklar -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <label class="flex items-center justify-between gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-200 cursor-pointer">
+                                        <span class="text-[11px] font-extrabold text-slate-700 uppercase tracking-wider">Latar Bergerak</span>
+                                        <select v-model="form.ui_bg_animated" class="rounded-xl border-slate-200 text-xs font-bold py-1.5">
+                                            <option value="1">Aktif</option><option value="0">Mati</option>
+                                        </select>
+                                    </label>
+                                    <label class="flex items-center justify-between gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-200 cursor-pointer">
+                                        <span class="text-[11px] font-extrabold text-slate-700 uppercase tracking-wider">Animasi Interaktif</span>
+                                        <select v-model="form.ui_motion_enabled" class="rounded-xl border-slate-200 text-xs font-bold py-1.5">
+                                            <option value="1">Aktif</option><option value="0">Mati</option>
+                                        </select>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Pratinjau langsung -->
+                            <div class="space-y-2">
+                                <span class="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider ms-1">Pratinjau</span>
+                                <div class="relative h-64 rounded-3xl overflow-hidden border border-slate-200 shadow-inner isolate">
+                                    <div class="absolute inset-0 -z-10" :style="uiPreviewBg"></div>
+                                    <div class="absolute left-0 top-0 bottom-0 w-[34%] border-r border-white/60 p-3 space-y-2" :style="uiPreviewGlass">
+                                        <div class="h-3 w-16 rounded-full bg-slate-800/80"></div>
+                                        <div class="h-7 rounded-xl bg-blue-500/15 ring-1 ring-blue-500/20"></div>
+                                        <div class="h-2.5 w-20 rounded-full bg-slate-500/50"></div>
+                                        <div class="h-2.5 w-14 rounded-full bg-slate-500/50"></div>
+                                        <div class="h-2.5 w-24 rounded-full bg-slate-500/50"></div>
+                                    </div>
+                                    <div class="absolute left-[34%] right-0 top-0 h-10 border-b border-white/60" :style="uiPreviewGlass"></div>
+                                    <div class="absolute left-[38%] right-4 top-14 space-y-3">
+                                        <div class="h-16 rounded-2xl bg-white shadow-sm"></div>
+                                        <div class="grid grid-cols-2 gap-3"><div class="h-16 rounded-2xl bg-white shadow-sm"></div><div class="h-16 rounded-2xl bg-white shadow-sm"></div></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

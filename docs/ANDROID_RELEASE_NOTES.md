@@ -1,3 +1,28 @@
+# SISINDEN Android v1.9.0 (versionCode 21)
+
+Tampilan baru **"Aurora"** bergaya iPhone: lebih segar, lembut, dan interaktif. Semua fitur tetap sama.
+
+## Baru
+
+- **Desain Aurora**: warna biru ke indigo, latar cahaya yang bergerak pelan, kartu kaca dengan kilau dan bayangan lembut, ikon fitur bergradien seperti ikon aplikasi iPhone, sudut lebih membulat, judul lebih tegas. Ukuran teks isi tetap besar agar mudah dibaca.
+- **Animasi gaya iOS**: elemen muncul dengan efek blur halus (Android 12+), tombol mengecil lalu membal lembut saat ditekan, halaman detail masuk dari kanan seperti iPhone, perpindahan tab dengan crossfade halus. Ikut setelan sistem "Hapus animasi".
+- **Tab bar baru**: kapsul kaca mengambang dengan penanda yang meluncur ke tab terpilih; tombol Presensi di tengah bergradien dengan cincin berdenyut.
+- **Top bar baru**: gradien aurora bersudut membulat, tombol "Kembali" berbentuk kapsul kaca.
+- **Halaman masuk**: latar aurora bergerak, logo dan kartu kaca muncul bertahap, kartu bergetar halus bila login ditolak, tombol "Masuk" menampilkan "Memverifikasi..." saat diproses.
+- **Beranda**: header aurora, tombol Warta/Atur berbentuk kapsul kaca, kartu akun berkilau, bagian-bagian muncul berurutan.
+- Aksen oranye di layar pembuka dan kunci PIN diganti biru agar seragam.
+
+## Web (ikut rilis ini)
+
+- Tampilan web baru (kaca blur, animasi interaktif, halaman login baru).
+- **Pengaturan → Tampilan Web: Latar & Efek Kaca** (khusus Admin): pilih latar Aurora / Polos / Gambar (unggah foto + atur blur), atur blur dan kepekatan panel kaca, nyalakan/matikan latar bergerak dan animasi interaktif. Berlaku untuk semua pengguna.
+
+## Server
+
+- `git pull`, lalu `npm install` dan `npm run build` (dependensi baru `framer-motion`). Tidak ada migrasi.
+- Bila `git pull` menolak karena `package-lock.json` lokal: `git stash push package-lock.json` dulu.
+
+---
 # SISINDEN Android v1.8.2 (versionCode 20)
 
 ## Baru

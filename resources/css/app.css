@@ -129,14 +129,36 @@ table td, table th, .tabular-nums { font-variant-numeric: tabular-nums; }
     -webkit-backdrop-filter: blur(var(--sinden-blur)) saturate(1.5);
     backdrop-filter: blur(var(--sinden-blur)) saturate(1.5);
 }
+/* --sinden-glass-a & --sinden-blur diatur Admin (Pengaturan → Tampilan Web) */
 .sinden-glass {
-    background: linear-gradient(180deg, rgba(255, 255, 255, .55) 0%, var(--sinden-glass) 45%, rgba(255, 255, 255, .34) 100%);
+    background: linear-gradient(180deg,
+        rgba(255, 255, 255, min(1, calc(var(--sinden-glass-a, .42) + .13))) 0%,
+        rgba(255, 255, 255, var(--sinden-glass-a, .42)) 45%,
+        rgba(255, 255, 255, max(0, calc(var(--sinden-glass-a, .42) - .08))) 100%);
     border-color: var(--sinden-glass-border) !important;
     box-shadow: inset -1px 0 0 rgba(255, 255, 255, .7), 8px 0 32px -18px rgba(15, 23, 42, .18) !important;
 }
 .sinden-glass,
 .sinden-glass-bar { -webkit-backdrop-filter: blur(var(--sinden-blur)) saturate(1.9); backdrop-filter: blur(var(--sinden-blur)) saturate(1.9); }
-.sinden-glass-bar { background: rgba(255, 255, 255, .5); border-color: var(--sinden-glass-border) !important; }
+.sinden-glass-bar { background: rgba(255, 255, 255, min(1, calc(var(--sinden-glass-a, .42) + .08))); border-color: var(--sinden-glass-border) !important; }
+
+/* Latar "Gambar": foto Admin, diperbesar sedikit agar tepi blur tidak tampak */
+.sinden-bg-image {
+    position: absolute; inset: 0; z-index: 0;
+    background-size: cover; background-position: center;
+    transform: scale(1.08);
+}
+.sinden-bg-image::after { content: ''; position: absolute; inset: 0; background: rgba(244, 246, 251, .35); }
+/* Latar "Polos" & "Gambar": tanpa pola titik */
+.sinden-shell[data-bg="polos"] .sinden-bg::before,
+.sinden-shell[data-bg="gambar"] .sinden-bg::before { display: none; }
+/* "Latar Bergerak" dimatikan Admin */
+.sinden-shell[data-bg-static] .sinden-orbs i { animation: none; }
+/* "Animasi Interaktif" dimatikan Admin: hentikan gerak dekoratif CSS */
+html[data-motion="off"] .sinden-orbs i,
+html[data-motion="off"] .swal2-popup.swal2-show { animation: none !important; }
+html[data-motion="off"] .sinden-nav a:hover svg,
+html[data-motion="off"] .sinden-nav a:hover > span:first-of-type { transform: none; }
 /* footer profil & garis pemisah di dalam kaca ikut bening */
 .sinden-glass [class*="bg-slate-50/50"] { background-color: rgba(255, 255, 255, .25) !important; }
 .sinden-glass [class*="border-slate-100"], .sinden-glass [class*="border-[#E2E8F0]"] { border-color: rgba(255, 255, 255, .55) !important; }
