@@ -5,8 +5,10 @@ import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import Swal from 'sweetalert2';
 import GlobalCommandPalette from '@/Components/GlobalCommandPalette.vue';
+import { animatePageEnter, drawerHooks, popHooks, installLivelyUI } from '@/motion';
 
 const page = usePage();
+const mainEl = ref(null);
 
 /**
  * Data Pengaturan & Identitas Personel
@@ -156,7 +158,25 @@ const checkMobile = () => {
 
 let notifTimer = null;
 
+// Elemen untuk interaksi hidup (Framer Motion)
+const headerEl = ref(null);
+const progressEl = ref(null);
+const parallaxEl = ref(null);
+const deskNavEl = ref(null);
+const navPillEl = ref(null);
+let stopLively = null;
+
 onMounted(() => {
+    // Layout dipasang ulang di setiap kunjungan halaman → animasi masuk halaman (Framer Motion).
+    animatePageEnter(mainEl.value);
+    stopLively = installLivelyUI({
+        main: mainEl.value,
+        header: headerEl.value,
+        progressBar: progressEl.value,
+        parallax: parallaxEl.value,
+        nav: deskNavEl.value,
+        navPill: navPillEl.value,
+    });
     checkMobile();
     window.addEventListener('resize', checkMobile);
 
@@ -165,24 +185,31 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+    stopLively?.();
     window.removeEventListener('resize', checkMobile);
     if (notifTimer) clearInterval(notifTimer);
 });
 </script>
 
 <template>
-    <div class="min-h-screen bg-[#F8FAFC] flex text-[#334155] font-sans antialiased">
-        
+    <div class="sinden-shell min-h-screen flex text-[#334155] font-sans antialiased">
+        <!-- Latar dekoratif (gradasi lembut di belakang panel kaca) -->
+        <div class="sinden-bg" aria-hidden="true">
+            <div class="sinden-orbs" ref="parallaxEl"><i></i><i></i><i></i><i></i></div>
+        </div>
+
         <!-- Mobile Sidebar Drawer Overlay & Menu -->
+        <Transition :css="false" @enter="drawerHooks.onEnter" @leave="drawerHooks.onLeave">
         <div v-if="isMobileMenuOpen" class="fixed inset-0 z-50 lg:hidden flex">
             <!-- Backdrop Overlay -->
-            <div 
-                class="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity"
+            <div
+                data-drawer-scrim
+                class="fixed inset-0 bg-slate-950/50 backdrop-blur-sm"
                 @click="isMobileMenuOpen = false"
             ></div>
 
             <!-- Drawer Content -->
-            <aside class="relative flex-1 w-full max-w-xs bg-white flex flex-col justify-between shadow-2xl h-full overflow-y-auto z-50">
+            <aside data-drawer-panel class="sinden-glass relative flex-1 w-full max-w-xs flex flex-col justify-between shadow-2xl h-full overflow-y-auto z-50">
                 <div>
                     <!-- Mobile Drawer Header -->
                     <div class="pt-6 pb-4 px-6 flex items-center justify-between border-b border-slate-100">
@@ -516,9 +543,10 @@ onUnmounted(() => {
                 </div>
             </aside>
         </div>
+        </Transition>
 
         <!-- Desktop Sidebar (SISFOPERSKC Style) -->
-        <aside class="hidden lg:flex w-72 bg-white border-r border-[#E2E8F0] flex-col justify-between shadow-sm shrink-0 z-30 sticky top-0 h-screen overflow-y-auto">
+        <aside class="sinden-glass hidden lg:flex w-72 border-r border-[#E2E8F0] flex-col justify-between shadow-sm shrink-0 z-30 sticky top-0 h-screen overflow-y-auto">
             <div>
                 <!-- Brand Header & Logo -->
                 <div class="pt-8 pb-6 px-7 flex flex-col select-none border-b border-slate-100">
@@ -535,7 +563,7 @@ onUnmounted(() => {
                 </div>
 
                 <!-- Sidebar Nav Menu -->
-                <nav class="px-4 py-3 space-y-5">
+                <nav ref="deskNavEl" class="sinden-nav relative px-4 py-3 space-y-5">
                     
                     <!-- UTAMA -->
                     <div v-if="!isAnggotaSintel" class="space-y-1">
@@ -804,6 +832,8 @@ onUnmounted(() => {
                         </Link>
                     </div>
 
+                    <!-- Penanda menu aktif yang meluncur (anak terakhir agar tidak memengaruhi space-y) -->
+                    <span ref="navPillEl" class="sinden-nav-pill" aria-hidden="true"></span>
                 </nav>
             </div>
 
@@ -835,7 +865,8 @@ onUnmounted(() => {
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
             
             <!-- Header Topbar Desktop & Mobile -->
-            <header class="bg-white border-b border-[#E2E8F0] sticky top-0 z-20 shadow-xs h-16 flex items-center px-3 sm:px-8 justify-between gap-2 sm:gap-4">
+            <header ref="headerEl" class="sinden-glass-bar sinden-header border-b border-[#E2E8F0] sticky top-0 z-20 shadow-xs h-16 flex items-center px-3 sm:px-8 justify-between gap-2 sm:gap-4">
+                <span ref="progressEl" class="sinden-progress" aria-hidden="true"></span>
                 
                 <!-- Toggle Mobile & Search Bar -->
                 <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
@@ -883,7 +914,8 @@ onUnmounted(() => {
                             </span>
                         </button>
 
-                        <div v-if="isNotifOpen" class="absolute right-0 mt-3 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 z-50 animate-float-card">
+                        <Transition :css="false" @enter="popHooks.onEnter" @leave="popHooks.onLeave">
+                        <div v-if="isNotifOpen" class="sinden-glass-pop absolute right-0 mt-3 w-80 sm:w-96 rounded-2xl shadow-2xl border border-slate-100 p-4 z-50 origin-top-right">
                             <div class="flex justify-between items-center pb-3 border-b border-slate-100">
                                 <div class="flex items-center gap-2">
                                     <h4 class="font-extrabold text-xs uppercase tracking-wider text-slate-800">Notifikasi Sistem</h4>
@@ -918,6 +950,7 @@ onUnmounted(() => {
                                 </Link>
                             </div>
                         </div>
+                        </Transition>
                     </div>
 
                     <!-- Dropdown Profil -->
@@ -946,7 +979,7 @@ onUnmounted(() => {
             </header>
 
             <!-- Main Scrollable Content -->
-            <main class="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8">
+            <main ref="mainEl" class="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8">
                 <slot />
             </main>
 

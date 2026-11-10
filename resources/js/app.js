@@ -5,6 +5,11 @@ import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createApp, h } from 'vue';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
+import { installGlobalPress, installClickBurst, vReveal, vLift, vPress } from './motion';
+
+// Efek tekan bergaya spring + riak klik untuk semua tombol/tautan (Framer Motion).
+installGlobalPress();
+installClickBurst();
 
 const appName = import.meta.env.VITE_APP_NAME || 'SI SINDEN - DENINTEL KODAERAL V';
 
@@ -18,9 +23,13 @@ createInertiaApp({
         return createApp({ render: () => h(App, props) })
             .use(plugin)
             .use(ZiggyVue)
+            .directive('reveal', vReveal)
+            .directive('lift', vLift)
+            .directive('press', vPress)
             .mount(el);
     },
     progress: {
-        color: '#4B5563',
+        color: '#2563EB',
+        showSpinner: false,
     },
 });

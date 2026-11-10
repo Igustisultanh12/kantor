@@ -511,7 +511,7 @@ const submit = () => {
                     <div class="p-5 sm:p-6 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-4">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/80 pb-3">
                             <div class="flex items-center gap-2">
-                                <span class="p-1.5 bg-amber-500 text-white rounded-lg shadow-xs text-sm">🎖️</span>
+                                <span class="p-1.5 bg-amber-500 text-white rounded-lg shadow-xs text-sm"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="15" r="5"/><path stroke-linecap="round" stroke-linejoin="round" d="M8.5 11 6 3h4l2 5 2-5h4l-2.5 8M12 13l.9 1.8 2 .3-1.45 1.4.35 2-1.8-.95-1.8.95.35-2-1.45-1.4 2-.3z"/></svg></span>
                                 <div>
                                     <h3 class="text-xs font-black uppercase tracking-wider text-amber-950">Perwira Tertua (Pater / Penerima Perintah)</h3>
                                     <p class="text-[11px] text-amber-800">Pejabat perwira tertua yang ditunjuk menerima surat perintah di Diktum Kepada.</p>
@@ -526,14 +526,14 @@ const submit = () => {
                             <!-- Quick Selector Dropdown -->
                             <div>
                                 <label class="text-[11px] font-bold text-amber-900 block mb-1">
-                                    ⚡ Pilih Cepat dari Perwira Jaga / Seluruh Personel:
+                                    <svg class="inline w-3.5 h-3.5 -mt-0.5 mr-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg> Pilih Cepat dari Perwira Jaga / Seluruh Personel:
                                 </label>
                                 <select 
                                     @change="onSelectPerwiraTertuaFromDropdown($event.target.value)"
                                     class="w-full p-2.5 text-xs border border-amber-300 rounded-xl bg-white font-medium text-slate-800 focus:ring-2 focus:ring-amber-500 shadow-xs"
                                 >
                                     <option value="">-- Pilih dari Daftar Perwira / Personel --</option>
-                                    <optgroup label="📋 Perwira Jaga (Lampiran 1)">
+                                    <optgroup label="Perwira Jaga (Lampiran 1)">
                                         <option 
                                             v-for="(p, idx) in form.perwiras.filter(x => x.nama)" 
                                             :key="'p-' + idx" 
@@ -542,7 +542,7 @@ const submit = () => {
                                             {{ p.pangkat_korps }} {{ p.nama }} (NRP {{ p.nrp || '-' }})
                                         </option>
                                     </optgroup>
-                                    <optgroup label="👥 Seluruh Personel (Database)">
+                                    <optgroup label="Seluruh Personel (Database)">
                                         <option v-for="user in personels" :key="'u-' + user.id" :value="user.id">
                                             {{ user.pangkat }} {{ user.name }} (NRP {{ user.nrp || '-' }})
                                         </option>
@@ -708,7 +708,7 @@ const submit = () => {
                                             v-if="isRowPerwiraTertua(p, idx)"
                                             class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-400 text-slate-950 font-black text-[10px] rounded-lg shadow-xs ring-1 ring-amber-500"
                                         >
-                                            ⭐ Pater (Tertua)
+                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg> Pater (Tertua)
                                         </span>
                                         <button
                                             v-else
@@ -717,7 +717,7 @@ const submit = () => {
                                             class="px-2.5 py-1 bg-slate-100 hover:bg-amber-100 text-slate-600 hover:text-amber-800 text-[10px] font-bold rounded-lg transition cursor-pointer"
                                             title="Pilih perwira ini sebagai Perwira Tertua"
                                         >
-                                            ⭐ Pilih Pater
+                                            <span class="inline-flex items-center gap-1"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg> Pilih Pater</span>
                                         </button>
                                     </td>
                                     <!-- Kolom Tanggal Dinas Jaga (Dinamis Sesuai Kebutuhan Bulan) -->
