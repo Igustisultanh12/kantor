@@ -1,3 +1,17 @@
+# SISINDEN Android v1.9.1 (versionCode 22)
+
+Perbaikan tampilan dari v1.9.0.
+
+- **Perpindahan menu kini mulus, tanpa tulisan berbayang**: layar lama memudar habis dulu sebelum layar baru muncul (sebelumnya kedua layar sempat tampil bertumpuk). Geseran halaman lebih pendek dan ringan.
+- **Animasi lebih ringan**: efek blur pada setiap kartu dihapus (fade, naik, dan zoom halus tetap ada), jadi tidak tersendat di HP kelas menengah.
+- **Mode gelap lebih elegan**: permukaan abu bertingkat ala iOS di atas latar hitam, cahaya latar sangat halus satu nuansa biru-indigo, kilau kaca dan ikon diredam, header gelap tidak lagi memudar ke hitam. Kolom isian dan chip filter kini jelas terlihat di mode gelap.
+- Teks tombol "Masuk" dan perpindahan Login ke Aktivasi juga tidak lagi bertumpuk saat berganti.
+
+## Server
+
+- Tidak ada perubahan.
+
+---
 # SISINDEN Android v1.9.0 (versionCode 21)
 
 Tampilan baru **"Aurora"** bergaya iPhone: lebih segar, lembut, dan interaktif. Semua fitur tetap sama.
