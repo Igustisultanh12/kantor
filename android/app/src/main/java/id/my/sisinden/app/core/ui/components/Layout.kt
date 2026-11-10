@@ -8,6 +8,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import id.my.sisinden.app.core.ui.theme.Cyan400
+import id.my.sisinden.app.core.ui.theme.Indigo600
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.draw.clip
@@ -73,7 +86,11 @@ fun SindenScaffold(
     )
 }
 
-/** Top bar biru Livin / kaca (gelap). */
+/**
+ * Top bar "Aurora": gradien biru → indigo dengan sudut bawah membulat,
+ * cahaya lembut, dan kilau kaca di tepi atas. Judul muncul dengan spring
+ * gaya iOS. Di mode gelap gradiennya lebih redup.
+ */
 @Composable
 fun SindenTopBar(
     title: String,
@@ -81,28 +98,47 @@ fun SindenTopBar(
     onBack: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
-    val dark = SindenTheme.isDark
-    val glass = SindenTheme.glass
-    val bg = if (dark) {
-        Modifier.background(glass.fillStrong)
-    } else {
-        Modifier.background(Brush.horizontalGradient(listOf(Blue600, TopBarBlueEnd)))
-    }
+    val hero = SindenTheme.heroGradient
+    val shape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
+    val reduce = rememberReduceMotion()
+    val enter = remember(title) { Animatable(if (reduce) 1f else 0f) }
+    LaunchedEffect(title) { if (!reduce) enter.animateTo(1f, spring(dampingRatio = 0.8f, stiffness = 220f)) }
     CompositionLocalProvider(LocalContentColor provides Color.White) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .then(bg)
+                .shadow(16.dp, shape, clip = false, ambientColor = Indigo600.copy(alpha = 0.35f), spotColor = Indigo600.copy(alpha = 0.35f))
+                .clip(shape)
+                .background(Brush.linearGradient(hero, start = Offset.Zero, end = Offset.Infinite))
+                .drawBehind {
+                    val r = size.width * 0.55f
+                    drawCircle(
+                        Brush.radialGradient(listOf(Color.White.copy(alpha = 0.22f), Color.Transparent), center = Offset(size.width * 0.92f, 0f), radius = r),
+                        radius = r,
+                        center = Offset(size.width * 0.92f, 0f),
+                    )
+                    drawCircle(
+                        Brush.radialGradient(listOf(Cyan400.copy(alpha = 0.22f), Color.Transparent), center = Offset(0f, size.height), radius = r * 0.8f),
+                        radius = r * 0.8f,
+                        center = Offset(0f, size.height),
+                    )
+                }
                 .statusBarsPadding()
                 .heightIn(min = 68.dp)
-                .padding(horizontal = Spacing.xs),
+                .padding(horizontal = Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(Modifier.widthIn(min = 64.dp), contentAlignment = Alignment.CenterStart) {
                 if (onBack != null) LabeledBackButton(onBack)
             }
             Column(
-                Modifier.weight(1f).padding(vertical = Spacing.sm),
+                Modifier
+                    .weight(1f)
+                    .padding(vertical = Spacing.sm)
+                    .graphicsLayer {
+                        alpha = enter.value.coerceIn(0f, 1f)
+                        translationY = (1f - enter.value) * 14f
+                    },
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
@@ -135,23 +171,27 @@ fun SindenTopBar(
     }
 }
 
-/** Ikon kembali + label "Kembali" di bawahnya (pola Livin). */
+/**
+ * Tombol kembali kapsul kaca: chevron + label "Kembali" (tetap berlabel agar
+ * ramah lansia), membal halus saat ditekan seperti tombol navigasi iOS.
+ */
 @Composable
 fun LabeledBackButton(onClick: () -> Unit) {
-    Column(
+    Row(
         Modifier
-            .clip(MaterialTheme.shapes.small)
+            .bouncyPress(0.92f)
+            .clip(RoundedCornerShape(50))
+            .background(Color.White.copy(alpha = 0.18f))
+            .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.5f), Color.White.copy(alpha = 0.08f))), RoundedCornerShape(50))
             .clickable(role = Role.Button, onClickLabel = "Kembali", onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .heightIn(min = 44.dp)
+            .padding(start = 8.dp, end = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(26.dp))
-        Text("Kembali", style = MaterialTheme.typography.labelSmall, color = Color.White)
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = null, modifier = Modifier.size(26.dp))
+        Text("Kembali", style = MaterialTheme.typography.labelMedium, color = Color.White)
     }
 }
-
-/** Ujung kanan gradien top bar: lebih terang dari primer namun teks putih tetap ≥ 4:1. */
-private val TopBarBlueEnd = Color(0xFF1D84F0)
 
 /** Wadah pull-to-refresh standar. */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)

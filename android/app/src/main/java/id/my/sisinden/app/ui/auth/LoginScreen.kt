@@ -71,15 +71,28 @@ import id.my.sisinden.app.ui.common.FloatingLogo
 import id.my.sisinden.app.ui.common.Slate300
 import id.my.sisinden.app.ui.common.Slate400
 import id.my.sisinden.app.ui.common.Slate900
-import id.my.sisinden.app.ui.common.rememberCardFloat
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import id.my.sisinden.app.core.ui.components.appear
+import id.my.sisinden.app.core.ui.components.bouncyPress
+import id.my.sisinden.app.core.ui.components.rememberReduceMotion
 import java.time.Year
 
-/** Oranye tombol "Masuk" di web (orange-600 → cukup kontras untuk teks putih tebal). */
-private val SignInOrange = Color(0xFFEA580C)
+/** Gradien tombol "Masuk" Aurora (biru → indigo); teks putih ≥ 4,5:1 di seluruh rentang. */
+private val SignInGradient = listOf(Color(0xFF2563EB), Color(0xFF4F46E5))
 
 /**
- * Halaman masuk dengan tampilan seperti login web SISINDEN: latar foto dari
- * pengaturan Admin + lapisan gelap, logo mengambang, dan kartu kaca gelap.
+ * Halaman masuk "Aurora" (selaras dengan login web): latar aurora bergerak,
+ * logo muncul dengan pantulan & blur-in, kartu kaca naik dengan spring gaya
+ * iOS, kartu bergetar halus saat login ditolak. Logika masuk tidak berubah.
  * Alamat server tidak dapat diubah dari aplikasi.
  */
 @Composable
@@ -94,8 +107,15 @@ fun LoginScreen(
     val focus = LocalFocusManager.current
     var showPassword by rememberSaveable { mutableStateOf(false) }
     val appName = config?.appName?.takeIf { it.isNotBlank() } ?: "SI SINDEN"
-    val cardLift = rememberCardFloat()
-    val cardLiftPx = with(LocalDensity.current) { 6.dp.toPx() }
+    val reduce = rememberReduceMotion()
+
+    // Getar halus saat pesan error baru muncul (umpan balik yang jelas, bukan sekadar teks merah).
+    val shake = remember { Animatable(0f) }
+    LaunchedEffect(state.errorMessage) {
+        if (state.errorMessage != null && !reduce) {
+            for (x in listOf(-14f, 12f, -8f, 5f, 0f)) shake.animateTo(x, spring(dampingRatio = 0.4f, stiffness = 2200f))
+        }
+    }
 
     BrandBackdrop(backgroundUrl = config?.loginBackground) {
         Column(
@@ -108,42 +128,56 @@ fun LoginScreen(
                 .padding(horizontal = Spacing.xxl),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(Modifier.height(Spacing.xl))
-            FloatingLogo(size = 128.dp)
+            Spacer(Modifier.height(Spacing.xxl))
+            FloatingLogo(size = 120.dp, modifier = Modifier.appear(index = 0, distance = 30f))
             Text(
                 appName.uppercase(),
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.headlineLarge,
                 color = Color.White,
-                letterSpacing = 1.sp,
                 textAlign = TextAlign.Center,
+                modifier = Modifier.appear(index = 1),
             )
             Spacer(Modifier.height(Spacing.xs))
             Text(
                 "Sistem Informasi Detasemen Intelijen",
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = Slate300,
                 textAlign = TextAlign.Center,
+                modifier = Modifier.appear(index = 2),
             )
             Spacer(Modifier.height(Spacing.xxl))
 
-            // Kartu form (bg-slate-900/90, border-white/10, mengambang halus)
+            // Kartu kaca Aurora
+            val cardShape = RoundedCornerShape(30.dp)
             Column(
                 Modifier
+                    .appear(index = 3, distance = 80f)
+                    .graphicsLayer { translationX = shake.value * density }
                     .widthIn(max = 460.dp)
                     .fillMaxWidth()
-                    .graphicsLayer { translationY = -cardLiftPx * cardLift }
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Slate900.copy(alpha = 0.90f))
-                    .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(24.dp))
+                    .shadow(30.dp, cardShape, clip = false, ambientColor = Color.Black, spotColor = Color.Black)
+                    .clip(cardShape)
+                    .background(Brush.linearGradient(listOf(Color(0xFF1E2946).copy(alpha = 0.82f), Color(0xFF0A1124).copy(alpha = 0.9f))))
+                    .drawBehind {
+                        // garis cahaya tipis di tepi atas + kilau lembut
+                        drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.08f), 0.3f to Color.Transparent))
+                        drawLine(
+                            Brush.horizontalGradient(listOf(Color.Transparent, Color(0xFF93C5FD).copy(alpha = 0.8f), Color.Transparent)),
+                            start = Offset(size.width * 0.12f, 1f),
+                            end = Offset(size.width * 0.88f, 1f),
+                            strokeWidth = 2f,
+                        )
+                    }
+                    .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.18f), Color.White.copy(alpha = 0.04f))), cardShape)
                     .padding(Spacing.xxl),
                 verticalArrangement = Arrangement.spacedBy(Spacing.md),
             ) {
                 Column {
-                    Text("Masuk Akun", style = MaterialTheme.typography.titleLarge, color = Color.White)
+                    Text("Masuk Akun", style = MaterialTheme.typography.headlineSmall, color = Color.White)
                     Spacer(Modifier.height(Spacing.xs))
                     Text(
                         "Gunakan akun internal Anda untuk mengakses SISINDEN.",
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = Slate300,
                     )
                 }
@@ -189,28 +223,46 @@ fun LoginScreen(
                     }),
                 )
 
+                val btnShape = RoundedCornerShape(18.dp)
                 Button(
                     onClick = { focus.clearFocus(); vm.submit() },
                     enabled = !state.busy,
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(58.dp)
+                        .bouncyPress(0.96f)
+                        .shadow(14.dp, btnShape, clip = false, ambientColor = Color.Black, spotColor = Color.Black)
+                        .clip(btnShape)
+                        .background(Brush.linearGradient(SignInGradient))
+                        .drawBehind { drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.25f), 0.5f to Color.Transparent)) },
+                    shape = btnShape,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = SignInOrange,
+                        containerColor = Color.Transparent,
                         contentColor = Color.White,
-                        disabledContainerColor = SignInOrange.copy(alpha = 0.5f),
-                        disabledContentColor = Color.White.copy(alpha = 0.8f),
+                        disabledContainerColor = Color.Black.copy(alpha = 0.25f),
+                        disabledContentColor = Color.White.copy(alpha = 0.85f),
                     ),
                 ) {
-                    Icon(Icons.Outlined.Shield, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(Spacing.sm))
-                    Text("Masuk", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
+                    AnimatedContent(targetState = state.busy, label = "signInLabel") { busy ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (busy) {
+                                CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                                Spacer(Modifier.width(Spacing.sm))
+                                Text("Memverifikasi...", style = MaterialTheme.typography.labelLarge)
+                            } else {
+                                Icon(Icons.Outlined.Shield, contentDescription = null, modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(Spacing.sm))
+                                Text("Masuk", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
+                            }
+                        }
+                    }
                 }
 
                 TextButton(onClick = onOpenActivation, modifier = Modifier.align(Alignment.CenterHorizontally)) {
                     Text(
                         "Belum aktif? Aktivasi akun dengan token Admin",
                         style = MaterialTheme.typography.labelMedium,
-                        color = Color(0xFFFDBA74),
+                        color = Color(0xFF93C5FD),
                         textAlign = TextAlign.Center,
                     )
                 }
@@ -222,6 +274,7 @@ fun LoginScreen(
                 style = MaterialTheme.typography.labelSmall,
                 color = Slate400,
                 textAlign = TextAlign.Center,
+                modifier = Modifier.appear(index = 5),
             )
             Spacer(Modifier.height(Spacing.lg))
         }
@@ -265,7 +318,7 @@ private fun DarkField(
         visualTransformation = visualTransformation,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(18.dp),
         textStyle = MaterialTheme.typography.bodyLarge,
         colors = OutlinedTextFieldDefaults.colors(
             focusedTextColor = Color.White,
@@ -273,15 +326,15 @@ private fun DarkField(
             focusedContainerColor = Color.White.copy(alpha = 0.10f),
             unfocusedContainerColor = Color.White.copy(alpha = 0.08f),
             errorContainerColor = Color.White.copy(alpha = 0.08f),
-            focusedBorderColor = Color.White.copy(alpha = 0.85f),
+            focusedBorderColor = Color(0xFF60A5FA),
             unfocusedBorderColor = Color.White.copy(alpha = 0.14f),
-            focusedLabelColor = Color.White,
+            focusedLabelColor = Color(0xFF93C5FD),
             unfocusedLabelColor = Slate300,
-            focusedLeadingIconColor = Color.White,
+            focusedLeadingIconColor = Color(0xFF93C5FD),
             unfocusedLeadingIconColor = Slate300,
             focusedTrailingIconColor = Color.White,
             unfocusedTrailingIconColor = Slate300,
-            cursorColor = Color(0xFFFB923C),
+            cursorColor = Color(0xFF93C5FD),
             errorTextColor = Color.White,
             errorLabelColor = Color(0xFFFCA5A5),
             errorBorderColor = Color(0xFFF87171),

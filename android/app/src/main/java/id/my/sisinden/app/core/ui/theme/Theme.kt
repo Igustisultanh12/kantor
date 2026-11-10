@@ -28,7 +28,7 @@ enum class TextScale(val factor: Float, val label: String) {
 }
 
 private val LightColors = lightColorScheme(
-    primary = Blue600,
+    primary = Color(0xFF1D5FE0), // biru Aurora (5,3:1 terhadap putih)
     onPrimary = Color.White,
     primaryContainer = Blue50,
     onPrimaryContainer = Blue900,
@@ -123,25 +123,25 @@ data class GlassColors(
 )
 
 private val LightGlass = GlassColors(
-    fill = Color.White.copy(alpha = 0.82f),
-    fillStrong = Color.White.copy(alpha = 0.94f),
+    fill = Color.White.copy(alpha = 0.74f),
+    fillStrong = Color.White.copy(alpha = 0.9f),
     edgeTop = Color.White,
-    edgeBottom = Blue600.copy(alpha = 0.12f),
-    shadow = Blue900.copy(alpha = 0.10f),
-    glowA = Blue500.copy(alpha = 0.16f),
-    glowB = Color(0xFF55D0F5).copy(alpha = 0.14f),
-    glowC = Violet400.copy(alpha = 0.10f),
+    edgeBottom = Color.White.copy(alpha = 0.35f),
+    shadow = Color(0xFF1E2A55).copy(alpha = 0.16f),
+    glowA = Blue500.copy(alpha = 0.30f),
+    glowB = Cyan400.copy(alpha = 0.22f),
+    glowC = Indigo500.copy(alpha = 0.24f),
 )
 
 private val DarkGlass = GlassColors(
-    fill = Color.White.copy(alpha = 0.07f),
-    fillStrong = Color.White.copy(alpha = 0.11f),
-    edgeTop = Color.White.copy(alpha = 0.24f),
-    edgeBottom = Color.White.copy(alpha = 0.05f),
-    shadow = Color.Black.copy(alpha = 0.45f),
-    glowA = Blue500.copy(alpha = 0.22f),
-    glowB = Color(0xFF2EC5CE).copy(alpha = 0.12f),
-    glowC = Violet400.copy(alpha = 0.18f),
+    fill = Color.White.copy(alpha = 0.08f),
+    fillStrong = Color(0xFF1C1D22).copy(alpha = 0.86f),
+    edgeTop = Color.White.copy(alpha = 0.28f),
+    edgeBottom = Color.White.copy(alpha = 0.04f),
+    shadow = Color.Black.copy(alpha = 0.6f),
+    glowA = Blue500.copy(alpha = 0.32f),
+    glowB = Cyan400.copy(alpha = 0.14f),
+    glowC = Indigo500.copy(alpha = 0.30f),
 )
 
 private val LocalStatusColors = staticCompositionLocalOf { LightStatusColors }

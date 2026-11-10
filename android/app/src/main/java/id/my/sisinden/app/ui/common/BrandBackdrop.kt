@@ -1,6 +1,9 @@
 package id.my.sisinden.app.ui.common
 
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import kotlin.math.cos
+import kotlin.math.sin
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -29,6 +32,9 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import id.my.sisinden.app.R
 
+/** Malam biru pekat latar login "Aurora" (sama dengan web #050b1a). */
+val AuroraNight = Color(0xFF050B1A)
+
 /** Warna latar login web SISINDEN (Tailwind slate-950 / slate-900). */
 val Slate950 = Color(0xFF020617)
 val Slate900 = Color(0xFF0F172A)
@@ -46,7 +52,15 @@ fun BrandBackdrop(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    Box(modifier.fillMaxSize().background(Slate950)) {
+    // Aurora bergerak pelan (satu putaran ~36 dtk), dibaca di fase gambar saja.
+    val reduce = id.my.sisinden.app.core.ui.components.rememberReduceMotion()
+    val phase = rememberInfiniteTransition(label = "loginAurora").animateFloat(
+        initialValue = 0f,
+        targetValue = (2 * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(36_000, easing = LinearEasing), RepeatMode.Restart),
+        label = "phase",
+    )
+    Box(modifier.fillMaxSize().background(AuroraNight)) {
         if (!backgroundUrl.isNullOrBlank()) {
             AsyncImage(
                 model = backgroundUrl,
@@ -54,28 +68,26 @@ fun BrandBackdrop(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
-        } else {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(Brush.verticalGradient(listOf(Color(0xFF0B1E42), Slate950)))
-                    .drawBehind {
-                        val r = size.maxDimension * 0.5f
-                        drawCircle(
-                            Brush.radialGradient(listOf(Color(0xFF2B93FE).copy(alpha = 0.35f), Color.Transparent), center = Offset(size.width * 0.85f, size.height * 0.12f), radius = r),
-                            radius = r,
-                            center = Offset(size.width * 0.85f, size.height * 0.12f),
-                        )
-                        drawCircle(
-                            Brush.radialGradient(listOf(Color(0xFFF97316).copy(alpha = 0.18f), Color.Transparent), center = Offset(size.width * 0.1f, size.height * 0.9f), radius = r * 0.9f),
-                            radius = r * 0.9f,
-                            center = Offset(size.width * 0.1f, size.height * 0.9f),
-                        )
-                    },
-            )
+            // Lapisan gelap seperti web agar teks selalu terbaca di atas foto.
+            Box(Modifier.fillMaxSize().background(AuroraNight.copy(alpha = 0.78f)))
         }
-        // Lapisan gelap seperti web (bg-slate-950/80) agar teks selalu terbaca.
-        Box(Modifier.fillMaxSize().background(Slate950.copy(alpha = if (backgroundUrl.isNullOrBlank()) 0.35f else 0.80f)))
+        Box(
+            Modifier
+                .fillMaxSize()
+                .drawBehind {
+                    val p = if (reduce) 0.8f else phase.value
+                    val w = size.width
+                    val h = size.height
+                    val r = size.maxDimension * 0.6f
+                    fun blob(color: Color, cx: Float, cy: Float, radius: Float) {
+                        val c = Offset(cx, cy)
+                        drawCircle(Brush.radialGradient(listOf(color, Color.Transparent), center = c, radius = radius), radius = radius, center = c)
+                    }
+                    blob(Color(0xFF1D4ED8).copy(alpha = 0.55f), w * (0.1f + 0.15f * cos(p)), h * (0.08f + 0.06f * sin(p)), r)
+                    blob(Color(0xFF4F46E5).copy(alpha = 0.45f), w * (0.95f + 0.1f * sin(p * 1.2f)), h * (0.35f + 0.08f * cos(p)), r * 0.85f)
+                    blob(Color(0xFF0D9488).copy(alpha = 0.32f), w * (0.4f + 0.2f * sin(p * 0.7f)), h * (1.02f + 0.04f * cos(p * 1.4f)), r * 0.8f)
+                },
+        )
         content()
     }
 }

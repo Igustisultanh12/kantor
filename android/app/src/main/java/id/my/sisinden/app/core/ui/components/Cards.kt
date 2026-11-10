@@ -31,6 +31,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -42,22 +44,24 @@ import androidx.compose.ui.unit.dp
 import id.my.sisinden.app.core.ui.theme.SindenTheme
 import id.my.sisinden.app.core.ui.theme.Spacing
 
-/** Skala tekan halus untuk elemen yang dapat diketuk. */
+/** Skala tekan bergaya iOS: mengecil & meredup cepat, kembali dengan pantulan lembut. */
 @Composable
 fun Modifier.pressScale(interaction: MutableInteractionSource): Modifier {
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.97f else 1f,
-        animationSpec = spring(dampingRatio = 0.6f, stiffness = 600f),
+        targetValue = if (pressed) 0.965f else 1f,
+        animationSpec = if (pressed) spring(dampingRatio = 1f, stiffness = 900f) else spring(dampingRatio = 0.55f, stiffness = 380f),
         label = "pressScale",
     )
-    return this.graphicsLayer { scaleX = scale; scaleY = scale }
+    val dim by animateFloatAsState(if (pressed) 0.9f else 1f, spring(stiffness = 600f), label = "pressDim")
+    return this.graphicsLayer { scaleX = scale; scaleY = scale; alpha = dim }
 }
 
 /**
- * Kartu dasar SISINDEN.
- * Terang: putih bersih dengan garis #EDEDED 1,5dp (gaya Livin).
- * Gelap: permukaan kaca tembus pandang dengan tepi bergradien (iOS 26).
+ * Kartu dasar SISINDEN "Aurora".
+ * Permukaan kaca (putih 86% di mode terang, kaca gelap di mode gelap) dengan
+ * tepi terang bergradien, kilau atas, dan bayangan lembut berwarna — tidak
+ * ada lagi garis abu tebal. Warna kustom dari pemanggil tetap dihormati.
  */
 @Composable
 fun SindenCard(
@@ -69,33 +73,47 @@ fun SindenCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val glass = SindenTheme.glass
-    val useGlass = SindenTheme.isDark && containerColor == MaterialTheme.colorScheme.surface
-    val color = if (useGlass) glass.fill else containerColor
+    val dark = SindenTheme.isDark
+    val shape = MaterialTheme.shapes.medium
+    val useGlass = containerColor == MaterialTheme.colorScheme.surface
+    val color = when {
+        !useGlass -> containerColor
+        dark -> glass.fill
+        else -> Color.White.copy(alpha = 0.95f) // cukup pekat agar bayangan tidak "tembus" ke isi
+    }
     val stroke = when {
         border == null -> null
         useGlass -> BorderStroke(1.dp, Brush.verticalGradient(listOf(glass.edgeTop, glass.edgeBottom)))
         else -> border
     }
+    val lifted = if (useGlass) {
+        modifier.shadow(if (dark) 0.dp else 14.dp, shape, clip = false, ambientColor = glass.shadow, spotColor = glass.shadow)
+    } else modifier
+    val sheen = Modifier.drawBehind {
+        if (useGlass) {
+            drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = if (dark) 0.07f else 0.6f), 0.35f to Color.Transparent))
+        }
+    }
     if (onClick != null) {
         val interaction = remember { MutableInteractionSource() }
         Surface(
             onClick = onClick,
-            modifier = modifier.pressScale(interaction),
-            shape = MaterialTheme.shapes.medium,
+            modifier = lifted.pressScale(interaction),
+            shape = shape,
             color = color,
             border = stroke,
             interactionSource = interaction,
         ) {
-            Column(Modifier.padding(contentPadding), content = content)
+            Column(sheen.padding(contentPadding), content = content)
         }
     } else {
         Surface(
-            modifier = modifier,
-            shape = MaterialTheme.shapes.medium,
+            modifier = lifted,
+            shape = shape,
             color = color,
             border = stroke,
         ) {
-            Column(Modifier.padding(contentPadding), content = content)
+            Column(sheen.padding(contentPadding), content = content)
         }
     }
 }

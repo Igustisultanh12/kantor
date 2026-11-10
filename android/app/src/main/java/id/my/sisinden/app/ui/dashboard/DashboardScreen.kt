@@ -1,5 +1,11 @@
 package id.my.sisinden.app.ui.dashboard
 
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import id.my.sisinden.app.core.ui.components.appear
+import id.my.sisinden.app.core.ui.components.bouncyPress
+import id.my.sisinden.app.core.ui.theme.Cyan400
+import id.my.sisinden.app.core.ui.theme.Indigo600
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -138,10 +144,12 @@ fun DashboardScreen(
             )
 
             if (features.isNotEmpty()) {
-                MainFeatures(features.take(4), unread = summary?.notificationsUnread ?: 0, onNavigate = onNavigate)
+                Box(Modifier.appear(index = 1)) {
+                    MainFeatures(features.take(4), unread = summary?.notificationsUnread ?: 0, onNavigate = onNavigate)
+                }
             }
 
-            if (perms.has(Perm.DUTY_VIEW)) {
+            if (perms.has(Perm.DUTY_VIEW)) Box(Modifier.appear(index = 2)) {
                 DutySection(
                     state = state,
                     duty = data?.duty,
@@ -151,11 +159,15 @@ fun DashboardScreen(
             }
 
             if (summary != null) {
-                SummarySection(summary, hideBalance, vm::toggleHideBalance, onNavigate)
+                Box(Modifier.appear(index = 3, key = summary)) {
+                    SummarySection(summary, hideBalance, vm::toggleHideBalance, onNavigate)
+                }
             }
 
             if (features.size > 4) {
-                OtherFeatures(features, onNavigate)
+                Box(Modifier.appear(index = 4)) {
+                    OtherFeatures(features, onNavigate)
+                }
             }
 
             if (session.isStale) {
@@ -187,8 +199,14 @@ private fun HeaderWithAccount(
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
-            .background(Brush.verticalGradient(gradient))
+            .clip(RoundedCornerShape(bottomStart = 36.dp, bottomEnd = 36.dp))
+            .background(Brush.linearGradient(gradient, start = Offset.Zero, end = Offset.Infinite))
+            .drawBehind {
+                // cahaya aurora di dalam header
+                val r = size.width * 0.7f
+                drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.20f), Color.Transparent), center = Offset(size.width * 0.95f, size.height * 0.05f), radius = r), radius = r, center = Offset(size.width * 0.95f, size.height * 0.05f))
+                drawCircle(Brush.radialGradient(listOf(Cyan400.copy(alpha = 0.28f), Color.Transparent), center = Offset(0f, size.height * 0.85f), radius = r * 0.8f), radius = r * 0.8f, center = Offset(0f, size.height * 0.85f))
+            }
             .statusBarsPadding()
             .padding(start = Spacing.lg, end = Spacing.lg, top = Spacing.sm, bottom = Spacing.xl),
     ) {
@@ -220,9 +238,12 @@ private fun HeaderWithAccount(
 private fun HeaderAction(icon: ImageVector, label: String, badge: Int = 0, onClick: () -> Unit) {
     Column(
         Modifier
-            .clip(RoundedCornerShape(14.dp))
+            .bouncyPress(0.9f)
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color.White.copy(alpha = 0.16f))
+            .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.45f), Color.White.copy(alpha = 0.05f))), RoundedCornerShape(18.dp))
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 10.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box {
@@ -250,14 +271,16 @@ private fun AccountCard(
     val user = session.user
     val dark = SindenTheme.isDark
     val glass = SindenTheme.glass
-    val shape = RoundedCornerShape(24.dp)
+    val shape = RoundedCornerShape(28.dp)
     Column(
         Modifier
+            .appear(index = 0, distance = 60f)
             .fillMaxWidth()
-            .shadow(8.dp, shape, ambientColor = glass.shadow, spotColor = glass.shadow)
+            .shadow(20.dp, shape, ambientColor = glass.shadow, spotColor = glass.shadow)
             .clip(shape)
             .background(if (dark) glass.fillStrong else MaterialTheme.colorScheme.surface)
-            .border(2.dp, Brush.verticalGradient(listOf(glass.edgeTop, glass.edgeBottom)), shape)
+            .drawBehind { drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = if (dark) 0.06f else 0.7f), 0.4f to Color.Transparent)) }
+            .border(1.dp, Brush.verticalGradient(listOf(glass.edgeTop, glass.edgeBottom)), shape)
             .padding(Spacing.lg),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -265,7 +288,7 @@ private fun AccountCard(
                 Modifier
                     .size(52.dp)
                     .clip(CircleShape)
-                    .background(Brush.verticalGradient(listOf(Blue400, Blue600))),
+                    .background(Brush.linearGradient(listOf(Color(0xFF3B82F6), Indigo600))),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(user.initials, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = Color.White)

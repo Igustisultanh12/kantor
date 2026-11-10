@@ -38,13 +38,13 @@ import id.my.sisinden.app.ui.common.Slate300
 
 @Composable
 fun SplashScreen() {
-    val scale = remember { Animatable(0.9f) }
+    val scale = remember { Animatable(0.72f) }
     val alpha = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         alpha.animateTo(1f, tween(450))
     }
     LaunchedEffect(Unit) {
-        scale.animateTo(1f, tween(600, easing = FastOutSlowInEasing))
+        scale.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.6f, stiffness = 180f)) // pantulan lembut gaya iOS
     }
 
     BrandBackdrop(backgroundUrl = null) {
@@ -56,10 +56,14 @@ fun SplashScreen() {
                     scaleX = scale.value
                     scaleY = scale.value
                     this.alpha = alpha.value
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                        val r = (1f - alpha.value) * 20f
+                        renderEffect = if (r > 0.5f) androidx.compose.ui.graphics.BlurEffect(r, r) else null
+                    }
                 },
         ) {
             FloatingLogo(size = 120.dp)
-            Text("SISINDEN", color = Color.White, style = MaterialTheme.typography.headlineMedium, letterSpacing = 3.sp)
+            Text("SISINDEN", color = Color.White, style = MaterialTheme.typography.headlineLarge, letterSpacing = 2.sp)
             Spacer(Modifier.height(4.dp))
             Text("Denintel Kodaeral V", color = Slate300, style = MaterialTheme.typography.bodyMedium)
         }
@@ -70,7 +74,7 @@ fun SplashScreen() {
         ) {
             LinearProgressIndicator(
                 modifier = Modifier.width(120.dp).clip(RoundedCornerShape(50)),
-                color = Color(0xFFFB923C),
+                color = Color(0xFF60A5FA),
                 trackColor = Color.White.copy(alpha = 0.15f),
             )
             Text("Memuat…", color = Slate300, style = MaterialTheme.typography.bodySmall)

@@ -1,9 +1,16 @@
 package id.my.sisinden.app.ui.navigation
 
 import android.content.Intent
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.unit.IntOffset
+import id.my.sisinden.app.core.ui.components.IosEase
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
@@ -103,6 +110,13 @@ private val allTabs = listOf(
 )
 
 private const val REFRESH_KEY = "refresh_signal"
+
+/** true bila perpindahan terjadi antar-tab utama (bukan push ke halaman detail). */
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.isTabSwitch(): Boolean =
+    initialState.destination.route in Routes.tabs && targetState.destination.route in Routes.tabs
+
+/** Spring geser halaman ala UINavigationController: cepat, tanpa mantul. */
+private fun iosSlideSpec() = spring<IntOffset>(dampingRatio = 1f, stiffness = 420f)
 
 private fun appDeepLink(path: String) = listOf(navDeepLink { uriPattern = Routes.DEEP_LINK_PREFIX + path })
 
@@ -232,10 +246,24 @@ fun MainNavigation(
             navController = nav,
             startDestination = Routes.HOME,
             modifier = Modifier.padding(padding),
-            enterTransition = { fadeIn(animationSpec = tween(220)) },
-            exitTransition = { fadeOut(animationSpec = tween(160)) },
-            popEnterTransition = { fadeIn(animationSpec = tween(220)) },
-            popExitTransition = { fadeOut(animationSpec = tween(160)) },
+            // Transisi bergaya iOS: antar-tab = crossfade + zoom halus; masuk ke
+            // halaman detail = push dari kanan dengan parallax halaman lama.
+            enterTransition = {
+                if (isTabSwitch()) fadeIn(tween(260)) + scaleIn(tween(320, easing = IosEase), initialScale = 0.97f)
+                else slideInHorizontally(iosSlideSpec()) { it } + fadeIn(tween(200))
+            },
+            exitTransition = {
+                if (isTabSwitch()) fadeOut(tween(160))
+                else slideOutHorizontally(iosSlideSpec()) { -it / 4 } + fadeOut(tween(320), targetAlpha = 0.55f)
+            },
+            popEnterTransition = {
+                if (isTabSwitch()) fadeIn(tween(260)) + scaleIn(tween(320, easing = IosEase), initialScale = 0.97f)
+                else slideInHorizontally(iosSlideSpec()) { -it / 4 } + fadeIn(tween(260), initialAlpha = 0.55f)
+            },
+            popExitTransition = {
+                if (isTabSwitch()) fadeOut(tween(160))
+                else slideOutHorizontally(iosSlideSpec()) { it } + fadeOut(tween(260, delayMillis = 80))
+            },
         ) {
             // ------------------------------------------------------ Tab utama
             composable(Routes.HOME, deepLinks = appDeepLink("home")) {

@@ -63,7 +63,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
-private val Accent = Color(0xFFF97316)
+private val Accent = Color(0xFF60A5FA) // biru Aurora (selaras login)
 
 /** Titik PIN + papan angka besar (ramah lansia), dipakai di semua layar PIN. */
 @Composable

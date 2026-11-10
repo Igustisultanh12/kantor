@@ -49,7 +49,21 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import id.my.sisinden.app.core.ui.theme.Spacing
+import id.my.sisinden.app.core.ui.theme.SindenTheme
+import id.my.sisinden.app.core.ui.theme.Indigo600
 import id.my.sisinden.app.core.util.Fmt
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -97,8 +111,19 @@ fun SindenTextField(
         enabled = enabled,
         readOnly = readOnly,
         shape = MaterialTheme.shapes.small,
+        colors = sindenFieldColors(),
     )
 }
+
+/** Warna field "Aurora": isi kaca lembut, garis rambut, fokus biru tegas. */
+@Composable
+fun sindenFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedContainerColor = MaterialTheme.colorScheme.surface,
+    unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = if (SindenTheme.isDark) 0.06f else 0.82f),
+    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+    focusedBorderColor = MaterialTheme.colorScheme.primary,
+    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.55f),
+)
 
 /** Kolom pencarian membulat. */
 @Composable
@@ -125,7 +150,7 @@ fun SearchField(
             unfocusedIndicatorColor = Color.Transparent,
             disabledIndicatorColor = Color.Transparent,
             focusedContainerColor = MaterialTheme.colorScheme.surface,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = if (SindenTheme.isDark) 0.08f else 0.85f),
         ),
     )
 }
@@ -159,6 +184,7 @@ fun DateField(
         },
         interactionSource = interaction,
         shape = MaterialTheme.shapes.small,
+        colors = sindenFieldColors(),
     )
 
     if (open) {
@@ -207,7 +233,7 @@ fun <T> DropdownField(
             isError = error != null,
             supportingText = error?.let { { Text(it) } },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            colors = OutlinedTextFieldDefaults.colors(),
+            colors = sindenFieldColors(),
             shape = MaterialTheme.shapes.small,
             modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
         )
@@ -226,7 +252,10 @@ fun <T> DropdownField(
     }
 }
 
-/** Tombol utama selebar layar dengan indikator proses. */
+/**
+ * Tombol utama "Aurora": gradien biru → indigo dengan kilau kaca, membal
+ * halus saat ditekan, dan indikator proses yang muncul dengan transisi.
+ */
 @Composable
 fun PrimaryButton(
     text: String,
@@ -235,19 +264,39 @@ fun PrimaryButton(
     loading: Boolean = false,
     enabled: Boolean = true,
 ) {
+    val active = enabled && !loading
+    val shape = MaterialTheme.shapes.small
+    val gradient = Brush.linearGradient(listOf(Color(0xFF2563EB), Indigo600))
     Button(
         onClick = onClick,
-        enabled = enabled && !loading,
-        modifier = modifier.fillMaxWidth().height(56.dp),
-        shape = MaterialTheme.shapes.medium,
+        enabled = active,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .bouncyPress(0.96f)
+            .shadow(if (active) 12.dp else 0.dp, shape, clip = false, ambientColor = Indigo600.copy(alpha = 0.4f), spotColor = Indigo600.copy(alpha = 0.45f))
+            .clip(shape)
+            .background(if (active) gradient else Brush.linearGradient(listOf(Color(0xFF9AA6BF), Color(0xFF8792AA))))
+            .drawBehind {
+                drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.28f), 0.5f to Color.Transparent))
+            },
+        shape = shape,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.Transparent,
+            contentColor = Color.White,
+            disabledContainerColor = Color.Transparent,
+            disabledContentColor = Color.White.copy(alpha = 0.9f),
+        ),
     ) {
-        if (loading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(20.dp),
-                strokeWidth = 2.dp,
-                color = MaterialTheme.colorScheme.onPrimary,
-            )
-            Spacer(Modifier.width(Spacing.sm))
+        AnimatedVisibility(visible = loading, enter = fadeIn() + expandHorizontally(), exit = fadeOut() + shrinkHorizontally()) {
+            Row {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                    color = Color.White,
+                )
+                Spacer(Modifier.width(Spacing.sm))
+            }
         }
         Text(text, style = MaterialTheme.typography.labelLarge)
     }

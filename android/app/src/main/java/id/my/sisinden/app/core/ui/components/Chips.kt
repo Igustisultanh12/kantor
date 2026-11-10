@@ -29,6 +29,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import id.my.sisinden.app.core.ui.theme.SindenTheme
 import id.my.sisinden.app.core.ui.theme.Spacing
+import id.my.sisinden.app.core.ui.theme.Indigo600
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
 
 enum class Tone { SUCCESS, WARNING, DANGER, INFO, NEUTRAL }
 
@@ -101,25 +108,46 @@ fun <T> FilterChipRow(
     }
 }
 
-/** Satu chip pil Livin. */
+/**
+ * Chip pil "Aurora": terpilih = kapsul gradien biru → indigo dengan teks
+ * putih tebal; lainnya kaca dengan garis rambut. Perpindahan warna dianimasikan
+ * dan chip membal halus saat ditekan. Tinggi minimum 44dp.
+ */
 @Composable
 fun PillChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
     val isSelected = selected
+    val dark = SindenTheme.isDark
+    val sel by animateFloatAsState(if (selected) 1f else 0f, spring(dampingRatio = 0.8f, stiffness = 400f), label = "chipSel")
+    val textColor by animateColorAsState(if (selected) Color.White else scheme.onSurface, label = "chipText")
     Surface(
         onClick = onClick,
         modifier = modifier
+            .bouncyPress(0.93f)
             .heightIn(min = 44.dp)
             .semantics { this.selected = isSelected },
         shape = RoundedCornerShape(50),
-        color = if (selected) scheme.primaryContainer else scheme.surface.copy(alpha = if (SindenTheme.isDark) 0.06f else 1f),
-        border = if (selected) BorderStroke(2.dp, scheme.primary) else BorderStroke(1.dp, scheme.outlineVariant),
+        color = scheme.surface.copy(alpha = if (dark) 0.07f else 0.85f),
+        border = BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 1f - sel)),
     ) {
-        Box(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier
+                .drawBehind {
+                    if (sel > 0f) {
+                        drawRect(
+                            Brush.linearGradient(listOf(Color(0xFF2563EB), Indigo600)),
+                            alpha = sel,
+                        )
+                    }
+                }
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            contentAlignment = Alignment.Center,
+        ) {
             Text(
                 text,
-                style = if (selected) MaterialTheme.typography.labelLarge else MaterialTheme.typography.bodyMedium,
-                color = if (selected) scheme.primary else scheme.onSurface,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                color = textColor,
                 maxLines = 1,
             )
         }
