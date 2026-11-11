@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
+import AuthScene from '@/Components/AuthScene.vue';
 
 const props = defineProps({
   skhpp: Object,
@@ -17,11 +18,6 @@ const configuredLogo = computed(() => {
   return (logo.startsWith('http') || logo.startsWith('/storage') || logo.startsWith('/images')) ? logo : '/storage/' + logo;
 });
 
-const loginBg = computed(() => {
-  const bg = pageSettings.value.login_background;
-  if (!bg) return null;
-  return (bg.startsWith('http') || bg.startsWith('/storage')) ? bg : '/storage/' + bg;
-});
 
 const formatDateIndo = (dateStr) => {
   if (!dateStr) return '-';
@@ -38,57 +34,11 @@ const formatDateIndo = (dateStr) => {
 <template>
   <Head :title="`Verifikasi Legalitas SKHPP - ${skhpp?.nama || 'SINDEN'}`" />
 
-  <div 
-    class="min-h-screen flex text-slate-800 font-sans bg-cover bg-center relative transition-all duration-300 bg-slate-950"
-    :style="loginBg ? { backgroundImage: `url(${loginBg})` } : { backgroundColor: '#020617' }"
-  >
-    <!-- Dark overlay when background image is present -->
-    <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-[3px] z-0"></div>
-
-    <!-- Main Wrapper -->
-    <div class="relative z-10 w-full min-h-screen flex flex-col lg:flex-row">
-      
-      <!-- Bagian Kiri: Logo & Informasi Aplikasi (Desktop) -->
-      <div class="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 lg:p-16 text-white z-10">
-        <div></div>
-        
-        <!-- Live Preview Logo -->
-        <div class="my-auto max-w-lg space-y-6 flex flex-col items-center text-center mx-auto">
-          <div class="flex justify-center animate-float-slow">
-            <img v-if="configuredLogo" :src="configuredLogo" class="h-36 lg:h-44 object-contain drop-shadow-[0_10px_25px_rgba(0,0,0,0.6)]" alt="Logo SINDEN" />
-            <div v-else class="w-32 h-32 rounded-3xl bg-blue-600/30 backdrop-blur-md border border-blue-500/40 flex items-center justify-center shadow-2xl">
-              <span class="font-black text-white text-5xl">S</span>
-            </div>
-          </div>
-          
-          <div class="space-y-3">
-            <h2 class="text-3xl font-extrabold tracking-tight uppercase text-white drop-shadow-md">
-              {{ appName }} DETASEMEN INTELIJEN
-            </h2>
-            <p class="text-xs leading-relaxed max-w-md mx-auto text-slate-300 font-medium">
-              Portal Otentikasi & Verifikasi Keabsahan Dokumen Resmi Surat Keterangan Hasil Penelitian Personel (SKHPP) Komando Daerah TNI Angkatan Laut V.
-            </p>
-          </div>
-        </div>
-
-        <p class="text-xs text-slate-400 text-center font-medium">
-          © {{ new Date().getFullYear() }} {{ appName }}. Detasemen Intelijen Komando Daerah TNI Angkatan Laut V. All Rights Reserved.
-        </p>
-      </div>
-
-      <!-- Bagian Kanan: Card Form Verifikasi Dokumen Publik -->
-      <div class="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 z-10 my-auto">
-        <div 
-          class="w-full max-w-[620px] p-6 sm:p-8 rounded-2xl shadow-2xl transition-all duration-300 space-y-5 bg-slate-900/90 backdrop-blur-md border border-white/10 text-white animate-float-card"
-        >
-          <!-- Header logo di mobile -->
-          <div class="lg:hidden flex flex-col items-center justify-center gap-2 mb-2 text-center animate-float-slow">
-            <img v-if="configuredLogo" :src="configuredLogo" class="h-16 object-contain drop-shadow-md" />
-            <h1 class="text-sm font-black uppercase text-white tracking-wider">{{ appName }} LEGALITAS DIGITAL</h1>
-          </div>
+  <AuthScene :settings="pageSettings" fallback-logo="/images/logo.png" card-class="max-w-[640px]" tagline="Portal otentikasi dan verifikasi keabsahan Surat Keterangan Hasil Penelitian Personel (SKHPP) Komando Daerah TNI Angkatan Laut V.">
+    <div class="space-y-5">
 
           <!-- KONDISI 1: DOKUMEN VALID & TERDAFTAR -->
-          <div v-if="skhpp" class="space-y-5">
+          <div v-if="skhpp" data-field class="space-y-5">
             
             <!-- BANNER STATUS SAH -->
             <div class="p-4 rounded-2xl text-center space-y-1.5 border shadow-xs bg-emerald-500/20 border-emerald-400/40 text-emerald-200">
@@ -118,26 +68,26 @@ const formatDateIndo = (dateStr) => {
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 
                 <!-- 1: Judul Dokumen -->
-                <div class="p-3 rounded-xl border border-white/10 bg-white/5 space-y-0.5">
+                <div class="auth-panel p-3 rounded-2xl space-y-0.5">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Judul Dokumen Resmi</span>
                   <p class="text-xs font-bold text-white uppercase leading-snug">{{ skhpp.document_title || 'SKHPP DENINTEL KODAERAL V' }}</p>
                   <p v-if="skhpp.kategori_personel === 'perusahaan'" class="text-[9px] font-bold text-blue-400 uppercase">MITRA KERJA TNI AL</p>
                 </div>
 
                 <!-- 2: Nomor Surat Resmi -->
-                <div class="p-3 rounded-xl border border-white/10 bg-white/5 space-y-0.5">
+                <div class="auth-panel p-3 rounded-2xl space-y-0.5">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nomor Surat Resmi</span>
                   <p class="text-xs font-mono font-bold text-orange-400 truncate" :title="skhpp.nomor_skhpp">{{ skhpp.nomor_skhpp || 'Draft (Proses TTD)' }}</p>
                 </div>
 
                 <!-- 3: Nama Personel -->
-                <div class="p-3 rounded-xl border border-white/10 bg-white/5 space-y-0.5">
+                <div class="auth-panel p-3 rounded-2xl space-y-0.5">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nama Personel (Subjek)</span>
                   <p class="text-xs font-bold text-emerald-300 truncate" :title="skhpp.nama">{{ skhpp.nama }}</p>
                 </div>
 
                 <!-- 4: Identitas NRP / NIK -->
-                <div class="p-3 rounded-xl border border-white/10 bg-white/5 space-y-0.5">
+                <div class="auth-panel p-3 rounded-2xl space-y-0.5">
                   <span v-if="skhpp.pangkat_korps_nrp" class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pangkat / Korps / NRP</span>
                   <span v-else-if="skhpp.nik" class="text-[10px] font-bold uppercase tracking-wider text-slate-400">NIK Identitas</span>
                   <span v-else class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Kategori Personel</span>
@@ -148,25 +98,25 @@ const formatDateIndo = (dateStr) => {
                 </div>
 
                 <!-- 5: Jabatan / Pekerjaan -->
-                <div class="p-3 rounded-xl border border-white/10 bg-white/5 space-y-0.5">
+                <div class="auth-panel p-3 rounded-2xl space-y-0.5">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Jabatan / Pekerjaan</span>
                   <p class="text-xs font-semibold text-slate-200 truncate" :title="skhpp.jabatan_pekerjaan">{{ skhpp.jabatan_pekerjaan }}</p>
                 </div>
 
                 <!-- 6: Tanggal Pengesahan -->
-                <div class="p-3 rounded-xl border border-white/10 bg-white/5 space-y-0.5">
+                <div class="auth-panel p-3 rounded-2xl space-y-0.5">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tanggal Pengesahan</span>
                   <p class="text-xs font-semibold text-slate-200">{{ formatDateIndo(skhpp.tanggal_skhpp || skhpp.approved_at) }}</p>
                 </div>
 
                 <!-- 7: Peruntukan (Span 2 Full Width) -->
-                <div class="sm:col-span-2 p-3 rounded-xl border border-white/10 bg-white/5 space-y-0.5">
+                <div class="sm:col-span-2 auth-panel p-3 rounded-2xl space-y-0.5">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Maksud & Peruntukan</span>
                   <p class="text-xs font-medium text-slate-300 leading-relaxed">{{ skhpp.peruntukan }}</p>
                 </div>
 
                 <!-- 8: Yang Bertanda Tangan (Span 2 Full Width) DENGAN ICON SHIELD SVG -->
-                <div class="sm:col-span-2 p-3 rounded-xl border border-white/10 bg-white/5 flex items-center justify-between gap-3">
+                <div class="sm:col-span-2 auth-panel p-3 rounded-2xl flex items-center justify-between gap-3">
                   <div>
                     <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Pejabat Penandatangan (TTE)</span>
                     <p class="text-xs font-bold text-white">{{ skhpp.signer_name || 'Hari Bagio Wijayanto, M.Tr.Opsla.' }}</p>
@@ -198,7 +148,7 @@ const formatDateIndo = (dateStr) => {
           </div>
 
           <!-- KONDISI 2: KODE DOKUMEN TIDAK DITEMUKAN / TIDAK VALID -->
-          <div v-else class="space-y-4">
+          <div v-else data-field class="space-y-4">
             <div class="p-6 rounded-2xl text-center space-y-3 border bg-red-500/20 border-red-400/40 text-red-200">
               <div class="w-12 h-12 bg-red-500 text-white rounded-full flex items-center justify-center mx-auto shadow-md shadow-red-500/30">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 stroke-current" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
@@ -212,41 +162,11 @@ const formatDateIndo = (dateStr) => {
             </div>
           </div>
 
-          <div class="pt-2 border-t border-white/10">
-            <Link :href="route('login')" class="w-full text-center text-xs font-bold text-blue-400 hover:text-blue-300 hover:underline block cursor-pointer">
+          <div data-field class="pt-4 border-t border-white/10">
+            <Link :href="route('login')" class="w-full text-center text-xs font-bold text-sky-300 hover:text-sky-200 underline-offset-4 hover:underline block cursor-pointer">
               &larr; Kembali ke Portal SINDEN
             </Link>
           </div>
-
-        </div>
-      </div>
     </div>
-  </div>
+  </AuthScene>
 </template>
-
-<style>
-html, body {
-  background-color: #020617 !important;
-  margin: 0;
-  padding: 0;
-  min-height: 100vh;
-}
-
-@keyframes floatSlow {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-}
-
-@keyframes floatCard {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-6px); }
-}
-
-.animate-float-slow {
-  animation: floatSlow 6s ease-in-out infinite;
-}
-
-.animate-float-card {
-  animation: floatCard 5s ease-in-out infinite;
-}
-</style>

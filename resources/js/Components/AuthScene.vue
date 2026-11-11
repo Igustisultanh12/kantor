@@ -13,13 +13,15 @@ const props = defineProps({
     tagline: { type: String, default: 'Sistem Informasi Detasemen Intelijen Integrasi Otoritas Akses, Pengawasan Lokasi, Administrasi Surat & Logistik Terpadu.' },
     cardClass: { type: String, default: 'max-w-md' },
     bare: { type: Boolean, default: false },
+    settings: { type: Object, default: null },        // timpa page.props.settings bila halaman mengirim sendiri
+    fallbackLogo: { type: String, default: null },    // logo bila Pengaturan belum punya logo
 });
 
 const page = usePage();
-const settings = computed(() => page.props.settings || {});
+const settings = computed(() => props.settings || page.props.settings || {});
 const appName = computed(() => settings.value.agency_name || settings.value.app_name || 'SINDEN');
-const toUrl = (v) => (!v ? null : (v.startsWith('http') || v.startsWith('/storage')) ? v : '/storage/' + v);
-const logo = computed(() => toUrl(settings.value.agency_logo || settings.value.logo || settings.value.logo_tni));
+const toUrl = (v) => (!v ? null : (v.startsWith('http') || v.startsWith('/storage') || v.startsWith('/images')) ? v : '/storage/' + v);
+const logo = computed(() => toUrl(settings.value.agency_logo || settings.value.logo || settings.value.logo_tni) || props.fallbackLogo);
 const bg = computed(() => toUrl(settings.value.login_background));
 
 const sceneEl = ref(null);
