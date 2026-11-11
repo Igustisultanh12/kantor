@@ -301,6 +301,103 @@ html[data-motion="off"] .sinden-nav a:hover > span:first-of-type { transform: no
     html { scroll-behavior: auto !important; }
 }
 
+/* =====================================================================
+   HALAMAN AUTH & PUBLIK (Aktivasi, Daftar, Lupa Password, Cek SC)
+   Gaya sama dengan Login.vue: aurora gelap + kartu kaca + label mengambang.
+   Dipakai lewat Components/AuthScene.vue & Components/AuthField.vue.
+   ===================================================================== */
+.auth-aurora {
+    position: absolute; border-radius: 50%; filter: blur(90px); opacity: .55;
+    animation: auth-aurora 22s ease-in-out infinite alternate; will-change: transform;
+}
+.auth-aurora-1 { width: 60vw; height: 60vw; left: -18vw; top: -24vw; background: radial-gradient(circle, #1d4ed8 0%, transparent 65%); }
+.auth-aurora-2 { width: 50vw; height: 50vw; right: -14vw; top: 10vh; background: radial-gradient(circle, #4f46e5 0%, transparent 65%); animation-delay: -7s; animation-duration: 26s; }
+.auth-aurora-3 { width: 46vw; height: 46vw; left: 28vw; bottom: -26vw; background: radial-gradient(circle, #0d9488 0%, transparent 65%); opacity: .4; animation-delay: -13s; animation-duration: 30s; }
+@keyframes auth-aurora {
+    0%   { transform: translate3d(0, 0, 0) scale(1) rotate(0deg); }
+    50%  { transform: translate3d(6vw, 4vh, 0) scale(1.12) rotate(20deg); }
+    100% { transform: translate3d(-4vw, -3vh, 0) scale(.96) rotate(-10deg); }
+}
+.auth-spotlight {
+    position: absolute; inset: 0;
+    background: radial-gradient(600px circle at var(--px, 70%) var(--py, 40%), rgba(96, 165, 250, .14), transparent 55%);
+}
+.auth-halo {
+    position: absolute; inset: -30%; border-radius: 50%;
+    background: radial-gradient(circle, rgba(59, 130, 246, .35), transparent 65%);
+    filter: blur(20px); animation: auth-halo 6s ease-in-out infinite;
+}
+@keyframes auth-halo { 0%, 100% { opacity: .55; transform: scale(.95); } 50% { opacity: .9; transform: scale(1.06); } }
+
+.auth-stage { perspective: 1200px; }
+.auth-tilt { transform-style: preserve-3d; will-change: transform; }
+.auth-card {
+    position: relative;
+    background: linear-gradient(160deg, rgba(30, 41, 70, .72), rgba(10, 17, 36, .78));
+    -webkit-backdrop-filter: blur(28px) saturate(1.6);
+    backdrop-filter: blur(28px) saturate(1.6);
+    border: 1px solid rgba(255, 255, 255, .12);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 30px 80px -24px rgba(0, 0, 0, .75), 0 8px 24px -12px rgba(2, 6, 23, .6);
+}
+.auth-card::before {
+    content: ''; position: absolute; left: 12%; right: 12%; top: 0; height: 1px; pointer-events: none;
+    background: linear-gradient(90deg, transparent, rgba(147, 197, 253, .7), transparent);
+}
+/* panel kaca tipis di dalam kartu / bilah atas-bawah halaman publik */
+.auth-panel { background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .1); }
+.auth-bar {
+    background: rgba(5, 11, 26, .55);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5); backdrop-filter: blur(20px) saturate(1.5);
+    border-color: rgba(255, 255, 255, .08);
+}
+
+/* field label mengambang */
+.auth-field { position: relative; }
+.auth-field input {
+    width: 100%; height: 3.5rem; padding: 1.35rem 1rem .45rem 2.9rem;
+    border-radius: 1rem; font-size: .95rem; color: #fff;
+    background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .12); outline: none;
+    transition: border-color .25s var(--sinden-ease), background-color .25s, box-shadow .3s var(--sinden-ease);
+}
+.auth-field.has-toggle input { padding-right: 3rem; }
+.auth-field input:hover { background: rgba(255, 255, 255, .08); }
+.auth-field input:focus { border-color: rgba(96, 165, 250, .85); background: rgba(255, 255, 255, .09); box-shadow: 0 0 0 4px rgba(59, 130, 246, .22); }
+.auth-field label {
+    position: absolute; left: 2.9rem; top: 50%; transform: translateY(-50%);
+    font-size: .9rem; color: #94a3b8; pointer-events: none; transform-origin: left center; white-space: nowrap;
+    transition: transform .3s var(--sinden-ease), color .2s, top .3s var(--sinden-ease);
+}
+.auth-field input:focus + label,
+.auth-field input:not(:placeholder-shown) + label {
+    top: .95rem; transform: translateY(-50%) scale(.78); color: #93c5fd; font-weight: 600; letter-spacing: .01em;
+}
+.auth-field .auth-ico {
+    position: absolute; left: 1rem; top: 50%; width: 18px; height: 18px; transform: translateY(-50%);
+    color: #94a3b8; pointer-events: none; transition: color .2s, transform .35s cubic-bezier(.16, 1, .3, 1);
+}
+.auth-field input:focus ~ .auth-ico { color: #93c5fd; transform: translateY(-50%) scale(1.1); }
+.auth-field.has-error input { border-color: rgba(251, 113, 133, .75); }
+.auth-field input:-webkit-autofill { -webkit-text-fill-color: #fff; -webkit-box-shadow: 0 0 0 1000px #17213a inset; caret-color: #fff; }
+.auth-field .auth-toggle {
+    position: absolute; right: .55rem; top: 50%; transform: translateY(-50%);
+    width: 2.5rem; height: 2.5rem; display: grid; place-items: center; border-radius: .8rem;
+    color: #94a3b8; transition: color .2s, background-color .2s;
+}
+.auth-field .auth-toggle:hover { color: #fff; background: rgba(255, 255, 255, .08); }
+
+/* tombol utama */
+.auth-submit {
+    box-shadow: 0 10px 24px -12px rgba(0, 0, 0, .7), inset 0 1px 0 rgba(255, 255, 255, .25);
+}
+.auth-submit .arrow { transition: transform .35s cubic-bezier(.16, 1, .3, 1); }
+.auth-submit:hover .arrow { transform: translateX(4px); }
+
+@media (prefers-reduced-motion: reduce) {
+    .auth-aurora, .auth-halo { animation: none !important; }
+    .auth-spotlight { display: none; }
+}
+html[data-motion="off"] .auth-aurora, html[data-motion="off"] .auth-halo { animation: none !important; }
+
 /* Custom Dark Glassmorphism SweetAlert2 Styling */
 .swal2-popup.swal2-dark-glass {
     background: rgba(15, 23, 42, 0.92) !important;

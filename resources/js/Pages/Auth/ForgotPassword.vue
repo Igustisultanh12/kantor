@@ -1,7 +1,8 @@
 <script setup>
-import InputError from '@/Components/InputError.vue';
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import AuthScene from '@/Components/AuthScene.vue';
+import AuthField from '@/Components/AuthField.vue';
+import { Head, Link, useForm } from '@inertiajs/vue3';
+import { ref, watch } from 'vue';
 
 defineProps({
     status: {
@@ -9,23 +10,12 @@ defineProps({
     },
 });
 
-const page = usePage();
-const pageSettings = computed(() => page.props.settings || {});
-const appName = computed(() => pageSettings.value.agency_name || pageSettings.value.app_name || 'SINDEN');
-const configuredLogo = computed(() => {
-    const logo = pageSettings.value.agency_logo || pageSettings.value.logo || pageSettings.value.logo_tni;
-    if (!logo) return null;
-    return (logo.startsWith('http') || logo.startsWith('/storage')) ? logo : '/storage/' + logo;
-});
-const loginBg = computed(() => {
-    const bg = pageSettings.value.login_background;
-    if (!bg) return null;
-    return (bg.startsWith('http') || bg.startsWith('/storage')) ? bg : '/storage/' + bg;
-});
-
 const form = useForm({
     email: '',
 });
+
+const scene = ref(null);
+watch(() => form.errors.email, (e) => { if (e) scene.value?.shake(); });
 
 const submit = () => {
     form.post(route('password.email'));
@@ -35,112 +25,36 @@ const submit = () => {
 <template>
     <Head title="Lupa Password - SINDEN" />
 
-    <div 
-        class="min-h-screen flex text-slate-800 font-sans bg-cover bg-center relative transition-all duration-300 bg-slate-950"
-        :style="loginBg ? { backgroundImage: `url(${loginBg})` } : {}"
-    >
-        <!-- Dark overlay -->
-        <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-[2px] z-0"></div>
-
-        <!-- Main Wrapper -->
-        <div class="relative z-10 w-full min-h-screen flex flex-col lg:flex-row">
-            
-            <!-- Left Column: Floating Logo & App Info (Efek Mentul-Mentul) -->
-            <div class="hidden lg:flex lg:w-1/2 flex-col justify-between p-16 text-white z-10">
-                <div></div>
-
-                <div class="my-auto max-w-lg space-y-6 flex flex-col items-center text-center mx-auto">
-                    <div class="flex justify-center animate-float-slow">
-                        <img v-if="configuredLogo" :src="configuredLogo" class="h-36 lg:h-44 object-contain drop-shadow-[0_10px_25px_rgba(0,0,0,0.6)]" alt="Logo SINDEN" />
-                        <div v-else class="w-32 h-32 rounded-3xl bg-blue-600/30 backdrop-blur-md border border-blue-500/40 flex items-center justify-center shadow-2xl">
-                            <span class="font-black text-white text-5xl">S</span>
-                        </div>
-                    </div>
-
-                    <div class="space-y-3">
-                        <h2 class="text-3xl font-extrabold tracking-tight uppercase text-white drop-shadow-md">
-                            {{ appName }}
-                        </h2>
-                        <p class="text-xs leading-relaxed max-w-md mx-auto text-slate-300 font-medium"> Pemulihan Kata Kunci  Intelligence Digital System SINDEN Detasemen Intelijen.
-                        </p>
-                    </div>
-                </div>
-
-                <p class="text-xs text-slate-400 text-center font-medium">
-                    © {{ new Date().getFullYear() }} {{ appName }}. All Rights Reserved.
-                </p>
-            </div>
-
-            <!-- Right Column: Dark Floating Card Form Lupa Password (Efek Mentul-Mentul) -->
-            <div class="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-10 z-10 my-auto">
-                <div class="w-full max-w-md p-8 sm:p-10 rounded-2xl shadow-2xl bg-slate-900/90 backdrop-blur-md border border-white/10 text-white animate-float-card">
-                    <div class="mb-6">
-                        <h3 class="text-xl font-bold text-white uppercase tracking-tight">Lupa Kata Kunci</h3>
-                        <p class="text-xs mt-1 text-slate-300 font-medium leading-relaxed"> Ketikkan email dinas Anda yang terdaftar untuk menerima tautan pemulihan kata kunci.
-                        </p>
-                    </div>
-
-                    <div v-if="status" class="mb-4 p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-xs font-bold text-emerald-400">
-                        {{ status }}
-                    </div>
-
-                    <form @submit.prevent="submit" class="space-y-5">
-                        <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-300"> Email Dinas Terdaftar *
-                            </label>
-                            <input 
-                                type="email"v-model="form.email"class="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white"placeholder="Masukkan email dinas Anda"required 
-                                autofocus
-                            />
-                            <InputError class="mt-1 text-xs text-red-400" :message="form.errors.email" />
-                        </div>
-
-                        <button 
-                            type="submit" 
-                            :disabled="form.processing"class="w-full py-3.5 px-4 text-white text-xs font-black uppercase tracking-wider rounded-lg shadow-lg bg-orange-500 hover:bg-orange-600 shadow-orange-500/20 transition duration-150 disabled:opacity-50 cursor-pointer flex justify-center items-center gap-2"
-                        >
-                            <span>Kirim Link Reset Password</span>
-                            <span></span>
-                        </button>
-                    </form>
-
-                    <div class="mt-6 text-center border-t border-white/10 pt-6 flex justify-between items-center text-xs">
-                        <Link :href="route('password.request.custom')" class="text-orange-400 hover:underline"> Reset Pakai Token 6-Digit
-                        </Link>
-                        <Link :href="route('login')" class="text-xs font-semibold text-orange-400 hover:underline">
-                             Kembali ke Login
-                        </Link>
-                    </div>
-                </div>
-            </div>
+    <AuthScene ref="scene" tagline="Pemulihan Kata Kunci Akun Personel — Sistem Informasi Detasemen Intelijen SINDEN.">
+        <div data-field class="mb-7">
+            <h1 class="text-[1.65rem] leading-tight font-extrabold tracking-tight text-white">Lupa Kata Kunci</h1>
+            <p class="text-sm mt-1.5 text-slate-300/90">
+                Ketikkan email dinas Anda yang terdaftar untuk menerima tautan pemulihan kata kunci.
+            </p>
         </div>
-    </div>
+
+        <div v-if="status" data-field class="mb-5 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-400/30 text-sm font-semibold text-emerald-300" role="status">
+            {{ status }}
+        </div>
+
+        <form @submit.prevent="submit" class="space-y-4" novalidate>
+            <AuthField data-field v-model="form.email" type="email" label="Email Dinas Terdaftar" icon="mail" :error="form.errors.email" autocomplete="email" required autofocus />
+
+            <div data-field>
+                <button
+                    type="submit"
+                    :disabled="form.processing"
+                    class="auth-submit w-full h-12 px-4 text-white text-sm font-bold rounded-2xl bg-blue-600 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-wait cursor-pointer flex justify-center items-center gap-2"
+                >
+                    {{ form.processing ? 'Mengirim...' : 'Kirim Tautan Reset' }}
+                    <svg v-if="!form.processing" class="w-4 h-4 arrow" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>
+                </button>
+            </div>
+        </form>
+
+        <div data-field class="mt-6 border-t border-white/10 pt-5 flex flex-wrap gap-2 justify-between text-sm">
+            <Link :href="route('password.request.custom')" class="font-semibold text-sky-300 hover:text-sky-200 underline-offset-4 hover:underline">Reset Pakai Token 6-Digit</Link>
+            <Link :href="route('login')" class="font-semibold text-sky-300 hover:text-sky-200 underline-offset-4 hover:underline">Kembali ke Login</Link>
+        </div>
+    </AuthScene>
 </template>
-
-<style scoped>
-.animate-float-slow {
-  animation: float-logo 5s ease-in-out infinite;
-}
-
-.animate-float-card {
-  animation: float-card 6s ease-in-out infinite;
-}
-
-@keyframes float-logo {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-@keyframes float-card {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-6px);
-  }
-}
-</style>

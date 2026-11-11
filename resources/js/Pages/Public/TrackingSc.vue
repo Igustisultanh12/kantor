@@ -1,5 +1,6 @@
 <script setup>
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import AuthScene from '@/Components/AuthScene.vue';
 import { ref, computed, watch } from 'vue';
 
 const props = defineProps({
@@ -17,11 +18,6 @@ const configuredLogo = computed(() => {
     const logo = pageSettings.value.agency_logo || pageSettings.value.logo || pageSettings.value.logo_tni;
     if (!logo) return null;
     return (logo.startsWith('http') || logo.startsWith('/storage')) ? logo : '/storage/' + logo;
-});
-const loginBg = computed(() => {
-    const bg = pageSettings.value.login_background;
-    if (!bg) return null;
-    return (bg.startsWith('http') || bg.startsWith('/storage')) ? bg : '/storage/' + bg;
 });
 
 const searchInput = ref(props.searched_identifier || '');
@@ -67,29 +63,23 @@ const formatDate = (dateStr) => {
 <template>
     <Head title="Pelacakan Pengajuan Security Clearance (SC) - SINDEN" />
 
-    <div 
-        class="min-h-screen flex flex-col justify-between text-slate-100 font-sans bg-cover bg-center bg-fixed relative transition-all duration-300 bg-slate-950 selection:bg-orange-500 selection:text-white"
-        :style="loginBg ? { backgroundImage: `url(${loginBg})` } : {}"
-    >
-        <!-- Dark overlay matching Login.vue -->
-        <div class="absolute inset-0 bg-slate-950/85 backdrop-blur-[2px] z-0 pointer-events-none"></div>
-
-        <!-- Main Wrapper with Relative z-10 -->
-        <div class="relative z-10 flex-1 flex flex-col justify-between">
+    <AuthScene bare>
+        <div class="flex-1 flex flex-col justify-between">
             
             <!-- Header Kedinasan Glassmorphism -->
-            <header class="border-b border-white/10 bg-slate-900/80 backdrop-blur-md sticky top-0 z-30">
+            <header class="auth-bar border-b sticky top-0 z-30">
                 <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <img v-if="configuredLogo" :src="configuredLogo" class="h-9 w-9 object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)]" alt="Logo Kedinasan" />
-                        <div v-else class="w-9 h-9 rounded-xl bg-orange-600/30 border border-orange-500/40 flex items-center justify-center font-black text-white text-base">
+                        <div v-else class="w-9 h-9 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center font-black text-white text-base">
                             S
                         </div>
                         <div>
-                            <span class="text-[9px] font-mono font-bold text-orange-400 uppercase tracking-widest block">PORTAL RESMI SINDEN</span>
+                            <span class="text-[9px] font-mono font-bold text-sky-300 uppercase tracking-widest block">PORTAL RESMI SINDEN</span>
                             <h1 class="text-xs sm:text-sm font-extrabold text-white tracking-tight">Pelacakan Security Clearance (SC)</h1>
                         </div>
                     </div>
+                    <Link :href="route('login')" class="text-sm font-semibold text-sky-300 hover:text-sky-200 underline-offset-4 hover:underline shrink-0">Masuk</Link>
                 </div>
             </header>
 
@@ -98,19 +88,20 @@ const formatDate = (dateStr) => {
                 
                 <!-- Hero Section: Floating Single Logo & App Title like Login.vue -->
                 <div class="text-center space-y-4">
-                    <div class="flex justify-center animate-float-slow">
-                        <img v-if="configuredLogo" :src="configuredLogo" class="h-28 sm:h-36 object-contain drop-shadow-[0_10px_25px_rgba(0,0,0,0.6)]" alt="Logo SINDEN" />
-                        <div v-else class="w-24 h-24 rounded-3xl bg-blue-600/30 backdrop-blur-md border border-blue-500/40 flex items-center justify-center shadow-2xl">
+                    <div class="relative flex justify-center w-fit mx-auto" data-hero>
+                        <div class="auth-halo" aria-hidden="true"></div>
+                        <img v-if="configuredLogo" :src="configuredLogo" class="relative h-28 sm:h-36 object-contain drop-shadow-[0_18px_30px_rgba(0,0,0,0.55)]" alt="Logo SINDEN" />
+                        <div v-else class="relative w-24 h-24 rounded-[2rem] bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-2xl">
                             <span class="font-black text-white text-4xl">S</span>
                         </div>
                     </div>
 
-                    <div class="space-y-2">
-                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10 text-orange-400 text-[10px] font-mono font-black uppercase tracking-widest shadow-sm">
-                            <span class="w-2 h-2 rounded-full bg-orange-400 animate-pulse"></span>
+                    <div class="space-y-2" data-hero>
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.06] border border-white/10 text-sky-300 text-[10px] font-mono font-black uppercase tracking-widest shadow-sm">
+                            <span class="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
                             PELAYANAN MANDIRI PUBLIK
                         </div>
-                        <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight uppercase text-white drop-shadow-md">
+                        <h2 class="text-3xl sm:text-[2.6rem] leading-[1.05] font-black tracking-tight uppercase text-white text-balance">
                             {{ appName }}
                         </h2>
                         <p class="text-xs sm:text-sm text-slate-300 font-medium max-w-lg mx-auto leading-relaxed">
@@ -120,10 +111,10 @@ const formatDate = (dateStr) => {
                 </div>
 
                 <!-- Search Form Card (Identik dengan form login di Login.vue) -->
-                <div class="bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl text-white animate-float-card">
+                <div data-field class="auth-card rounded-[1.75rem] p-6 sm:p-8 text-white">
                     <div class="mb-5 text-left">
                         <h3 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                            <svg class="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 text-sky-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                             </svg>
                             Lacak Status Berkas SC
@@ -135,7 +126,7 @@ const formatDate = (dateStr) => {
 
                     <form @submit.prevent="handleSearch" class="flex flex-col sm:flex-row gap-3">
                         <div class="relative flex-1">
-                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
@@ -145,13 +136,13 @@ const formatDate = (dateStr) => {
                                 v-model="searchInput" 
                                 required 
                                 placeholder="Masukkan NRP / NIP / NIK / NIM atau Kode Pelacakan..." 
-                                class="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-lg border text-sm outline-none transition duration-150 bg-white/10 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 font-semibold"
+                                class="w-full h-12 pl-11 pr-4 rounded-2xl border text-sm outline-none transition duration-200 bg-white/[0.06] hover:bg-white/[0.08] border-white/[0.12] text-white placeholder-slate-400 focus:bg-white/[0.09] focus:ring-4 focus:ring-blue-500/20 focus:border-sky-400/80 font-semibold"
                             />
                         </div>
                         <button 
                             type="submit"
                             :disabled="isSearching"
-                            class="px-6 py-2.5 sm:py-3 text-white text-sm font-semibold rounded-lg shadow-lg bg-orange-500 hover:bg-orange-600 shadow-orange-500/20 transition duration-150 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 shrink-0"
+                            class="auth-submit h-12 px-6 text-white text-sm font-bold rounded-2xl bg-blue-600 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-wait cursor-pointer flex items-center justify-center gap-2 shrink-0"
                         >
                             <svg v-if="isSearching" class="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -166,7 +157,7 @@ const formatDate = (dateStr) => {
                 </div>
 
                 <!-- HASIL TIDAK DITEMUKAN -->
-                <div v-if="not_found" class="bg-slate-900/90 backdrop-blur-md border border-rose-500/30 rounded-2xl p-6 sm:p-8 text-center max-w-xl mx-auto space-y-3 shadow-2xl text-white">
+                <div v-if="not_found" class="auth-card !border-rose-400/30 rounded-[1.75rem] p-6 sm:p-8 text-center max-w-xl mx-auto space-y-3 text-white">
                     <div class="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-400 mx-auto flex items-center justify-center font-black text-xl">
                         !
                     </div>
@@ -186,7 +177,7 @@ const formatDate = (dateStr) => {
                             v-for="(sub, idx) in all_submissions" 
                             :key="sub.id"
                             @click="selectSubmission(sub)"
-                            :class="activeSubmission.id === sub.id ? 'bg-orange-500 text-white border-orange-400 shadow-md' : 'bg-slate-900/80 text-slate-300 border-white/10 hover:border-white/20'"
+                            :class="activeSubmission.id === sub.id ? 'bg-blue-600 text-white border-blue-400/60 shadow-md' : 'bg-white/[0.06] backdrop-blur-md text-slate-300 border-white/10 hover:border-white/25'"
                             class="px-3.5 py-1.5 rounded-xl border text-xs font-bold transition cursor-pointer"
                         >
                             Berkas #{{ all_submissions.length - idx }} ({{ sub.tracking_code }})
@@ -194,7 +185,7 @@ const formatDate = (dateStr) => {
                     </div>
 
                     <!-- KARTU IDENTITAS PEMOHON -->
-                    <div class="bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl text-white">
+                    <div class="auth-card rounded-[1.75rem] p-6 sm:p-8 text-white">
                         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6">
                             <div>
                                 <div class="flex items-center gap-2 mb-2">
@@ -218,7 +209,7 @@ const formatDate = (dateStr) => {
                             </div>
 
                             <!-- Progress Circle & Stage Info -->
-                            <div class="flex items-center gap-4 self-start md:self-auto bg-slate-950/60 border border-white/10 p-3.5 rounded-xl">
+                            <div class="flex items-center gap-4 self-start md:self-auto auth-panel p-3.5 rounded-2xl">
                                 <div class="text-right">
                                     <span class="text-[10px] text-slate-400 uppercase font-bold block">Kemajuan Berkas</span>
                                     <span class="text-lg font-mono font-black text-white">{{ activeSubmission.current_stage }}/10</span>
@@ -286,7 +277,7 @@ const formatDate = (dateStr) => {
                     </div>
 
                     <!-- BANNER KHUSUS TAHAP 10 (SIAP DIAMBIL DI SINTEL MAKO KODAERAL V) -->
-                    <div v-if="activeSubmission.current_stage === 10 || activeSubmission.status === 'selesai'" class="bg-gradient-to-r from-emerald-950/80 via-slate-900/90 to-teal-950/80 backdrop-blur-md border border-emerald-500/50 rounded-2xl p-6 sm:p-8 shadow-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 text-white">
+                    <div v-if="activeSubmission.current_stage === 10 || activeSubmission.status === 'selesai'" class="auth-card !border-emerald-400/40 bg-gradient-to-r from-emerald-950/70 via-slate-900/70 to-teal-950/70 rounded-[1.75rem] p-6 sm:p-8 shadow-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 text-white">
                         <div class="flex items-start gap-4">
                             <div class="w-14 h-14 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-2xl shrink-0 shadow-lg shadow-emerald-600/30">
                                 <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
@@ -334,7 +325,7 @@ const formatDate = (dateStr) => {
                     </div>
 
                     <!-- 10-STAGE TIMELINE TRACKER -->
-                    <div class="bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6 text-white">
+                    <div class="auth-card rounded-[1.75rem] p-6 sm:p-8 space-y-6 text-white">
                         <div>
                             <span class="text-[10px] font-mono font-bold text-orange-400 uppercase tracking-widest block">ALUR 10 TAHAPAN KEDINASAN</span>
                             <h4 class="text-base sm:text-lg font-black text-white">
@@ -427,7 +418,7 @@ const formatDate = (dateStr) => {
                     </div>
 
                     <!-- RIWAYAT LOG PERJALANAN BERKAS (AUDIT LOGS) -->
-                    <div v-if="activeSubmission.logs && activeSubmission.logs.length > 0" class="bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-4 text-white">
+                    <div v-if="activeSubmission.logs && activeSubmission.logs.length > 0" class="auth-card rounded-[1.75rem] p-6 sm:p-8 space-y-4 text-white">
                         <h4 class="text-sm font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
                             <span class="h-2 w-2 rounded-full bg-orange-500"></span>
                             Catatan Waktu & Riwayat Pembaruan
@@ -467,40 +458,12 @@ const formatDate = (dateStr) => {
             </main>
 
             <!-- Footer matching Login.vue -->
-            <footer class="border-t border-white/10 bg-slate-950/80 backdrop-blur-md py-6 text-center text-xs text-slate-400 font-medium">
+            <footer class="auth-bar border-t py-6 text-center text-xs text-slate-400 font-medium">
                 <div class="max-w-6xl mx-auto px-4">
                     © {{ new Date().getFullYear() }} {{ appName }}. Seluruh Hak Cipta Dilindungi Kedinasan.
                 </div>
             </footer>
 
         </div>
-    </div>
+    </AuthScene>
 </template>
-
-<style scoped>
-.animate-float-slow {
-  animation: float-logo 5s ease-in-out infinite;
-}
-
-.animate-float-card {
-  animation: float-card 6s ease-in-out infinite;
-}
-
-@keyframes float-logo {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
-@keyframes float-card {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-5px);
-  }
-}
-</style>
