@@ -4,6 +4,7 @@ import { ref, computed } from 'vue';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import SecureThumbnail from '@/Components/SecureThumbnail.vue';
+import SindenBackdrop from '@/Components/SindenBackdrop.vue';
 
 const props = defineProps({
     needsPin: {
@@ -405,9 +406,10 @@ const exitAndLock = () => {
 <template>
     <Head :title="shareName ? `${shareName} - Berkas Berbagi` : 'Akses Folder Berbagi'" />
 
-    <div class="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+    <div class="sinden-shell min-h-screen text-slate-800 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+        <SindenBackdrop />
         <!-- TOP NAVIGATION BAR (RESPONSIF MOBILE & DESKTOP) -->
-        <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-xs">
+        <header class="sinden-glass-bar border-b border-slate-200 sticky top-0 z-50 shadow-xs">
             <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
                 <div class="flex items-center gap-2 sm:gap-3 min-w-0">
                     <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white shadow-xs shrink-0">

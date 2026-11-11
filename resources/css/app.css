@@ -230,9 +230,47 @@ html[data-motion="off"] .sinden-nav a:hover > span:first-of-type { transform: no
 /* popover berisi teks padat → lebih pekat demi kontras */
 .sinden-glass-pop.sinden-glass-pop { background: var(--sinden-glass-strong); border-color: var(--sinden-glass-border); }
 
+/* ---------- Konten halaman ikut kaca (berlaku ke SEMUA halaman di .sinden-shell) ----------
+   Kartu putih (bg-white + rounded + border/shadow) jadi panel kaca yang lebih pekat
+   dari sidebar agar teks padat tetap terbaca. Modal/popup (di dalam .fixed) tetap
+   solid. Hanya background-color yang diubah supaya sorotan kursor (.sinden-lit,
+   background-image) tetap jalan. */
+.sinden-shell {
+    --sinden-card-a: min(.92, calc(var(--sinden-glass-a, .42) + .3));
+    --sinden-card-line: rgba(255, 255, 255, .7);
+}
+.sinden-shell :is(.bg-white, .bg-\[\#ffffff\], .bg-\[\#FFFFFF\])[class*="rounded-"]:is([class*="border"], [class*="shadow"]):not([class*="rounded-full"]):not(:is(.fixed, .sinden-glass, .sinden-glass-bar, .sinden-glass-pop, .sinden-modal) *) {
+    background-color: rgba(255, 255, 255, var(--sinden-card-a)) !important;
+    border-color: var(--sinden-card-line) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8), 0 1px 2px rgba(15, 23, 42, .04), 0 12px 32px -18px rgba(15, 23, 42, .22);
+    -webkit-backdrop-filter: blur(calc(var(--sinden-blur) * .7)) saturate(1.6);
+    backdrop-filter: blur(calc(var(--sinden-blur) * .7)) saturate(1.6);
+}
+/* kartu di dalam kartu: cukup bening tipis, tanpa blur ganda (hemat GPU) */
+.sinden-shell .bg-white[class*="rounded-"] .bg-white[class*="rounded-"]:is([class*="border"], [class*="shadow"]):not([class*="rounded-full"]):not(:is(.fixed, .sinden-modal) *) {
+    background-color: rgba(255, 255, 255, .55) !important;
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), 0 1px 2px rgba(15, 23, 42, .04);
+}
+/* panel sekunder & kepala tabel abu-abu → kaca keabu-abuan */
+.sinden-shell :is(.bg-slate-50, .bg-gray-50, .bg-\[\#F8FAFC\], .bg-\[\#f8fafc\]):not(:is(.fixed, .sinden-modal) *) {
+    background-color: rgba(248, 250, 252, .5) !important;
+}
+.sinden-shell :is(table, thead, tbody, tfoot, tr).bg-white:not(:is(.fixed, .sinden-modal) *) { background-color: transparent !important; }
+/* garis abu-abu pekat di dalam kartu kaca → garis putih lembut */
+.sinden-shell main :is(.border-\[\#E2E8F0\], .border-slate-100, .border-gray-100, .border-gray-200):not(input, select, textarea, button):not(:is(.fixed, .sinden-modal) *) {
+    border-color: rgba(226, 232, 240, .65) !important;
+}
+.sinden-shell main :is(.divide-slate-100, .divide-gray-100, .divide-gray-200, .divide-slate-200):not(:is(.fixed, .sinden-modal) *) > :not(:first-child) {
+    border-color: rgba(226, 232, 240, .6) !important;
+}
+/* baris tabel: sorotan kaca saat disorot */
+.sinden-shell main tbody tr:hover > td { background-color: rgba(255, 255, 255, .45); }
+
 /* Tanpa dukungan backdrop-filter → kembali ke putih solid agar tetap terbaca */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .sinden-glass, .sinden-glass-bar, .sinden-glass-pop.sinden-glass-pop { background: #fff; }
+    .sinden-shell { --sinden-card-a: 1; }
 }
 
 /* ---------- Fokus keyboard yang jelas ---------- */
