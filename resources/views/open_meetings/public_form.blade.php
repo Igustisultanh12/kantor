@@ -11,328 +11,177 @@
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700,800&display=swap" rel="stylesheet" />
 
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Figtree', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        }
-
+        /* Gaya disamakan dengan halaman Login SISINDEN: aurora gelap + kartu kaca */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Figtree', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        :root { --ease: cubic-bezier(.22, 1, .36, 1); }
+        html { background: #050b1a; -webkit-tap-highlight-color: transparent; }
         body {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            color: #1e293b;
-            min-height: 100vh;
-            padding: 20px 14px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
+            background: #050b1a; color: #e2e8f0; min-height: 100vh; padding: 24px 14px;
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+            position: relative; overflow-x: hidden;
+        }
+        ::selection { background: rgba(96, 165, 250, .35); color: #fff; }
+
+        /* ---------- Latar aurora ---------- */
+        .bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+        .aurora { position: absolute; border-radius: 50%; filter: blur(90px); opacity: .55; animation: aurora 22s ease-in-out infinite alternate; will-change: transform; }
+        .aurora.a1 { width: 90vmax; height: 90vmax; left: -35vmax; top: -45vmax; background: radial-gradient(circle, #1d4ed8 0%, transparent 65%); }
+        .aurora.a2 { width: 70vmax; height: 70vmax; right: -30vmax; top: 15vh; background: radial-gradient(circle, #4f46e5 0%, transparent 65%); animation-delay: -7s; animation-duration: 26s; }
+        .aurora.a3 { width: 70vmax; height: 70vmax; left: 10vw; bottom: -45vmax; background: radial-gradient(circle, #0d9488 0%, transparent 65%); opacity: .4; animation-delay: -13s; animation-duration: 30s; }
+        @keyframes aurora {
+            0% { transform: translate3d(0, 0, 0) scale(1) rotate(0deg); }
+            50% { transform: translate3d(6vw, 4vh, 0) scale(1.12) rotate(20deg); }
+            100% { transform: translate3d(-4vw, -3vh, 0) scale(.96) rotate(-10deg); }
         }
 
+        /* ---------- Kartu kaca ---------- */
         .container {
-            width: 100%;
-            max-width: 580px;
-            background: #ffffff;
-            border-radius: 24px;
-            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.35);
-            overflow: hidden;
-            margin-bottom: 24px;
+            position: relative; z-index: 1; width: 100%; max-width: 580px; margin-bottom: 20px;
+            border-radius: 28px; overflow: hidden; color: #fff;
+            background: linear-gradient(160deg, rgba(30, 41, 70, .72), rgba(10, 17, 36, .8));
+            -webkit-backdrop-filter: blur(28px) saturate(1.6); backdrop-filter: blur(28px) saturate(1.6);
+            border: 1px solid rgba(255, 255, 255, .12);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 30px 80px -24px rgba(0, 0, 0, .75), 0 8px 24px -12px rgba(2, 6, 23, .6);
+            animation: cardIn .8s var(--ease) both;
         }
+        .container::before {
+            content: ''; position: absolute; left: 12%; right: 12%; top: 0; height: 1px; z-index: 2;
+            background: linear-gradient(90deg, transparent, rgba(147, 197, 253, .7), transparent);
+        }
+        @keyframes cardIn { from { opacity: 0; transform: translateY(40px) scale(.95); filter: blur(10px); } to { opacity: 1; transform: none; filter: none; } }
 
         .header-banner {
-            background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
-            color: #ffffff;
-            padding: 28px 20px 24px 20px;
-            text-align: center;
-            position: relative;
+            padding: 30px 22px 24px; text-align: center; position: relative;
+            border-bottom: 1px solid rgba(255, 255, 255, .08);
+            background: linear-gradient(180deg, rgba(59, 130, 246, .12), transparent);
         }
-
         .header-logo {
-            width: 68px;
-            height: 68px;
-            border-radius: 16px;
-            background: #ffffff;
-            padding: 6px;
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
-            margin: 0 auto 12px auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            width: 76px; height: 76px; margin: 0 auto 14px; position: relative;
+            display: flex; align-items: center; justify-content: center;
         }
-
-        .header-logo img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
+        .header-logo::before {
+            content: ''; position: absolute; inset: -40%; border-radius: 50%;
+            background: radial-gradient(circle, rgba(59, 130, 246, .4), transparent 65%); filter: blur(14px);
+            animation: halo 6s ease-in-out infinite;
         }
+        @keyframes halo { 0%, 100% { opacity: .55; transform: scale(.95); } 50% { opacity: .95; transform: scale(1.06); } }
+        .header-logo img { position: relative; max-width: 100%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, .5)); }
 
-        .kop-instansi {
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            color: #93c5fd;
-            margin-bottom: 4px;
-        }
+        .kop-instansi { font-size: 11px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; color: #93c5fd; margin-bottom: 4px; }
+        .kop-unit { font-size: 13px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: #fff; margin-bottom: 14px; }
+        .meeting-title { font-size: 21px; font-weight: 800; line-height: 1.3; letter-spacing: -.01em; color: #fff; margin-bottom: 16px; text-wrap: balance; }
 
-        .kop-unit {
-            font-size: 13px;
-            font-weight: 800;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            color: #ffffff;
-            margin-bottom: 12px;
-        }
-
-        .meeting-title {
-            font-size: 18px;
-            font-weight: 800;
-            line-height: 1.35;
-            color: #f8fafc;
-            margin-bottom: 14px;
-        }
-
-        .meta-badges {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            justify-content: center;
-        }
-
+        .meta-badges { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
         .badge-info {
-            background: rgba(255, 255, 255, 0.12);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            border-radius: 20px;
-            padding: 6px 14px;
-            font-size: 11.5px;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            color: #e2e8f0;
+            background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .12); border-radius: 999px;
+            padding: 6px 13px; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; color: #cbd5e1;
         }
+        .badge-info svg { color: #7dd3fc; }
 
-        .form-content {
-            padding: 24px 20px;
-        }
+        .form-content { padding: 24px 22px 26px; }
 
+        /* ---------- Status ---------- */
         .status-closed-banner {
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            color: #991b1b;
-            padding: 20px 16px;
-            border-radius: 16px;
-            text-align: center;
-            margin-bottom: 16px;
+            background: rgba(244, 63, 94, .1); border: 1px solid rgba(251, 113, 133, .3); color: #fda4af;
+            padding: 22px 16px; border-radius: 20px; text-align: center; margin-bottom: 8px;
         }
-
-        .status-closed-banner h3 {
-            font-size: 16px;
-            font-weight: 800;
-            margin-bottom: 6px;
-        }
-
-        .status-closed-banner p {
-            font-size: 13px;
-            line-height: 1.4;
-            color: #7f1d1d;
-        }
+        .status-closed-banner h3 { font-size: 16px; font-weight: 800; margin-bottom: 6px; color: #fecdd3; }
+        .status-closed-banner p { font-size: 13px; line-height: 1.5; color: #fda4af; }
 
         .success-banner {
-            background: #f0fdf4;
-            border: 1.5px solid #86efac;
-            color: #14532d;
-            padding: 24px 18px;
-            border-radius: 20px;
-            text-align: center;
-            margin-bottom: 20px;
-            animation: fadeIn 0.4s ease-out;
+            background: rgba(16, 185, 129, .1); border: 1px solid rgba(52, 211, 153, .3); color: #a7f3d0;
+            padding: 24px 18px; border-radius: 22px; text-align: center; margin-bottom: 8px; animation: fadeIn .5s var(--ease);
         }
-
         .success-icon {
-            width: 54px;
-            height: 54px;
-            background: #22c55e;
-            color: #ffffff;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 12px auto;
-            box-shadow: 0 8px 16px rgba(34, 197, 94, 0.3);
+            width: 56px; height: 56px; background: #10b981; color: #fff; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;
+            box-shadow: 0 0 0 6px rgba(16, 185, 129, .15), 0 10px 24px rgba(16, 185, 129, .35);
         }
-
-        .success-icon svg {
-            width: 32px;
-            height: 32px;
-        }
-
-        .success-banner h3 {
-            font-size: 17px;
-            font-weight: 800;
-            color: #15803d;
-            margin-bottom: 6px;
-        }
-
-        .success-banner p {
-            font-size: 13.5px;
-            color: #166534;
-            margin-bottom: 16px;
-        }
-
+        .success-icon svg { width: 30px; height: 30px; }
+        .success-banner h3 { font-size: 17px; font-weight: 800; color: #6ee7b7; margin-bottom: 6px; }
+        .success-banner p { font-size: 13.5px; line-height: 1.5; color: #a7f3d0; margin-bottom: 16px; }
         .success-details {
-            background: #ffffff;
-            border-radius: 12px;
-            padding: 12px 14px;
-            text-align: left;
-            font-size: 12.5px;
-            color: #334155;
-            margin-bottom: 16px;
-            border: 1px solid #bbf7d0;
+            background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .1); border-radius: 14px;
+            padding: 12px 14px; text-align: left; font-size: 12.5px; color: #cbd5e1; margin-bottom: 16px;
         }
+        .success-details strong { color: #fff; }
+        .success-details div { margin-bottom: 6px; }
+        .success-details div:last-child { margin-bottom: 0; }
 
-        .success-details div {
-            margin-bottom: 6px;
+        .error-box {
+            background: rgba(244, 63, 94, .1); border: 1px solid rgba(251, 113, 133, .35); color: #fda4af;
+            padding: 12px 14px; border-radius: 14px; font-size: 13px; margin-bottom: 18px;
         }
-        .success-details div:last-child {
-            margin-bottom: 0;
-        }
+        .error-box strong { color: #fecdd3; }
+        .error-box ul { margin-left: 20px; margin-top: 4px; }
 
-        .form-group {
-            margin-bottom: 18px;
-        }
-
-        .form-label {
-            display: block;
-            font-size: 13px;
-            font-weight: 700;
-            color: #334155;
-            margin-bottom: 6px;
-        }
-
-        .form-label .required-dot {
-            color: #ef4444;
-            margin-left: 2px;
-        }
-
+        /* ---------- Form ---------- */
+        .form-group { margin-bottom: 16px; animation: fadeIn .6s var(--ease) both; }
+        .form-group:nth-child(2) { animation-delay: .05s; } .form-group:nth-child(3) { animation-delay: .1s; }
+        .form-group:nth-child(4) { animation-delay: .15s; } .form-group:nth-child(5) { animation-delay: .2s; }
+        .form-label { display: block; font-size: 12.5px; font-weight: 700; color: #cbd5e1; margin-bottom: 7px; letter-spacing: .01em; }
+        .form-label .required-dot { color: #fb7185; margin-left: 2px; }
         .form-control {
-            width: 100%;
-            padding: 12px 14px;
-            border: 1.5px solid #cbd5e1;
-            border-radius: 12px;
-            font-size: 14px;
-            color: #0f172a;
-            outline: none;
-            transition: all 0.2s ease;
-            background: #f8fafc;
+            width: 100%; padding: 13px 15px; border-radius: 16px; font-size: 15px; color: #fff; outline: none;
+            background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .12);
+            transition: border-color .25s var(--ease), background-color .25s, box-shadow .3s var(--ease);
         }
+        .form-control::placeholder { color: #64748b; }
+        .form-control:hover { background: rgba(255, 255, 255, .08); }
+        .form-control:focus { border-color: rgba(96, 165, 250, .85); background: rgba(255, 255, 255, .09); box-shadow: 0 0 0 4px rgba(59, 130, 246, .22); }
+        .form-control:-webkit-autofill { -webkit-text-fill-color: #fff; -webkit-box-shadow: 0 0 0 1000px #17213a inset; caret-color: #fff; }
+        select.form-control { appearance: none; -webkit-appearance: none; padding-right: 40px; cursor: pointer;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2394a3b8' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 14px center; }
+        select.form-control option { background: #0f172a; color: #fff; }
+        textarea.form-control { resize: vertical; min-height: 90px; }
+        .form-hint { font-size: 11.5px; color: #94a3b8; margin-top: 6px; line-height: 1.45; }
 
-        .form-control:focus {
-            background: #ffffff;
-            border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-        }
-
-        .form-hint {
-            font-size: 11px;
-            color: #64748b;
-            margin-top: 4px;
-        }
-
-        /* Canvas Paraf / Tanda Tangan */
+        /* Kotak paraf tetap terang: goresan gelap & dicetak di PDF berlatar putih */
         .signature-box {
-            border: 1.5px dashed #94a3b8;
-            border-radius: 12px;
-            background: #f8fafc;
-            position: relative;
-            touch-action: none;
-            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, .2); border-radius: 16px; background: #f8fafc;
+            position: relative; touch-action: none; overflow: hidden;
+            box-shadow: inset 0 2px 8px rgba(15, 23, 42, .12);
         }
-
-        .signature-canvas {
-            width: 100%;
-            height: 160px;
-            display: block;
-            cursor: crosshair;
-        }
-
+        .signature-canvas { width: 100%; height: 170px; display: block; cursor: crosshair; }
         .btn-clear-sig {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            padding: 4px 10px;
-            font-size: 11px;
-            font-weight: 600;
-            color: #64748b;
-            cursor: pointer;
+            position: absolute; top: 8px; right: 8px; background: rgba(255, 255, 255, .95); border: 1px solid #cbd5e1;
+            border-radius: 10px; padding: 5px 11px; font-size: 11.5px; font-weight: 600; color: #475569; cursor: pointer;
         }
-
-        .btn-clear-sig:hover {
-            background: #ffffff;
-            color: #ef4444;
-            border-color: #fca5a5;
-        }
+        .btn-clear-sig:hover { color: #e11d48; border-color: #fda4af; }
 
         .btn-submit {
-            width: 100%;
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-            color: #ffffff;
-            border: none;
-            border-radius: 14px;
-            padding: 14px 20px;
-            font-size: 15px;
-            font-weight: 800;
-            letter-spacing: 0.3px;
-            cursor: pointer;
-            box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.4);
-            transition: all 0.2s ease;
-            margin-top: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
+            width: 100%; height: 52px; margin-top: 8px; padding: 0 20px; border: none; border-radius: 16px; cursor: pointer;
+            background: #2563eb; color: #fff; font-size: 15px; font-weight: 700; letter-spacing: .2px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            box-shadow: 0 10px 24px -12px rgba(0, 0, 0, .7), inset 0 1px 0 rgba(255, 255, 255, .25);
+            transition: background-color .2s, transform .2s var(--ease);
         }
-
-        .btn-submit:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 14px 25px -5px rgba(37, 99, 235, 0.5);
-        }
-
-        .btn-submit:active {
-            transform: translateY(1px);
-        }
+        .btn-submit:hover { background: #3b82f6; }
+        .btn-submit:active { transform: scale(.98); }
+        .btn-submit:disabled { opacity: .6; cursor: wait; }
 
         .btn-again {
-            display: inline-block;
-            background: #15803d;
-            color: #ffffff;
-            text-decoration: none;
-            padding: 10px 18px;
-            border-radius: 10px;
-            font-size: 13px;
-            font-weight: 700;
-            cursor: pointer;
-            border: none;
+            display: inline-block; background: #059669; color: #fff; text-decoration: none; padding: 11px 18px;
+            border-radius: 14px; font-size: 13px; font-weight: 700; cursor: pointer; border: none;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 8px 18px -10px rgba(5, 150, 105, .8);
         }
+        .btn-again:hover { background: #10b981; }
 
-        .footer-note {
-            text-align: center;
-            font-size: 11px;
-            color: #94a3b8;
-            margin-top: 16px;
-        }
+        :where(a, button, input, select, textarea):focus-visible { outline: 3px solid #60a5fa; outline-offset: 2px; }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-8px); }
-            to { opacity: 1; transform: translateY(0); }
+        .footer-note { position: relative; z-index: 1; text-align: center; font-size: 11.5px; color: #94a3b8; margin-top: 6px; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+        @media (prefers-reduced-motion: reduce) {
+            .aurora, .header-logo::before, .container, .form-group, .success-banner { animation: none !important; }
         }
     </style>
 </head>
 <body>
+
+    <div class="bg" aria-hidden="true"><div class="aurora a1"></div><div class="aurora a2"></div><div class="aurora a3"></div></div>
 
     <div class="container">
         
@@ -397,9 +246,9 @@
             @else
                 <!-- FORMULIR PENGISIAN PRESENSI (PUBLIK TANPA LOGIN) -->
                 @if($errors->any())
-                    <div style="background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 12px 14px; border-radius: 12px; font-size: 13px; margin-bottom: 18px;">
+                    <div class="error-box">
                         <strong>Perhatian:</strong>
-                        <ul style="margin-left: 20px; margin-top: 4px;">
+                        <ul>
                             @foreach ($errors->all() as $error)
                                 <li>{{ $error }}</li>
                             @endforeach
@@ -616,6 +465,7 @@
             });
 
             form.addEventListener('submit', function () {
+                document.getElementById('submitBtn').disabled = true;
                 if (hasDrawn) {
                     signatureInput.value = canvas.toDataURL('image/png');
                 }
