@@ -5,10 +5,12 @@ import { ref, computed, nextTick } from 'vue';
 import Swal from 'sweetalert2';
 import interact from 'interactjs';
 import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 // Konfigurasi Worker PDF.js agar stabil
-const PDF_JS_VERSION = '3.11.174';
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.worker.min.js`;
+// pdf.js 4.x (perbaikan CVE-2024-4367); worker dari paket lokal, bukan CDN (audit T07).
+const PDF_JS_VERSION = pdfjsLib.version;
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 const props = defineProps({ 
     approvedRequests: Array, // Antrian (Belum Stempel)
@@ -50,7 +52,7 @@ const renderPdf = async (pdfData) => {
     if (wrapper) wrapper.innerHTML = ''; 
 
     try {
-        const loadingTask = pdfjsLib.getDocument({ data: pdfData });
+        const loadingTask = pdfjsLib.getDocument({ data: pdfData, isEvalSupported: false });
         const pdf = await loadingTask.promise;
         totalPages.value = pdf.numPages;
 

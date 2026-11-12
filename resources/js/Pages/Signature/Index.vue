@@ -6,10 +6,12 @@ import Swal from 'sweetalert2';
 import interact from 'interactjs';
 import QrcodeVue from 'qrcode.vue';
 import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 // Konfigurasi Worker PDF.js Core
-const PDF_JS_VERSION = '3.11.174';
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.worker.min.js`;
+// pdf.js 4.x (perbaikan CVE-2024-4367); worker dari paket lokal, bukan CDN (audit T07).
+const PDF_JS_VERSION = pdfjsLib.version;
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 const props = defineProps({ 
   requests: Object,
@@ -426,7 +428,8 @@ const onOperatorFileSelect = async (e) => {
     const buffer = await file.arrayBuffer();
     const loadingTask = pdfjsLib.getDocument({
       data: buffer,
-      cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/cmaps/`,
+      cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDF_JS_VERSION}/cmaps/`,
+      isEvalSupported: false,
       cMapPacked: true
     });
     const rawPdf = await loadingTask.promise;
@@ -515,7 +518,8 @@ const openPdfPreview = async (req) => {
 
     const loadingTask = pdfjsLib.getDocument({
       data: buffer,
-      cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/cmaps/`,
+      cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDF_JS_VERSION}/cmaps/`,
+      isEvalSupported: false,
       cMapPacked: true,
       disableFontFace: false
     });
