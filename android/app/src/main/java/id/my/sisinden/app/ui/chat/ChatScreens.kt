@@ -1,5 +1,6 @@
 package id.my.sisinden.app.ui.chat
 
+import id.my.sisinden.app.core.ui.components.SindenLoader
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -226,7 +227,7 @@ private fun OperatorThreadList(
         FormSheet(title = "Mulai percakapan dinas", onDismiss = { composing = false }) {
             SearchField(query, { query = it; vm.searchUsers(it) }, "Cari personel (min. 2 huruf)")
             Spacer(Modifier.height(Spacing.md))
-            if (busy) CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
+            if (busy) SindenLoader(Modifier.align(Alignment.CenterHorizontally), size = 48.dp, messages = listOf("Mencari personel", "Mencocokkan nama"))
             results.forEach { u ->
                 ListRowCard(
                     title = u.fullName,

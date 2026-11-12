@@ -1,3 +1,8 @@
+# SISINDEN Android v2.2.2 (versionCode 32)
+
+- **Animasi memuat baru**: kerangka daftar di semua menu kini muncul bertahap dengan lebar baris bervariasi dan denyut halus. Memuat layar penuh (pratinjau berkas, PDF, media, pencarian personel) memakai loader SISINDEN dengan titik mengorbit dan pesan yang berganti.
+
+---
 # SISINDEN Android v2.2.1 (versionCode 31)
 
 - **Animasi masuk baru: kartu identitas.** Saat kredensial diperiksa, tampil kartu personel dengan garis pemindai. Begitu diterima, kartu berputar 3D menampilkan foto, nama, pangkat/NRP, dan bilah verifikasi sebelum masuk ke beranda. Mengikuti pengaturan kurangi animasi di HP.

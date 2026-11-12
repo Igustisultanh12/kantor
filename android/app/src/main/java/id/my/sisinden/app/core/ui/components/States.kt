@@ -31,6 +31,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -82,26 +84,52 @@ fun SkeletonBlock(modifier: Modifier = Modifier, height: Dp = 16.dp, brush: Brus
     )
 }
 
-/** Kerangka daftar kartu saat memuat. */
+/**
+ * Kerangka daftar kartu saat memuat: kartu muncul bertahap (cascade), lebar baris
+ * bervariasi, bentuk ikon bergantian, dan denyut halus agar tidak monoton.
+ */
 @Composable
 fun ListSkeleton(modifier: Modifier = Modifier, items: Int = 5) {
     val brush = shimmerBrush()
+    val pulse = rememberInfiniteTransition(label = "skeletonPulse")
+    val breathe by pulse.animateFloat(
+        initialValue = 0.72f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "breathe",
+    )
+    // Pola lebar per baris (pseudo-acak tetap) supaya tidak terlihat seragam.
+    val titleW = listOf(0.72f, 0.55f, 0.83f, 0.64f, 0.78f, 0.5f)
+    val subW = listOf(0.42f, 0.6f, 0.35f, 0.52f, 0.3f, 0.48f)
     Column(modifier.padding(horizontal = Spacing.screen), verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-        repeat(items) {
-            SindenCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(44.dp).clip(CircleShape).background(brush))
-                    Spacer(Modifier.width(Spacing.md))
-                    Column(Modifier.weight(1f)) {
-                        SkeletonBlock(Modifier.fillMaxWidth(0.7f), 14.dp, brush)
-                        Spacer(Modifier.height(Spacing.sm))
-                        SkeletonBlock(Modifier.fillMaxWidth(0.45f), 12.dp, brush)
+        repeat(items) { i ->
+            val appear = remember { androidx.compose.animation.core.Animatable(0f) }
+            androidx.compose.runtime.LaunchedEffect(Unit) {
+                kotlinx.coroutines.delay(i * 70L)
+                appear.animateTo(1f, tween(320))
+            }
+            Box(
+                Modifier.graphicsLayer { alpha = appear.value * breathe; translationY = (1f - appear.value) * 24f },
+            ) {
+                SindenCard {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val iconShape = if (i % 3 == 1) MaterialTheme.shapes.medium else CircleShape
+                        Box(Modifier.size(44.dp).clip(iconShape).background(brush))
+                        Spacer(Modifier.width(Spacing.md))
+                        Column(Modifier.weight(1f)) {
+                            SkeletonBlock(Modifier.fillMaxWidth(titleW[i % titleW.size]), 14.dp, brush)
+                            Spacer(Modifier.height(Spacing.sm))
+                            SkeletonBlock(Modifier.fillMaxWidth(subW[i % subW.size]), 12.dp, brush)
+                        }
+                        if (i % 2 == 0) {
+                            Spacer(Modifier.width(Spacing.md))
+                            SkeletonBlock(Modifier.width(48.dp), 22.dp, brush)
+                        }
                     }
                 }
             }
         }
     }
 }
+
 
 @Composable
 private fun StateMessage(

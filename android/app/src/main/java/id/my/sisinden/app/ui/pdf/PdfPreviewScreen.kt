@@ -1,5 +1,6 @@
 package id.my.sisinden.app.ui.pdf
 
+import id.my.sisinden.app.core.ui.components.SindenLoader
 import id.my.sisinden.app.core.security.expectExternalActivity
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -211,7 +212,7 @@ fun PdfPreviewScreen(
                     Modifier.align(Alignment.Center),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    CircularProgressIndicator()
+                    SindenLoader(messages = listOf("Menghubungi server", "Menyusun dokumen", "Merender halaman"))
                     Spacer(Modifier.height(Spacing.md))
                     Text("Menyiapkan dokumen dari server…", style = MaterialTheme.typography.bodyMedium)
                 }

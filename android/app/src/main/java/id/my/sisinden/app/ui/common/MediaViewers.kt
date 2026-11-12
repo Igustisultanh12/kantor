@@ -1,5 +1,6 @@
 package id.my.sisinden.app.ui.common
 
+import id.my.sisinden.app.core.ui.components.SindenLoader
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -157,7 +158,11 @@ fun <T> PreviewStateContent(state: PreviewLoad<T>, dark: Boolean, content: @Comp
     AnimatedContent(targetState = state, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "preview") { s ->
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             when (s) {
-                PreviewLoad.Loading -> CircularProgressIndicator(color = if (dark) Color.White else MaterialTheme.colorScheme.primary)
+                PreviewLoad.Loading -> SindenLoader(
+                    tint = if (dark) Color.White else MaterialTheme.colorScheme.primary,
+                    textColor = if (dark) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    messages = listOf("Mengunduh pratinjau", "Mendekripsi berkas", "Menyiapkan tampilan"),
+                )
                 is PreviewLoad.Failed -> Text(
                     s.message,
                     color = if (dark) Color.White else MaterialTheme.colorScheme.onSurface,

@@ -422,3 +422,14 @@ html[data-motion="off"] .auth-aurora, html[data-motion="off"] .auth-halo { anima
     font-size: 0.825rem !important;
     font-weight: 500 !important;
 }
+/* Bilah progres perpindahan halaman: gradien mengalir + cahaya (bukan garis biru polos). */
+#nprogress .bar {
+    background: linear-gradient(90deg, #60a5fa, #22d3ee, #34d399, #a78bfa, #60a5fa) !important;
+    background-size: 300% 100% !important;
+    animation: sinden-progress-flow 1.4s linear infinite;
+    height: 3px !important;
+    box-shadow: 0 0 12px rgba(96, 165, 250, .65);
+}
+#nprogress .peg { box-shadow: 0 0 14px #22d3ee, 0 0 6px #60a5fa !important; opacity: 1 !important; }
+@keyframes sinden-progress-flow { to { background-position: 300% 0; } }
+@media (prefers-reduced-motion: reduce) { #nprogress .bar { animation: none; } }

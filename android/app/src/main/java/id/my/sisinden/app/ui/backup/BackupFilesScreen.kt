@@ -1,5 +1,6 @@
 package id.my.sisinden.app.ui.backup
 
+import id.my.sisinden.app.core.ui.components.SindenLoader
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.LruCache
@@ -695,7 +696,7 @@ private fun FilePreview(
             "video", "audio" -> {
                 val source by produceState<Pair<String, Map<String, String>>?>(null, item.id) { value = vm.repository.backupStreamSource(item.id) }
                 source?.let { (url, headers) -> StreamPlayer(url, headers, audioOnly = item.kind == "audio") }
-                    ?: Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                    ?: Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { SindenLoader(messages = listOf("Membuka berkas", "Menyiapkan pemutar", "Menyangga media")) }
             }
             "text" -> {
                 val load by produceState<PreviewLoad<Pair<String, Boolean>>>(PreviewLoad.Loading, item.id) {
