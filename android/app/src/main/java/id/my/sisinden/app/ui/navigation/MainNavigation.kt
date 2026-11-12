@@ -209,6 +209,22 @@ fun MainNavigation(
     }
     UpdatePromptHost()
 
+    // Info perangkat (model, baterai, jaringan, lokasi terakhir) untuk web Profil > Perangkat & sesi.
+    // Dikirim saat aplikasi tampil lalu tiap 5 menit selama tetap di layar.
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    LaunchedEffect(myUserId) {
+        lifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+            kotlinx.coroutines.delay(3_000)
+            while (true) {
+                val body = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    runCatching { id.my.sisinden.app.core.device.DeviceReporter.snapshot(context) }.getOrNull()
+                }
+                if (body != null) repository.deviceHeartbeat(body)
+                kotlinx.coroutines.delay(5 * 60_000L)
+            }
+        }
+    }
+
     // Notifikasi bersuara: WorkManager di latar belakang + sinkron cepat saat aplikasi terbuka.
     LaunchedEffect(Unit) {
         NotificationSync.schedule(context)

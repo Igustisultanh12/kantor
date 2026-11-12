@@ -55,6 +55,9 @@ return Application::configure(basePath: dirname(__DIR__))
              * Diletakkan di stack WEB agar bisa membaca session login.
              */
             LogVisitor::class,
+
+            // Catat perangkat/sesi web yang sedang dipakai (halaman Perangkat & sesi).
+            \App\Http\Middleware\TrackDeviceSession::class,
         ]);
 
     })

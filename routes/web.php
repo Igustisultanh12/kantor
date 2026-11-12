@@ -283,6 +283,12 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::post('/profile/google/unlink', [GoogleAuthController::class, 'unlinkGoogle'])->name('profile.google.unlink');
 
+    // Perangkat & sesi aktif (lihat & keluarkan perangkat lain)
+    Route::get('/profile/devices', [\App\Http\Controllers\DeviceSessionController::class, 'index'])->name('profile.devices');
+    Route::post('/profile/devices/report', [\App\Http\Controllers\DeviceSessionController::class, 'report'])->middleware('throttle:20,1')->name('profile.devices.report');
+    Route::post('/profile/devices/logout-others', [\App\Http\Controllers\DeviceSessionController::class, 'destroyOthers'])->middleware('throttle:10,1')->name('profile.devices.logout-others');
+    Route::delete('/profile/devices/{kind}/{id}', [\App\Http\Controllers\DeviceSessionController::class, 'destroy'])->where('kind', 'web|android')->middleware('throttle:30,1')->name('profile.devices.destroy');
+
     // Manajemen Surat-Menyurat
     Route::resource('letters', LetterController::class);
     Route::post('/letters/store-direct', [LetterController::class, 'storeDirect'])->name('letters.store-direct');

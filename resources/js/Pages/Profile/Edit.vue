@@ -3,6 +3,7 @@ import DeleteUserForm from './Partials/DeleteUserForm.vue';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue';
 import GoogleAccountForm from './Partials/GoogleAccountForm.vue';
+import DeviceSessions from './Partials/DeviceSessions.vue';
 import { Head } from '@inertiajs/vue3';
 
 defineProps({
@@ -51,7 +52,12 @@ defineProps({
                     <UpdatePasswordForm class="max-w-xl" />
                 </div>
 
-                <!-- 4. Hapus Akun -->
+                <!-- 4. Perangkat & sesi aktif (web + Android) -->
+                <div id="perangkat" class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0]">
+                    <DeviceSessions />
+                </div>
+
+                <!-- 5. Hapus Akun -->
                 <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0]">
                     <DeleteUserForm class="max-w-xl" />
                 </div>

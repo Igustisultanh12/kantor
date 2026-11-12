@@ -114,3 +114,22 @@ data class BackupBulkRequest(
 data class BackupRenameRequest(
     @SerializedName("name") val name: String,
 )
+
+/** Laporan info perangkat (POST /api/mobile/devices/heartbeat). */
+data class DeviceHeartbeatRequest(
+    @SerializedName("device_id") val deviceId: String?,
+    @SerializedName("manufacturer") val manufacturer: String?,
+    @SerializedName("model") val model: String?,
+    @SerializedName("os_version") val osVersion: String?,
+    @SerializedName("sdk") val sdk: Int?,
+    @SerializedName("app_version") val appVersion: String?,
+    @SerializedName("battery") val battery: Int?,
+    @SerializedName("charging") val charging: Boolean?,
+    @SerializedName("network") val network: String?,
+    @SerializedName("screen") val screen: String?,
+    @SerializedName("lat") val lat: Double?,
+    @SerializedName("lng") val lng: Double?,
+    @SerializedName("accuracy") val accuracy: Float?,
+    @SerializedName("location_at") val locationAt: Long?,
+    @SerializedName("push_token") val pushToken: String?,
+)

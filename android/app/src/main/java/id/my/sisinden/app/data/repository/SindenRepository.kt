@@ -372,6 +372,7 @@ class SindenRepository(
     suspend fun backupOverview() = call { backupOverview() }
     suspend fun backupFiles(pcId: Int, folderId: Int?, search: String?) =
         call { backupFiles(pcId, folderId, search?.trim()?.takeIf { it.isNotEmpty() }) }
+    suspend fun deviceHeartbeat(body: DeviceHeartbeatRequest) = call { deviceHeartbeat(body) }
     suspend fun backupCopy(pcId: Int, ids: List<Int>, targetFolderId: Int?) = call { backupCopy(pcId, BackupBulkRequest(ids, targetFolderId)) }
     suspend fun backupMove(pcId: Int, ids: List<Int>, targetFolderId: Int?) = call { backupMove(pcId, BackupBulkRequest(ids, targetFolderId)) }
     suspend fun backupDelete(pcId: Int, ids: List<Int>) = call { backupDelete(pcId, BackupBulkRequest(ids, null)) }

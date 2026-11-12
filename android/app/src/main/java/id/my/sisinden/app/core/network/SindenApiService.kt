@@ -314,6 +314,9 @@ interface SindenApiService {
         @Query("search") search: String? = null,
     ): Response<BackupFilesResponse>
 
+    @POST("api/mobile/devices/heartbeat")
+    suspend fun deviceHeartbeat(@Body body: DeviceHeartbeatRequest): Response<SimpleResponse>
+
     // Kelola berkas backup (pemilik/admin): salin, pindah, hapus, ganti nama.
     @POST("api/mobile/backup/pcs/{pc}/copy")
     suspend fun backupCopy(@Path("pc") pcId: Int, @Body body: BackupBulkRequest): Response<SimpleResponse>

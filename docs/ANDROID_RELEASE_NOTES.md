@@ -1,3 +1,10 @@
+# SISINDEN Android v2.0.3 (versionCode 26)
+
+- **Perangkat & sesi**: aplikasi kini melaporkan info perangkat (merek & model HP, versi Android dan aplikasi, ID perangkat, baterai, jenis jaringan, lokasi GPS terakhir) ke halaman web **Profil > Perangkat & sesi**. Dari halaman itu pemilik akun bisa mengeluarkan HP ini dari jarak jauh; aplikasi langsung kembali ke layar masuk dan notifikasi push ke HP itu berhenti.
+- Laporan dikirim saat aplikasi dibuka lalu tiap 5 menit selama aplikasi tampil. Lokasi hanya diambil bila izin lokasi sudah diberikan; aplikasi tidak meminta izin baru.
+- IMEI tidak dikirim: sejak Android 10 aplikasi biasa tidak diizinkan membacanya. Sebagai gantinya dipakai ID perangkat Android (unik per HP untuk aplikasi ini).
+
+---
 # SISINDEN Android v2.0.2 (versionCode 25)
 
 - **Kartu identitas (lanyard) di Beranda**, sama seperti di web: tali bertuliskan "DENINTEL KODAERAL V", kartu berisi pangkat, nama, NRP, dan jabatan. Ketuk kartu untuk membalik, geser untuk mengayun. Ayunan otomatis mati bila animasi sistem dimatikan.

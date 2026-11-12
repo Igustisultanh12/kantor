@@ -1537,6 +1537,9 @@ Route::post('/api/mobile/push/register', function (Request $request) {
     return response()->json(['status' => 'success', 'push_enabled' => \App\Support\PushNotifier::enabled()]);
 })->middleware(['mobile.auth', 'throttle:30,1']);
 
+// Info perangkat untuk halaman web Profil > Perangkat & sesi.
+Route::post('/api/mobile/devices/heartbeat', [\App\Http\Controllers\DeviceSessionController::class, 'heartbeat'])->middleware(['mobile.auth', 'throttle:30,1']);
+
 Route::post('/api/mobile/push/unregister', function (Request $request) {
     $data = $request->validate(['token' => 'required|string|max:4096']);
     if (\Illuminate\Support\Facades\Schema::hasTable('device_tokens')) {
