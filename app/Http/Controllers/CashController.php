@@ -12,13 +12,15 @@ use Illuminate\Support\Facades\Storage; // DI PERTAHANKAN: Diperlukan untuk mana
 
 class CashController extends Controller
 {
+    /** Admin, developer, atau flag can_access_cash. Dipanggil di SEMUA aksi (audit T03). */
+    private function authorizeCash(): void
+    {
+        abort_unless(\App\Support\MobileAccess::canAccessCash(auth()->user()), 403, 'Anda tidak memiliki otoritas akses kas.');
+    }
+
     public function index()
     {
-        // Otoritas khusus Admin & Suma
-        $user = auth()->user();
-        if ($user->role !== 'admin' && !in_array($user->name, ['I Gusti Sultan H.A, A.Md.Kom', 'Suma Nurhasanah','HARI BAGIO WIJAYANTO, M.TR.OPSLA'])) {
-            return abort(403, 'Anda tidak memiliki otoritas akses kas.');
-        }
+        $this->authorizeCash();
 
         // Kalibrasi ulang seluruh saldo pangkalan secara runtut kronologis
         $this->recalculateBalances();

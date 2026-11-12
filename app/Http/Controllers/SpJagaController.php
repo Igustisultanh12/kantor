@@ -91,11 +91,8 @@ class SpJagaController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        $isPasops = in_array(strtolower(trim($user->role ?? '')), ['pasops', 'admin', 'komandan']) 
-                    || str_contains(strtolower($user->name), 'roni sumantri')
-                    || str_contains(strtolower($user->name), 'sultan');
-
-        $isAdmin = ($user->role === 'admin' || $user->name === 'Suma Nurhasanah' || $user->name === 'I Gusti Sultan H.A, A.Md.Kom');
+        $isPasops = \App\Support\MobileAccess::isPasops($user);
+        $isAdmin = \App\Support\MobileAccess::isSpJagaAdmin($user);
 
         // 1. Ambil Jadwal Jaga Saya (Bulan Berjalan / Terbaru yang Published)
         $activeSp = SpJaga::with(['perwiras', 'anggotas'])

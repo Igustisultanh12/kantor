@@ -15,12 +15,7 @@ class TechnicalUnitCashController extends Controller
     public function index()
     {
         $user = auth()->user();
-        $isDanUnitTeknis = in_array($user->role, ['danunitteknis', 'DAN UNIT TEKNIS', 'dan unit teknis']);
-        
-        $canAccess = $user->role === 'admin' 
-            || $isDanUnitTeknis 
-            || (bool)$user->can_access_technical_cash 
-            || $user->name === 'I Gusti Sultan H.A, A.Md.Kom';
+        $canAccess = \App\Support\MobileAccess::can($user, 'technical_cash.view');
 
         if (!$canAccess) {
             return redirect()->route('dashboard')->with('error', 'Akses ditolak! Halaman Buku Kas Dan Unit Teknis khusus untuk Role Dan Unit Teknis.');

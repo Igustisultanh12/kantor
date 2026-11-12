@@ -11,7 +11,7 @@ const props = defineProps({
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
-const isCommander = computed(() => user.value.role === 'admin' || user.value.role === 'komandan' || user.value.name === 'I Gusti Sultan H.A, A.Md.Kom');
+const isCommander = computed(() => user.value.role === 'admin' || user.value.role === 'komandan' || Boolean(user.value.is_developer));
 
 // QR Code URL generator (Using Google Chart / QRServer API)
 const qrApiUrl = computed(() => {

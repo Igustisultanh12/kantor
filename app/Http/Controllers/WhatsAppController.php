@@ -22,7 +22,7 @@ class WhatsAppController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $isAdmin = $user->role === 'admin' || $user->name === 'I Gusti Sultan H.A, A.Md.Kom';
+        $isAdmin = \App\Support\MobileAccess::isSuperAdmin($user);
         $isCommander = $isAdmin || $user->role === 'komandan';
 
         // 1. Cek status keaktifan server gateway Node.js

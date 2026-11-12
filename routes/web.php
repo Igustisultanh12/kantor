@@ -460,6 +460,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/users/{user}/toggle-koperasi-access', [UserController::class, 'toggleKoperasiAccess'])->name('users.toggle-koperasi-access');
         Route::post('/users/{user}/toggle-ibu-beti-access', [UserController::class, 'toggleIbuBetiAccess'])->name('users.toggle-ibu-beti-access');
         Route::post('/users/{user}/toggle-mfa', [UserController::class, 'toggleMfa'])->name('users.toggle-mfa');
+        Route::post('/users/{user}/toggle-access-flag', [UserController::class, 'toggleAccessFlag'])->name('users.toggle-access-flag');
 
         // Kategori Arsip Surat Mako V
         Route::resource('categories', CategoryController::class);

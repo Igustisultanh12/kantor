@@ -109,7 +109,7 @@ class BackupController extends Controller
      */
     public function approveAccess($id)
     {
-        if (Auth::user()->role !== 'admin' && Auth::user()->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
+        if (!\App\Support\MobileAccess::isSuperAdmin(Auth::user())) {
             return abort(403, 'Anda tidak memiliki otoritas menyetujui.');
         }
 
@@ -1355,7 +1355,7 @@ class BackupController extends Controller
     public function revokePc($id)
     {
         $user = Auth::user();
-        if ($user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
+        if (!\App\Support\MobileAccess::isSuperAdmin($user)) {
             return abort(403, 'Anda tidak memiliki otoritas menghapus akses PC.');
         }
 
@@ -1504,7 +1504,7 @@ class BackupController extends Controller
     public function createPc(Request $request)
     {
         $user = Auth::user();
-        if ($user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
+        if (!\App\Support\MobileAccess::isSuperAdmin($user)) {
             return abort(403, 'Hanya Admin yang bisa membuat penyimpanan baru.');
         }
 
@@ -1535,7 +1535,7 @@ class BackupController extends Controller
     public function updateQuota(Request $request, $id)
     {
         $user = Auth::user();
-        if ($user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom') {
+        if (!\App\Support\MobileAccess::isSuperAdmin($user)) {
             return abort(403, 'Hanya Admin yang bisa mengubah kuota penyimpanan.');
         }
 

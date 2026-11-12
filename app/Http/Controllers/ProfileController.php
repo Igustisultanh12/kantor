@@ -37,6 +37,14 @@ class ProfileController extends Controller
     {
         $data = $request->validated();
 
+        // Nama & NRP adalah identitas dinas: hanya Admin yang boleh mengubahnya (audit K01).
+        if (!\App\Support\MobileAccess::isSuperAdmin($request->user())) {
+            unset($data['name'], $data['nrp']);
+        }
+        if (array_key_exists('name', $data) && blank($data['name'])) {
+            unset($data['name']);
+        }
+
         // Penanganan berkas foto profil / avatar personel
         if ($request->hasFile('avatar')) {
             if ($request->user()->avatar && Storage::disk('public')->exists($request->user()->avatar)) {

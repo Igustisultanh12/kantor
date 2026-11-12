@@ -4,11 +4,11 @@
 // Menu WhatsApp Web dihapus atas permintaan pemilik proyek (11-11-2026).
 import { computed } from 'vue';
 
-const PRIVILEGED_NAME = 'I Gusti Sultan H.A, A.Md.Kom';
-
+// Hak akses dihitung dari role & flag server (auth.user), TIDAK dari nama (audit K01).
 export function useNovaAccess(user) {
     const u = () => user.value || {};
     const isAdmin = computed(() => u().role === 'admin');
+    const isDev = () => Boolean(u().is_developer);
     const isDanUnitTeknis = computed(() => ['danunitteknis', 'DAN UNIT TEKNIS', 'dan unit teknis'].includes(u().role));
     const isAnggotaSintel = computed(() => {
         if (isAdmin.value) return false;
@@ -16,12 +16,12 @@ export function useNovaAccess(user) {
         const j = (u().jabatan || '').toLowerCase();
         return r === 'anggotasintel' || j.includes('anggota sintel');
     });
-    const canAccessCash = computed(() => isAdmin.value || u().name === PRIVILEGED_NAME || u().name === 'Suma Nurhasanah');
-    const canAccessCommanderAccount = computed(() => isAdmin.value || u().name === 'Suma Nurhasanah' || u().role === 'komandan' || u().name === PRIVILEGED_NAME);
-    const canAccessIbuBeti = computed(() => isAdmin.value || Boolean(u().can_access_ibu_beti) || u().name === PRIVILEGED_NAME);
-    const canAccessMitra = computed(() => isAdmin.value || Boolean(u().can_access_mitra) || u().name === PRIVILEGED_NAME);
-    const canManageKoperasi = computed(() => isAdmin.value || Boolean(u().can_manage_koperasi) || u().name === PRIVILEGED_NAME);
-    const canAccessTechnicalCash = computed(() => isAdmin.value || isDanUnitTeknis.value || Boolean(u().can_access_technical_cash) || u().name === PRIVILEGED_NAME);
+    const canAccessCash = computed(() => Boolean(u().can_access_cash));
+    const canAccessCommanderAccount = computed(() => Boolean(u().can_view_commander_account));
+    const canAccessIbuBeti = computed(() => isAdmin.value || isDev() || Boolean(u().can_access_ibu_beti));
+    const canAccessMitra = computed(() => isAdmin.value || isDev() || Boolean(u().can_access_mitra));
+    const canManageKoperasi = computed(() => isAdmin.value || isDev() || Boolean(u().can_manage_koperasi));
+    const canAccessTechnicalCash = computed(() => isAdmin.value || isDev() || isDanUnitTeknis.value || Boolean(u().can_access_technical_cash));
 
     return {
         isAdmin, isDanUnitTeknis, isAnggotaSintel, canAccessCash, canAccessCommanderAccount,

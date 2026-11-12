@@ -610,6 +610,30 @@ class UserController extends Controller
     }
 
     /**
+     * TOGGLE HAK AKSES KHUSUS (pengganti pengecualian berbasis nama, audit K01).
+     * Flag sengaja tidak ada di $fillable sehingga hanya bisa diubah lewat jalur Admin ini.
+     */
+    public function toggleAccessFlag(Request $request, User $user)
+    {
+        $data = $request->validate([
+            'flag' => 'required|string|in:can_access_cash,can_access_commander,can_manage_sp_jaga,can_sign_sp_jaga,is_developer',
+        ]);
+        $flag = $data['flag'];
+        $user->forceFill([$flag => !$user->{$flag}])->save();
+
+        AuditLog::create([
+            'user_id'          => auth()->id(),
+            'admin_name'       => auth()->user()->name,
+            'action'           => 'UPDATE HAK AKSES KHUSUS',
+            'target_personnel' => $user->name,
+            'description'      => "Mengubah {$flag} untuk {$user->name} menjadi " . ($user->{$flag} ? 'Diizinkan' : 'Dilarang'),
+            'ip_address'       => $request->ip(),
+        ]);
+
+        return back()->with('message', 'Hak akses berhasil diperbarui.');
+    }
+
+    /**
      * TOGGLE HAK AKSES MITRA
      */
     public function toggleMitraAccess(User $user)

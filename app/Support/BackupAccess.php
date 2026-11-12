@@ -19,7 +19,7 @@ class BackupAccess
 {
     public static function isAdmin(User $user): bool
     {
-        return $user->role === 'admin' || in_array($user->name, MobileAccess::DEVELOPER_NAMES, true);
+        return MobileAccess::isSuperAdmin($user);
     }
 
     public static function isOwner(User $user, Pc $pc): bool

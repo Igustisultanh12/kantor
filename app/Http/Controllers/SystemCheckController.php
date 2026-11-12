@@ -15,7 +15,7 @@ class SystemCheckController extends Controller
     protected function authorizeAdmin()
     {
         $user = Auth::user();
-        if (!$user || ($user->role !== 'admin' && $user->name !== 'I Gusti Sultan H.A, A.Md.Kom')) {
+        if (!$user || (!\App\Support\MobileAccess::isSuperAdmin($user))) {
             abort(403, 'Akses Ditolak: Modul Cek Sistem & Infrastruktur hanya diizinkan untuk Admin.');
         }
     }

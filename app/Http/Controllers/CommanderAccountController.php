@@ -18,16 +18,14 @@ class CommanderAccountController extends Controller
     private function checkAccess()
     {
         $user = Auth::user();
-        // Komandan terdeteksi bypass nama khusus atau role khusus
-        $isCommander = $user->name === 'I Gusti Sultan H.A, A.Md.Kom' || $user->role === 'komandan';
-        $isAdminOrSuma = in_array($user->role, ['admin', 'user']);
-
-        if (!$isCommander && !$isAdminOrSuma) {
+        // Lihat: komandan/admin/developer/flag can_access_commander. Ubah: tanpa komandan (pemeriksa).
+        // Role 'user' (bawaan registrasi) TIDAK lagi otomatis berhak (audit T09).
+        if (!\App\Support\MobileAccess::canViewCommanderAccount($user)) {
             abort(403, 'Anda tidak memiliki otoritas mengakses rekening Komandan.');
         }
 
         return [
-            'canEdit' => $isAdminOrSuma,
+            'canEdit' => \App\Support\MobileAccess::canManageCommanderAccount($user),
             'user' => $user
         ];
     }

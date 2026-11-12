@@ -526,6 +526,31 @@ const toggleMitraAccess = (user) => {
     });
 };
 
+// Hak akses khusus yang dulu diberikan berdasarkan NAMA (kini flag database, hanya Admin).
+const ACCESS_FLAGS = [
+    { key: 'can_access_cash', label: 'Buku Kas Detasemen', desc: 'Melihat & mengelola Buku Kas.' },
+    { key: 'can_access_commander', label: 'Rekening Komandan', desc: 'Melihat & mengelola Rekening Komandan.' },
+    { key: 'can_manage_sp_jaga', label: 'Admin SP Jaga', desc: 'Menyusun & mengelola SP Jaga.' },
+    { key: 'can_sign_sp_jaga', label: 'Penandatangan SP Jaga', desc: 'Mengesahkan (TTE) SP Jaga sebagai Pasiops.' },
+    { key: 'is_developer', label: 'Pengembang Sistem', desc: 'Hak setara Admin di seluruh modul.' },
+];
+
+const toggleAccessFlag = (user, flag) => {
+    if (!user) return;
+    const prev = Boolean(user[flag.key]);
+    user[flag.key] = !prev;
+    router.post(route('users.toggle-access-flag', user.id), { flag: flag.key }, {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 })
+            .fire({ icon: 'success', title: `${flag.label}: ${user[flag.key] ? 'AKTIF' : 'NONAKTIF'}` }),
+        onError: () => {
+            user[flag.key] = prev;
+            Swal.fire('GAGAL', `Gagal memperbarui hak akses ${flag.label}.`, 'error');
+        },
+    });
+};
+
 const toggleKoperasiAccess = (user) => {
     if (!user) return;
     const prev = Boolean(user.can_manage_koperasi);
@@ -1316,6 +1341,23 @@ onUnmounted(() => {
                                     <span :class="detailUser.mfa_enabled ? 'bg-amber-600 text-white font-black shadow-xs shadow-amber-600/30' : 'bg-slate-100 text-slate-500 font-bold'" class="px-2.5 py-1 text-[9px] rounded-lg uppercase tracking-wider transition">
                                         {{ detailUser.mfa_enabled ? 'AKTIF (WA OTP WAJIB)' : 'NONAKTIF (OFF)' }}
                                     </span>
+                                </div>
+                            </div>
+
+                            <!-- 5b. HAK AKSES KHUSUS (pengganti pengecualian berbasis nama, audit K01) -->
+                            <div v-for="flag in ACCESS_FLAGS" :key="flag.key"
+                                @click="toggleAccessFlag(detailUser, flag)"
+                                :class="detailUser[flag.key] ? 'border-indigo-500 bg-indigo-50/50 shadow-sm ring-2 ring-indigo-500/20' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/70'"
+                                class="p-4 border rounded-2xl cursor-pointer transition-all duration-200 flex flex-col justify-between select-none"
+                                role="button" :title="'Klik untuk mengubah: ' + flag.label">
+                                <div class="flex items-start justify-between gap-2">
+                                    <div>
+                                        <span class="font-black text-slate-900 uppercase block text-[11px] tracking-tight">{{ flag.label }}</span>
+                                        <p class="text-[10.5px] text-slate-500 leading-snug mt-1">{{ flag.desc }}</p>
+                                    </div>
+                                    <div :class="detailUser[flag.key] ? 'bg-indigo-600' : 'bg-slate-300'" class="w-11 h-6 rounded-full p-0.5 shrink-0 transition-colors">
+                                        <div :class="detailUser[flag.key] ? 'translate-x-5' : 'translate-x-0'" class="w-5 h-5 bg-white rounded-full shadow-md transform transition-transform"></div>
+                                    </div>
                                 </div>
                             </div>
 

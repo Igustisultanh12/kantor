@@ -104,6 +104,6 @@ class User extends Authenticatable
      */
     public function isPengurusKoperasi(): bool
     {
-        return $this->role === 'admin' || (bool)$this->can_manage_koperasi || $this->name === 'I Gusti Sultan H.A, A.Md.Kom';
+        return \App\Support\MobileAccess::isSuperAdmin($this) || (bool) $this->can_manage_koperasi;
     }
 }

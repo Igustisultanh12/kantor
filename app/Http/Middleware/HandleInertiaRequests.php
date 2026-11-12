@@ -87,11 +87,16 @@ class HandleInertiaRequests extends Middleware
                     'can_access_technical_cash' => (bool)$request->user()->can_access_technical_cash,
                     'can_manage_koperasi' => (bool)$request->user()->can_manage_koperasi,
                     'can_access_ibu_beti' => (bool)$request->user()->can_access_ibu_beti,
+                    'can_access_cash' => \App\Support\MobileAccess::canAccessCash($request->user()),
+                    'can_view_commander_account' => \App\Support\MobileAccess::canViewCommanderAccount($request->user()),
+                    'is_developer' => \App\Support\MobileAccess::isDeveloper($request->user()),
+                    'is_pasops' => \App\Support\MobileAccess::isPasops($request->user()),
+                    'is_sp_jaga_admin' => \App\Support\MobileAccess::isSpJagaAdmin($request->user()),
                     'google_id'     => $request->user()->google_id ?? null,
                     'google_email'  => $request->user()->google_email ?? null,
                     'google_avatar' => $request->user()->google_avatar ?? null,
                     // Penanda khusus untuk deteksi Admin/Sultan di sisi Frontend
-                    'is_commander' => ($request->user()->role === 'admin' || $request->user()->name === 'I Gusti Sultan H.A, A.Md.Kom'),
+                    'is_commander' => \App\Support\MobileAccess::isSuperAdmin($request->user()),
                 ] : null,
             ],
 

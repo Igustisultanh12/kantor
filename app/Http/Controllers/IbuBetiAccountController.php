@@ -19,7 +19,7 @@ class IbuBetiAccountController extends Controller
     private function checkAccess()
     {
         $user = Auth::user();
-        $isSuper = $user->role === 'admin' || $user->name === 'I Gusti Sultan H.A, A.Md.Kom';
+        $isSuper = \App\Support\MobileAccess::isSuperAdmin($user);
         $hasPermission = (bool)$user->can_access_ibu_beti;
 
         if (!$isSuper && !$hasPermission) {

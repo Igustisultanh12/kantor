@@ -150,20 +150,19 @@ const markAllRead = async () => {
 /**
  * OTORITAS KAS & REKENING KOMANDAN
  */
-const canAccessCash = computed(() => {
-    return isAdmin.value || user.value.name === 'I Gusti Sultan H.A, A.Md.Kom' || user.value.name === 'Suma Nurhasanah';
-});
+// Hak akses dari role & flag server, bukan dari nama (audit K01).
+const isDeveloper = computed(() => Boolean(user.value.is_developer));
 
-const canAccessCommanderAccount = computed(() => {
-    return isAdmin.value || user.value.name === 'Suma Nurhasanah' || user.value.role === 'komandan' || user.value.name === 'I Gusti Sultan H.A, A.Md.Kom';
-});
+const canAccessCash = computed(() => Boolean(user.value.can_access_cash));
+
+const canAccessCommanderAccount = computed(() => Boolean(user.value.can_view_commander_account));
 
 const canAccessIbuBeti = computed(() => {
-    return isAdmin.value || Boolean(user.value.can_access_ibu_beti) || user.value.name === 'I Gusti Sultan H.A, A.Md.Kom';
+    return isAdmin.value || isDeveloper.value || Boolean(user.value.can_access_ibu_beti);
 });
 
 const canAccessMitra = computed(() => {
-    return isAdmin.value || Boolean(user.value.can_access_mitra) || user.value.name === 'I Gusti Sultan H.A, A.Md.Kom';
+    return isAdmin.value || isDeveloper.value || Boolean(user.value.can_access_mitra);
 });
 
 const isDanUnitTeknis = computed(() => {
@@ -171,11 +170,11 @@ const isDanUnitTeknis = computed(() => {
 });
 
 const canManageKoperasi = computed(() => {
-    return isAdmin.value || Boolean(user.value.can_manage_koperasi) || user.value.name === 'I Gusti Sultan H.A, A.Md.Kom';
+    return isAdmin.value || isDeveloper.value || Boolean(user.value.can_manage_koperasi);
 });
 
 const canAccessTechnicalCash = computed(() => {
-    return isAdmin.value || isDanUnitTeknis.value || Boolean(user.value.can_access_technical_cash) || user.value.name === 'I Gusti Sultan H.A, A.Md.Kom';
+    return isAdmin.value || isDeveloper.value || isDanUnitTeknis.value || Boolean(user.value.can_access_technical_cash);
 });
 
 const isAnggotaSintel = computed(() => {

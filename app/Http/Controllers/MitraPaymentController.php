@@ -17,14 +17,8 @@ class MitraPaymentController extends Controller
     {
         $user = auth()->user();
 
-        // Otoritas Akses: Admin, Developer, atau can_access_mitra == true
-        $allowedNames = [
-            'I Gusti Sultan H.A, A.Md.Kom'
-        ];
-
-        $canAccess = $user->role === 'admin' 
-            || in_array($user->name, $allowedNames) 
-            || (bool)$user->can_access_mitra;
+        // Otoritas Akses: Admin, Developer (flag), atau can_access_mitra == true
+        $canAccess = \App\Support\MobileAccess::can($user, 'mitra.view');
 
         if (!$canAccess) {
             return redirect()->route('dashboard')->with('error', 'Akses ditolak! Anda tidak memiliki otoritas melihat Modul Pembayaran Mitra.');

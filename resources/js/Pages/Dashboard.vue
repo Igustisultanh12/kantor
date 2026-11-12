@@ -26,7 +26,7 @@ const lanyardLogo = computed(() => {
 });
 const isCommanderOrAdmin = computed(() => {
     const role = (currentUser.value?.role || '').toLowerCase();
-    return role === 'admin' || role === 'komandan' || role === 'pasops' || currentUser.value?.name === 'I Gusti Sultan H.A, A.Md.Kom';
+    return role === 'admin' || role === 'komandan' || role === 'pasops' || Boolean(currentUser.value?.is_developer);
 });
 
 // Jam Digital Real-Time Kedinasan

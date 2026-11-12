@@ -21,13 +21,15 @@ use App\Models\User;
 class MobileAccess
 {
     /**
-     * Pengecualian berbasis nama yang SUDAH ada di controller web (CashController,
-     * MitraPaymentController, dsb). Dipusatkan di sini agar tidak tersebar dan
-     * mudah dimigrasikan ke kolom database (mis. can_access_cash) oleh pemilik sistem.
+     * Hak akses TIDAK PERNAH ditentukan dari nama pengguna (nama bisa diganti di profil).
+     * Pengecualian lama berbasis nama sudah dipindahkan ke flag database yang hanya
+     * dapat diubah Admin: is_developer, can_access_cash, can_access_commander,
+     * can_manage_sp_jaga, can_sign_sp_jaga (migrasi 2026_11_13_100000).
      */
-    public const DEVELOPER_NAMES = ['I Gusti Sultan H.A, A.Md.Kom'];
-    public const CASH_EXTRA_NAMES = ['I Gusti Sultan H.A, A.Md.Kom', 'Suma Nurhasanah', 'HARI BAGIO WIJAYANTO, M.TR.OPSLA'];
-    public const SP_JAGA_ADMIN_NAMES = ['Suma Nurhasanah', 'I Gusti Sultan H.A, A.Md.Kom'];
+    public const ACCESS_FLAGS = [
+        'is_developer', 'can_access_cash', 'can_access_commander', 'can_manage_sp_jaga', 'can_sign_sp_jaga',
+        'can_access_mitra', 'can_access_technical_cash', 'can_manage_koperasi', 'can_access_ibu_beti',
+    ];
 
     /** Daftar role yang dikenal sistem (dari form Kelola Pengguna di web). */
     public const KNOWN_ROLES = [
@@ -47,7 +49,38 @@ class MobileAccess
 
     public static function isDeveloper(User $user): bool
     {
-        return in_array($user->name, self::DEVELOPER_NAMES, true);
+        return (bool) ($user->is_developer ?? false);
+    }
+
+    /** Admin atau pengembang sistem (pengganti pemeriksaan "role admin ATAU nama tertentu"). */
+    public static function isSuperAdmin(?User $user): bool
+    {
+        return $user !== null && (self::isAdmin($user) || self::isDeveloper($user));
+    }
+
+    public static function canAccessCash(User $user): bool
+    {
+        return self::isSuperAdmin($user) || (bool) ($user->can_access_cash ?? false);
+    }
+
+    public static function canViewCommanderAccount(User $user): bool
+    {
+        return self::canManageCommanderAccount($user) || self::isKomandan($user);
+    }
+
+    public static function canManageCommanderAccount(User $user): bool
+    {
+        return self::isSuperAdmin($user) || (bool) ($user->can_access_commander ?? false);
+    }
+
+    public static function isSpJagaAdmin(User $user): bool
+    {
+        return self::isSuperAdmin($user) || (bool) ($user->can_manage_sp_jaga ?? false);
+    }
+
+    public static function canApproveAsCommander(User $user): bool
+    {
+        return self::isSuperAdmin($user) || self::isKomandan($user);
     }
 
     public static function isAnggotaSintel(User $user): bool
@@ -71,10 +104,9 @@ class MobileAccess
 
     public static function isPasops(User $user): bool
     {
-        $name = strtolower((string) $user->name);
         return in_array(self::normalizedRole($user), ['pasops', 'admin', 'komandan'], true)
-            || str_contains($name, 'roni sumantri')
-            || str_contains($name, 'sultan');
+            || self::isDeveloper($user)
+            || (bool) ($user->can_sign_sp_jaga ?? false);
     }
 
     /**
@@ -91,11 +123,11 @@ class MobileAccess
         $komandan = self::isKomandan($user);
         $regular = !$sintel; // menu umum web disembunyikan untuk Anggota Sintel
 
-        // CashController@index: admin atau daftar nama khusus.
-        $cash = $admin || in_array($user->name, self::CASH_EXTRA_NAMES, true);
-        // CommanderAccountController@checkAccess
-        $commanderView = $dev || $komandan || in_array($user->role, ['admin', 'user'], true);
-        $commanderManage = in_array($user->role, ['admin', 'user'], true);
+        // CashController: admin, developer, atau flag can_access_cash.
+        $cash = self::canAccessCash($user);
+        // CommanderAccountController: komandan boleh melihat; ubah hanya admin/developer/flag.
+        $commanderView = self::canViewCommanderAccount($user);
+        $commanderManage = self::canManageCommanderAccount($user);
         // MitraPaymentController@index
         $mitra = $admin || $dev || (bool) $user->can_access_mitra;
         // TechnicalUnitCashController@index
@@ -105,7 +137,7 @@ class MobileAccess
         // IbuBetiAccountController@checkAccess: admin, developer, atau diberi akses (can_access_ibu_beti).
         $ibuBeti = $admin || $dev || (bool) $user->can_access_ibu_beti;
         // SpJagaController@index
-        $spJagaAdmin = $admin || in_array($user->name, self::SP_JAGA_ADMIN_NAMES, true);
+        $spJagaAdmin = self::isSpJagaAdmin($user);
 
         return [
             'dashboard.view' => true,

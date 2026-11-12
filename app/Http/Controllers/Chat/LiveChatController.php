@@ -23,7 +23,7 @@ class LiveChatController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-        $isAdmin = $user->role === 'admin' || $user->name === 'I Gusti Sultan H.A, A.Md.Kom';
+        $isAdmin = \App\Support\MobileAccess::isSuperAdmin($user);
 
         if ($isAdmin) {
             return $this->adminView($request, $user);
@@ -242,7 +242,7 @@ class LiveChatController extends Controller
         $user = Auth::user();
         $this->touchUserPresence($user->id);
 
-        $isAdmin = $user->role === 'admin' || $user->name === 'I Gusti Sultan H.A, A.Md.Kom';
+        $isAdmin = \App\Support\MobileAccess::isSuperAdmin($user);
         $activeUuid = $request->input('uuid');
 
         $incomingCall = Cache::get("live_chat:user_call:{$user->id}");
@@ -379,7 +379,7 @@ class LiveChatController extends Controller
     public function getMessages(Request $request, $uuid)
     {
         $user = Auth::user();
-        $isAdmin = $user->role === 'admin' || $user->name === 'I Gusti Sultan H.A, A.Md.Kom';
+        $isAdmin = \App\Support\MobileAccess::isSuperAdmin($user);
 
         $thread = LiveChatThread::where('uuid', $uuid)->firstOrFail();
 
@@ -406,7 +406,7 @@ class LiveChatController extends Controller
     public function sendMessage(Request $request, $uuid)
     {
         $user = Auth::user();
-        $isAdmin = $user->role === 'admin' || $user->name === 'I Gusti Sultan H.A, A.Md.Kom';
+        $isAdmin = \App\Support\MobileAccess::isSuperAdmin($user);
 
         $thread = LiveChatThread::where('uuid', $uuid)->firstOrFail();
 
@@ -507,7 +507,7 @@ class LiveChatController extends Controller
     public function typing(Request $request, $uuid)
     {
         $user = Auth::user();
-        $isAdmin = $user->role === 'admin' || $user->name === 'I Gusti Sultan H.A, A.Md.Kom';
+        $isAdmin = \App\Support\MobileAccess::isSuperAdmin($user);
         $type = $isAdmin ? 'ADMIN' : 'USER';
 
         Cache::put("live_chat:typing:{$uuid}:{$type}", true, now()->addSeconds(4));
@@ -629,7 +629,7 @@ class LiveChatController extends Controller
             abort(404, 'Berkas lampiran tidak ditemukan.');
         }
         $user = Auth::user();
-        $isAdmin = $user->role === 'admin' || $user->name === 'I Gusti Sultan H.A, A.Md.Kom';
+        $isAdmin = \App\Support\MobileAccess::isSuperAdmin($user);
         $thread = LiveChatThread::where('uuid', $m[1])->first();
         if (!$thread || (!$isAdmin && (int) $thread->user_id !== (int) $user->id)) {
             abort(403, 'Akses ditolak.');
@@ -663,7 +663,7 @@ class LiveChatController extends Controller
         $user = Auth::user();
         $thread = LiveChatThread::with('user')->where('uuid', $uuid)->firstOrFail();
 
-        $isAdmin = $user->role === 'admin' || $user->name === 'I Gusti Sultan H.A, A.Md.Kom';
+        $isAdmin = \App\Support\MobileAccess::isSuperAdmin($user);
 
         if ($isAdmin) {
             $caller = [
@@ -761,7 +761,7 @@ class LiveChatController extends Controller
         }
 
         $user = Auth::user();
-        $isAdmin = $user->role === 'admin' || $user->name === 'I Gusti Sultan H.A, A.Md.Kom';
+        $isAdmin = \App\Support\MobileAccess::isSuperAdmin($user);
         $senderRole = $isAdmin ? 'ADMIN' : 'USER';
 
         $action = $request->input('action');

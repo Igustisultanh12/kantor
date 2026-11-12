@@ -337,7 +337,7 @@ class SkhppController extends Controller
     public function approve(Request $request, $id)
     {
         $user = auth()->user();
-        $isCommander = $user->role === 'admin' || $user->role === 'komandan' || $user->name === 'I Gusti Sultan H.A, A.Md.Kom';
+        $isCommander = \App\Support\MobileAccess::canApproveAsCommander($user);
 
         if (!$isCommander) {
             return back()->with('error', 'Otoritas ditolak! Hanya Komandan yang berwenang menandatangani SKHPP.');
@@ -518,7 +518,7 @@ class SkhppController extends Controller
     public function reject(Request $request, $id)
     {
         $user = auth()->user();
-        $isCommander = $user->role === 'admin' || $user->role === 'komandan' || $user->name === 'I Gusti Sultan H.A, A.Md.Kom';
+        $isCommander = \App\Support\MobileAccess::canApproveAsCommander($user);
 
         if (!$isCommander) {
             return back()->with('error', 'Otoritas ditolak!');

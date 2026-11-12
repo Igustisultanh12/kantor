@@ -11,7 +11,7 @@ class ProfileUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['nullable', 'string', 'max:255'],
             'email' => [
                 'required',
                 'string',
@@ -22,7 +22,7 @@ class ProfileUpdateRequest extends FormRequest
             ],
             // Pastikan aturan validasi ini ada agar data tidak dibuang saat masuk ke Controller
             'pangkat' => ['nullable', 'string', 'max:100'],
-            'nrp'     => ['nullable', 'string', 'max:50'],
+            'nrp'     => ['nullable', 'string', 'max:50', Rule::unique(User::class, 'nrp')->ignore($this->user()->id)],
             'phone'   => ['nullable', 'string', 'max:20'],
             'avatar'  => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
             'remove_avatar' => ['nullable', 'boolean'],
