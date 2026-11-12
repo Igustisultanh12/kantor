@@ -208,6 +208,18 @@ fun MainNavigation(
         onPauseOrDispose { id.my.sisinden.app.core.realtime.RealtimeClient.stop() }
     }
 
+    // Ada perangkat masuk/keluar/dikeluarkan: cek apakah token HP ini masih berlaku. Bila HP ini yang
+    // dikeluarkan, server menjawab 401 "device_revoked" -> sesi berakhir & layar masuk menampilkan popup.
+    LaunchedEffect(myUserId) {
+        id.my.sisinden.app.core.realtime.RealtimeClient.changes.collect { modules ->
+            // "*" = aplikasi kembali dari latar belakang (sinyal saat tidak tersambung bisa terlewat).
+            if ("devices" in modules || "*" in modules) {
+                kotlinx.coroutines.delay((0L..1500L).random())
+                repository.refreshSession()
+            }
+        }
+    }
+
     // Notifikasi push (FCM): ambil konfigurasi Firebase dari server lalu daftarkan perangkat.
     LaunchedEffect(myUserId) {
         val cfg = when (val res = repository.getConfig()) {

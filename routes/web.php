@@ -58,6 +58,19 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+// Cek sesi peramban (dipanggil realtime saat ada perubahan perangkat). Sengaja di luar 'auth':
+// sesi yang sudah dikeluarkan tetap mendapat jawaban beserta alasannya.
+Route::get('/session/check', function (\Illuminate\Http\Request $request) {
+    if (auth()->check()) {
+        return response()->json(['authenticated' => true]);
+    }
+    $sid = $request->hasSession() ? $request->session()->getId() : null;
+    return response()->json([
+        'authenticated' => false,
+        'reason' => \App\Support\Realtime::wasRevoked('web', $sid) ? 'device_revoked' : 'expired',
+    ]);
+})->middleware('throttle:30,1')->name('session.check');
+
 // --- FITUR AKTIVASI & RESET CUSTOM (AKSES PUBLIK) ---
 Route::get('/aktivasi', function () {
     return Inertia::render('Auth/Aktivasi'); 

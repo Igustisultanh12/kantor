@@ -42,7 +42,10 @@ class ApiClient(
 
             if (attachToken) {
                 when (response.code) {
-                    401 -> session.onUnauthorized()
+                    401 -> {
+                        val peek = runCatching { response.peekBody(1024).string() }.getOrNull().orEmpty()
+                        session.onUnauthorized(revoked = peek.contains("device_revoked"))
+                    }
                     403 -> {
                         val peek = runCatching { response.peekBody(1024).string() }.getOrNull().orEmpty()
                         if (peek.contains("account_inactive")) session.onAccountDisabled()

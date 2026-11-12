@@ -117,8 +117,32 @@ class DeviceSessionTest extends TestCase
         $this->assertSame(0, DeviceToken::where('user_id', $this->me->id)->count(), 'Push ke HP yang dikeluarkan harus berhenti');
         // HP B langsung keluar; HP A tetap masuk.
         $this->getJson('/api/mobile/devices/heartbeat', $this->bearer($phoneB))->assertStatus(405);
-        $this->postJson('/api/mobile/devices/heartbeat', [], $this->bearer($phoneB))->assertStatus(401);
+        $this->postJson('/api/mobile/devices/heartbeat', [], $this->bearer($phoneB))->assertStatus(401)
+            ->assertJsonPath('code', 'device_revoked');
         $this->postJson('/api/mobile/devices/heartbeat', [], $this->bearer($phoneA))->assertOk();
+        // Token yang sekadar tidak dikenal tetap "unauthenticated" biasa.
+        $this->postJson('/api/mobile/devices/heartbeat', [], $this->bearer('999999|tidak-ada'))->assertStatus(401)
+            ->assertJsonPath('code', 'unauthenticated');
+    }
+
+    public function test_revoked_browser_is_told_it_was_signed_out(): void
+    {
+        config(['session.driver' => 'database']);
+        $sid = \Illuminate\Support\Str::random(40);
+        DB::table('sessions')->insert([
+            'id' => $sid, 'user_id' => $this->me->id, 'ip_address' => '36.80.1.2',
+            'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0 Safari/537.36', 'payload' => '', 'last_activity' => now()->timestamp,
+        ]);
+
+        $this->actingAs($this->me)->deleteJson("/profile/devices/web/{$sid}")->assertOk();
+        auth()->forgetGuards();
+
+        // getJson hanya mengirim cookie bila withCredentials().
+        $this->withCredentials()->withCookie(config('session.cookie'), $sid)->getJson('/session/check')
+            ->assertOk()->assertJson(['authenticated' => false, 'reason' => 'device_revoked']);
+        $this->withCredentials()->withCookie(config('session.cookie'), \Illuminate\Support\Str::random(40))->getJson('/session/check')
+            ->assertOk()->assertJson(['authenticated' => false, 'reason' => 'expired']);
+        $this->actingAs($this->me)->getJson('/session/check')->assertOk()->assertJson(['authenticated' => true]);
     }
 
     public function test_web_sessions_listed_and_logout_others(): void

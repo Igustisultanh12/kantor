@@ -1,7 +1,7 @@
 <script setup>
 // Perangkat & sesi aktif akun ini: web (peramban) dan aplikasi Android.
 // Pemilik akun bisa melihat detail perangkat dan mengeluarkannya dari jarak jauh.
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 
@@ -14,8 +14,8 @@ const open = ref({});
 
 const others = computed(() => devices.value.filter((d) => !d.current));
 
-const load = async () => {
-    loading.value = true;
+const load = async ({ silent = false } = {}) => {
+    if (!silent) loading.value = true;
     error.value = '';
     try {
         const { data } = await axios.get(route('profile.devices'));
@@ -71,7 +71,22 @@ const revokeOthers = () => {
     }).finally(() => (busy.value = null));
 };
 
-onMounted(load);
+// Realtime: perangkat masuk/keluar/dikeluarkan di mana pun -> daftar diperbarui tanpa klik "Muat ulang".
+let refreshTimer = null;
+const onRealtime = (e) => {
+    if (!e?.detail?.modules?.includes('devices')) return;
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(() => load({ silent: true }), 700);
+};
+
+onMounted(() => {
+    load();
+    window.addEventListener('sinden:realtime', onRealtime);
+});
+onBeforeUnmount(() => {
+    clearTimeout(refreshTimer);
+    window.removeEventListener('sinden:realtime', onRealtime);
+});
 </script>
 
 <template>

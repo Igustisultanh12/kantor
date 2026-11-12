@@ -267,6 +267,7 @@ class DeviceSessionService
             $deleted = DB::table(config('session.table', 'sessions'))->where('id', $id)->where('user_id', $user->id)->delete();
             UserDevice::where('user_id', $user->id)->where('kind', 'web')->where('session_id', $id)->delete();
             if ($deleted) {
+                \App\Support\Realtime::markRevoked('web', $id);
                 // Cookie "Ingat saya" di perangkat itu tidak boleh memasukkan sesi baru.
                 $user->forceFill(['remember_token' => Str::random(60)])->saveQuietly();
             }
@@ -285,6 +286,7 @@ class DeviceSessionService
                 DeviceToken::where('user_id', $user->id)->whereIn('token_hash', $hashes)->delete();
             }
             $devices->each->delete();
+            \App\Support\Realtime::markRevoked('android', (string) $token->id);
             $token->delete();
             return true;
         }

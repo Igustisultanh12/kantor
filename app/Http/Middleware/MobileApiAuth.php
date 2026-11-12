@@ -38,6 +38,11 @@ class MobileApiAuth
 
         $token = PersonalAccessToken::findToken($plain);
         if (!$token || !$token->tokenable) {
+            // Token Sanctum berbentuk "<id>|<rahasia>": bila id-nya dikeluarkan pemilik akun, beri tahu alasannya.
+            $tokenId = str_contains($plain, '|') ? strstr($plain, '|', true) : null;
+            if ($tokenId !== null && ctype_digit($tokenId) && \App\Support\Realtime::wasRevoked('android', $tokenId)) {
+                return $this->deny(401, 'device_revoked', 'Maaf, perangkat ini telah dikeluarkan dari akun Anda. Silakan masuk kembali.');
+            }
             return $this->deny(401, 'unauthenticated', 'Sesi tidak valid atau telah berakhir. Silakan masuk kembali.');
         }
 

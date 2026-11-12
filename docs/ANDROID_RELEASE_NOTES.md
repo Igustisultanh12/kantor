@@ -1,4 +1,10 @@
-# SISINDEN Android v2.0.4 (versionCode 27)
+# SISINDEN Android v2.0.5 (versionCode 28)
+
+- **Dikeluarkan dari perangkat langsung terasa**: bila pemilik akun mengeluarkan HP ini dari web **Profil > Perangkat & sesi**, aplikasi langsung kembali ke layar masuk dan menampilkan popup "Maaf, Anda telah keluar - Perangkat ini telah dikeluarkan dari akun Anda". Sebelumnya HP baru keluar saat membuka menu berikutnya, dengan pesan "Sesi berakhir".
+- Saat aplikasi dibuka kembali dari latar belakang, sesi dicek sekali, sehingga HP yang dikeluarkan selama aplikasi tertutup juga langsung tahu.
+- Perangkat lain yang masuk atau keluar tidak lagi memuat ulang layar yang sedang dibuka.
+
+---# SISINDEN Android v2.0.4 (versionCode 27)
 
 - **Realtime tanpa refresh**: Beranda, Agenda Surat, SKHPP, Daftar Jaga, Absensi, Warta, Chat, Backup, keuangan, dan menu data lainnya memuat ulang sendiri saat ada data baru atau data diubah (dari web maupun HP lain). Tidak perlu tarik-untuk-segarkan.
 - Memakai server realtime SISINDEN sendiri (Laravel Reverb). Yang dikirim lewat sambungan realtime hanya nama modul yang berubah; datanya tetap diambil lewat API yang memeriksa hak akses.

@@ -83,6 +83,14 @@ class Realtime
             return;
         }
         $table = strtolower($m[1]);
+        // Perangkat masuk/keluar/dikeluarkan: sinyal "devices" (bukan tiap heartbeat/pemakaian token).
+        // Sesi web baru tercatat lewat insert user_devices, jadi insert ke sessions (termasuk tamu) diabaikan.
+        if (($head !== 'update' && in_array($table, ['user_devices', 'personal_access_tokens'], true))
+            // Pembersihan sesi kedaluwarsa (gc, "where last_activity <= ?") bukan aksi perangkat.
+            || ($head === 'delete' && $table === 'sessions' && stripos($sql, 'last_activity') === false)) {
+            self::touch('devices');
+            return;
+        }
         if (in_array($table, self::IGNORED_TABLES, true)) {
             return;
         }
@@ -148,6 +156,28 @@ class Realtime
             // Reverb mati / tidak terjangkau: aplikasi tetap jalan, hanya tanpa realtime.
             logger()->warning('[Realtime] Gagal menyiarkan perubahan: ' . $e->getMessage());
         }
+    }
+
+    /** Tandai sesi web / token aplikasi yang dikeluarkan pemilik akun, agar perangkat itu diberi tahu alasannya. */
+    public static function markRevoked(string $kind, string $id): void
+    {
+        \Illuminate\Support\Facades\Cache::put(self::revokedKey($kind, $id), true, now()->addDays(7));
+    }
+
+    /** Apakah sesi/token ini dikeluarkan pemilik akun (bukan sekadar habis). Sekali baca lalu dihapus bila $consume. */
+    public static function wasRevoked(string $kind, ?string $id, bool $consume = false): bool
+    {
+        if ($id === null || $id === '') {
+            return false;
+        }
+        $key = self::revokedKey($kind, $id);
+        return (bool) ($consume ? \Illuminate\Support\Facades\Cache::pull($key) : \Illuminate\Support\Facades\Cache::get($key));
+    }
+
+    private static function revokedKey(string $kind, string $id): string
+    {
+        // ID sesi tidak disimpan mentah.
+        return 'revoked:' . $kind . ':' . hash('sha256', $id);
     }
 
     /** Konfigurasi publik untuk klien (aplikasi Android). Null bila realtime belum aktif. */

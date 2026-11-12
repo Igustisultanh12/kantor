@@ -118,6 +118,18 @@ fun LoginScreen(
         }
     }
 
+    // Dikeluarkan dari Profil > Perangkat & sesi oleh pemilik akun: beri tahu lewat popup (sekali).
+    var revokedNotice by rememberSaveable(logoutReason) { mutableStateOf(logoutReason == LogoutReason.REVOKED) }
+    if (revokedNotice) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { revokedNotice = false },
+            icon = { Icon(Icons.Outlined.Info, contentDescription = null) },
+            title = { Text("Maaf, Anda telah keluar") },
+            text = { Text("Perangkat ini telah dikeluarkan dari akun Anda. Silakan masuk kembali.") },
+            confirmButton = { TextButton(onClick = { revokedNotice = false }) { Text("Mengerti") } },
+        )
+    }
+
     BrandBackdrop(backgroundUrl = config?.loginBackground) {
         Column(
             Modifier

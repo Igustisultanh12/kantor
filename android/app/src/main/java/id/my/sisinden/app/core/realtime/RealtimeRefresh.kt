@@ -9,7 +9,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Muat ulang data ViewModel saat server menyiarkan perubahan pada [modules]
- * (kosong = modul apa pun kecuali "general"). Beberapa sinyal beruntun
+ * (kosong = modul apa pun kecuali "general" dan "devices"). Beberapa sinyal beruntun
  * digabung jadi satu muat ulang.
  */
 @OptIn(FlowPreview::class)
@@ -18,7 +18,8 @@ fun ViewModel.onRealtime(vararg modules: String, refresh: () -> Unit) {
     viewModelScope.launch {
         RealtimeClient.changes
             .filter { changed ->
-                if (wanted.isEmpty()) changed.any { it != "general" } else changed.any { it in wanted || it == "*" }
+                // "devices" (perangkat masuk/keluar) ditangani MainNavigation, bukan muat ulang layar.
+                if (wanted.isEmpty()) changed.any { it != "general" && it != "devices" } else changed.any { it in wanted || it == "*" }
             }
             .debounce(1_200)
             .collect { refresh() }

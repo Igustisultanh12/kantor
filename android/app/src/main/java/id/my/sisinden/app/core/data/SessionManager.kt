@@ -11,7 +11,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /** Alasan sesi berakhir, untuk pesan di layar login. */
-enum class LogoutReason { USER, EXPIRED, DISABLED }
+enum class LogoutReason { USER, EXPIRED, DISABLED, REVOKED }
 
 sealed interface SessionState {
     data object Restoring : SessionState
@@ -80,10 +80,10 @@ class SessionManager(
         _state.value = SessionState.LoggedOut(reason)
     }
 
-    /** Dipanggil interceptor saat server menolak token (401). */
-    fun onUnauthorized() {
+    /** Dipanggil interceptor saat server menolak token (401). [revoked] = dikeluarkan dari Profil > Perangkat. */
+    fun onUnauthorized(revoked: Boolean = false) {
         if (token == null) return
-        scope.launch { end(LogoutReason.EXPIRED) }
+        scope.launch { end(if (revoked) LogoutReason.REVOKED else LogoutReason.EXPIRED) }
     }
 
     /** Dipanggil saat server menyatakan akun dinonaktifkan (403 account_inactive). */

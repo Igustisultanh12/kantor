@@ -55,6 +55,24 @@ class RealtimeTest extends TestCase
         $this->assertSame([], Realtime::pending());
     }
 
+    public function test_device_changes_signal_devices_but_not_heartbeats_or_gc(): void
+    {
+        Realtime::inspectSql('update `user_devices` set `battery_level` = ? where `id` = ?');
+        Realtime::inspectSql('update `personal_access_tokens` set `last_used_at` = ? where `id` = ?');
+        Realtime::inspectSql('insert into `sessions` (`id`, `payload`) values (?, ?)');
+        Realtime::inspectSql('delete from `sessions` where `last_activity` <= ?');
+        $this->assertSame([], Realtime::pending());
+
+        Realtime::inspectSql('insert into `user_devices` (`kind`) values (?)');
+        $this->assertSame(['devices'], Realtime::pending());
+        Realtime::reset();
+        Realtime::inspectSql('delete from `sessions` where `id` = ?');
+        $this->assertSame(['devices'], Realtime::pending());
+        Realtime::reset();
+        Realtime::inspectSql('delete from "personal_access_tokens" where "id" = ?');
+        $this->assertSame(['devices'], Realtime::pending());
+    }
+
     public function test_disabled_when_reverb_not_configured(): void
     {
         config(['broadcasting.default' => 'log']);

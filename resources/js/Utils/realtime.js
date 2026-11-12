@@ -26,6 +26,8 @@ const PAGE_MODULES = {
 };
 // Selalu memuat ulang (lonceng notifikasi & badge chat ada di semua halaman).
 const ALWAYS = ['notifications'];
+// Modul yang tidak memicu muat ulang halaman Inertia ("devices" ditangani di bawah & oleh DeviceSessions.vue).
+const QUIET = ['general', 'devices'];
 
 let echo = null;
 let timer = null;
@@ -36,8 +38,41 @@ const pageWants = (component, modules) => {
     const root = String(component || '').split('/')[0];
     const wanted = PAGE_MODULES[root];
     if (modules.some((m) => ALWAYS.includes(m))) return true;
-    if (!wanted) return modules.some((m) => m !== 'general');
-    return wanted.includes('*') || modules.some((m) => wanted.includes(m));
+    const loud = modules.filter((m) => !QUIET.includes(m));
+    if (!wanted) return loud.length > 0;
+    return (wanted.includes('*') && loud.length > 0) || loud.some((m) => wanted.includes(m));
+};
+
+// Ada perangkat yang masuk/keluar/dikeluarkan: pastikan peramban ini masih masuk.
+// Bila sesi ini yang dikeluarkan, beri tahu lalu arahkan ke halaman masuk.
+let checkingSession = false;
+let kickedOut = false;
+const checkSession = async () => {
+    if (checkingSession || kickedOut) return;
+    checkingSession = true;
+    try {
+        const { data } = await axios.get('/session/check', { headers: { Accept: 'application/json' } });
+        if (data?.authenticated !== false) return;
+        kickedOut = true;
+        stopRealtime();
+        const revoked = data.reason === 'device_revoked';
+        const { default: Swal } = await import('sweetalert2');
+        await Swal.fire({
+            icon: 'warning',
+            title: 'Maaf, Anda telah keluar',
+            text: revoked
+                ? 'Perangkat ini telah dikeluarkan dari akun Anda. Silakan masuk kembali.'
+                : 'Sesi Anda telah berakhir. Silakan masuk kembali.',
+            confirmButtonText: 'Masuk kembali',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+        });
+        window.location.href = '/login';
+    } catch (e) {
+        /* jaringan bermasalah: abaikan, dicek lagi pada sinyal berikutnya */
+    } finally {
+        checkingSession = false;
+    }
 };
 
 // Jangan memuat ulang saat pengguna sedang mengetik / membuka dialog: tunda sampai selesai.
@@ -102,6 +137,8 @@ export function startRealtime(page) {
         const modules = Array.isArray(e?.modules) ? e.modules : [];
         // Komponen yang punya logika sendiri (mis. chat) bisa mendengarkan event ini.
         window.dispatchEvent(new CustomEvent('sinden:realtime', { detail: { modules } }));
+        // Jeda acak kecil agar semua peramban yang terbuka tidak mengecek bersamaan.
+        if (modules.includes('devices')) setTimeout(checkSession, Math.random() * 1500);
         if (pageWants(page.component, modules)) reloadSoon();
     });
 }
