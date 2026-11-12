@@ -62,6 +62,7 @@ class SettingController extends Controller
             'ui_glass_blur' => 'nullable|integer|min:0|max:40',
             'ui_glass_opacity' => 'nullable|integer|min:20|max:100',
             'ui_motion_enabled' => 'nullable|in:0,1',
+            'ui_nova' => 'nullable|in:0,1', // Tampilan Nova (PRD redesign); bisa ditimpa per perangkat via ?nova=
             'ui_background' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
             'ui_background_clear' => 'nullable|boolean',
         ]);
@@ -76,6 +77,7 @@ class SettingController extends Controller
             'agora_app_id', 'agora_app_certificate',
             'turnstile_enabled', 'turnstile_site_key', 'fcm_enabled',
             'ui_bg_style', 'ui_bg_animated', 'ui_bg_blur', 'ui_glass_blur', 'ui_glass_opacity', 'ui_motion_enabled',
+            'ui_nova',
         ];
         foreach ($request->only($textFields) as $key => $value) {
             if ($value !== null) {

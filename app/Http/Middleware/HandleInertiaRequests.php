@@ -80,6 +80,7 @@ class HandleInertiaRequests extends Middleware
                     'avatar_url' => $request->user()->avatar ? asset('storage/' . $request->user()->avatar) : null,
                     'pangkat'    => $request->user()->pangkat,
                     'nrp'        => $request->user()->nrp,
+                    'jabatan'    => $request->user()->jabatan ?? null, // untuk lanyard dashboard (kolom opsional)
                     'role'       => $request->user()->role, 
                     'is_active'  => $request->user()->is_active,
                     'can_access_mitra' => (bool)$request->user()->can_access_mitra,

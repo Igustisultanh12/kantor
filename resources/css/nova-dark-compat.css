@@ -1,0 +1,137 @@
+/* AUTO: jembatan warna Tailwind lama untuk mode gelap Nova (dibuat skrip, jangan diedit manual).
+   Latar pastel -50/-100 jadi tint transparan, teks -500..-900 jadi nada terang (kontras >= 4.5:1). */
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-blue-50, .bg-blue-100, [class*="bg-blue-50/"], [class*="bg-blue-100/"]) { background-color: rgba(59,130,246,.14) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-blue-200, [class*="bg-blue-200/"]) { background-color: rgba(59,130,246,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.text-blue-500, .text-blue-600, .text-blue-700, .text-blue-800, .text-blue-900) { color: #93C5FD !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.border-blue-50, .border-blue-100, .border-blue-200, .border-blue-300, [class*="border-blue-100/"], [class*="border-blue-200/"]) { border-color: rgba(59,130,246,.32) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.hover\:bg-blue-50, .hover\:bg-blue-100):hover { background-color: rgba(59,130,246,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .from-blue-50, .nova.nova.nova[data-theme="dark"] .nv-main .from-blue-100 { --tw-gradient-from: rgba(59,130,246,.16) var(--tw-gradient-from-position) !important; --tw-gradient-to: rgba(59,130,246,0) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .to-blue-50, .nova.nova.nova[data-theme="dark"] .nv-main .to-blue-100 { --tw-gradient-to: rgba(59,130,246,.1) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-indigo-50, .bg-indigo-100, [class*="bg-indigo-50/"], [class*="bg-indigo-100/"]) { background-color: rgba(99,102,241,.14) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-indigo-200, [class*="bg-indigo-200/"]) { background-color: rgba(99,102,241,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.text-indigo-500, .text-indigo-600, .text-indigo-700, .text-indigo-800, .text-indigo-900) { color: #A5B4FC !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.border-indigo-50, .border-indigo-100, .border-indigo-200, .border-indigo-300, [class*="border-indigo-100/"], [class*="border-indigo-200/"]) { border-color: rgba(99,102,241,.32) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.hover\:bg-indigo-50, .hover\:bg-indigo-100):hover { background-color: rgba(99,102,241,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .from-indigo-50, .nova.nova.nova[data-theme="dark"] .nv-main .from-indigo-100 { --tw-gradient-from: rgba(99,102,241,.16) var(--tw-gradient-from-position) !important; --tw-gradient-to: rgba(99,102,241,0) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .to-indigo-50, .nova.nova.nova[data-theme="dark"] .nv-main .to-indigo-100 { --tw-gradient-to: rgba(99,102,241,.1) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-emerald-50, .bg-emerald-100, [class*="bg-emerald-50/"], [class*="bg-emerald-100/"]) { background-color: rgba(16,185,129,.14) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-emerald-200, [class*="bg-emerald-200/"]) { background-color: rgba(16,185,129,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.text-emerald-500, .text-emerald-600, .text-emerald-700, .text-emerald-800, .text-emerald-900) { color: #6EE7B7 !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.border-emerald-50, .border-emerald-100, .border-emerald-200, .border-emerald-300, [class*="border-emerald-100/"], [class*="border-emerald-200/"]) { border-color: rgba(16,185,129,.32) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.hover\:bg-emerald-50, .hover\:bg-emerald-100):hover { background-color: rgba(16,185,129,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .from-emerald-50, .nova.nova.nova[data-theme="dark"] .nv-main .from-emerald-100 { --tw-gradient-from: rgba(16,185,129,.16) var(--tw-gradient-from-position) !important; --tw-gradient-to: rgba(16,185,129,0) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .to-emerald-50, .nova.nova.nova[data-theme="dark"] .nv-main .to-emerald-100 { --tw-gradient-to: rgba(16,185,129,.1) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-green-50, .bg-green-100, [class*="bg-green-50/"], [class*="bg-green-100/"]) { background-color: rgba(34,197,94,.14) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-green-200, [class*="bg-green-200/"]) { background-color: rgba(34,197,94,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.text-green-500, .text-green-600, .text-green-700, .text-green-800, .text-green-900) { color: #86EFAC !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.border-green-50, .border-green-100, .border-green-200, .border-green-300, [class*="border-green-100/"], [class*="border-green-200/"]) { border-color: rgba(34,197,94,.32) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.hover\:bg-green-50, .hover\:bg-green-100):hover { background-color: rgba(34,197,94,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .from-green-50, .nova.nova.nova[data-theme="dark"] .nv-main .from-green-100 { --tw-gradient-from: rgba(34,197,94,.16) var(--tw-gradient-from-position) !important; --tw-gradient-to: rgba(34,197,94,0) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .to-green-50, .nova.nova.nova[data-theme="dark"] .nv-main .to-green-100 { --tw-gradient-to: rgba(34,197,94,.1) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-amber-50, .bg-amber-100, [class*="bg-amber-50/"], [class*="bg-amber-100/"]) { background-color: rgba(245,158,11,.14) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-amber-200, [class*="bg-amber-200/"]) { background-color: rgba(245,158,11,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.text-amber-500, .text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900) { color: #FCD34D !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.border-amber-50, .border-amber-100, .border-amber-200, .border-amber-300, [class*="border-amber-100/"], [class*="border-amber-200/"]) { border-color: rgba(245,158,11,.32) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.hover\:bg-amber-50, .hover\:bg-amber-100):hover { background-color: rgba(245,158,11,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .from-amber-50, .nova.nova.nova[data-theme="dark"] .nv-main .from-amber-100 { --tw-gradient-from: rgba(245,158,11,.16) var(--tw-gradient-from-position) !important; --tw-gradient-to: rgba(245,158,11,0) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .to-amber-50, .nova.nova.nova[data-theme="dark"] .nv-main .to-amber-100 { --tw-gradient-to: rgba(245,158,11,.1) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-yellow-50, .bg-yellow-100, [class*="bg-yellow-50/"], [class*="bg-yellow-100/"]) { background-color: rgba(234,179,8,.14) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-yellow-200, [class*="bg-yellow-200/"]) { background-color: rgba(234,179,8,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.text-yellow-500, .text-yellow-600, .text-yellow-700, .text-yellow-800, .text-yellow-900) { color: #FDE047 !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.border-yellow-50, .border-yellow-100, .border-yellow-200, .border-yellow-300, [class*="border-yellow-100/"], [class*="border-yellow-200/"]) { border-color: rgba(234,179,8,.32) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.hover\:bg-yellow-50, .hover\:bg-yellow-100):hover { background-color: rgba(234,179,8,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .from-yellow-50, .nova.nova.nova[data-theme="dark"] .nv-main .from-yellow-100 { --tw-gradient-from: rgba(234,179,8,.16) var(--tw-gradient-from-position) !important; --tw-gradient-to: rgba(234,179,8,0) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .to-yellow-50, .nova.nova.nova[data-theme="dark"] .nv-main .to-yellow-100 { --tw-gradient-to: rgba(234,179,8,.1) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-orange-50, .bg-orange-100, [class*="bg-orange-50/"], [class*="bg-orange-100/"]) { background-color: rgba(249,115,22,.14) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-orange-200, [class*="bg-orange-200/"]) { background-color: rgba(249,115,22,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.text-orange-500, .text-orange-600, .text-orange-700, .text-orange-800, .text-orange-900) { color: #FDBA74 !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.border-orange-50, .border-orange-100, .border-orange-200, .border-orange-300, [class*="border-orange-100/"], [class*="border-orange-200/"]) { border-color: rgba(249,115,22,.32) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.hover\:bg-orange-50, .hover\:bg-orange-100):hover { background-color: rgba(249,115,22,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .from-orange-50, .nova.nova.nova[data-theme="dark"] .nv-main .from-orange-100 { --tw-gradient-from: rgba(249,115,22,.16) var(--tw-gradient-from-position) !important; --tw-gradient-to: rgba(249,115,22,0) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .to-orange-50, .nova.nova.nova[data-theme="dark"] .nv-main .to-orange-100 { --tw-gradient-to: rgba(249,115,22,.1) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-red-50, .bg-red-100, [class*="bg-red-50/"], [class*="bg-red-100/"]) { background-color: rgba(239,68,68,.14) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-red-200, [class*="bg-red-200/"]) { background-color: rgba(239,68,68,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.text-red-500, .text-red-600, .text-red-700, .text-red-800, .text-red-900) { color: #FCA5A5 !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.border-red-50, .border-red-100, .border-red-200, .border-red-300, [class*="border-red-100/"], [class*="border-red-200/"]) { border-color: rgba(239,68,68,.32) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.hover\:bg-red-50, .hover\:bg-red-100):hover { background-color: rgba(239,68,68,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .from-red-50, .nova.nova.nova[data-theme="dark"] .nv-main .from-red-100 { --tw-gradient-from: rgba(239,68,68,.16) var(--tw-gradient-from-position) !important; --tw-gradient-to: rgba(239,68,68,0) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .to-red-50, .nova.nova.nova[data-theme="dark"] .nv-main .to-red-100 { --tw-gradient-to: rgba(239,68,68,.1) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-rose-50, .bg-rose-100, [class*="bg-rose-50/"], [class*="bg-rose-100/"]) { background-color: rgba(244,63,94,.14) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-rose-200, [class*="bg-rose-200/"]) { background-color: rgba(244,63,94,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.text-rose-500, .text-rose-600, .text-rose-700, .text-rose-800, .text-rose-900) { color: #FDA4AF !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.border-rose-50, .border-rose-100, .border-rose-200, .border-rose-300, [class*="border-rose-100/"], [class*="border-rose-200/"]) { border-color: rgba(244,63,94,.32) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.hover\:bg-rose-50, .hover\:bg-rose-100):hover { background-color: rgba(244,63,94,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .from-rose-50, .nova.nova.nova[data-theme="dark"] .nv-main .from-rose-100 { --tw-gradient-from: rgba(244,63,94,.16) var(--tw-gradient-from-position) !important; --tw-gradient-to: rgba(244,63,94,0) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .to-rose-50, .nova.nova.nova[data-theme="dark"] .nv-main .to-rose-100 { --tw-gradient-to: rgba(244,63,94,.1) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-purple-50, .bg-purple-100, [class*="bg-purple-50/"], [class*="bg-purple-100/"]) { background-color: rgba(168,85,247,.14) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-purple-200, [class*="bg-purple-200/"]) { background-color: rgba(168,85,247,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.text-purple-500, .text-purple-600, .text-purple-700, .text-purple-800, .text-purple-900) { color: #D8B4FE !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.border-purple-50, .border-purple-100, .border-purple-200, .border-purple-300, [class*="border-purple-100/"], [class*="border-purple-200/"]) { border-color: rgba(168,85,247,.32) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.hover\:bg-purple-50, .hover\:bg-purple-100):hover { background-color: rgba(168,85,247,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .from-purple-50, .nova.nova.nova[data-theme="dark"] .nv-main .from-purple-100 { --tw-gradient-from: rgba(168,85,247,.16) var(--tw-gradient-from-position) !important; --tw-gradient-to: rgba(168,85,247,0) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .to-purple-50, .nova.nova.nova[data-theme="dark"] .nv-main .to-purple-100 { --tw-gradient-to: rgba(168,85,247,.1) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-violet-50, .bg-violet-100, [class*="bg-violet-50/"], [class*="bg-violet-100/"]) { background-color: rgba(139,92,246,.14) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-violet-200, [class*="bg-violet-200/"]) { background-color: rgba(139,92,246,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.text-violet-500, .text-violet-600, .text-violet-700, .text-violet-800, .text-violet-900) { color: #C4B5FD !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.border-violet-50, .border-violet-100, .border-violet-200, .border-violet-300, [class*="border-violet-100/"], [class*="border-violet-200/"]) { border-color: rgba(139,92,246,.32) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.hover\:bg-violet-50, .hover\:bg-violet-100):hover { background-color: rgba(139,92,246,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .from-violet-50, .nova.nova.nova[data-theme="dark"] .nv-main .from-violet-100 { --tw-gradient-from: rgba(139,92,246,.16) var(--tw-gradient-from-position) !important; --tw-gradient-to: rgba(139,92,246,0) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .to-violet-50, .nova.nova.nova[data-theme="dark"] .nv-main .to-violet-100 { --tw-gradient-to: rgba(139,92,246,.1) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-pink-50, .bg-pink-100, [class*="bg-pink-50/"], [class*="bg-pink-100/"]) { background-color: rgba(236,72,153,.14) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-pink-200, [class*="bg-pink-200/"]) { background-color: rgba(236,72,153,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.text-pink-500, .text-pink-600, .text-pink-700, .text-pink-800, .text-pink-900) { color: #F9A8D4 !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.border-pink-50, .border-pink-100, .border-pink-200, .border-pink-300, [class*="border-pink-100/"], [class*="border-pink-200/"]) { border-color: rgba(236,72,153,.32) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.hover\:bg-pink-50, .hover\:bg-pink-100):hover { background-color: rgba(236,72,153,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .from-pink-50, .nova.nova.nova[data-theme="dark"] .nv-main .from-pink-100 { --tw-gradient-from: rgba(236,72,153,.16) var(--tw-gradient-from-position) !important; --tw-gradient-to: rgba(236,72,153,0) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .to-pink-50, .nova.nova.nova[data-theme="dark"] .nv-main .to-pink-100 { --tw-gradient-to: rgba(236,72,153,.1) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-cyan-50, .bg-cyan-100, [class*="bg-cyan-50/"], [class*="bg-cyan-100/"]) { background-color: rgba(6,182,212,.14) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-cyan-200, [class*="bg-cyan-200/"]) { background-color: rgba(6,182,212,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.text-cyan-500, .text-cyan-600, .text-cyan-700, .text-cyan-800, .text-cyan-900) { color: #67E8F9 !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.border-cyan-50, .border-cyan-100, .border-cyan-200, .border-cyan-300, [class*="border-cyan-100/"], [class*="border-cyan-200/"]) { border-color: rgba(6,182,212,.32) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.hover\:bg-cyan-50, .hover\:bg-cyan-100):hover { background-color: rgba(6,182,212,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .from-cyan-50, .nova.nova.nova[data-theme="dark"] .nv-main .from-cyan-100 { --tw-gradient-from: rgba(6,182,212,.16) var(--tw-gradient-from-position) !important; --tw-gradient-to: rgba(6,182,212,0) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .to-cyan-50, .nova.nova.nova[data-theme="dark"] .nv-main .to-cyan-100 { --tw-gradient-to: rgba(6,182,212,.1) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-sky-50, .bg-sky-100, [class*="bg-sky-50/"], [class*="bg-sky-100/"]) { background-color: rgba(14,165,233,.14) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-sky-200, [class*="bg-sky-200/"]) { background-color: rgba(14,165,233,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.text-sky-500, .text-sky-600, .text-sky-700, .text-sky-800, .text-sky-900) { color: #7DD3FC !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.border-sky-50, .border-sky-100, .border-sky-200, .border-sky-300, [class*="border-sky-100/"], [class*="border-sky-200/"]) { border-color: rgba(14,165,233,.32) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.hover\:bg-sky-50, .hover\:bg-sky-100):hover { background-color: rgba(14,165,233,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .from-sky-50, .nova.nova.nova[data-theme="dark"] .nv-main .from-sky-100 { --tw-gradient-from: rgba(14,165,233,.16) var(--tw-gradient-from-position) !important; --tw-gradient-to: rgba(14,165,233,0) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .to-sky-50, .nova.nova.nova[data-theme="dark"] .nv-main .to-sky-100 { --tw-gradient-to: rgba(14,165,233,.1) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-teal-50, .bg-teal-100, [class*="bg-teal-50/"], [class*="bg-teal-100/"]) { background-color: rgba(20,184,166,.14) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-teal-200, [class*="bg-teal-200/"]) { background-color: rgba(20,184,166,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.text-teal-500, .text-teal-600, .text-teal-700, .text-teal-800, .text-teal-900) { color: #5EEAD4 !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.border-teal-50, .border-teal-100, .border-teal-200, .border-teal-300, [class*="border-teal-100/"], [class*="border-teal-200/"]) { border-color: rgba(20,184,166,.32) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.hover\:bg-teal-50, .hover\:bg-teal-100):hover { background-color: rgba(20,184,166,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .from-teal-50, .nova.nova.nova[data-theme="dark"] .nv-main .from-teal-100 { --tw-gradient-from: rgba(20,184,166,.16) var(--tw-gradient-from-position) !important; --tw-gradient-to: rgba(20,184,166,0) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .to-teal-50, .nova.nova.nova[data-theme="dark"] .nv-main .to-teal-100 { --tw-gradient-to: rgba(20,184,166,.1) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-lime-50, .bg-lime-100, [class*="bg-lime-50/"], [class*="bg-lime-100/"]) { background-color: rgba(132,204,22,.14) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-lime-200, [class*="bg-lime-200/"]) { background-color: rgba(132,204,22,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.text-lime-500, .text-lime-600, .text-lime-700, .text-lime-800, .text-lime-900) { color: #BEF264 !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.border-lime-50, .border-lime-100, .border-lime-200, .border-lime-300, [class*="border-lime-100/"], [class*="border-lime-200/"]) { border-color: rgba(132,204,22,.32) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.hover\:bg-lime-50, .hover\:bg-lime-100):hover { background-color: rgba(132,204,22,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .from-lime-50, .nova.nova.nova[data-theme="dark"] .nv-main .from-lime-100 { --tw-gradient-from: rgba(132,204,22,.16) var(--tw-gradient-from-position) !important; --tw-gradient-to: rgba(132,204,22,0) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .to-lime-50, .nova.nova.nova[data-theme="dark"] .nv-main .to-lime-100 { --tw-gradient-to: rgba(132,204,22,.1) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-fuchsia-50, .bg-fuchsia-100, [class*="bg-fuchsia-50/"], [class*="bg-fuchsia-100/"]) { background-color: rgba(217,70,239,.14) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-fuchsia-200, [class*="bg-fuchsia-200/"]) { background-color: rgba(217,70,239,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.text-fuchsia-500, .text-fuchsia-600, .text-fuchsia-700, .text-fuchsia-800, .text-fuchsia-900) { color: #F0ABFC !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.border-fuchsia-50, .border-fuchsia-100, .border-fuchsia-200, .border-fuchsia-300, [class*="border-fuchsia-100/"], [class*="border-fuchsia-200/"]) { border-color: rgba(217,70,239,.32) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.hover\:bg-fuchsia-50, .hover\:bg-fuchsia-100):hover { background-color: rgba(217,70,239,.22) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .from-fuchsia-50, .nova.nova.nova[data-theme="dark"] .nv-main .from-fuchsia-100 { --tw-gradient-from: rgba(217,70,239,.16) var(--tw-gradient-from-position) !important; --tw-gradient-to: rgba(217,70,239,0) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .to-fuchsia-50, .nova.nova.nova[data-theme="dark"] .nv-main .to-fuchsia-100 { --tw-gradient-to: rgba(217,70,239,.1) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is([class*="bg-slate-50/"], [class*="bg-slate-100/"]) { background-color: rgba(255,255,255,.04) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-slate-200, [class*="bg-slate-200/"]) { background-color: rgba(255,255,255,.08) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.border-slate-300, [class*="border-slate-100/"], [class*="border-slate-200/"]) { border-color: rgba(255,255,255,.1) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.text-slate-300) { color: #CBD5E1 !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .from-slate-50, .nova.nova.nova[data-theme="dark"] .nv-main .from-slate-100 { --tw-gradient-from: rgba(255,255,255,.04) var(--tw-gradient-from-position) !important; --tw-gradient-to: rgba(255,255,255,0) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is([class*="bg-gray-50/"], [class*="bg-gray-100/"]) { background-color: rgba(255,255,255,.04) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-gray-200, [class*="bg-gray-200/"]) { background-color: rgba(255,255,255,.08) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.border-gray-300, [class*="border-gray-100/"], [class*="border-gray-200/"]) { border-color: rgba(255,255,255,.1) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.text-gray-300) { color: #CBD5E1 !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .from-gray-50, .nova.nova.nova[data-theme="dark"] .nv-main .from-gray-100 { --tw-gradient-from: rgba(255,255,255,.04) var(--tw-gradient-from-position) !important; --tw-gradient-to: rgba(255,255,255,0) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is([class*="bg-zinc-50/"], [class*="bg-zinc-100/"]) { background-color: rgba(255,255,255,.04) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.bg-zinc-200, [class*="bg-zinc-200/"]) { background-color: rgba(255,255,255,.08) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.border-zinc-300, [class*="border-zinc-100/"], [class*="border-zinc-200/"]) { border-color: rgba(255,255,255,.1) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main :is(.text-zinc-300) { color: #CBD5E1 !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .from-zinc-50, .nova.nova.nova[data-theme="dark"] .nv-main .from-zinc-100 { --tw-gradient-from: rgba(255,255,255,.04) var(--tw-gradient-from-position) !important; --tw-gradient-to: rgba(255,255,255,0) var(--tw-gradient-to-position) !important; }
+.nova.nova.nova[data-theme="dark"] .nv-main .border-dashed { border-color: rgba(255,255,255,.16) !important; }

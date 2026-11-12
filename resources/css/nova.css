@@ -1,0 +1,381 @@
+/* =====================================================================
+   SISINDEN NOVA: token & shell (docs/PRD_REDESIGN_UIUX.md v1.1, bagian 6 & 15)
+   Hanya aktif di dalam .nova (NovaShell). Tampilan lama tidak tersentuh.
+   Semua pasangan warna teks sudah diukur ≥ 4.5:1, batas komponen ≥ 3:1.
+   ===================================================================== */
+
+.nova {
+    --nv-bg-canvas: #FAFAFA;
+    --nv-bg-surface: #FFFFFF;
+    --nv-bg-subtle: #F4F4F5;
+    --nv-border: #E4E4E7;
+    --nv-border-input: #8E8E96;
+    --nv-fg: #09090B;
+    --nv-fg-muted: #52525B;
+    --nv-fg-subtle: #6B6B74;
+    --nv-accent: #2563EB;
+    --nv-accent-solid: #2563EB;
+    --nv-accent-fg: #FFFFFF;
+    --nv-accent-soft: #EFF6FF;
+    --nv-accent-on-soft: #2563EB;
+    --nv-success: #16A34A;
+    --nv-success-fg: #15803D;
+    --nv-warning: #D97706;
+    --nv-warning-fg: #B45309;
+    --nv-danger: #DC2626;
+    --nv-violet: #8B5CF6;
+    --nv-scrim: rgba(9, 9, 11, .55);
+
+    --nv-r-sm: 6px; --nv-r-md: 10px; --nv-r-lg: 14px; --nv-r-xl: 20px;
+    --nv-e1: 0 1px 2px rgba(0, 0, 0, .05);
+    --nv-e2: 0 8px 24px -6px rgba(0, 0, 0, .12);
+    --nv-ring: 0 0 0 3px color-mix(in srgb, var(--nv-accent) 35%, transparent);
+
+    /* Gerak: masuk / keluar (keluar ±65% dari masuk, audit A7) */
+    --nv-ease: cubic-bezier(.2, .8, .2, 1);
+    --nv-ease-slow: cubic-bezier(.16, 1, .3, 1);
+    --nv-ease-exit: cubic-bezier(.4, 0, 1, 1);
+    --nv-t-instant: 100ms; --nv-t-fast: 160ms; --nv-t-base: 240ms; --nv-t-slow: 360ms;
+    --nv-t-fast-exit: 110ms; --nv-t-base-exit: 160ms; --nv-t-slow-exit: 240ms;
+
+    /* Figtree: font lama aplikasi, lebih luwes dari Geist (permintaan pengguna 11-11-2026) */
+    --nv-sans: 'Figtree', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+    --nv-mono: 'Geist Mono Variable', 'Geist Mono', ui-monospace, Consolas, monospace;
+    --nv-topbar-h: 60px;
+
+    color-scheme: light;
+    font-family: var(--nv-sans);
+    color: var(--nv-fg);
+    background: var(--nv-bg-canvas);
+}
+
+/* Mode gelap = estetika halaman Login (navy malam + kaca auth). Kontras diukur:
+   fg 17:1, muted 8.8:1, subtle 6.3:1, accent 7.3:1, garis field 3.2:1. */
+.nova[data-theme="dark"] {
+    --nv-bg-canvas: #050B1A;
+    --nv-bg-surface: #0B1224;
+    --nv-bg-subtle: #111A33;
+    --nv-border: #1E2A44;
+    --nv-border-input: #56658A;
+    --nv-fg: #F1F5F9;
+    --nv-fg-muted: #A8B3C7;
+    --nv-fg-subtle: #8A96AD;
+    --nv-accent: #60A5FA;
+    --nv-accent-solid: #2563EB;
+    --nv-accent-soft: #172554;
+    --nv-accent-on-soft: #93C5FD;
+    --nv-success: #22C55E; --nv-success-fg: #22C55E;
+    --nv-warning: #F59E0B; --nv-warning-fg: #F59E0B;
+    --nv-danger: #EF4444;
+    --nv-violet: #A78BFA;
+    --nv-scrim: rgba(0, 0, 0, .7);
+    --nv-e1: 0 1px 2px rgba(0, 0, 0, .4);
+    --nv-e2: 0 8px 24px -6px rgba(0, 0, 0, .6);
+    color-scheme: dark;
+}
+
+.nova .nv-mono, .nova code, .nova kbd { font-family: var(--nv-mono); font-variant-numeric: tabular-nums; }
+.nova :focus-visible { outline: none; box-shadow: var(--nv-ring); border-radius: var(--nv-r-sm); }
+html:has(.nova) { scroll-padding-top: calc(var(--nv-topbar-h) + 12px); /* audit A8 */ }
+
+/* ---------- Kerangka ---------- */
+.nv-shell { display: flex; min-height: 100dvh; }
+.nv-skip {
+    position: absolute; left: 12px; top: -48px; z-index: 100; padding: 8px 14px; border-radius: var(--nv-r-md);
+    background: var(--nv-accent-solid); color: var(--nv-accent-fg); font-weight: 600; font-size: 14px;
+    transition: top var(--nv-t-fast) var(--nv-ease);
+}
+.nv-skip:focus { top: 12px; }
+
+/* Sidebar 260 / rail 72 */
+.nv-side {
+    position: sticky; top: 0; height: 100dvh; width: 260px; flex: none; display: flex; flex-direction: column;
+    background: var(--nv-bg-surface); border-right: 1px solid var(--nv-border);
+    transition: width var(--nv-t-base) var(--nv-ease);
+}
+.nv-side[data-rail="true"] { width: 72px; }
+.nv-side-head { display: flex; align-items: center; gap: 10px; padding: 16px 16px 12px; min-height: 64px; }
+.nv-brand { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; color: inherit; text-decoration: none; }
+.nv-brand-mark { width: 32px; height: 32px; border-radius: 9px; flex: none; display: grid; place-items: center; overflow: hidden;
+                 background: var(--nv-fg); color: var(--nv-bg-surface); font-weight: 700; font-size: 15px; }
+.nv-brand-mark img { width: 100%; height: 100%; object-fit: contain; background: var(--nv-bg-surface); }
+.nv-brand-text { min-width: 0; line-height: 1.2; }
+.nv-brand-text b { display: block; font-size: 14px; font-weight: 700; letter-spacing: -.01em; }
+.nv-brand-text span { display: block; font-size: 12px; color: var(--nv-fg-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nv-side[data-rail="true"] .nv-brand-text,
+.nv-side[data-rail="true"] .nv-label,
+.nv-side[data-rail="true"] .nv-group-title,
+.nv-side[data-rail="true"] .nv-count,
+.nv-side[data-rail="true"] .nv-search-text,
+.nv-side[data-rail="true"] .nv-kbd { display: none; }
+.nv-side[data-rail="true"] .nv-side-head { flex-direction: column; padding: 14px 0 8px; }
+
+.nv-search {
+    margin: 0 14px 6px; height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px; width: calc(100% - 28px);
+    background: var(--nv-bg-subtle); border: 1px solid var(--nv-border); border-radius: var(--nv-r-md);
+    color: var(--nv-fg-subtle); font: inherit; font-size: 13px; cursor: pointer; text-align: left;
+    transition: border-color var(--nv-t-fast) var(--nv-ease);
+}
+.nv-search:hover { border-color: var(--nv-border-input); }
+.nv-search-text { flex: 1; }
+.nv-side[data-rail="true"] .nv-search { width: 44px; margin: 0 auto 6px; justify-content: center; padding: 0; }
+.nv-kbd { font-family: var(--nv-mono); font-size: 11px; color: var(--nv-fg-muted); background: var(--nv-bg-surface);
+          border: 1px solid var(--nv-border); border-radius: var(--nv-r-sm); padding: 1px 6px; }
+
+.nv-nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 4px 12px 16px; }
+.nv-group + .nv-group { margin-top: 14px; }
+.nv-group-title {
+    display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 4px 10px; margin-bottom: 2px;
+    font: 600 12px var(--nv-sans); color: var(--nv-fg-subtle); background: none; border: 0; border-radius: var(--nv-r-sm); cursor: pointer;
+}
+.nv-group-title:hover { color: var(--nv-fg); }
+.nv-group-title svg { transition: transform var(--nv-t-fast) var(--nv-ease); }
+.nv-group[data-open="false"] .nv-group-title svg { transform: rotate(-90deg); }
+.nv-group[data-open="false"] .nv-items { display: none; }
+.nv-side[data-rail="true"] .nv-group[data-open="false"] .nv-items { display: block; }
+.nv-side[data-rail="true"] .nv-group + .nv-group { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--nv-border); }
+
+.nv-item {
+    position: relative; display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 10px; margin: 1px 0;
+    border-radius: var(--nv-r-md); color: var(--nv-fg-muted); font-size: 13.5px; text-decoration: none;
+    transition: background-color var(--nv-t-instant) var(--nv-ease), color var(--nv-t-instant) var(--nv-ease);
+}
+.nv-item:hover { background: var(--nv-bg-subtle); color: var(--nv-fg); }
+.nv-item[aria-current="page"] { background: var(--nv-accent-soft); color: var(--nv-accent-on-soft); font-weight: 600; }
+.nv-item[aria-current="page"]::before {
+    content: ""; position: absolute; left: -12px; top: 9px; bottom: 9px; width: 3px; border-radius: 0 3px 3px 0; background: var(--nv-accent);
+}
+.nv-item .nv-ico { flex: none; }
+.nv-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nv-side[data-rail="true"] .nv-item { justify-content: center; padding: 0; width: 44px; height: 40px; margin: 2px auto; }
+.nv-side[data-rail="true"] .nv-item[aria-current="page"]::before { left: -14px; }
+.nv-count {
+    font: 600 12px var(--nv-mono); min-width: 22px; padding: 1px 7px; border-radius: 999px; text-align: center;
+    background: var(--nv-bg-subtle); color: var(--nv-fg-muted);
+}
+.nv-count[data-tone="accent"] { background: var(--nv-accent-solid); color: var(--nv-accent-fg); }
+.nv-dot { position: absolute; top: 7px; right: 9px; width: 8px; height: 8px; border-radius: 50%; background: var(--nv-accent); box-shadow: 0 0 0 2px var(--nv-bg-surface); }
+
+.nv-side-foot { border-top: 1px solid var(--nv-border); padding: 10px 12px; display: grid; gap: 4px; }
+.nv-rail-btn {
+    display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 0 10px; border: 0; border-radius: var(--nv-r-md);
+    background: none; color: var(--nv-fg-muted); font: inherit; font-size: 13px; cursor: pointer;
+}
+.nv-rail-btn:hover { background: var(--nv-bg-subtle); color: var(--nv-fg); }
+.nv-side[data-rail="true"] .nv-rail-btn { justify-content: center; padding: 0; }
+
+/* Area utama */
+.nv-body { flex: 1; min-width: 0; display: flex; flex-direction: column;
+           /* Banyak halaman lama punya templat cetak/PDF tersembunyi (position:absolute di luar layar).
+              Layout lama memotongnya dengan overflow-hidden; `clip` melakukan hal yang sama
+              tanpa merusak topbar sticky. Tanpa ini halaman memanjang kosong saat digulir. */
+           overflow: clip;
+           /* jadi containing block untuk elemen absolute di dalamnya, supaya ikut terpotong */
+           position: relative; }
+@supports not (overflow: clip) { .nv-body { overflow: hidden; } }
+.nv-topbar {
+    position: sticky; top: 0; z-index: 30; height: var(--nv-topbar-h); display: flex; align-items: center; gap: 12px; padding: 0 20px;
+    background: color-mix(in srgb, var(--nv-bg-canvas) 85%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--nv-border);
+}
+.nv-crumbs { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 13.5px; color: var(--nv-fg-subtle); }
+.nv-crumbs b { color: var(--nv-fg); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nv-cmd {
+    margin-left: auto; width: min(360px, 40vw); height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px;
+    background: var(--nv-bg-surface); border: 1px solid var(--nv-border); border-radius: var(--nv-r-md);
+    color: var(--nv-fg-subtle); font: inherit; font-size: 13px; cursor: pointer; box-shadow: var(--nv-e1);
+}
+.nv-cmd span { flex: 1; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nv-icon-btn {
+    position: relative; width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: var(--nv-r-md);
+    background: none; border: 1px solid transparent; color: var(--nv-fg-muted); cursor: pointer;
+    transition: background-color var(--nv-t-instant) var(--nv-ease), transform var(--nv-t-instant) var(--nv-ease);
+}
+.nv-icon-btn:hover { background: var(--nv-bg-subtle); color: var(--nv-fg); }
+.nv-icon-btn:active { transform: scale(.97); }
+.nv-icon-btn .nv-badge {
+    position: absolute; top: 2px; right: 1px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+    background: var(--nv-accent-solid); color: #fff; font: 600 11px/18px var(--nv-mono); box-shadow: 0 0 0 2px var(--nv-bg-canvas);
+}
+.nv-avatar {
+    width: 32px; height: 32px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; flex: none;
+    background: linear-gradient(135deg, #2563EB, #7C3AED); color: #fff; font-weight: 600; font-size: 12px;
+}
+.nv-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.nv-menu {
+    position: absolute; right: 0; top: calc(100% + 8px); min-width: 240px; padding: 6px; z-index: 40;
+    background: var(--nv-bg-surface); border: 1px solid var(--nv-border); border-radius: var(--nv-r-lg); box-shadow: var(--nv-e2);
+    animation: nv-pop var(--nv-t-fast) var(--nv-ease);
+}
+.nv-menu-head { padding: 8px 10px 10px; border-bottom: 1px solid var(--nv-border); margin-bottom: 4px; }
+.nv-menu-head b { display: block; font-size: 14px; font-weight: 600; }
+.nv-menu-head span { font-size: 12px; color: var(--nv-fg-subtle); }
+.nv-menu a, .nv-menu button {
+    display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 0 10px; border-radius: var(--nv-r-md);
+    background: none; border: 0; color: var(--nv-fg); font: inherit; font-size: 13.5px; text-decoration: none; cursor: pointer; text-align: left;
+}
+.nv-menu a:hover, .nv-menu button:hover { background: var(--nv-bg-subtle); }
+.nv-menu .nv-danger { color: var(--nv-danger); }
+.nv-menu hr { border: 0; border-top: 1px solid var(--nv-border); margin: 4px 0; }
+.nv-seg { display: flex; gap: 2px; padding: 3px; margin: 4px 6px 6px; background: var(--nv-bg-subtle); border-radius: var(--nv-r-md); }
+.nv-seg button { flex: 1; justify-content: center; min-height: 30px; font-size: 12.5px; color: var(--nv-fg-muted); }
+.nv-seg button[aria-pressed="true"] { background: var(--nv-bg-surface); color: var(--nv-fg); box-shadow: var(--nv-e1); font-weight: 600; }
+
+.nv-main { flex: 1; min-width: 0; padding: 24px; outline: none; }
+@media (min-width: 1280px) { .nv-main { padding: 28px 32px; } }
+
+/* Drawer mobile */
+.nv-menu-btn { display: none; }
+.nv-scrim { position: fixed; inset: 0; z-index: 49; background: var(--nv-scrim); backdrop-filter: blur(8px); animation: nv-fade var(--nv-t-slow) var(--nv-ease); }
+@media (max-width: 1023px) {
+    .nv-menu-btn { display: grid; }
+    .nv-side { position: fixed; z-index: 50; left: 0; top: 0; width: min(300px, 86vw); transform: translateX(-100%);
+               transition: transform var(--nv-t-slow-exit) var(--nv-ease-exit); box-shadow: var(--nv-e2); }
+    .nv-side[data-open="true"] { transform: none; transition: transform var(--nv-t-slow) var(--nv-ease-slow); }
+    .nv-side[data-rail="true"] { width: min(300px, 86vw); }
+    .nv-side .nv-desktop-only { display: none; }
+    .nv-topbar { padding: 0 12px; }
+    .nv-cmd { width: auto; flex: 1; }
+    .nv-main { padding: 16px; }
+}
+@media (max-width: 639px) { .nv-crumbs { display: none; } }
+
+/* =====================================================================
+   Latar & kaca lama dipertahankan (Pengaturan → Tampilan Web):
+   --sinden-glass-a (kepekatan) dan --sinden-blur diatur Admin.
+   ===================================================================== */
+.nova.sinden-shell .nv-side {
+    background: linear-gradient(180deg,
+        rgba(255, 255, 255, min(1, calc(var(--sinden-glass-a, .42) + .13))) 0%,
+        rgba(255, 255, 255, var(--sinden-glass-a, .42)) 45%,
+        rgba(255, 255, 255, max(0, calc(var(--sinden-glass-a, .42) - .08))) 100%);
+    -webkit-backdrop-filter: blur(var(--sinden-blur, 26px)) saturate(1.8);
+    backdrop-filter: blur(var(--sinden-blur, 26px)) saturate(1.8);
+    border-right-color: rgba(255, 255, 255, .65);
+    box-shadow: inset -1px 0 0 rgba(255, 255, 255, .7), 8px 0 32px -18px rgba(15, 23, 42, .18);
+}
+.nova.sinden-shell .nv-topbar {
+    background: rgba(255, 255, 255, min(1, calc(var(--sinden-glass-a, .42) + .08)));
+    -webkit-backdrop-filter: blur(var(--sinden-blur, 26px)) saturate(1.8);
+    backdrop-filter: blur(var(--sinden-blur, 26px)) saturate(1.8);
+    border-bottom-color: rgba(255, 255, 255, .65);
+    transition: box-shadow .3s var(--nv-ease), background-color .3s var(--nv-ease);
+}
+.nova .nv-topbar.is-scrolled { box-shadow: 0 8px 28px -12px rgba(15, 23, 42, .18); }
+.nova.sinden-shell .nv-search, .nova.sinden-shell .nv-cmd { background: rgba(255, 255, 255, .6); border-color: rgba(228, 228, 231, .9); }
+.nova.sinden-shell .nv-side-foot { border-top-color: rgba(255, 255, 255, .6); }
+.nova.sinden-shell .nv-item:hover { background: rgba(255, 255, 255, .5); }
+@media (max-width: 1023px) {
+    /* laci di atas scrim gelap → kaca pekat agar teks terbaca */
+    .nova.sinden-shell .nv-side { background: rgba(255, 255, 255, .94); }
+}
+
+/* Bilah progres gulir (diisi motion.js) */
+.nv-progress { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; transform: scaleX(0); transform-origin: 0 50%;
+               background: linear-gradient(90deg, var(--nv-accent), var(--nv-violet)); pointer-events: none; }
+
+/* Penanda menu aktif yang meluncur antar halaman */
+.nv-nav { position: relative; }
+.nv-pill { position: absolute; left: 12px; right: 12px; top: 0; z-index: 0; border-radius: var(--nv-r-md); opacity: 0;
+           background: var(--nv-accent-soft); pointer-events: none; }
+.nv-pill::before { content: ""; position: absolute; left: -12px; top: 9px; bottom: 9px; width: 3px; border-radius: 0 3px 3px 0; background: var(--nv-accent); }
+.nv-nav.has-pill .nv-item { z-index: 1; }
+.nv-nav.has-pill .nv-item[aria-current="page"] { background: transparent; }
+.nv-nav.has-pill .nv-item[aria-current="page"]::before { display: none; }
+.nv-side[data-rail="true"] .nv-pill { left: 50%; right: auto; width: 44px; margin-left: -22px; }
+.nv-side[data-rail="true"] .nv-pill::before { left: -14px; }
+
+/* Ikon bergeser halus saat disorot */
+.nv-item .nv-ico { transition: transform var(--nv-t-fast) var(--nv-ease); }
+.nv-item:hover .nv-ico { transform: translateX(2px); }
+.nv-side[data-rail="true"] .nv-item:hover .nv-ico { transform: scale(1.08); }
+
+/* ---------- Kaca Auth di sidebar: garis cahaya tipis di tepi atas ---------- */
+.nova .nv-side::after {
+    content: ""; position: absolute; left: 12%; right: 12%; top: 0; height: 1px; pointer-events: none;
+    background: linear-gradient(90deg, transparent, rgba(37, 99, 235, .45), transparent);
+}
+
+/* ---------- Mode gelap: latar aurora Login + kaca Auth (navy) ---------- */
+.nova[data-theme="dark"].sinden-shell { background: #050B1A; }
+.nova[data-theme="dark"] .sinden-orbs i { filter: blur(110px); }
+.nova[data-theme="dark"] .sinden-orbs i:nth-child(1) { background: #1D4ED8; opacity: .32; }
+.nova[data-theme="dark"] .sinden-orbs i:nth-child(2) { background: #4F46E5; opacity: .28; }
+.nova[data-theme="dark"] .sinden-orbs i:nth-child(3) { background: #0D9488; opacity: .16; }
+.nova[data-theme="dark"] .sinden-orbs i:nth-child(4) { background: #1E3A8A; opacity: .3; }
+.nova[data-theme="dark"] .sinden-bg::before { background-image: radial-gradient(rgba(148, 163, 184, .07) 1px, transparent 1px); }
+.nova[data-theme="dark"] .sinden-bg-image::after { background: rgba(5, 11, 26, .8); }
+
+/* Sidebar = kartu kaca Login */
+.nova.sinden-shell[data-theme="dark"] .nv-side {
+    background: linear-gradient(160deg, rgba(30, 41, 70, .72), rgba(10, 17, 36, .82));
+    -webkit-backdrop-filter: blur(28px) saturate(1.6); backdrop-filter: blur(28px) saturate(1.6);
+    border-right-color: rgba(255, 255, 255, .1);
+    box-shadow: inset -1px 0 0 rgba(255, 255, 255, .04), 12px 0 40px -24px rgba(0, 0, 0, .8);
+}
+.nova[data-theme="dark"] .nv-side::after { background: linear-gradient(90deg, transparent, rgba(147, 197, 253, .7), transparent); }
+/* Topbar = bilah kaca halaman publik */
+.nova.sinden-shell[data-theme="dark"] .nv-topbar {
+    background: rgba(5, 11, 26, .55);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5); backdrop-filter: blur(20px) saturate(1.5);
+    border-bottom-color: rgba(255, 255, 255, .08);
+}
+.nova.sinden-shell[data-theme="dark"] :is(.nv-search, .nv-cmd) { background: rgba(255, 255, 255, .05); border-color: rgba(255, 255, 255, .12); box-shadow: none; }
+.nova.sinden-shell[data-theme="dark"] .nv-side-foot { border-top-color: rgba(255, 255, 255, .08); }
+.nova.sinden-shell[data-theme="dark"] .nv-item:hover { background: rgba(255, 255, 255, .06); }
+.nova[data-theme="dark"] .nv-pill { background: rgba(59, 130, 246, .18); box-shadow: inset 0 0 0 1px rgba(147, 197, 253, .18); }
+.nova[data-theme="dark"] .nv-topbar.is-scrolled { box-shadow: 0 8px 28px -12px rgba(0, 0, 0, .7); }
+.nova[data-theme="dark"] .nv-menu { background: linear-gradient(160deg, rgba(30, 41, 70, .97), rgba(10, 17, 36, .98)); border-color: rgba(255, 255, 255, .12); }
+@media (max-width: 1023px) { .nova.sinden-shell[data-theme="dark"] .nv-side { background: linear-gradient(160deg, rgb(24, 34, 60), rgb(10, 17, 36)); } }
+
+/* Kartu konten = kaca Login. .nova berulang = sengaja menaikkan spesifisitas di atas aturan kaca lama di app.css */
+.nova.nova.nova.sinden-shell[data-theme="dark"] main :is(.bg-white, .bg-\[\#ffffff\], .bg-\[\#FFFFFF\])[class*="rounded-"] {
+    background-color: transparent !important;
+    background-image: linear-gradient(160deg, rgba(30, 41, 70, .62), rgba(10, 17, 36, .72)) !important;
+    border-color: rgba(255, 255, 255, .1) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 24px 60px -30px rgba(0, 0, 0, .8) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(1.5); backdrop-filter: blur(24px) saturate(1.5);
+}
+/* panel di dalam kartu: kaca tipis seperti .auth-panel */
+.nova.nova.nova.nova.sinden-shell[data-theme="dark"] main .bg-white[class*="rounded-"] .bg-white[class*="rounded-"] {
+    background-image: none !important; background-color: rgba(255, 255, 255, .04) !important;
+    border-color: rgba(255, 255, 255, .1) !important; box-shadow: none !important;
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.nova.nova[data-theme="dark"] .nv-main :is(.bg-slate-50, .bg-gray-50, .bg-slate-100, .bg-gray-100, .bg-\[\#F8FAFC\], .bg-\[\#f8fafc\]) { background-color: rgba(255, 255, 255, .04) !important; }
+.nova.sinden-shell[data-theme="dark"] main tbody tr:hover > td { background-color: rgba(255, 255, 255, .04); }
+/* kartu yang memang gelap (bg-slate-900) diberi sentuhan kaca yang sama */
+.nova.nova[data-theme="dark"] .nv-main :is(.bg-slate-900, .bg-slate-950, .bg-\[\#0F172A\])[class*="rounded-"] {
+    background-color: rgba(15, 23, 42, .7) !important; border: 1px solid rgba(147, 197, 253, .14);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 24px 60px -30px rgba(0, 0, 0, .8);
+}
+
+@keyframes nv-pop { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
+@keyframes nv-fade { from { opacity: 0; } }
+@keyframes nv-enter { from { opacity: 0; transform: translateY(8px); } }
+.nova .nv-enter { animation: nv-enter var(--nv-t-base) var(--nv-ease) both; }
+
+@media (prefers-reduced-motion: reduce) {
+    .nova *, .nova *::before, .nova *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+}
+.nova[data-motion="off"] *, .nova[data-motion="off"] *::before { animation: none !important; transition: none !important; }
+
+/* =====================================================================
+   Jembatan halaman lama (sementara, dihapus saat migrasi fase 3).
+   Halaman lama masih memakai kelas Tailwind mentah. Di mode gelap kelas
+   yang paling sering dipakai dipetakan ke token supaya tetap terbaca.
+   ===================================================================== */
+.nova .nv-main { font-family: var(--nv-sans); }
+.nova[data-theme="dark"] .nv-main :is(.bg-white, .bg-white\/80, .bg-white\/90, .bg-white\/95, .bg-white\/70, .bg-white\/60, .bg-white\/50) { background-color: var(--nv-bg-surface) !important; }
+.nova[data-theme="dark"] .nv-main :is(.bg-slate-50, .bg-gray-50, .bg-slate-100, .bg-gray-100, .bg-\[\#F8FAFC\], .bg-slate-50\/50, .bg-slate-50\/80) { background-color: var(--nv-bg-subtle) !important; }
+.nova[data-theme="dark"] .nv-main :is(.border-slate-100, .border-slate-200, .border-gray-100, .border-gray-200, .border-\[\#E2E8F0\], .border-slate-200\/60, .border-slate-200\/70) { border-color: var(--nv-border) !important; }
+.nova[data-theme="dark"] .nv-main :is(.divide-slate-100, .divide-slate-200, .divide-gray-100, .divide-gray-200) > * + * { border-color: var(--nv-border) !important; }
+.nova[data-theme="dark"] .nv-main :is(.text-slate-900, .text-slate-800, .text-gray-900, .text-gray-800, .text-\[\#0F172A\], .text-\[\#1E293B\], .text-black) { color: var(--nv-fg) !important; }
+.nova[data-theme="dark"] .nv-main :is(.text-slate-700, .text-slate-600, .text-gray-700, .text-gray-600, .text-\[\#334155\], .text-\[\#475569\]) { color: #D4D4D8 !important; }
+.nova[data-theme="dark"] .nv-main :is(.text-slate-500, .text-slate-400, .text-gray-500, .text-gray-400, .text-\[\#64748B\], .text-\[\#94A3B8\]) { color: var(--nv-fg-muted) !important; }
+.nova[data-theme="dark"] .nv-main :is(.hover\:bg-slate-50, .hover\:bg-slate-100, .hover\:bg-gray-50):hover { background-color: var(--nv-bg-subtle) !important; }
+.nova[data-theme="dark"] .nv-main :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
+    background-color: var(--nv-bg-subtle) !important; color: var(--nv-fg) !important; border-color: var(--nv-border-input) !important;
+}
+.nova[data-theme="dark"] .nv-main :is(thead, .bg-slate-50 th) { background-color: var(--nv-bg-subtle); }
+.nova[data-theme="dark"] .nv-main .shadow-sm, .nova[data-theme="dark"] .nv-main .shadow-xs { box-shadow: var(--nv-e1) !important; }
