@@ -48,7 +48,9 @@ class AppServiceProvider extends ServiceProvider
          * Memaksa semua URL aset (JS/CSS) menggunakan HTTPS agar tidak diblokir browser.
          * Kode ini memastikan tombol SI SINDEN kembali aktif.
          */
-        if (config('app.env') === 'production' || env('APP_ENV') === 'production') {
+        // Juga bila APP_URL https (server ini di belakang Cloudflare/proxy; APP_ENV belum tentu "production").
+        if (config('app.env') === 'production' || env('APP_ENV') === 'production'
+            || str_starts_with((string) config('app.url'), 'https://')) {
             URL::forceScheme('https');
         }
 
