@@ -9,7 +9,9 @@ import java.net.UnknownHostException
 import javax.net.ssl.SSLException
 
 /** Jenis kegagalan yang dibedakan di UI (pesan & tindakan berbeda). */
-enum class ErrorKind { NETWORK, TIMEOUT, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, VALIDATION, RATE_LIMITED, SERVER, UNKNOWN }
+enum class ErrorKind { NETWORK, TIMEOUT, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, VALIDATION, RATE_LIMITED, SERVER, UNKNOWN,
+    /** Server meminta kode OTP WhatsApp (verifikasi 2 langkah). */
+    MFA_REQUIRED }
 
 data class ApiError(
     val kind: ErrorKind,

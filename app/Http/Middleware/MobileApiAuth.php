@@ -26,6 +26,12 @@ class MobileApiAuth
 
     public function handle(Request $request, Closure $next, string ...$abilities): Response
     {
+        // Audit R05: klien Flutter lama (sinden_mobile) dipensiunkan: HTTP polos diizinkan,
+        // token disimpan tanpa enkripsi & ikut backup Google.
+        if (str_starts_with((string) $request->userAgent(), 'SINDEN-App/')) {
+            return $this->deny(426, 'client_retired', 'Aplikasi SINDEN versi lama tidak didukung lagi. Pasang aplikasi SISINDEN terbaru.');
+        }
+
         $plain = $request->bearerToken();
 
         if (empty($plain)) {

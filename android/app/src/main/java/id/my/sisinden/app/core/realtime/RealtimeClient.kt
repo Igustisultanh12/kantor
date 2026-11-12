@@ -1,5 +1,6 @@
 package id.my.sisinden.app.core.realtime
 
+import id.my.sisinden.app.BuildConfig
 import android.util.Log
 import com.pusher.client.Pusher
 import com.pusher.client.PusherOptions
@@ -43,9 +44,13 @@ object RealtimeClient {
         if (key == activeKey && pusher != null) return
         stop()
 
-        val https = (config.scheme ?: "https") == "https"
-        val port = config.port ?: if (https) 443 else 80
-        val authorizer = HttpChannelAuthorizer(baseUrl.trimEnd('/') + (config.authEndpoint ?: "/api/mobile/broadcasting/auth")).apply {
+        // Audit R04: selalu TLS (soket mentah tidak tercakup usesCleartextTraffic=false) dan
+        // endpoint otorisasi wajib path relatif di host yang sama (token tidak boleh terkirim ke host lain).
+        val https = true
+        val port = config.port ?: 443
+        val authPath = config.authEndpoint?.takeIf { it.startsWith("/") && !it.startsWith("//") && !it.contains("@") }
+            ?: "/api/mobile/broadcasting/auth"
+        val authorizer = HttpChannelAuthorizer(baseUrl.trimEnd('/') + authPath).apply {
             setHeaders(mapOf("Authorization" to "Bearer $token", "Accept" to "application/json"))
         }
         val options = PusherOptions()
@@ -59,7 +64,7 @@ object RealtimeClient {
         val client = Pusher(config.key, options)
         client.connect(object : ConnectionEventListener {
             override fun onConnectionStateChange(change: ConnectionStateChange) {
-                Log.d(TAG, "Sambungan: ${change.previousState} -> ${change.currentState}")
+                if (BuildConfig.DEBUG) Log.d(TAG, "Sambungan: ${change.previousState} -> ${change.currentState}")
             }
 
             override fun onError(message: String?, code: String?, e: Exception?) {
@@ -77,7 +82,7 @@ object RealtimeClient {
             }
 
             override fun onSubscriptionSucceeded(channelName: String) {
-                Log.d(TAG, "Berlangganan $channelName")
+                if (BuildConfig.DEBUG) Log.d(TAG, "Berlangganan $channelName")
             }
 
             override fun onAuthenticationFailure(message: String?, e: Exception?) {

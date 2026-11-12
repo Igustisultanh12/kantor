@@ -10,6 +10,8 @@ data class LoginRequest(
     @SerializedName("device_name") val deviceName: String,
     /** Token Cloudflare Turnstile (sekali pakai), diverifikasi server. */
     @SerializedName("cf_turnstile_token") val turnstileToken: String? = null,
+    /** Kode OTP WhatsApp untuk akun dengan verifikasi 2 langkah (langkah kedua). */
+    @SerializedName("otp") val otp: String? = null,
 )
 
 data class ActivateRequest(
@@ -21,6 +23,7 @@ data class ActivateRequest(
 
 data class LoginResponse(
     @SerializedName("status") val status: String? = null,
+    @SerializedName("code") val code: String? = null,
     @SerializedName("token") val token: String? = null,
     @SerializedName("message") val message: String? = null,
     @SerializedName("user") val user: UserProfile? = null,

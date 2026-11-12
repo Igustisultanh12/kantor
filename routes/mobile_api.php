@@ -138,6 +138,9 @@ if (!function_exists('mobile_delegate')) {
 
 Route::post('/api/mobile/login', function (Request $request) {
     try {
+        if (str_starts_with((string) $request->userAgent(), 'SINDEN-App/')) {
+            return response()->json(['status' => 'error', 'code' => 'client_retired', 'message' => 'Aplikasi SINDEN versi lama tidak didukung lagi. Pasang aplikasi SISINDEN terbaru.'], 426);
+        }
         $data = mobile_payload($request);
         $input = trim((string) ($data['username'] ?? $data['email'] ?? $data['nrp'] ?? ''));
         $password = (string) ($data['password'] ?? '');
@@ -146,10 +149,15 @@ Route::post('/api/mobile/login', function (Request $request) {
             return response()->json(['status' => 'error', 'message' => 'NRP / Email dan Kata Sandi wajib diisi.'], 422);
         }
 
-        // Cloudflare Turnstile diverifikasi SEBELUM menyentuh data akun.
-        $ts = Turnstile::verify($data['cf_turnstile_token'] ?? null, $request->ip(), 'login');
-        if (!$ts['ok']) {
-            return response()->json(['status' => 'error', 'code' => 'turnstile_failed', 'message' => $ts['message']], 422);
+        // Cloudflare Turnstile diverifikasi SEBELUM menyentuh data akun. Langkah kedua MFA
+        // (membawa `otp`) tidak meminta Turnstile baru: OTP tertunda hanya ada bila langkah
+        // pertama sudah lolos Turnstile + kata sandi, dan percobaannya dibatasi 5x.
+        $isOtpStep = trim((string) ($data['otp'] ?? '')) !== '';
+        if (!$isOtpStep) {
+            $ts = Turnstile::verify($data['cf_turnstile_token'] ?? null, $request->ip(), 'login');
+            if (!$ts['ok']) {
+                return response()->json(['status' => 'error', 'code' => 'turnstile_failed', 'message' => $ts['message']], 422);
+            }
         }
 
         $user = User::where('email', $input)->orWhere('nrp', $input)->first();
@@ -158,6 +166,9 @@ Route::post('/api/mobile/login', function (Request $request) {
         if (!$user || !Hash::check($password, $user->password)) {
             Log::warning('[MOBILE_API_LOGIN] Kredensial salah', ['ip' => $request->ip()]);
             return response()->json(['status' => 'error', 'message' => 'NRP / Email atau kata sandi salah.'], 401);
+        }
+        if ($isOtpStep && (!$user->mfa_enabled || !\Illuminate\Support\Facades\Cache::has('mobile_mfa:' . $user->id))) {
+            return response()->json(['status' => 'error', 'code' => 'mfa_expired', 'message' => 'Sesi verifikasi berakhir. Silakan masuk ulang.'], 422);
         }
 
         if (!$user->is_active) {

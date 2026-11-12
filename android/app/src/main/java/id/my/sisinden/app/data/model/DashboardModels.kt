@@ -77,6 +77,9 @@ data class CreateAttendanceRequest(
     @SerializedName("notes") val notes: String? = null,
     /** Selfie tersenyum (JPEG data URL), wajib sejak v2.1.0. */
     @SerializedName("photo") val photo: String? = null,
+    /** Akurasi GPS (meter) & penanda lokasi palsu, diverifikasi juga di server (audit S06). */
+    @SerializedName("accuracy") val accuracy: Float? = null,
+    @SerializedName("is_mock") val isMock: Boolean = false,
 )
 
 data class AttendanceActionResponse(

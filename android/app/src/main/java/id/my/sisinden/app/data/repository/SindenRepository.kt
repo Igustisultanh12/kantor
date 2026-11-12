@@ -61,13 +61,17 @@ class SindenRepository(
         username: String,
         password: String,
         turnstileToken: String? = null,
+        otp: String? = null,
         beforeSessionStart: suspend () -> Unit = {},
     ): ApiResult<UserProfile> {
         val device = "SISINDEN Android (${Build.MANUFACTURER} ${Build.MODEL})".take(100)
-        return when (val res = call { login(LoginRequest(username.trim(), password, device, turnstileToken)) }) {
+        return when (val res = call { login(LoginRequest(username.trim(), password, device, turnstileToken, otp?.trim()?.takeIf { it.isNotEmpty() })) }) {
             is ApiResult.Success -> {
                 val token = res.data.token
                 val user = res.data.user
+                if (res.data.status == "mfa_required") {
+                    return ApiResult.Failure(ApiError(ErrorKind.MFA_REQUIRED, res.data.message ?: "Masukkan kode OTP yang dikirim ke WhatsApp Anda.", 202))
+                }
                 if (res.data.status == "success" && !token.isNullOrBlank() && user != null) {
                     beforeSessionStart()
                     // Baru saja masuk dengan kata sandi → tidak perlu PIN lagi untuk sesi ini.
@@ -140,13 +144,14 @@ class SindenRepository(
 
     suspend fun attendances() = call { attendances() }
 
-    suspend fun recordAttendance(status: String, lat: Double?, lng: Double?, notes: String?, photo: String? = null) = call {
+    suspend fun recordAttendance(status: String, lat: Double?, lng: Double?, notes: String?, photo: String? = null, accuracy: Float? = null) = call {
         recordAttendance(
             CreateAttendanceRequest(
                 status = status,
                 latitude = lat,
                 longitude = lng,
                 photo = photo,
+                accuracy = accuracy,
                 deviceModel = "${Build.MANUFACTURER} ${Build.MODEL} (Android ${Build.VERSION.RELEASE})".take(150),
                 notes = notes?.takeIf { it.isNotBlank() },
             )

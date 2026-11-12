@@ -71,6 +71,14 @@ class AuthHardeningTest extends TestCase
             ->assertStatus(422)->assertJsonPath('code', 'mfa_expired');
     }
 
+    public function test_retired_flutter_client_is_rejected(): void
+    {
+        $u = $this->makeUser();
+        $this->withHeader('User-Agent', 'SINDEN-App/1.0 (Kedinasan REST API; SINDEN Client)')
+            ->postJson('/api/mobile/login', ['username' => $u->email, 'password' => 'rahasia-123'])
+            ->assertStatus(426)->assertJsonPath('code', 'client_retired');
+    }
+
     public function test_mobile_login_without_mfa_still_works(): void
     {
         $u = $this->makeUser();

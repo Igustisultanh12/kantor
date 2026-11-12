@@ -1,3 +1,13 @@
+# SISINDEN Android v2.2.0 (versionCode 30)
+
+Pembaruan keamanan (audit 2026-11).
+
+- **Verifikasi 2 langkah saat masuk**: akun yang mengaktifkan OTP WhatsApp kini diminta memasukkan kode OTP 6 digit setelah kata sandi. Sebelumnya aplikasi bisa masuk tanpa OTP.
+- **Absensi diperiksa juga di server**: akurasi GPS ikut dikirim. Lokasi palsu, akurasi terlalu rendah, dan presensi hadir/piket di luar area kantor ditolak server. Presensi pertama hari itu tidak bisa ditimpa.
+- Sambungan realtime selalu terenkripsi (TLS) dan token hanya dikirim ke server SISINDEN.
+- Log diagnostik realtime tidak lagi ditulis pada versi rilis.
+
+---
 # SISINDEN Android v2.1.0 (versionCode 29)
 
 - **Absensi wajib foto senyum**: tombol absen kini membuka kamera depan. Foto diambil otomatis setelah wajah terdeteksi **tersenyum** (hanya satu wajah, cukup dekat). Mengetuk tombol saja tidak lagi cukup. Foto ikut tersimpan di data presensi.

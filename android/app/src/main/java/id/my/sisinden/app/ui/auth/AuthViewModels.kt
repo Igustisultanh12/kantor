@@ -39,6 +39,11 @@ data class LoginUiState(
     val widgetKey: Int = 0,
     /** Widget Turnstile ditampilkan hanya bila server mewajibkannya (turnstile_enabled). */
     val showWidget: Boolean = false,
+    /** Langkah kedua: server meminta kode OTP WhatsApp (verifikasi 2 langkah). */
+    val otpRequired: Boolean = false,
+    val otp: String = "",
+    val otpError: String? = null,
+    val infoMessage: String? = null,
 ) {
     val busy: Boolean get() = step != AuthStep.IDLE
 }
@@ -62,11 +67,19 @@ class LoginViewModel(private val repository: SindenRepository) : ViewModel() {
 
     fun onIdentifier(v: String) = _state.update { it.copy(identifier = v, identifierError = null, errorMessage = null) }
     fun onPassword(v: String) = _state.update { it.copy(password = v, passwordError = null, errorMessage = null) }
+    fun onOtp(v: String) = _state.update { it.copy(otp = v.filter(Char::isDigit).take(6), otpError = null, errorMessage = null) }
+
+    /** Batalkan langkah OTP dan kembali ke isian kata sandi. */
+    fun cancelOtp() = _state.update { it.copy(otpRequired = false, otp = "", otpError = null, infoMessage = null) }
 
     /** Tombol "Masuk": validasi lalu mulai tahap 1 (pemeriksaan keamanan). */
     fun submit() {
         val s = _state.value
         if (s.busy) return // cegah permintaan ganda
+        if (s.otpRequired) {
+            submitOtp()
+            return
+        }
         val idErr = if (s.identifier.isBlank()) "NRP / Email wajib diisi" else null
         val pwErr = if (s.password.isEmpty()) "Kata sandi wajib diisi" else null
         if (idErr != null || pwErr != null) {
@@ -122,13 +135,23 @@ class LoginViewModel(private val repository: SindenRepository) : ViewModel() {
         _state.update { it.copy(step = AuthStep.IDLE, widgetKey = it.widgetKey + 1) }
     }
 
+    /** Langkah OTP: kirim ulang kredensial + kode OTP (tanpa Turnstile baru). */
+    private fun submitOtp() {
+        val s = _state.value
+        if (s.otp.length != 6) {
+            _state.update { it.copy(otpError = "Masukkan 6 digit kode OTP") }
+            return
+        }
+        authenticate(null, s.otp)
+    }
+
     /** Tahap 2 (cek sesi login di server) dan tahap 3 (masuk ke beranda). */
-    private fun authenticate(token: String?) {
+    private fun authenticate(token: String?, otp: String? = null) {
         val s = _state.value
         _state.update { it.copy(step = AuthStep.SESSION) }
         viewModelScope.launch {
             val started = System.currentTimeMillis()
-            val res = repository.login(s.identifier, s.password, token) {
+            val res = repository.login(s.identifier, s.password, token, otp) {
                 val elapsed = System.currentTimeMillis() - started
                 if (elapsed < MIN_STEP_MS) delay(MIN_STEP_MS - elapsed)
                 _state.update { it.copy(step = AuthStep.FINISHING) }
@@ -136,10 +159,28 @@ class LoginViewModel(private val repository: SindenRepository) : ViewModel() {
             }
             when (res) {
                 // Sukses: SessionManager mengganti layar ke beranda secara otomatis.
-                is ApiResult.Success -> _state.update { it.copy(password = "") }
+                is ApiResult.Success -> _state.update { it.copy(password = "", otp = "", otpRequired = false, infoMessage = null) }
                 is ApiResult.Failure -> {
                     val elapsed = System.currentTimeMillis() - started
                     if (elapsed < MIN_STEP_MS) delay(MIN_STEP_MS - elapsed)
+                    if (res.error.kind == ErrorKind.MFA_REQUIRED) {
+                        _state.update {
+                            it.copy(step = AuthStep.IDLE, widgetKey = it.widgetKey + 1, otpRequired = true, otp = "",
+                                errorMessage = null, infoMessage = res.error.message)
+                        }
+                        return@launch
+                    }
+                    if (otp != null) {
+                        // OTP salah / kedaluwarsa: tetap di langkah OTP kecuali sesi verifikasi sudah habis.
+                        val expired = res.error.message.contains("berakhir", true) || res.error.message.contains("kedaluwarsa", true) ||
+                            res.error.kind == ErrorKind.RATE_LIMITED
+                        _state.update {
+                            it.copy(step = AuthStep.IDLE, widgetKey = it.widgetKey + 1, otpRequired = !expired, otp = "",
+                                otpError = if (expired) null else res.error.message,
+                                errorMessage = if (expired) res.error.message else null)
+                        }
+                        return@launch
+                    }
                     if (token == null && res.error.kind == ErrorKind.VALIDATION && _config.value?.turnstileEnabled != true &&
                         res.error.message.contains("keamanan", ignoreCase = true)
                     ) {

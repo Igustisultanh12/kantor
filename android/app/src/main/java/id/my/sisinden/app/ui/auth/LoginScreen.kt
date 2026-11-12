@@ -205,8 +205,28 @@ fun LoginScreen(
                 AnimatedVisibility(visible = state.errorMessage != null) {
                     Banner(text = state.errorMessage.orEmpty(), tone = Tone.DANGER)
                 }
+                AnimatedVisibility(visible = state.otpRequired && state.infoMessage != null) {
+                    Banner(text = state.infoMessage.orEmpty(), tone = Tone.WARNING)
+                }
+                if (state.otpRequired) {
+                    DarkField(
+                        value = state.otp,
+                        onValueChange = vm::onOtp,
+                        label = "Kode OTP WhatsApp (6 digit)",
+                        error = state.otpError,
+                        leading = { Icon(Icons.Outlined.Shield, contentDescription = null) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = {
+                            focus.clearFocus()
+                            vm.submit()
+                        }),
+                    )
+                    TextButton(onClick = vm::cancelOtp, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                        Text("Batal & ubah akun", style = MaterialTheme.typography.labelMedium, color = Color(0xFF93C5FD))
+                    }
+                }
 
-                DarkField(
+                if (!state.otpRequired) DarkField(
                     value = state.identifier,
                     onValueChange = vm::onIdentifier,
                     label = "NRP, Username, atau Email",
@@ -214,7 +234,7 @@ fun LoginScreen(
                     leading = { Icon(Icons.Outlined.Badge, contentDescription = null) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
                 )
-                DarkField(
+                if (!state.otpRequired) DarkField(
                     value = state.password,
                     onValueChange = vm::onPassword,
                     label = "Kata sandi",
@@ -273,7 +293,7 @@ fun LoginScreen(
                             } else {
                                 Icon(Icons.Outlined.Shield, contentDescription = null, modifier = Modifier.size(20.dp))
                                 Spacer(Modifier.width(Spacing.sm))
-                                Text("Masuk", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
+                                Text(if (state.otpRequired) "Verifikasi OTP" else "Masuk", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
                             }
                         }
                     }

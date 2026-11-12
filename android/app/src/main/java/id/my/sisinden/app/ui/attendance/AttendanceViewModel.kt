@@ -162,6 +162,7 @@ class AttendanceViewModel(
                 lng = loc.longitude,
                 notes = f.notes,
                 photo = photo,
+                accuracy = loc.accuracyMeters,
             )
             _form.update { it.copy(submitting = false) }
             when (res) {

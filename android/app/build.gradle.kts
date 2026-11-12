@@ -26,8 +26,8 @@ android {
         applicationId = "id.my.sisinden.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 29
-        versionName = "2.1.0"
+        versionCode = 30
+        versionName = "2.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -53,8 +53,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Jika keystore rilis tidak dikonfigurasi, gunakan signing debug sebagai fallback agar APK dapat langsung diinstal
-            signingConfig = if (hasReleaseKey) signingConfigs.getByName("release") else signingConfigs.findByName("debug")
+            // Audit R04: tanpa keystore rilis, hasilkan APK UNSIGNED (bukan bertanda tangan debug)
+            // agar APK debug tidak pernah terunggah sebagai pembaruan resmi.
+            signingConfig = if (hasReleaseKey) signingConfigs.getByName("release") else null
         }
         debug {
             applicationIdSuffix = ".debug"
