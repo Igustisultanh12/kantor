@@ -51,6 +51,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role'        => RoleMiddleware::class,
             'office.only' => OfficeOnly::class, // Pagar Radar IP Kantor
+            // Otorisasi web dengan aturan yang sama seperti API mobile (audit 2026-11)
+            'perm'        => \App\Http\Middleware\PermissionMiddleware::class,
             // Autentikasi token Sanctum + permission untuk seluruh /api/mobile/*
             'mobile.auth' => \App\Http\Middleware\MobileApiAuth::class,
         ]);

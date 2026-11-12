@@ -343,6 +343,10 @@ class SignatureRequestController extends Controller
     }
 
     public function destroy(SignatureRequest $signatureRequest) {
+        // Audit T04: hanya pengaju (selama belum disahkan) atau Admin.
+        $u = auth()->user();
+        $isOwner = (int) $signatureRequest->user_id === (int) $u->id && $signatureRequest->status !== 'approved';
+        abort_unless($isOwner || \App\Support\MobileAccess::isSuperAdmin($u), 403, 'Anda tidak berhak menghapus berkas ini.');
         if ($signatureRequest->file_path && Storage::disk('public')->exists($signatureRequest->file_path)) {
             Storage::disk('public')->delete($signatureRequest->file_path);
         }

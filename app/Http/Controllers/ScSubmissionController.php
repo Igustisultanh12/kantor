@@ -618,6 +618,7 @@ class ScSubmissionController extends Controller
      */
     public function destroy($id)
     {
+        abort_unless(\App\Support\MobileAccess::can(auth()->user(), 'sc.delete'), 403, 'Penghapusan berkas SC hanya oleh Admin.');
         $submission = ScSubmission::findOrFail($id);
         $nama = $submission->nama;
 
@@ -930,6 +931,21 @@ class ScSubmissionController extends Controller
             'scope' => 'nullable|string|in:stage_6_9,stage_5_9',
             'catatan_tambahan' => 'nullable|string|max:1000',
         ]);
+
+        // Audit T04: penerima harus personel terdaftar (bukan nomor bebas) & identitasnya dari database.
+        $norm = function ($p) { $d = preg_replace('/\D/', '', (string) $p); return str_starts_with($d, '0') ? '62' . substr($d, 1) : $d; };
+        $recipient = !empty($validated['user_id']) ? User::find($validated['user_id']) : null;
+        if (!$recipient) {
+            $want = $norm($validated['phone']);
+            $recipient = User::whereNotNull('phone')->where('phone', '!=', '')->get()->first(fn ($u) => $norm($u->phone) === $want);
+        }
+        if (!$recipient || empty($recipient->phone)) {
+            return back()->with('error', 'Penerima harus personel terdaftar yang memiliki nomor WhatsApp.');
+        }
+        $validated['phone'] = $recipient->phone;
+        $validated['nama'] = $recipient->name;
+        $validated['pangkat'] = $recipient->pangkat;
+        $validated['nrp'] = $recipient->nrp;
 
         $scope = $validated['scope'] ?? 'stage_6_9';
         $minStage = ($scope === 'stage_5_9') ? 5 : 6;

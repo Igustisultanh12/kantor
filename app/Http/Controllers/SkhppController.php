@@ -215,6 +215,7 @@ class SkhppController extends Controller
     public function edit($id)
     {
         $skhpp = Skhpp::with('members')->findOrFail($id);
+        $this->authorizeSkhppEdit($skhpp);
 
         return Inertia::render('Skhpp/Edit', [
             'skhpp' => $skhpp
@@ -227,6 +228,7 @@ class SkhppController extends Controller
     public function update(Request $request, $id)
     {
         $skhpp = Skhpp::findOrFail($id);
+        $this->authorizeSkhppEdit($skhpp);
 
         $request->validate([
             'kategori_personel' => 'required|in:militer,sipil_dinas,perusahaan',
@@ -597,6 +599,17 @@ class SkhppController extends Controller
         return $roleMap[$role] ?? (!empty($role) ? strtoupper($role) : 'PERSONEL SATUAN');
     }
 
+    /** Audit T04: ubah SKHPP hanya oleh pengaju atau Admin; yang sudah disahkan hanya Admin. */
+    private function authorizeSkhppEdit(Skhpp $skhpp): void
+    {
+        $u = auth()->user();
+        if (\App\Support\MobileAccess::isSuperAdmin($u)) {
+            return;
+        }
+        abort_if(strtolower((string) $skhpp->status) === 'approved', 403, 'SKHPP yang sudah disahkan hanya dapat diubah Admin.');
+        abort_unless((int) $skhpp->submitted_by === (int) $u->id, 403, 'Hanya pengaju yang dapat mengubah SKHPP ini.');
+    }
+
     public function verify($code)
     {
         $code = trim($code);
@@ -658,6 +671,7 @@ class SkhppController extends Controller
      */
     public function destroy($id)
     {
+        abort_unless(\App\Support\MobileAccess::can(auth()->user(), 'skhpp.delete'), 403, 'Penghapusan SKHPP hanya oleh Admin.');
         $skhpp = Skhpp::findOrFail($id);
 
         if ($skhpp->foto_1 && Storage::disk('public')->exists($skhpp->foto_1)) {

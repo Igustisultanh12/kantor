@@ -1091,7 +1091,7 @@ Route::delete('/api/mobile/violations/{id}', function ($id) {
     } catch (\Throwable $e) {
         return mobile_error($e, 'Gagal menghapus catatan pelanggaran.');
     }
-})->middleware('mobile.auth:violations.manage');
+})->middleware('mobile.auth:violations.delete');
 
 // =====================================================================
 // 7. KELOLA PENGGUNA (khusus Admin, sama seperti /users di web)
@@ -1441,7 +1441,7 @@ Route::delete('/api/mobile/activities/{id}', function ($id) {
     } catch (\Throwable $e) {
         return mobile_error($e, 'Gagal menghapus kegiatan.');
     }
-})->middleware('mobile.auth:activities.manage');
+})->middleware('mobile.auth:activities.delete');
 
 // =====================================================================
 // 15. PRESENSI KEHADIRAN (identitas HANYA dari token)

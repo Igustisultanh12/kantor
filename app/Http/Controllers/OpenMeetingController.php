@@ -198,6 +198,7 @@ class OpenMeetingController extends Controller
     public function edit($id)
     {
         $meeting = OpenMeeting::findOrFail($id);
+        $this->authorizeMeeting($meeting);
         $commander = self::getCommanderData();
 
         return Inertia::render('OpenMeetings/Edit', [
@@ -212,6 +213,7 @@ class OpenMeetingController extends Controller
     public function update(Request $request, $id)
     {
         $meeting = OpenMeeting::findOrFail($id);
+        $this->authorizeMeeting($meeting);
 
         $request->validate([
             'title' => 'required|string|max:255',
@@ -262,6 +264,7 @@ class OpenMeetingController extends Controller
     public function destroy($id)
     {
         $meeting = OpenMeeting::findOrFail($id);
+        $this->authorizeMeeting($meeting);
         $meeting->delete();
 
         return redirect()->route('rapat-terbuka.index')->with('success', 'Sesi absensi rapat berhasil dihapus.');
@@ -273,6 +276,7 @@ class OpenMeetingController extends Controller
     public function toggleStatus($id)
     {
         $meeting = OpenMeeting::findOrFail($id);
+        $this->authorizeMeeting($meeting);
         $newStatus = $meeting->status === 'open' ? 'closed' : 'open';
         $meeting->update(['status' => $newStatus]);
 
@@ -287,10 +291,18 @@ class OpenMeetingController extends Controller
     public function destroyAttendee($id, $attendeeId)
     {
         $meeting = OpenMeeting::findOrFail($id);
+        $this->authorizeMeeting($meeting);
         $attendee = OpenMeetingAttendee::where('open_meeting_id', $meeting->id)->findOrFail($attendeeId);
         $attendee->delete();
 
         return back()->with('success', "Data kehadiran {$attendee->name} berhasil dihapus.");
+    }
+
+    /** Audit S11: rapat hanya dikelola pembuatnya atau Admin. */
+    private function authorizeMeeting(OpenMeeting $meeting): void
+    {
+        $u = auth()->user();
+        abort_unless(\App\Support\MobileAccess::isSuperAdmin($u) || (int) $meeting->created_by === (int) $u->id, 403, 'Hanya pembuat rapat atau Admin.');
     }
 
     /**
@@ -327,7 +339,8 @@ class OpenMeetingController extends Controller
             'name' => 'required|string|max:255',
             'pangkat_nrp' => 'nullable|string|max:100',
             'jabatan' => 'nullable|string|max:255',
-            'signature' => 'nullable|string',
+            // Tanda tangan kanvas: hanya data URI PNG, maks ~200 KB (audit S11).
+            'signature' => ['nullable', 'string', 'max:280000', 'regex:/^data:image\/png;base64,[A-Za-z0-9+\/=]+$/'],
         ];
 
         // Validasi kolom dinamis

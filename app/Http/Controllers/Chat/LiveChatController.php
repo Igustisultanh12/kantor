@@ -515,11 +515,26 @@ class LiveChatController extends Controller
         return response()->json(['success' => true]);
     }
 
+    /** Audit S03: thread hanya boleh disentuh pemiliknya atau operator (admin/developer). */
+    private function ownedThread(string $uuid): LiveChatThread
+    {
+        $thread = LiveChatThread::where('uuid', $uuid)->firstOrFail();
+        $user = Auth::user();
+        abort_unless(\App\Support\MobileAccess::isSuperAdmin($user) || (int) $thread->user_id === (int) $user->id, 403, 'Akses ditolak.');
+        return $thread;
+    }
+
+    private function requireOperator(): void
+    {
+        abort_unless(\App\Support\MobileAccess::isSuperAdmin(Auth::user()), 403, 'Khusus operator.');
+    }
+
     /**
      * Pencarian Personel untuk memulai percakapan baru (Khusus Admin)
      */
     public function searchUsers(Request $request)
     {
+        $this->requireOperator();
         $q = trim((string) $request->input('q', ''));
         if (strlen($q) < 2) {
             return response()->json(['users' => []]);
@@ -560,6 +575,7 @@ class LiveChatController extends Controller
      */
     public function startChat(Request $request)
     {
+        $this->requireOperator();
         $request->validate([
             'user_id' => 'required|exists:users,id',
         ]);
@@ -594,6 +610,7 @@ class LiveChatController extends Controller
      */
     public function toggleStatus(Request $request, $uuid)
     {
+        $this->requireOperator();
         $thread = LiveChatThread::where('uuid', $uuid)->firstOrFail();
         $newStatus = $thread->status === 'OPEN' ? 'CLOSED' : 'OPEN';
         $thread->update(['status' => $newStatus]);
@@ -610,6 +627,7 @@ class LiveChatController extends Controller
      */
     public function destroy(Request $request, $uuid)
     {
+        $this->requireOperator();
         $thread = LiveChatThread::where('uuid', $uuid)->firstOrFail();
         $thread->purgeFiles();
         $thread->messages()->delete();
@@ -664,6 +682,7 @@ class LiveChatController extends Controller
         $thread = LiveChatThread::with('user')->where('uuid', $uuid)->firstOrFail();
 
         $isAdmin = \App\Support\MobileAccess::isSuperAdmin($user);
+        abort_unless($isAdmin || (int) $thread->user_id === (int) $user->id, 403, 'Akses ditolak.');
 
         if ($isAdmin) {
             $caller = [
@@ -737,6 +756,7 @@ class LiveChatController extends Controller
      */
     public function getCallSignal(Request $request, $uuid)
     {
+        $this->ownedThread($uuid);
         $callData = Cache::get("live_chat:call:{$uuid}");
 
         if ($callData) {
@@ -754,6 +774,7 @@ class LiveChatController extends Controller
      */
     public function sendCallSignal(Request $request, $uuid)
     {
+        $this->ownedThread($uuid);
         $callData = Cache::get("live_chat:call:{$uuid}");
 
         if (!$callData) {
@@ -839,6 +860,7 @@ class LiveChatController extends Controller
      */
     public function endCall(Request $request, $uuid)
     {
+        $this->ownedThread($uuid);
         $callData = Cache::get("live_chat:call:{$uuid}");
         $reason = $request->input('reason', 'ended'); // 'ended', 'rejected', 'canceled', 'missed'
         $durationSeconds = (int) $request->input('duration_seconds', 0);
@@ -899,9 +921,10 @@ class LiveChatController extends Controller
     public function getAgoraToken(Request $request, $uuid)
     {
         $user = Auth::user();
-        $thread = LiveChatThread::where('uuid', $uuid)->firstOrFail();
+        $thread = $this->ownedThread($uuid);
         $channelName = 'SINDEN_' . preg_replace('/[^a-zA-Z0-9]/', '', $thread->uuid);
-        $uid = (int) ($request->input('uid') ?: ($user->id ?? 1));
+        // uid dari server, bukan dari klien (agar tidak bisa menyamar sebagai operator).
+        $uid = (int) $user->id;
 
         $appId = Setting::where('key', 'agora_app_id')->value('value') ?: config('services.agora.app_id');
         $token = AgoraTokenService::generateToken($channelName, $uid);

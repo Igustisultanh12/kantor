@@ -139,8 +139,21 @@ class MobileAccess
         // SpJagaController@index
         $spJagaAdmin = self::isSpJagaAdmin($user);
 
+        // Penghapusan data (bukti/arsip) hanya Admin/Developer (audit S11/S04/T04).
+        $superAdmin = self::isSuperAdmin($user);
+
         return [
             'dashboard.view' => true,
+
+            // Web & mobile: aksi berdampak tinggi (audit T02/T04/S04/S11).
+            'duty_roster.manage' => $spJagaAdmin,
+            'stamp.apply' => $commanderApproval,
+            'pess.admin' => $superAdmin,
+            'sc.delete' => $superAdmin,
+            'letters.delete' => $superAdmin,
+            'violations.delete' => $superAdmin,
+            'activities.delete' => $superAdmin,
+            'personnel.manage' => $superAdmin,
             'profile.view' => true,
             'notifications.view' => true,
 
@@ -161,7 +174,7 @@ class MobileAccess
             'letter_logs.view' => $regular,
             'letter_logs.create' => $regular,
             'letter_logs.update' => $regular,
-            'letter_logs.delete' => $regular,
+            'letter_logs.delete' => $superAdmin,
             'letter_logs.pdf' => $regular,
 
             'letters.view' => $regular,
@@ -170,7 +183,7 @@ class MobileAccess
             'skhpp.view' => $regular,
             'skhpp.create' => $regular,
             'skhpp.approve' => $commanderApproval,
-            'skhpp.delete' => $admin,
+            'skhpp.delete' => $superAdmin,
             'skhpp.pdf' => $regular,
 
             'signature.view' => $regular,

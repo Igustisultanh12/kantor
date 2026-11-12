@@ -289,8 +289,14 @@ class KoperasiController extends Controller
             return back()->with('error', 'Pinjaman ini sudah diproses sebelumnya.');
         }
 
+        // Audit S07: pengurus tidak boleh menyetujui pinjamannya sendiri.
+        if ((int) $loan->user_id === (int) $user->id) {
+            return back()->with('error', 'Pinjaman milik sendiri harus disetujui pengurus lain.');
+        }
+
         $request->validate([
-            'amount_approved' => 'required|numeric|min:100000',
+            // Tidak boleh melebihi jumlah yang diajukan anggota (audit S07).
+            'amount_approved' => 'required|numeric|min:100000|max:' . max(100000, (float) $loan->amount_requested),
             'duration_months' => 'nullable|integer|min:1|max:60',
             'interest_rate_percent' => 'nullable|numeric|min:0|max:10',
             'notes' => 'nullable|string',
@@ -463,6 +469,12 @@ class KoperasiController extends Controller
 
         DB::beginTransaction();
         try {
+            // Kunci baris pinjaman & batasi pembayaran sebesar sisa (audit S07).
+            $loan = KoperasiLoan::with(['user', 'installments'])->lockForUpdate()->findOrFail($loan->id);
+            if ($payAmount > (float) $loan->remaining_amount) {
+                DB::rollBack();
+                return back()->with('error', 'Jumlah bayar melebihi sisa pinjaman (Rp ' . number_format((float) $loan->remaining_amount, 0, ',', '.') . ').');
+            }
             $currentRemaining = (float)$loan->remaining_amount;
             $newRemaining = max(0, $currentRemaining - $payAmount);
             $newTotalPaid = (float)$loan->total_paid + $payAmount;
@@ -675,15 +687,16 @@ class KoperasiController extends Controller
         ]);
 
         $targetUser = User::findOrFail($request->user_id);
-        $account = KoperasiAccount::where('user_id', $targetUser->id)->firstOrFail();
         $amount = (float)$request->amount;
-
-        if ($account->balance_simpanan_sukarela < $amount) {
-            return back()->with('error', 'Saldo simpanan sukarela anggota tidak mencukupi untuk penarikan ini.');
-        }
 
         DB::beginTransaction();
         try {
+            // Kunci rekening agar penarikan bersamaan tidak membuat saldo minus (audit S07).
+            $account = KoperasiAccount::where('user_id', $targetUser->id)->lockForUpdate()->firstOrFail();
+            if ($account->balance_simpanan_sukarela < $amount) {
+                DB::rollBack();
+                return back()->with('error', 'Saldo simpanan sukarela anggota tidak mencukupi untuk penarikan ini.');
+            }
             $account->balance_simpanan_sukarela -= $amount;
             $account->total_simpanan -= $amount;
             $account->save();

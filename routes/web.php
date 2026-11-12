@@ -286,7 +286,7 @@ Route::middleware('auth')->group(function () {
     // --- FITUR MANAJEMEN PENGAJUAN SECURITY CLEARANCE (SC) ---
     Route::get('sc-submissions/export-pdf', [ScSubmissionController::class, 'exportPdf'])->name('sc-submissions.pdf');
     Route::post('sc-submissions/sync-skhpp', [ScSubmissionController::class, 'syncFromApprovedSkhpp'])->name('sc-submissions.sync-skhpp');
-    Route::post('sc-submissions/notify-sintel', [ScSubmissionController::class, 'sendSintelNotification'])->name('sc-submissions.notify-sintel');
+    Route::post('sc-submissions/notify-sintel', [ScSubmissionController::class, 'sendSintelNotification'])->middleware('throttle:10,1')->name('sc-submissions.notify-sintel');
     Route::post('sc-submissions/{id}/toggle-taken', [ScSubmissionController::class, 'toggleTaken'])->name('sc-submissions.toggle-taken');
     Route::post('sc-submissions/{id}/update-stage', [ScSubmissionController::class, 'updateStage'])->name('sc-submissions.update-stage');
     Route::resource('sc-submissions', ScSubmissionController::class)->except(['create', 'edit', 'show']);
@@ -312,13 +312,13 @@ Route::middleware('auth')->group(function () {
     
     // --- MODUL SURAT PERINTAH (SP) JAGA SIAGA SINTEL ---
     Route::get('/sp-jaga', [SpJagaController::class, 'index'])->name('sp-jaga.index');
-    Route::get('/sp-jaga/create', [SpJagaController::class, 'create'])->name('sp-jaga.create');
-    Route::post('/sp-jaga', [SpJagaController::class, 'store'])->name('sp-jaga.store');
-    Route::get('/sp-jaga/{id}/edit', [SpJagaController::class, 'edit'])->name('sp-jaga.edit');
-    Route::put('/sp-jaga/{id}', [SpJagaController::class, 'update'])->name('sp-jaga.update');
-    Route::delete('/sp-jaga/{id}', [SpJagaController::class, 'destroy'])->name('sp-jaga.destroy');
-    Route::post('/sp-jaga/{id}/approve-tte', [SpJagaController::class, 'approveTte'])->name('sp-jaga.approve-tte');
-    Route::post('/sp-jaga/{id}/upload-manual-signed', [SpJagaController::class, 'uploadManualSigned'])->name('sp-jaga.upload-manual-signed');
+    Route::get('/sp-jaga/create', [SpJagaController::class, 'create'])->middleware('perm:duty_roster.manage')->name('sp-jaga.create');
+    Route::post('/sp-jaga', [SpJagaController::class, 'store'])->middleware('perm:duty_roster.manage')->name('sp-jaga.store');
+    Route::get('/sp-jaga/{id}/edit', [SpJagaController::class, 'edit'])->middleware('perm:duty_roster.manage')->name('sp-jaga.edit');
+    Route::put('/sp-jaga/{id}', [SpJagaController::class, 'update'])->middleware('perm:duty_roster.manage')->name('sp-jaga.update');
+    Route::delete('/sp-jaga/{id}', [SpJagaController::class, 'destroy'])->middleware('perm:duty_roster.manage')->name('sp-jaga.destroy');
+    Route::post('/sp-jaga/{id}/approve-tte', [SpJagaController::class, 'approveTte'])->middleware('perm:duty_roster.sign')->name('sp-jaga.approve-tte');
+    Route::post('/sp-jaga/{id}/upload-manual-signed', [SpJagaController::class, 'uploadManualSigned'])->middleware('perm:duty_roster.sign')->name('sp-jaga.upload-manual-signed');
     Route::get('/sp-jaga/{id}/download-pdf', [SpJagaController::class, 'downloadPdf'])->name('sp-jaga.download-pdf');
     
     // --- MODUL ABSENSI RAPAT TERBUKA ---
@@ -334,10 +334,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('/signature-requests/{signatureRequest}', [SignatureRequestController::class, 'destroy'])->name('signature.destroy');
     
     // Modul Stempel Digital Detasemen Intelijen
-    Route::get('/otoritas-stempel', [StampController::class, 'index'])->name('stamp.index');
-    Route::patch('/otoritas-stempel/eksekusi', [StampController::class, 'apply'])->name('signature.apply-stamp');
-    Route::post('/otoritas-stempel/upload-manual', [StampController::class, 'uploadManual'])->name('stamp.upload-manual');
-    Route::get('/settings/stamp-config', [StampController::class, 'setting'])->name('stamp.setting');
+    Route::get('/otoritas-stempel', [StampController::class, 'index'])->middleware('perm:stamp.apply')->name('stamp.index');
+    Route::patch('/otoritas-stempel/eksekusi', [StampController::class, 'apply'])->middleware('perm:stamp.apply')->name('signature.apply-stamp');
+    Route::post('/otoritas-stempel/upload-manual', [StampController::class, 'uploadManual'])->middleware('perm:stamp.apply')->name('stamp.upload-manual');
+    Route::get('/settings/stamp-config', [StampController::class, 'setting'])->middleware('perm:stamp.apply')->name('stamp.setting');
 
     // =========================================================================
     // MODUL LAYANAN PRINTING JARINGAN (PRINTER BROTHER IP)
@@ -355,16 +355,16 @@ Route::middleware('auth')->group(function () {
     // MODUL PELANGGARAN DISIPLIN PRAJURIT (URUTAN STRATEGIS PASUKAN)
     // =========================================================================
     Route::get('/soldier-violations', [SoldierViolationController::class, 'index'])->name('soldier-violations.index');
-    Route::post('/soldier-violations', [SoldierViolationController::class, 'store'])->name('soldier-violations.store');
+    Route::post('/soldier-violations', [SoldierViolationController::class, 'store'])->middleware('perm:violations.manage')->name('soldier-violations.store');
     
     //  AMANKAN POSISI DI ATAS WILDCARD {id} agar kebal dari respons 405
-    Route::get('/soldier-violations/preview-file', [SoldierViolationController::class, 'previewDocx'])->name('soldier-violations.preview-file');
+    Route::get('/soldier-violations/preview-file', [SoldierViolationController::class, 'previewDocx'])->middleware('perm:violations.view')->name('soldier-violations.preview-file');
     
     //  KALIBRASI METODE MATCH: Bypass proteksi data biner multipart/form-data
-    Route::match(['post', 'put'], '/soldier-violations/{id}', [SoldierViolationController::class, 'update'])->name('soldier-violations.update');
+    Route::match(['post', 'put'], '/soldier-violations/{id}', [SoldierViolationController::class, 'update'])->middleware('perm:violations.manage')->name('soldier-violations.update');
     
-    Route::delete('/soldier-violations/{id}/delete-update', [SoldierViolationController::class, 'deleteUpdate'])->name('soldier-violations.delete-update');
-    Route::delete('/soldier-violations/{id}', [SoldierViolationController::class, 'destroy'])->name('soldier-violations.destroy');
+    Route::delete('/soldier-violations/{id}/delete-update', [SoldierViolationController::class, 'deleteUpdate'])->middleware('perm:violations.delete')->name('soldier-violations.delete-update');
+    Route::delete('/soldier-violations/{id}', [SoldierViolationController::class, 'destroy'])->middleware('perm:violations.delete')->name('soldier-violations.destroy');
     
     
     // =========================================================================
@@ -386,21 +386,23 @@ Route::middleware('auth')->group(function () {
     
     // Modul Keuangan / Cash Buku Kas Detasemen
     Route::get('/cash', [CashController::class, 'index'])->name('cash.index');
-    Route::post('/cash', [CashController::class, 'store'])->name('cash.store');
-    Route::get('/cash/pdf', [CashController::class, 'exportPdf'])->name('cash.pdf');
-    Route::put('/cash/{id}', [CashController::class, 'update'])->name('cash.update');
-    Route::delete('/cash/{id}', [CashController::class, 'destroy'])->name('cash.destroy');
+    Route::post('/cash', [CashController::class, 'store'])->middleware('perm:cash.manage')->name('cash.store');
+    Route::get('/cash/pdf', [CashController::class, 'exportPdf'])->middleware('perm:cash.manage')->name('cash.pdf');
+    Route::put('/cash/{id}', [CashController::class, 'update'])->middleware('perm:cash.manage')->name('cash.update');
+    Route::delete('/cash/{id}', [CashController::class, 'destroy'])->middleware('perm:cash.manage')->name('cash.destroy');
     
     // Unduh Rekap Buku Log Surat Berupa Dokumen PDF
     Route::get('/letter-logs/download-pdf', [LetterLogController::class, 'downloadPdf'])->name('letter-logs.pdf');
     
     // Modul Ucapan Hari Ulang Tahun Otomatis Lewat Radar Personel
+    Route::middleware('perm:personnel.manage')->group(function () { // audit T01: modul ini mengubah nomor HP (kanal OTP)
     Route::get('/admin/birthday-radar', [PersonnelController::class, 'index'])->name('birthday.index');
     Route::post('/admin/personnel', [PersonnelController::class, 'storePersonnel'])->name('personnel.store');
     Route::put('/admin/user-birthday/{id}', [PersonnelController::class, 'updateUserBirthDate'])->name('user.birthday.update');
     Route::delete('/admin/personnel/{id}', [PersonnelController::class, 'destroyPersonnel'])->name('personnel.destroy');
     Route::post('/admin/birthday-radar/settings', [PersonnelController::class, 'updateSettings'])->name('admin.settings.birthday');
-    Route::post('/admin/birthday-radar/test', [PersonnelController::class, 'testGreeting'])->name('admin.birthday.test');
+    Route::post('/admin/birthday-radar/test', [PersonnelController::class, 'testGreeting'])->middleware('throttle:5,1')->name('admin.birthday.test');
+    });
     
     // =========================================================================
     // MODUL STRATEGIS REKENING KOMANDAN
@@ -424,20 +426,20 @@ Route::middleware('auth')->group(function () {
     // MODUL MANAJEMEN PENCATATAN PEMBAYARAN MITRA (MATRIX BULANAN & CETAK PDF)
     // =========================================================================
     Route::get('/mitras', [MitraPaymentController::class, 'index'])->name('mitras.index');
-    Route::post('/mitras', [MitraPaymentController::class, 'store'])->name('mitras.store');
-    Route::put('/mitras/{id}', [MitraPaymentController::class, 'update'])->name('mitras.update');
-    Route::delete('/mitras/{id}', [MitraPaymentController::class, 'destroy'])->name('mitras.destroy');
-    Route::post('/mitras/toggle-payment', [MitraPaymentController::class, 'togglePayment'])->name('mitras.toggle-payment');
-    Route::post('/mitras/reorder', [MitraPaymentController::class, 'reorder'])->name('mitras.reorder');
-    Route::post('/mitras/{id}/move', [MitraPaymentController::class, 'movePosition'])->name('mitras.move');
+    Route::post('/mitras', [MitraPaymentController::class, 'store'])->middleware('perm:mitra.manage')->name('mitras.store');
+    Route::put('/mitras/{id}', [MitraPaymentController::class, 'update'])->middleware('perm:mitra.manage')->name('mitras.update');
+    Route::delete('/mitras/{id}', [MitraPaymentController::class, 'destroy'])->middleware('perm:mitra.manage')->name('mitras.destroy');
+    Route::post('/mitras/toggle-payment', [MitraPaymentController::class, 'togglePayment'])->middleware('perm:mitra.manage')->name('mitras.toggle-payment');
+    Route::post('/mitras/reorder', [MitraPaymentController::class, 'reorder'])->middleware('perm:mitra.manage')->name('mitras.reorder');
+    Route::post('/mitras/{id}/move', [MitraPaymentController::class, 'movePosition'])->middleware('perm:mitra.manage')->name('mitras.move');
 
     // =========================================================================
     // MODUL MANAJEMEN BUKU KAS DAN UNIT TEKNIS
     // =========================================================================
     Route::get('/technical-cash', [TechnicalUnitCashController::class, 'index'])->name('technical-cash.index');
-    Route::post('/technical-cash', [TechnicalUnitCashController::class, 'store'])->name('technical-cash.store');
-    Route::put('/technical-cash/{id}', [TechnicalUnitCashController::class, 'update'])->name('technical-cash.update');
-    Route::delete('/technical-cash/{id}', [TechnicalUnitCashController::class, 'destroy'])->name('technical-cash.destroy');
+    Route::post('/technical-cash', [TechnicalUnitCashController::class, 'store'])->middleware('perm:technical_cash.manage')->name('technical-cash.store');
+    Route::put('/technical-cash/{id}', [TechnicalUnitCashController::class, 'update'])->middleware('perm:technical_cash.manage')->name('technical-cash.update');
+    Route::delete('/technical-cash/{id}', [TechnicalUnitCashController::class, 'destroy'])->middleware('perm:technical_cash.manage')->name('technical-cash.destroy');
 
     // =========================================================================
     // FITUR KHUSUS ADMIN (OTORITAS TINGGI MONEV)
@@ -517,6 +519,7 @@ Route::middleware('auth')->group(function () {
     // =====================================================================
     // SULTAN CONFIG: JALUR VERIFIKASI INTEGRASI PESS & SINDEN (TTD DIGITAL/SINKODV)
     // =====================================================================
+    Route::middleware('perm:pess.admin')->group(function () { // audit T02
     Route::get('/applicants/dashboard', [PESSAdminController::class, 'index'])->name('admin.pess.dashboard');
     Route::post('/submissions/verify/{id}', [PESSAdminController::class, 'verifyFiles'])->name('admin.pess.verify');
     Route::post('/submissions/interview/{id}', [PESSAdminController::class, 'scheduleInterview'])->name('admin.pess.interview');
@@ -524,6 +527,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/submissions/sign-komandan/{id}', [PESSAdminController::class, 'signDigitalKomandan'])->name('admin.pess.sign_komandan');
     Route::post('/submissions/forward-sinkodv/{id}', [PESSAdminController::class, 'forwardToSINKODV'])->name('admin.pess.forward_sinkodv');
     Route::post('/submissions/sc/upload-sign/{id}', [PESSAdminController::class, 'uploadAndSignSC'])->name('admin.pess.sc_upload_sign');
+    });
 
     // =====================================================================
     // MODUL UTAMA PENERBITAN & OTORITAS SKHPP (MILITER, SIPIL, NIKAH)

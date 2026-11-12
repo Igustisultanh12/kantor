@@ -197,6 +197,7 @@ class LetterController extends Controller
      */
     public function destroy(Letter $letter)
     {
+        abort_unless(\App\Support\MobileAccess::can(auth()->user(), 'letters.delete'), 403, 'Penghapusan arsip hanya oleh Admin.');
         try {
             $target = $letter->subject . " (" . $letter->letter_number . ")";
             

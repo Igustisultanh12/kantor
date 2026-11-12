@@ -17,6 +17,27 @@ class WhatsAppController extends Controller
     private string $gatewayUrl = 'http://127.0.0.1:3000';
 
     /**
+     * Audit S02: setiap aksi per sesi memeriksa role_access sesi itu.
+     * Membuat / logout / hapus / QR (pairing) hanya untuk Admin.
+     */
+    private function authorizeSession(string $sessionId, bool $manage = false): void
+    {
+        $user = Auth::user();
+        $isAdmin = \App\Support\MobileAccess::isSuperAdmin($user);
+        if ($manage) {
+            abort_unless($isAdmin, 403, 'Hanya Admin yang dapat mengelola sesi WhatsApp.');
+            return;
+        }
+        if ($isAdmin || !Schema::hasTable('wa_sessions')) {
+            return;
+        }
+        $access = WaSession::where('session_id', $sessionId)->value('role_access');
+        abort_if($access === null, 404, 'Sesi WhatsApp tidak ditemukan.');
+        $ok = $access === 'all' || ($access === 'komandan' && \App\Support\MobileAccess::isKomandan($user));
+        abort_unless($ok, 403, 'Anda tidak memiliki akses ke sesi WhatsApp ini.');
+    }
+
+    /**
      * Tampilan Utama WhatsApp Web Multi-Akun
      */
     public function index()
@@ -122,6 +143,7 @@ class WhatsAppController extends Controller
      */
     public function createSession(Request $request)
     {
+        abort_unless(\App\Support\MobileAccess::isSuperAdmin(Auth::user()), 403, 'Hanya Admin yang dapat membuat sesi WhatsApp.');
         $request->validate([
             'label' => 'required|string|max:50',
             'role_access' => 'nullable|string|in:all,admin,komandan',
@@ -178,6 +200,7 @@ class WhatsAppController extends Controller
      */
     public function getQr(string $sessionId)
     {
+        $this->authorizeSession($sessionId, true);
         try {
             $res = Http::timeout(5)->get("{$this->gatewayUrl}/sessions/{$sessionId}/qr");
             if ($res->successful()) {
@@ -209,6 +232,7 @@ class WhatsAppController extends Controller
      */
     public function getStatus(string $sessionId)
     {
+        $this->authorizeSession($sessionId);
         try {
             $res = Http::timeout(4)->get("{$this->gatewayUrl}/sessions/{$sessionId}/status");
             if ($res->successful()) {
@@ -234,6 +258,7 @@ class WhatsAppController extends Controller
      */
     public function logoutSession(string $sessionId)
     {
+        $this->authorizeSession($sessionId, true);
         try {
             Http::timeout(6)->post("{$this->gatewayUrl}/sessions/{$sessionId}/logout");
         } catch (\Exception $e) {
@@ -256,6 +281,7 @@ class WhatsAppController extends Controller
      */
     public function deleteSession(string $sessionId)
     {
+        $this->authorizeSession($sessionId, true);
         try {
             Http::timeout(5)->delete("{$this->gatewayUrl}/sessions/{$sessionId}");
         } catch (\Exception $e) {}
@@ -269,6 +295,7 @@ class WhatsAppController extends Controller
      */
     public function getCalls(string $sessionId)
     {
+        $this->authorizeSession($sessionId);
         try {
             $res = Http::timeout(6)->get("{$this->gatewayUrl}/sessions/{$sessionId}/calls");
             if ($res->successful()) {
@@ -285,6 +312,7 @@ class WhatsAppController extends Controller
      */
     public function getChats(string $sessionId)
     {
+        $this->authorizeSession($sessionId);
         try {
             $res = Http::timeout(6)->get("{$this->gatewayUrl}/sessions/{$sessionId}/chats");
             if ($res->successful()) {
@@ -301,6 +329,7 @@ class WhatsAppController extends Controller
      */
     public function getMessages(string $sessionId, string $jid)
     {
+        $this->authorizeSession($sessionId);
         try {
             $res = Http::timeout(6)->get("{$this->gatewayUrl}/sessions/{$sessionId}/chats/{$jid}/messages");
             if ($res->successful()) {
@@ -317,6 +346,7 @@ class WhatsAppController extends Controller
      */
     public function sendMessage(Request $request, string $sessionId)
     {
+        $this->authorizeSession($sessionId);
         $request->validate([
             'number' => 'required|string',
             'message' => 'required|string',
@@ -360,6 +390,7 @@ class WhatsAppController extends Controller
      */
     public function getMedia(string $sessionId, string $msgId)
     {
+        $this->authorizeSession($sessionId);
         try {
             $res = Http::timeout(30)->get("{$this->gatewayUrl}/sessions/{$sessionId}/media/{$msgId}");
             if ($res->successful()) {
