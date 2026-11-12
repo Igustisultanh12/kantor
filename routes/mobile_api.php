@@ -320,7 +320,7 @@ Route::get('/api/mobile/verify-signature', function (Request $request) {
             ]);
         }
 
-        $skhpp = \App\Models\Skhpp::where('verification_code', $code)->orWhere('nomor_skhpp', $code)->first();
+        $skhpp = \App\Models\Skhpp::where('verification_code', $code)->first();
         if ($skhpp) {
             $isValid = in_array(strtoupper((string) $skhpp->status), ['APPROVED', 'SELESAI', 'TERBIT'], true);
             return response()->json([

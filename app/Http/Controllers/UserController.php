@@ -204,7 +204,7 @@ class UserController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Gagal Simpan Personel: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Gagal sistem: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal sistem: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
         }
     }
 
@@ -374,7 +374,7 @@ class UserController extends Controller
             Log::error('Gagal Bulk Personel: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan sistem: ' . ' (' . \App\Support\ErrorRef::log($e) . ')'
             ], 500);
         }
     }

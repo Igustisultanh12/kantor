@@ -600,22 +600,19 @@ class SkhppController extends Controller
     public function verify($code)
     {
         $code = trim($code);
-        $settings = \App\Models\Setting::pluck('value', 'key')->all();
+        // Hanya pengaturan publik (audit K02).
+        $settings = \App\Http\Middleware\HandleInertiaRequests::publicSettings(\App\Models\Setting::pluck('value', 'key')->all());
 
         // 1. Jika kode ternyata milik SignatureRequest (Berkas Dinas), alihkan ke Halaman Verifikasi Berkas Dinas
-        $sigReqExists = \App\Models\SignatureRequest::where('verification_code', $code)
-            ->orWhere('letter_number', $code)
-            ->exists();
+        $sigReqExists = \App\Models\SignatureRequest::where('verification_code', $code)->exists();
 
         if ($sigReqExists) {
             return redirect()->route('doc.verify', $code);
         }
 
         // 2. Cari Berkas SKHPP di tabel Skhpp
-        $skhpp = Skhpp::with(['members', 'submitter', 'approver'])
-            ->where('verification_code', $code)
-            ->orWhere('nomor_skhpp', $code)
-            ->first();
+        // Hanya kode verifikasi (nomor SKHPP mudah ditebak) - audit K03.
+        $skhpp = Skhpp::with(['members', 'approver'])->where('verification_code', $code)->first();
 
         // 3. Tampilkan Halaman Verifikasi SKHPP Resmi
         if (!$skhpp || strtolower($skhpp->status) !== 'approved') {
@@ -645,6 +642,9 @@ class SkhppController extends Controller
             $skhpp->signer_name = 'a.n. KOMANDAN DETASEMEN INTELIJEN KODAERAL V';
             $skhpp->signer_title = "{$aRank} {$aName} NRP {$aNrp}";
         }
+
+        // Data akun pemberi persetujuan/pengaju tidak dikirim ke halaman publik (audit K03).
+        $skhpp->unsetRelation('approver')->unsetRelation('submitter');
 
         return Inertia::render('Skhpp/Verify', [
             'skhpp' => $skhpp,

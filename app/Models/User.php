@@ -52,6 +52,10 @@ class User extends Authenticatable
         'password',
         'remember_token',
         'activation_token', // Sembunyikan token dari respon JSON demi keamanan
+        // Audit K03: token reset & identitas Google tidak boleh ikut terserialisasi lewat relasi.
+        'reset_token',
+        'token_expires_at',
+        'google_id',
     ];
 
     /**

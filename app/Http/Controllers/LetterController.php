@@ -106,7 +106,7 @@ class LetterController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Gagal menyimpan: ' . $e->getMessage());
+            return back()->with('error', 'Gagal menyimpan: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
         }
     }
 
@@ -154,7 +154,7 @@ class LetterController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Gagal memproses: ' . $e->getMessage());
+            return back()->with('error', 'Gagal memproses: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
         }
     }
 
@@ -188,7 +188,7 @@ class LetterController extends Controller
 
             return back()->with('success', 'Data diperbarui.');
         } catch (\Exception $e) {
-            return back()->with('error', 'Gagal update: ' . $e->getMessage());
+            return back()->with('error', 'Gagal update: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
         }
     }
 
@@ -221,7 +221,7 @@ class LetterController extends Controller
 
             return redirect()->route('letters.index')->with('success', 'Arsip berhasil dihapus');
         } catch (\Exception $e) {
-            return back()->with('error', 'Gagal menghapus: ' . $e->getMessage());
+            return back()->with('error', 'Gagal menghapus: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
         }
     }
 }

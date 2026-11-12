@@ -68,12 +68,31 @@ class PublicTrackingController extends Controller
         }
 
         return Inertia::render('Public/TrackingSc', [
-            'submission' => $submission,
-            'all_submissions' => $allSubmissions,
+            'submission' => $submission ? self::publicView($submission) : null,
+            'all_submissions' => $allSubmissions->map(fn ($s) => self::publicView($s))->values(),
             'searched_identifier' => $identifier,
             'not_found' => $notFound,
             'stages' => array_values(ScSubmission::STAGES),
         ]);
+    }
+
+    /**
+     * Halaman ini publik: kirim hanya field yang ditampilkan, tanpa nomor HP, path/URL
+     * berkas (berkas hanya lewat stream bertoken & ber-watermark), atau data petugas (audit S01).
+     */
+    private static function publicView(ScSubmission $s): array
+    {
+        $data = $s->only([
+            'id', 'tracking_code', 'nama', 'pangkat_korps', 'kesatuan', 'keperluan', 'status', 'current_stage',
+            'nomor_skhpp', 'nomor_sc', 'skhpp_id', 'catatan_petugas', 'created_at', 'updated_at',
+            'stage_title', 'stage_description', 'progress_percentage', 'all_stages',
+            'is_sc_preview_available', 'sc_preview_remaining_hours',
+        ]);
+        $data['file_skhpp'] = !empty($s->file_skhpp); // penanda saja, bukan path
+        $data['logs'] = $s->relationLoaded('logs')
+            ? $s->logs->map(fn ($l) => $l->only(['id', 'stage', 'stage_title', 'notes', 'user_name', 'created_at']))->values()
+            : [];
+        return $data;
     }
 
     /**

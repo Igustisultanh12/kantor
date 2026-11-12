@@ -87,7 +87,8 @@ class StampController extends Controller
     public function setting()
     {
         return Inertia::render('Settings/StampSetting', [
-            'settings' => Setting::all()->pluck('value', 'key')
+            // Hanya pengaturan publik (audit K02): rahasia tidak boleh ke browser.
+            'settings' => \App\Http\Middleware\HandleInertiaRequests::publicSettings(Setting::all()->pluck('value', 'key')->all())
         ]);
     }
 
@@ -171,7 +172,7 @@ class StampController extends Controller
 
         } catch (\Exception $e) {
             \Log::error("Gagal Stempel: " . $e->getMessage());
-            return back()->with('error', 'Radar Error: ' . $e->getMessage());
+            return back()->with('error', 'Radar Error: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
         }
     }
 }

@@ -28,18 +28,19 @@ class SignatureRequestController extends Controller
             $skhppQuery->where('submitted_by', $user->id);
         }
 
-        $requests = $sigQuery->latest()->paginate(15)->withQueryString();
-        $skhppRequests = $skhppQuery->latest()->paginate(15)->withQueryString();
-
+        // Dokumen yang dibuka langsung (?open_id) memakai cakupan yang sama dengan daftar (audit K03: IDOR).
         $targetDoc = null;
         if ($request->filled('open_id') || $request->filled('id')) {
-            $targetDoc = SignatureRequest::with('user')->find($request->open_id ?: $request->id);
+            $targetDoc = (clone $sigQuery)->find($request->open_id ?: $request->id);
         }
 
         $targetSkhpp = null;
         if ($request->filled('open_skhpp') || $request->filled('skhpp_id')) {
-            $targetSkhpp = \App\Models\Skhpp::with(['submitter', 'approver', 'members'])->find($request->open_skhpp ?: $request->skhpp_id);
+            $targetSkhpp = (clone $skhppQuery)->find($request->open_skhpp ?: $request->skhpp_id);
         }
+
+        $requests = $sigQuery->latest()->paginate(15)->withQueryString();
+        $skhppRequests = $skhppQuery->latest()->paginate(15)->withQueryString();
 
         return Inertia::render('Signature/Index', [
             'requests' => $requests,
@@ -337,7 +338,7 @@ class SignatureRequestController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error("SINDEN CRITICAL ERROR: " . $e->getMessage());
-            return back()->with('error', 'Gagal memproses pengesahan: ' . $e->getMessage());
+            return back()->with('error', 'Gagal memproses pengesahan: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
         }
     }
 

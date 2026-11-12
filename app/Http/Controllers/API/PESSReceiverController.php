@@ -122,7 +122,7 @@ class PESSReceiverController extends Controller
             Log::error('Gagal memproses kiriman file PESS: ' . $e->getMessage());
             return response()->json([
                 'status' => 'error',
-                'message' => 'Kesalahan internal server Sinden: ' . $e->getMessage()
+                'message' => 'Kesalahan internal server Sinden: ' . ' (' . \App\Support\ErrorRef::log($e) . ')'
             ], 500);
         }
     }

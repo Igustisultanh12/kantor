@@ -46,9 +46,9 @@ class GoogleAuthController extends Controller
      */
     private function getClientSecret(): ?string
     {
-        $db = Setting::where('key', 'google_client_secret')->value('value');
-        if (!empty($db) && trim($db) !== '') {
-            return trim($db);
+        $db = \App\Support\SecretSetting::get('google_client_secret');
+        if (!empty($db)) {
+            return $db;
         }
         $secret = config('services.google.client_secret');
         return !empty($secret) ? trim($secret) : null;
@@ -369,9 +369,9 @@ class GoogleAuthController extends Controller
         } catch (\Exception $e) {
             Log::error("[GOOGLE_OAUTH_FATAL] Error pada proses callback Google: " . $e->getMessage());
             if ($action === 'link') {
-                return redirect()->route('profile.edit')->with('error', 'Terjadi kesalahan sistem saat memproses akun Google: ' . $e->getMessage());
+                return redirect()->route('profile.edit')->with('error', 'Terjadi kesalahan sistem saat memproses akun Google: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
             }
-            return redirect()->route('login')->with('error', 'Terjadi kesalahan sistem saat masuk dengan Google: ' . $e->getMessage());
+            return redirect()->route('login')->with('error', 'Terjadi kesalahan sistem saat masuk dengan Google: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
         }
     }
 

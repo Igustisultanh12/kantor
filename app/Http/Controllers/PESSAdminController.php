@@ -281,7 +281,7 @@ class PESSAdminController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Koneksi Putus! Gagal meneruskan data ke SINKODV: ' . $e->getMessage());
-            return redirect()->back()->withErrors(['message' => 'Sistem SINKODV tidak merespon: ' . $e->getMessage()]);
+            return redirect()->back()->withErrors(['message' => 'Sistem SINKODV tidak merespon: ' . ' (' . \App\Support\ErrorRef::log($e) . ')']);
         }
     }
 

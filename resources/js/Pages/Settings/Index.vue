@@ -26,10 +26,10 @@ const form = useForm({
     mobile_show_summary_trio: props.settings.mobile_show_summary_trio !== undefined ? String(props.settings.mobile_show_summary_trio) : '1',
     mobile_show_quick_actions: props.settings.mobile_show_quick_actions !== undefined ? String(props.settings.mobile_show_quick_actions) : '1',
     google_client_id: props.settings.google_client_id || '',
-    google_client_secret: props.settings.google_client_secret || '',
+    google_client_secret: '', // rahasia tidak dikirim ke browser; kosong = tidak diubah
     google_login_enabled: props.settings.google_login_enabled !== undefined ? String(props.settings.google_login_enabled) : '1',
     agora_app_id: props.settings.agora_app_id || '19daeb63b0ec46f2b02197c9fbbe81d6',
-    agora_app_certificate: props.settings.agora_app_certificate || '',
+    agora_app_certificate: '', // rahasia tidak dikirim ke browser; kosong = tidak diubah
     turnstile_enabled: props.settings.turnstile_enabled !== undefined ? String(props.settings.turnstile_enabled) : '0',
     turnstile_site_key: props.settings.turnstile_site_key || '',
     turnstile_secret_key: '',
@@ -686,7 +686,7 @@ onUnmounted(() => { if (waInterval) clearInterval(waInterval); });
                                             v-model="form.google_client_secret" 
                                             :type="showClientSecret ? 'text' : 'password'" 
                                             class="w-full rounded-2xl border-slate-200 bg-white focus:ring-blue-500 focus:border-blue-600 font-mono text-xs font-semibold px-4 py-3 text-slate-800 transition pr-10" 
-                                            placeholder="contoh: GOCSPX-xxxxxxxxxxxxxxxx"
+                                            :placeholder="props.settings.google_client_secret_set ? 'Tersimpan (terenkripsi) — isi untuk mengganti' : 'contoh: GOCSPX-xxxxxxxxxxxxxxxx'"
                                         />
                                         <button 
                                             type="button"
@@ -803,7 +803,7 @@ onUnmounted(() => { if (waInterval) clearInterval(waInterval); });
                                             v-model="form.agora_app_certificate" 
                                             :type="showAgoraCertificate ? 'text' : 'password'" 
                                             class="w-full rounded-2xl border-slate-200 bg-white focus:ring-blue-500 focus:border-blue-600 font-mono text-xs font-semibold px-4 py-3 text-slate-800 transition pr-10" 
-                                            placeholder="contoh: f20e73efeed44842b2d861723549f8ea"
+                                            :placeholder="props.settings.agora_app_certificate_set ? 'Tersimpan (terenkripsi) — isi untuk mengganti' : 'Tempel App Certificate dari konsol Agora'"
                                         />
                                         <button 
                                             type="button" 

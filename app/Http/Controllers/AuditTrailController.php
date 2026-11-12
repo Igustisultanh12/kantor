@@ -12,9 +12,13 @@ class AuditTrailController extends Controller
      */
     public function getTrail(Request $request)
     {
-        $target = trim($request->input('target', ''));
+        // Log audit admin hanya untuk Admin (audit S09).
+        abort_unless(\App\Support\MobileAccess::isSuperAdmin($request->user()), 403);
 
-        if (empty($target)) {
+        // Escape wildcard LIKE agar "%" tidak menampilkan seluruh log.
+        $target = addcslashes(trim($request->input('target', '')), '%_\\');
+
+        if ($target === '') {
             return response()->json(['trails' => []]);
         }
 

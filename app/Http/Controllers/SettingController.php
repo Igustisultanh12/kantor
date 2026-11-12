@@ -17,6 +17,11 @@ class SettingController extends Controller
         // Secret Turnstile tidak pernah dikirim ke browser; cukup status tersimpan/tidak.
         $settings['turnstile_secret_set'] = !empty($settings['turnstile_secret_key']) || filled(config('services.turnstile.secret_key'));
         unset($settings['turnstile_secret_key']);
+        // Google client secret & sertifikat Agora juga tidak dikirim ke browser (audit K02).
+        foreach (\App\Support\SecretSetting::KEYS as $secretKey) {
+            $settings[$secretKey . '_set'] = \App\Support\SecretSetting::isSet($secretKey);
+            unset($settings[$secretKey]);
+        }
         // Firebase: service account (rahasia) tidak pernah dikirim ke browser.
         $settings['fcm_service_account_project'] = \App\Support\PushNotifier::serviceAccountProject();
         $settings['fcm_client_project'] = \App\Support\PushNotifier::clientConfig()['project_id'] ?? null;
@@ -73,8 +78,8 @@ class SettingController extends Controller
             'mobile_api_base_url', 'mobile_apk_download_url', 'mobile_api_status', 'mobile_min_version',
             'mobile_theme_mode', 'mobile_primary_color', 'mobile_accent_color', 'mobile_card_radius',
             'mobile_show_balance_card', 'mobile_show_summary_trio', 'mobile_show_quick_actions',
-            'google_client_id', 'google_client_secret', 'google_login_enabled',
-            'agora_app_id', 'agora_app_certificate',
+            'google_client_id', 'google_login_enabled',
+            'agora_app_id',
             'turnstile_enabled', 'turnstile_site_key', 'fcm_enabled',
             'ui_bg_style', 'ui_bg_animated', 'ui_bg_blur', 'ui_glass_blur', 'ui_glass_opacity', 'ui_motion_enabled',
             'ui_nova',
@@ -82,6 +87,13 @@ class SettingController extends Controller
         foreach ($request->only($textFields) as $key => $value) {
             if ($value !== null) {
                 Setting::updateOrCreate(['key' => $key], ['value' => (string)$value]);
+            }
+        }
+
+        // Google client secret & sertifikat Agora disimpan terenkripsi; kolom kosong = tidak diubah (audit K02).
+        foreach (\App\Support\SecretSetting::KEYS as $secretKey) {
+            if (filled($request->input($secretKey))) {
+                \App\Support\SecretSetting::put($secretKey, (string) $request->input($secretKey));
             }
         }
 

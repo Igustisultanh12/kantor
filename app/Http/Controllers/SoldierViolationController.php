@@ -113,7 +113,7 @@ class SoldierViolationController extends Controller
             return back()->with('success', 'Lapor! Kasus baru dan paket berkas logistik awal berhasil diamankan.');
         } catch (\Exception $e) {
             Log::error('SINDEN ERROR STORE KASUS: ' . $e->getMessage());
-            return back()->with('error', 'Gagal registrasi: ' . $e->getMessage());
+            return back()->with('error', 'Gagal registrasi: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
         }
     }
 
@@ -195,7 +195,7 @@ class SoldierViolationController extends Controller
 
         } catch (\Exception $e) {
             Log::error('SINDEN ERROR UPDATE KASUS: ' . $e->getMessage());
-            return back()->with('error', 'Gagal memperbarui: ' . $e->getMessage());
+            return back()->with('error', 'Gagal memperbarui: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
         }
     }
 
@@ -271,7 +271,7 @@ class SoldierViolationController extends Controller
 
             return back()->with('success', 'Lapor! Satu baris kronologi beserta seluruh berkas paketnya telah dimusnahkan.');
         } catch (\Exception $e) {
-            return back()->with('error', 'Gagal menghapus riwayat: ' . $e->getMessage());
+            return back()->with('error', 'Gagal menghapus riwayat: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
         }
     }
 

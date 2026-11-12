@@ -116,8 +116,8 @@ class GlobalSearchController extends Controller
                 ];
             });
 
-        // 5. Pinjaman Koperasi
-        $loans = KoperasiLoan::with('user')
+        // 5. Pinjaman Koperasi: data pinjaman anggota lain hanya untuk pengurus (audit S09).
+        $loans = !$request->user()->isPengurusKoperasi() ? collect() : KoperasiLoan::with('user')
             ->where(function ($q) use ($query) {
                 $q->where('loan_code', 'like', "%{$query}%")
                     ->orWhereHas('user', function ($qu) use ($query) {

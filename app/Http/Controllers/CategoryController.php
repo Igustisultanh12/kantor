@@ -45,7 +45,7 @@ class CategoryController extends Controller
             return back()->with('success', 'Kategori utama berhasil ditambahkan');
         } catch (\Exception $e) {
             Log::error("Gagal simpan kategori: " . $e->getMessage());
-            return back()->with('error', 'Gagal menyimpan: ' . $e->getMessage());
+            return back()->with('error', 'Gagal menyimpan: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
         }
     }
 

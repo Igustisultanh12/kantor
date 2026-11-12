@@ -35,6 +35,9 @@ class PrintJob extends Model
         'completed_at',
     ];
 
+    /** Path berkas di server & IP printer tidak dikirim ke browser (audit K03/T05). */
+    protected $hidden = ['original_file_path', 'preview_pdf_path', 'printable_pdf_path', 'printer_ip'];
+
     protected $casts = [
         'total_pages' => 'integer',
         'separator_pages' => 'integer',

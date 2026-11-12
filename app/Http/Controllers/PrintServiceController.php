@@ -28,16 +28,16 @@ class PrintServiceController extends Controller
     {
         $user = Auth::user();
 
-        $activeJob = PrintJob::with('user')
+        $activeJob = PrintJob::with('user:id,name,pangkat,avatar')
             ->where('status', 'printing')
             ->first();
 
-        $queuedJobs = PrintJob::with('user')
+        $queuedJobs = PrintJob::with('user:id,name,pangkat,avatar')
             ->where('status', 'queued')
             ->orderBy('created_at', 'asc')
             ->get();
 
-        $recentJobs = PrintJob::with('user')
+        $recentJobs = PrintJob::with('user:id,name,pangkat,avatar')
             ->whereIn('status', ['completed', 'failed', 'cancelled'])
             ->latest()
             ->take(15)
@@ -153,7 +153,7 @@ class PrintServiceController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memproses berkas dokumen: ' . $e->getMessage()
+                'message' => 'Gagal memproses berkas dokumen: ' . ' (' . \App\Support\ErrorRef::log($e) . ')'
             ], 422);
         }
     }
@@ -264,7 +264,7 @@ class PrintServiceController extends Controller
                 'job_id' => $id,
                 'trace' => $e->getTraceAsString(),
             ]);
-            return back()->with('error', 'Gagal membatalkan dokumen: ' . $e->getMessage());
+            return back()->with('error', 'Gagal membatalkan dokumen: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
         }
     }
 
@@ -276,16 +276,16 @@ class PrintServiceController extends Controller
         // Perbarui progres lembar cetak aktif secara bertahap
         $this->printService->tickActiveJobProgress();
 
-        $activeJob = PrintJob::with('user')
+        $activeJob = PrintJob::with('user:id,name,pangkat,avatar')
             ->where('status', 'printing')
             ->first();
 
-        $queuedJobs = PrintJob::with('user')
+        $queuedJobs = PrintJob::with('user:id,name,pangkat,avatar')
             ->where('status', 'queued')
             ->orderBy('created_at', 'asc')
             ->get();
 
-        $recentJobs = PrintJob::with('user')
+        $recentJobs = PrintJob::with('user:id,name,pangkat,avatar')
             ->whereIn('status', ['completed', 'failed', 'cancelled'])
             ->latest()
             ->take(10)

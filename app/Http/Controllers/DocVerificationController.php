@@ -64,18 +64,17 @@ class DocVerificationController extends Controller
     public function verify($code)
     {
         $code = trim($code);
-        $settings = Setting::pluck('value', 'key')->all();
+        // Hanya pengaturan publik (audit K02): halaman ini terbuka tanpa login.
+        $settings = \App\Http\Middleware\HandleInertiaRequests::publicSettings(Setting::pluck('value', 'key')->all());
 
         // 1. Jika kode milik SKHPP, alihkan ke Verifikasi SKHPP
-        if (str_starts_with(strtoupper($code), 'SKHPP-') || Skhpp::where('verification_code', $code)->orWhere('nomor_skhpp', $code)->exists()) {
+        if (str_starts_with(strtoupper($code), 'SKHPP-') || Skhpp::where('verification_code', $code)->exists()) {
             return redirect()->route('skhpp.verify', $code);
         }
 
         // 2. Cari Berkas di Tabel SpJaga (Surat Perintah Jaga Siaga Sintel)
-        $spJaga = SpJaga::where('verification_code', $code)
-            ->orWhere('verification_code', 'like', "%{$code}%")
-            ->orWhere('nomor_sprin', $code)
-            ->first();
+        // Pencocokan PERSIS (audit S10): tanpa LIKE/nomor surat agar dokumen tidak bisa didaftar.
+        $spJaga = $code === '' ? null : SpJaga::where('verification_code', $code)->first();
 
         if ($spJaga) {
             // Ambil Data Pejabat Pengaju / Pimpinan Jaga (Dan Unit 1 Lid - Kapten Laut (P) Indra Gunawan)
@@ -132,11 +131,7 @@ class DocVerificationController extends Controller
         }
 
         // 3. Cari Berkas di Tabel SignatureRequest (Naskah Dinas / Dokumen Lainnya)
-        $sigReq = SignatureRequest::with('user')
-            ->where('verification_code', $code)
-            ->orWhere('verification_code', 'like', "%{$code}%")
-            ->orWhere('letter_number', $code)
-            ->first();
+        $sigReq = $code === '' ? null : SignatureRequest::with('user')->where('verification_code', $code)->first();
 
         // 4. Logika Penentuan Pejabat Penandatangan (Komandan Langsung vs a.n. Komandan)
         $komandan = User::where('role', 'komandan')->first() 

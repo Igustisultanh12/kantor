@@ -444,7 +444,7 @@ class ScSubmissionController extends Controller
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Gagal mendaftarkan pengajuan SC: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
-            return redirect()->back()->withErrors(['error' => 'Gagal mendaftarkan berkas: ' . $e->getMessage()]);
+            return redirect()->back()->withErrors(['error' => 'Gagal mendaftarkan berkas: ' . ' (' . \App\Support\ErrorRef::log($e) . ')']);
         }
     }
 

@@ -62,7 +62,7 @@ class SindenToSinkodvController extends Controller
             Log::error('Mogok Sistem saat melempar data ke SINKODV: ' . $e->getMessage());
             return response()->json([
                 'status'  => 'error',
-                'message' => 'Gagal sinkronisasi ke SINKODV: ' . $e->getMessage()
+                'message' => 'Gagal sinkronisasi ke SINKODV: ' . ' (' . \App\Support\ErrorRef::log($e) . ')'
             ], 500);
         }
     }

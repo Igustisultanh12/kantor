@@ -42,6 +42,17 @@ return [
         'secret_key' => env('TURNSTILE_SECRET_KEY'),
     ],
 
+    'agora' => [
+        // App ID bersifat publik (dipakai klien); sertifikat TIDAK punya nilai bawaan.
+        'app_id' => env('AGORA_APP_ID', '19daeb63b0ec46f2b02197c9fbbe81d6'),
+        'app_certificate' => env('AGORA_APP_CERTIFICATE'),
+    ],
+
+    // Token integrasi portal PESS (wajib diisi di .env produksi; tanpa nilai bawaan).
+    'pess' => [
+        'token' => env('PESS_API_TOKEN'),
+    ],
+
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),

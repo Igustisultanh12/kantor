@@ -134,7 +134,7 @@ class DeviceSessionTest extends TestCase
             'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0 Safari/537.36', 'payload' => '', 'last_activity' => now()->timestamp,
         ]);
 
-        $this->actingAs($this->me)->deleteJson("/profile/devices/web/{$sid}")->assertOk();
+        $this->actingAs($this->me)->deleteJson("/profile/devices/web/" . app(\App\Services\DeviceSessionService::class)->publicSessionId($sid))->assertOk();
         auth()->forgetGuards();
 
         // getJson hanya mengirim cookie bila withCredentials().
@@ -160,9 +160,9 @@ class DeviceSessionTest extends TestCase
         $oldRemember = $this->me->fresh()->remember_token;
 
         $list = collect($this->actingAs($this->me)->getJson('/profile/devices')->assertOk()->json('devices'));
-        $this->assertTrue($list->contains(fn ($d) => $d['kind'] === 'web' && $d['id'] === 'sesi-kantor' && str_contains((string) $d['ip_location'], 'Surabaya')));
-        $this->assertFalse($list->contains(fn ($d) => $d['id'] === 'sesi-orang'));
-        $this->assertFalse($list->contains(fn ($d) => $d['id'] === 'sesi-api-hp'));
+        $this->assertTrue($list->contains(fn ($d) => $d['kind'] === 'web' && $d['id'] === app(\App\Services\DeviceSessionService::class)->publicSessionId('sesi-kantor') && str_contains((string) $d['ip_location'], 'Surabaya')));
+        $this->assertFalse($list->contains(fn ($d) => $d['id'] === app(\App\Services\DeviceSessionService::class)->publicSessionId('sesi-orang')));
+        $this->assertFalse($list->contains(fn ($d) => $d['id'] === app(\App\Services\DeviceSessionService::class)->publicSessionId('sesi-api-hp')));
         $this->assertSame(1, $list->where('kind', 'android')->count());
 
         $this->actingAs($this->me)->postJson('/profile/devices/logout-others')->assertOk();

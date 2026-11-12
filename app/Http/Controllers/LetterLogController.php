@@ -138,7 +138,7 @@ class LetterLogController extends Controller
                 'file' => $e->getFile(),
                 'line' => $e->getLine()
             ]);
-            return back()->with('error', 'Gagal menyimpan: ' . $e->getMessage());
+            return back()->with('error', 'Gagal menyimpan: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
         }
     }
 
@@ -206,7 +206,7 @@ class LetterLogController extends Controller
             LetterLog::truncate();
             return back()->with('success', 'Lapor! Seluruh riwayat penomoran telah berhasil dimusnahkan.');
         } catch (\Exception $e) {
-            return back()->with('error', 'Gagal memusnahkan riwayat: ' . $e->getMessage());
+            return back()->with('error', 'Gagal memusnahkan riwayat: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
         }
     }
 

@@ -124,6 +124,7 @@ class DeviceSessionService
         UserDevice::ensureSchema();
         $devices = UserDevice::where('user_id', $user->id)->get();
         $items = [];
+        $rawWebIds = [];
 
         if ($this->webSessionsSupported()) {
             $lifetime = (int) config('session.lifetime', 120) * 60;
@@ -132,6 +133,7 @@ class DeviceSessionService
                 ->where('last_activity', '>=', now()->timestamp - max($lifetime, 3600))
                 ->get(['id', 'ip_address', 'user_agent', 'last_activity']);
             foreach ($sessions as $s) {
+                $rawWebIds[] = $s->id;
                 $d = $devices->first(fn ($x) => $x->kind === 'web' && $x->session_id === $s->id);
                 // Rute API aplikasi berada di grup web sehingga tiap panggilan aplikasi ikut membuat baris
                 // sesi. Itu bukan login peramban: tampilkan hanya sesi yang tercatat dari peramban.
@@ -139,7 +141,8 @@ class DeviceSessionService
                 if (!$d && (str_starts_with($ua, 'SISINDEN-Android') || !str_contains($ua, 'Mozilla/'))) {
                     continue;
                 }
-                $items[] = $this->payload('web', $s->id, $d, [
+                // ID sesi mentah tidak dikirim ke browser (audit R05): pakai turunan HMAC.
+                $items[] = $this->payload('web', $this->publicSessionId($s->id), $d, [
                     'ip' => $d?->ip ?: $s->ip_address,
                     'user_agent' => $s->user_agent,
                     'last_seen' => max((int) $s->last_activity, (int) ($d?->last_seen_at?->timestamp ?? 0)),
@@ -164,7 +167,7 @@ class DeviceSessionService
         }
 
         // Rekaman perangkat yang sesinya sudah hilang tidak perlu disimpan lagi.
-        $liveWeb = collect($items)->where('kind', 'web')->pluck('id')->all();
+        $liveWeb = $rawWebIds;
         $liveTok = collect($items)->where('kind', 'android')->pluck('id')->map(fn ($v) => (int) $v)->all();
         $devices->each(function (UserDevice $d) use ($liveWeb, $liveTok) {
             $gone = $d->kind === 'web' ? !in_array($d->session_id, $liveWeb, true) : !in_array((int) $d->token_id, $liveTok, true);
@@ -175,6 +178,12 @@ class DeviceSessionService
 
         usort($items, fn ($a, $b) => [$b['current'], $b['last_seen']] <=> [$a['current'], $a['last_seen']]);
         return $items;
+    }
+
+    /** ID sesi yang aman dikirim ke browser (tidak bisa dipakai sebagai cookie sesi). */
+    public function publicSessionId(string $sessionId): string
+    {
+        return substr(hash_hmac('sha256', $sessionId, (string) config('app.key')), 0, 40);
     }
 
     private function payload(string $kind, string $id, ?UserDevice $d, array $base): array
@@ -264,7 +273,14 @@ class DeviceSessionService
             if (!$this->webSessionsSupported()) {
                 return false;
             }
-            $deleted = DB::table(config('session.table', 'sessions'))->where('id', $id)->where('user_id', $user->id)->delete();
+            // $id adalah ID publik (HMAC); cari sesi mentah milik pengguna ini yang cocok.
+            $table = config('session.table', 'sessions');
+            $id = DB::table($table)->where('user_id', $user->id)->pluck('id')
+                ->first(fn ($sid) => hash_equals($this->publicSessionId((string) $sid), $id)) ?? '';
+            if ($id === '') {
+                return false;
+            }
+            $deleted = DB::table($table)->where('id', $id)->where('user_id', $user->id)->delete();
             UserDevice::where('user_id', $user->id)->where('kind', 'web')->where('session_id', $id)->delete();
             if ($deleted) {
                 \App\Support\Realtime::markRevoked('web', $id);

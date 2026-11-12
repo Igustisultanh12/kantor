@@ -903,7 +903,7 @@ class LiveChatController extends Controller
         $channelName = 'SINDEN_' . preg_replace('/[^a-zA-Z0-9]/', '', $thread->uuid);
         $uid = (int) ($request->input('uid') ?: ($user->id ?? 1));
 
-        $appId = Setting::where('key', 'agora_app_id')->value('value') ?: env('AGORA_APP_ID', '19daeb63b0ec46f2b02197c9fbbe81d6');
+        $appId = Setting::where('key', 'agora_app_id')->value('value') ?: config('services.agora.app_id');
         $token = AgoraTokenService::generateToken($channelName, $uid);
 
         return response()->json([

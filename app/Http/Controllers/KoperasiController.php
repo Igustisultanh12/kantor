@@ -781,7 +781,7 @@ class KoperasiController extends Controller
             return back()->with('message', 'Pengingat cicilan tagihan tanggal 1 berhasil dipancarkan ke seluruh personel peminjam via notifikasi SINDEN dan WhatsApp.');
         } catch (\Exception $e) {
             Log::error("Gagal siaran pengingat koperasi: " . $e->getMessage());
-            return back()->with('error', 'Kendala saat menyiarkan pengingat: ' . $e->getMessage());
+            return back()->with('error', 'Kendala saat menyiarkan pengingat: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
         }
     }
     /**
@@ -833,7 +833,7 @@ class KoperasiController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error("Gagal mencatat mutasi kas: " . $e->getMessage());
-            return back()->with('error', 'Terjadi kendala saat mencatat mutasi kas: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kendala saat mencatat mutasi kas: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
         }
     }
 
@@ -950,7 +950,7 @@ class KoperasiController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error("Gagal pelunasan dipercepat: " . $e->getMessage());
-            return back()->with('error', 'Terjadi kendala saat memproses pelunasan dipercepat: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kendala saat memproses pelunasan dipercepat: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
         }
     }
 }

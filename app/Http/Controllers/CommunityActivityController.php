@@ -88,7 +88,7 @@ class CommunityActivityController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Kritis! Gagal simpan plotting: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Server error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Server error: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
         }
     }
 
@@ -146,7 +146,7 @@ class CommunityActivityController extends Controller
 
         } catch (\Exception $e) {
             Log::error("Kritis! Gagal update ID: $id. Pesan: " . $e->getMessage());
-            return redirect()->back()->with('error', 'Gagal update: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal update: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
         }
     }
 

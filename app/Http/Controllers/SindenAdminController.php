@@ -75,7 +75,7 @@ class ApplicantController extends Controller
             return redirect()->route('pess.dashboard')->with('message', 'Berkas pendaftaran PESS berhasil dikirim ke Si Sinden.');
         } catch (\Exception $e) {
             Log::error('Gagal Submit PESS: ' . $e->getMessage());
-            return redirect()->back()->withErrors(['message' => 'Terjadi kesalahan: ' . $e->getMessage()]);
+            return redirect()->back()->withErrors(['message' => 'Terjadi kesalahan: ' . ' (' . \App\Support\ErrorRef::log($e) . ')']);
         }
     }
 

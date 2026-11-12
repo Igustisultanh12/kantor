@@ -951,7 +951,7 @@ class BackupController extends Controller
 
         } catch (\Exception $e) {
             Log::error("Gagal ekstraksi arsip ID {$id}: " . $e->getMessage());
-            return response()->json(['status' => 'error', 'message' => 'Terjadi kesalahan saat ekstraksi: ' . $e->getMessage()], 500);
+            return response()->json(['status' => 'error', 'message' => 'Terjadi kesalahan saat ekstraksi: ' . ' (' . \App\Support\ErrorRef::log($e) . ')'], 500);
         } finally {
             if ($tempArchive && file_exists($tempArchive)) {
                 @unlink($tempArchive);
@@ -1314,7 +1314,7 @@ class BackupController extends Controller
             return FileSecurityService::streamDecryptedDownload($fullPath, $backup->file_name, $mimeType);
         } catch (\Exception $e) {
             Log::error("Gagal unduh berkas backup ID {$id}: " . $e->getMessage());
-            return back()->with('error', 'Gagal mengunduh berkas: ' . $e->getMessage());
+            return back()->with('error', 'Gagal mengunduh berkas: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
         }
     }
 
@@ -1442,7 +1442,7 @@ class BackupController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error("Gagal menyimpan berkas Excel backup ID {$id}: " . $e->getMessage());
-            return response()->json(['status' => 'error', 'message' => 'Gagal menyimpan perubahan berkas: ' . $e->getMessage()], 500);
+            return response()->json(['status' => 'error', 'message' => 'Gagal menyimpan perubahan berkas: ' . ' (' . \App\Support\ErrorRef::log($e) . ')'], 500);
         }
     }
 
@@ -1494,7 +1494,7 @@ class BackupController extends Controller
             return back()->with('success', 'Berkas Excel baru berhasil dibuat dan disimpan.');
         } catch (\Exception $e) {
             Log::error("Gagal membuat berkas Excel baru: " . $e->getMessage());
-            return back()->with('error', 'Gagal membuat berkas Excel: ' . $e->getMessage());
+            return back()->with('error', 'Gagal membuat berkas Excel: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
         }
     }
 
