@@ -20,20 +20,33 @@ class PESSReceiverController extends Controller
         // =====================================================================
         // SULTAN CONFIG: PENGISIAN TOKEN AMAN DARI FILE .env SINDEN
         // =====================================================================
-        $incomingToken = $request->bearerToken();
-        
-        // Membaca 'PESS_API_TOKEN' dari .env Sinden. Jika kosong, fallback ke default string di bawah
-        if ($incomingToken !== env('PESS_API_TOKEN', 'Malang101202...!!!???Benteng')) {
+        // Audit K05: token HANYA dari config/services.php (PESS_API_TOKEN di .env), tanpa nilai bawaan
+        // di kode, dibandingkan dengan hash_equals. Bila belum diatur, gerbang ditutup.
+        $expected = (string) config('services.pess.token');
+        if ($expected === '') {
+            Log::critical('[PESS] PESS_API_TOKEN belum diatur di .env; penerimaan berkas ditolak.');
+            return response()->json(['message' => 'Integrasi PESS belum dikonfigurasi.'], 503);
+        }
+        if (!hash_equals($expected, (string) $request->bearerToken())) {
             return response()->json(['message' => 'Akses ilegal terdeteksi oleh Radar Sinden'], 401);
         }
 
         $request->validate([
-            'nomor_identitas'        => 'required',
-            'nama_lengkap'           => 'required',
-            'submission_category_id' => 'required',
-            'answers_json'           => 'required',
-            'master_drh_pdf'         => 'required|mimes:pdf|max:12288'
+            'nomor_identitas'        => ['required', 'string', 'max:50', 'regex:/^[A-Za-z0-9._-]+$/'],
+            'nama_lengkap'           => 'required|string|max:255',
+            'no_wa'                  => 'nullable|string|max:30',
+            'submission_category_id' => 'required|integer',
+            'answers_json'           => 'required|json',
+            'master_drh_pdf'         => 'required|file|mimes:pdf|max:12288',
         ]);
+
+        // Semua lampiran lain wajib dokumen/gambar biasa (dulu tanpa validasi -> skrip .php bisa tersimpan).
+        foreach ($request->allFiles() as $key => $file) {
+            if ($key === 'master_drh_pdf') {
+                continue;
+            }
+            \Illuminate\Support\Facades\Validator::make(['f' => $file], ['f' => 'file|mimes:pdf,jpg,jpeg,png,webp,doc,docx|max:12288'])->validate();
+        }
 
         try {
             // 1. Cek atau Daftarkan Personel Baru di Database Sinden
@@ -50,7 +63,7 @@ class PESSReceiverController extends Controller
             // SULTAN PROTECTION: AUTO-OVERWRITE RECORD SINDEN SEBELUM SAVE BARU (FIXED)
             // =========================================================================
             // Menggunakan pembacaan request input secara agresif untuk menjamin flag overwrite terbaca murni
-            if ($request->input('overwrite_mode') == true || $request->has('overwrite_mode')) {
+            if ($request->boolean('overwrite_mode')) {
                 
                 // 1. Ambil data pengajuan lama yang masih menggantung ('verifying' or 'rejected_files')
                 $oldSubmissions = Submission::where('applicant_id', $applicant->id)
