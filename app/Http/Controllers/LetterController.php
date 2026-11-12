@@ -73,7 +73,7 @@ class LetterController extends Controller
         try {
             DB::beginTransaction();
 
-            $filePath = $request->file('file')->store('archives', 'public');
+            $filePath = $request->file('file')->store('archives', 'local'); // privat (audit S04)
 
             $letter = Letter::create([
                 'type'            => $request->type,
@@ -124,7 +124,7 @@ class LetterController extends Controller
             DB::beginTransaction();
 
             $log = LetterLog::findOrFail($request->letter_log_id);
-            $filePath = $request->file('file')->store('archives', 'public');
+            $filePath = $request->file('file')->store('archives', 'local'); // privat (audit S04)
 
             Letter::create([
                 'type'            => 'keluar',
@@ -193,6 +193,25 @@ class LetterController extends Controller
     }
 
     /**
+     * Sajikan PDF arsip lewat rute berotorisasi (audit S04). Berkas baru di disk privat;
+     * berkas lama yang belum dipindahkan masih dibaca dari disk public.
+     */
+    public function file(Letter $letter)
+    {
+        foreach (['local', 'public'] as $disk) {
+            if ($letter->file_path && Storage::disk($disk)->exists($letter->file_path)) {
+                return response()->file(Storage::disk($disk)->path($letter->file_path), [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="arsip-' . $letter->id . '.pdf"',
+                    'X-Content-Type-Options' => 'nosniff',
+                    'Cache-Control' => 'private, no-store',
+                ]);
+            }
+        }
+        abort(404, 'Berkas arsip tidak ditemukan.');
+    }
+
+    /**
      * Hapus arsip
      */
     public function destroy(Letter $letter)
@@ -201,8 +220,10 @@ class LetterController extends Controller
         try {
             $target = $letter->subject . " (" . $letter->letter_number . ")";
             
-            if ($letter->file_path && Storage::disk('public')->exists($letter->file_path)) {
-                Storage::disk('public')->delete($letter->file_path);
+            foreach (['local', 'public'] as $disk) {
+                if ($letter->file_path && Storage::disk($disk)->exists($letter->file_path)) {
+                    Storage::disk($disk)->delete($letter->file_path);
+                }
             }
             
             // Cek apakah arsip ini berasal dari Buku Nomor, jika ya, kembalikan statusnya

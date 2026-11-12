@@ -447,7 +447,9 @@ class LiveChatController extends Controller
                 }
 
                 $cleanName = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $file->getClientOriginalName());
-                $storedPath = $file->store($destDir, 'public');
+                // Audit T06: ekstensi tersimpan = ekstensi yang sudah lolos daftar putih
+                // (dulu store() menebak dari isi berkas, sehingga skrip PHP bisa tersimpan sebagai .php).
+                $storedPath = $file->storeAs($destDir, Str::random(40) . '.' . $ext, 'public');
 
                 $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'webp']);
 

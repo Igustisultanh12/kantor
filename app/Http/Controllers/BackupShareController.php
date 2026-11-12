@@ -843,7 +843,7 @@ class BackupShareController extends Controller
             return FileSecurityService::streamDecryptedInline($fullPath, $file->file_name);
         }
 
-        $cacheDir = storage_path('app/public/office_cache');
+        $cacheDir = storage_path('app/private/office_cache');
         if (!file_exists($cacheDir)) {
             @mkdir($cacheDir, 0777, true);
         }

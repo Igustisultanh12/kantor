@@ -23,7 +23,7 @@ class ThumbnailService
             abort(404, 'Berkas fisik tidak ditemukan.');
         }
 
-        $cacheDir = storage_path('app/public/cache_thumbs');
+        $cacheDir = storage_path('app/private/cache_thumbs');
         if (!file_exists($cacheDir)) {
             @mkdir($cacheDir, 0777, true);
         }
@@ -222,7 +222,7 @@ class ThumbnailService
         $fileMtime = @filemtime($fullPath) ?: 0;
         $fileSize = @filesize($fullPath) ?: 0;
         $arwCacheKey = md5($fullPath . '_' . $fileMtime . '_' . $fileSize);
-        $cachedArwJpg = storage_path('app/public/cache_arw/' . $arwCacheKey . '.jpg');
+        $cachedArwJpg = storage_path('app/private/cache_arw/' . $arwCacheKey . '.jpg');
 
         if (file_exists($cachedArwJpg) && filesize($cachedArwJpg) > 10000) {
             return self::downsampleImageFile($cachedArwJpg, $targetThumbPath, $useWebp);

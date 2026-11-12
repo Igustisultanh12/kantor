@@ -304,6 +304,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile/devices/{kind}/{id}', [\App\Http\Controllers\DeviceSessionController::class, 'destroy'])->where('kind', 'web|android')->middleware('throttle:30,1')->name('profile.devices.destroy');
 
     // Manajemen Surat-Menyurat
+    Route::get('/letters/{letter}/file', [LetterController::class, 'file'])->middleware('perm:letters.view')->name('letters.file');
     Route::resource('letters', LetterController::class);
     Route::post('/letters/store-direct', [LetterController::class, 'storeDirect'])->name('letters.store-direct');
     Route::get('/letter-logs', [LetterLogController::class, 'index'])->name('letter-logs.index');

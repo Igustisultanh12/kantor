@@ -30,7 +30,7 @@ class ArwService
             return null;
         }
 
-        $cacheDir = storage_path('app/public/cache_arw');
+        $cacheDir = storage_path('app/private/cache_arw');
         if (!file_exists($cacheDir)) {
             @mkdir($cacheDir, 0777, true);
         }

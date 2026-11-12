@@ -54,8 +54,9 @@ const groupedLetters = computed(() => {
     }, {});
 });
 
-const openPdf = (filePath) => {
-    selectedPdfUrl.value = `/storage/${filePath}?t=${new Date().getTime()}`;
+const openPdf = (letter) => {
+    // Arsip disajikan lewat rute berotorisasi, bukan URL /storage publik (audit S04).
+    selectedPdfUrl.value = route('letters.file', letter.id) + `?t=${new Date().getTime()}`;
     isShowingPdf.value = true;
 };
 
@@ -169,7 +170,7 @@ const levelConfig = (level) => {
                                             <button @click="openAuditTrail(letter.letter_number)" class="text-gray-400 hover:text-blue-600" title="Jejak Audit & Riwayat">
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                             </button>
-                                            <button @click="openPdf(letter.file_path)" class="text-gray-400 hover:text-indigo-600" title="PDF">
+                                            <button @click="openPdf(letter)" class="text-gray-400 hover:text-indigo-600" title="PDF">
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                             </button>
                                             <button @click="openEdit(letter)" class="text-gray-400 hover:text-amber-600" title="Edit">

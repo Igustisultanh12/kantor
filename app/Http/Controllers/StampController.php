@@ -104,6 +104,8 @@ class StampController extends Controller
             'y' => 'required|numeric',
             'width' => 'required|numeric',
             'target_page' => 'required|integer',
+            // Audit T06: berkas manual wajib PDF (dulu tanpa validasi -> ekstensi ditebak dari isi).
+            'pdf_file' => 'nullable|file|mimes:pdf|max:10240',
         ]);
 
         $stampFile = Setting::where('key', 'commander_stamp')->value('value');

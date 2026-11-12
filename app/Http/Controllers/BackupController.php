@@ -351,7 +351,7 @@ class BackupController extends Controller
             abort(404, 'Berkas fisik tidak ditemukan di server.');
         }
 
-        $cacheDir = storage_path('app/public/office_cache');
+        $cacheDir = storage_path('app/private/office_cache');
         if (!file_exists($cacheDir)) {
             @mkdir($cacheDir, 0777, true);
         }

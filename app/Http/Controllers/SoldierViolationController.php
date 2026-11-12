@@ -73,7 +73,7 @@ class SoldierViolationController extends Controller
             if ($request->hasFile('lampiran')) {
                 foreach ($request->file('lampiran') as $file) {
                     $originalName = $file->getClientOriginalName();
-                    $storedPath = $file->storeAs('pelanggaran/lampiran', time() . '_' . $originalName, 'public');
+                    $storedPath = $file->storeAs('pelanggaran/lampiran', self::safeStoredName($file), 'public');
                     $uploadedLampiranPaths[] = $storedPath;
                 }
             }
@@ -103,7 +103,7 @@ class SoldierViolationController extends Controller
                 $uploadedPutusanPaths = [];
                 foreach ($request->file('putusan') as $file) {
                     $originalName = $file->getClientOriginalName();
-                    $uploadedPutusanPaths[] = $file->storeAs('pelanggaran/putusan', time() . '_' . $originalName, 'public');
+                    $uploadedPutusanPaths[] = $file->storeAs('pelanggaran/putusan', self::safeStoredName($file), 'public');
                 }
                 $dataToSave['dokumen_putusan'] = json_encode($uploadedPutusanPaths);
             }
@@ -148,7 +148,7 @@ class SoldierViolationController extends Controller
             if ($request->hasFile('lampiran')) {
                 foreach ($request->file('lampiran') as $file) {
                     $originalName = $file->getClientOriginalName();
-                    $newJalurPaths[] = $file->storeAs('pelanggaran/lampiran', time() . '_' . $originalName, 'public');
+                    $newJalurPaths[] = $file->storeAs('pelanggaran/lampiran', self::safeStoredName($file), 'public');
                 }
                 Log::info('Multi-Lampiran Baru Berhasil Diparsing: ', $newJalurPaths);
             }
@@ -182,7 +182,7 @@ class SoldierViolationController extends Controller
                 $newPutusanPaths = [];
                 foreach ($request->file('putusan') as $file) {
                     $originalName = $file->getClientOriginalName();
-                    $newPutusanPaths[] = $file->storeAs('pelanggaran/putusan', time() . '_' . $originalName, 'public');
+                    $newPutusanPaths[] = $file->storeAs('pelanggaran/putusan', self::safeStoredName($file), 'public');
                 }
                 $dataUpdate['dokumen_putusan'] = json_encode($newPutusanPaths);
             }
@@ -200,16 +200,30 @@ class SoldierViolationController extends Controller
     }
 
     /**
+     * Nama berkas aman (audit T06): ekstensi dari ISI berkas yang sudah lolos validasi mimes,
+     * bukan dari nama kiriman klien (dulu "x.html" berisi %PDF tersimpan sebagai .html).
+     */
+    private static function safeStoredName(\Illuminate\Http\UploadedFile $file): string
+    {
+        $ext = strtolower((string) ($file->guessExtension() ?: 'bin'));
+        if (!in_array($ext, ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx', 'zip'], true)) {
+            $ext = 'bin';
+        }
+        $base = \Illuminate\Support\Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) ?: 'berkas';
+        return time() . '_' . \Illuminate\Support\Str::random(6) . '_' . \Illuminate\Support\Str::limit($base, 60, '') . '.' . $ext;
+    }
+
+    /**
      * INTERSEPTOR RADAR: PRATINJAU LANGSUNG FILE .DOCX TANPA DOWNLOAD
      */
     public function previewDocx(Request $request)
     {
         $request->validate(['file_path' => 'required|string']);
         
-        $relativeFilePath = $request->file_path;
-        $fullPathFisik = storage_path('app/public/' . $relativeFilePath);
-
-        if (!file_exists($fullPathFisik)) {
+        // Audit T05: path wajib berada di dalam folder berkas pelanggaran (tanpa ../ keluar folder).
+        $base = realpath(storage_path('app/public/pelanggaran'));
+        $fullPathFisik = realpath(storage_path('app/public/' . ltrim((string) $request->file_path, '/\\')));
+        if (!$base || !$fullPathFisik || !str_starts_with($fullPathFisik, $base . DIRECTORY_SEPARATOR) || !is_file($fullPathFisik)) {
             return abort(404, "Berkas fisik tidak ditemukan di pangkalan storage.");
         }
 
