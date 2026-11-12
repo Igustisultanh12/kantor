@@ -135,5 +135,6 @@ object Routes {
 
     const val DEEP_LINK_PREFIX = "sisinden://app/"
 
-    val tabs = listOf(HOME, DUTY, ATTENDANCE, MENU, PROFILE)
+    // Semua rute yang bisa menjadi tab dock Nova (lihat novaTabs di MainNavigation).
+    val tabs = listOf(HOME, LETTERS, DUTY, ATTENDANCE, CHAT, MENU, PROFILE)
 }

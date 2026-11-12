@@ -33,6 +33,7 @@ import id.my.sisinden.app.core.ui.components.StatusChip
 import id.my.sisinden.app.core.ui.components.Tone
 import id.my.sisinden.app.core.ui.theme.Blue400
 import id.my.sisinden.app.core.ui.theme.Blue600
+import id.my.sisinden.app.core.ui.theme.Nova
 import id.my.sisinden.app.core.ui.theme.Spacing
 import id.my.sisinden.app.core.util.Fmt
 import id.my.sisinden.app.data.model.DutyRosterResponse
@@ -140,7 +141,7 @@ fun DateBadge(date: LocalDate, emphasized: Boolean, muted: Boolean, modifier: Mo
     val scheme = MaterialTheme.colorScheme
     val shape = MaterialTheme.shapes.small
     val bg: Modifier = when {
-        emphasized -> Modifier.background(Brush.verticalGradient(listOf(Blue400, Blue600)))
+        emphasized -> Modifier.background(Brush.verticalGradient(listOf(Color(0xFF3B82F6), Nova.Accent)))
         else -> Modifier.background(scheme.surfaceVariant)
     }
     val fg = when {

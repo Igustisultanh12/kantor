@@ -36,6 +36,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
@@ -133,28 +134,20 @@ fun GradientIconTile(
     corner: Dp = 20.dp,
     contentDescription: String? = null,
 ) {
+    // Gaya Nova: kotak ber-tint lembut + ikon berwarna (bukan gradien jenuh).
+    // Warna ikon digelapkan (terang) / dicerahkan (gelap) agar kontras ikon ≥ 3:1.
     val shape = RoundedCornerShape(corner)
-    val gloss = if (SindenTheme.isDark) 0.16f else 0.38f
+    val dark = SindenTheme.isDark
+    val ink = if (dark) lerp(gradient.top, Color.White, 0.18f) else lerp(gradient.bottom, Color.Black, 0.22f)
     Box(
         modifier
             .size(size)
-            .shadow(8.dp, shape, ambientColor = gradient.bottom.copy(alpha = 0.45f), spotColor = gradient.bottom.copy(alpha = 0.55f))
             .clip(shape)
-            .background(Brush.linearGradient(listOf(gradient.top, gradient.bottom)))
-            .drawWithContent {
-                drawContent()
-                drawRect(
-                    Brush.verticalGradient(
-                        0f to Color.White.copy(alpha = gloss),
-                        0.5f to Color.White.copy(alpha = 0.04f),
-                        0.5001f to Color.Transparent,
-                    ),
-                )
-            }
-            .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.6f), Color.White.copy(alpha = 0.06f))), shape),
+            .background(gradient.bottom.copy(alpha = if (dark) 0.20f else 0.12f))
+            .border(1.dp, gradient.bottom.copy(alpha = if (dark) 0.32f else 0.18f), shape),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = contentDescription, tint = Color.White, modifier = Modifier.size(iconSize))
+        Icon(icon, contentDescription = contentDescription, tint = ink, modifier = Modifier.size(iconSize))
     }
 }
 
@@ -171,24 +164,26 @@ fun FeatureTile(
     modifier: Modifier = Modifier,
     badge: Int = 0,
 ) {
+    // Ubin Nova: kartu kaca radius 18 berisi kotak ikon ber-tint + label (Figma "Semua fitur").
     val interaction = remember { MutableInteractionSource() }
+    val tileShape = RoundedCornerShape(18.dp)
     Column(
         modifier
             .widthIn(min = 64.dp)
-            .bouncyPress(0.9f)
-            .clip(MaterialTheme.shapes.medium)
+            .bouncyPress(0.94f)
+            .glass(tileShape)
             .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick)
-            .padding(vertical = 4.dp),
+            .padding(start = 4.dp, end = 4.dp, top = 12.dp, bottom = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Box {
-            GradientIconTile(icon, gradient)
+            GradientIconTile(icon, gradient, size = 44.dp, iconSize = 22.dp, corner = 14.dp)
             if (badge > 0) CountBadge(badge, Modifier.align(Alignment.TopEnd).padding(top = 0.dp))
         }
         Text(
             title,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
             maxLines = 2,

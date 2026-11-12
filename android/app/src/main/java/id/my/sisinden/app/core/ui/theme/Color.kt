@@ -69,13 +69,53 @@ val Red300 = Color(0xFFFF8A80)
 val Red100 = Color(0xFFFDE3E3)
 val Red900 = Color(0xFF5C1111)
 
-/**
- * Gradien hero/header "Aurora": biru tua → biru SINDEN → indigo. Teks putih
- * di atasnya tetap ≥ 4,5:1 di seluruh rentang gradien.
+/*
+ * ===== Token "Nova" (docs/PRD_REDESIGN_UIUX.md v1.1, sama dengan web) =====
+ * Terang: zinc netral + satu aksen biru #2563EB.
+ * Gelap: estetika halaman Login: navy malam #050B1A + kaca navy.
+ * Semua pasangan teks diukur ≥ 4,5:1.
  */
-val HeroGradientLight = listOf(Color(0xFF0A3A9E), Color(0xFF1D5FE0), Indigo600)
-// Gelap: biru tua → indigo redup (tidak memudar ke hitam agar bentuk header tetap terlihat)
-val HeroGradientDark = listOf(Color(0xFF0B2560), Color(0xFF1B2470), Color(0xFF2A1F68))
+object Nova {
+    // Terang
+    val Canvas = Color(0xFFFAFAFA)
+    val Surface = Color(0xFFFFFFFF)
+    val Subtle = Color(0xFFF4F4F5)
+    val Border = Color(0xFFE4E4E7)
+    val BorderInput = Color(0xFF8E8E96)
+    val Fg = Color(0xFF09090B)
+    val FgMuted = Color(0xFF52525B)
+    val FgSubtle = Color(0xFF6B6B74)
+    val Accent = Color(0xFF2563EB)
+    val AccentSoft = Color(0xFFEFF6FF)
+    val Violet = Color(0xFF8B5CF6)
+
+    // Gelap (navy Login)
+    val NightCanvas = Color(0xFF050B1A)
+    val NightSurface = Color(0xFF0B1224)
+    val NightSubtle = Color(0xFF111A33)
+    val NightRaised = Color(0xFF18223D)
+    val NightBorder = Color(0xFF1E2A44)
+    val NightBorderInput = Color(0xFF56658A)
+    val NightFg = Color(0xFFF1F5F9)
+    val NightFgMuted = Color(0xFFA8B3C7)
+    val NightFgSubtle = Color(0xFF8A96AD)
+    val NightAccent = Color(0xFF60A5FA)
+    val NightAccentSoft = Color(0xFF172554)
+    val NightOnSoft = Color(0xFF93C5FD)
+
+    // Aurora halaman Login
+    val AuroraBlue = Color(0xFF1D4ED8)
+    val AuroraIndigo = Color(0xFF4F46E5)
+    val AuroraTeal = Color(0xFF0D9488)
+}
+
+/**
+ * Gradien hero/header Nova: biru → indigo (sama dengan kartu "Absensi hari ini"
+ * di Figma). Teks putih ≥ 5:1 di seluruh rentang.
+ */
+val HeroGradientLight = listOf(Color(0xFF1D4ED8), Color(0xFF2563EB), Indigo600)
+// Gelap: navy → indigo tua, senada latar Login.
+val HeroGradientDark = listOf(Color(0xFF1E3A8A), Color(0xFF1E2A6B), Color(0xFF312E81))
 
 /** Pasangan warna ubin fitur bergradien (atas → bawah), mengikuti kit Livin. */
 @Immutable
@@ -113,38 +153,39 @@ data class StatusColors(
     val neutralContainer: Color,
 )
 
+// Status Nova: warna teks status selalu varian "-fg" yang ≥ 4,5:1 (audit A1).
 val LightStatusColors = StatusColors(
-    success = Color(0xFF0E8A63),
-    onSuccessContainer = Color(0xFF064A35),
-    successContainer = Teal100,
-    warning = Orange700,
-    onWarningContainer = Color(0xFF5A2B00),
-    warningContainer = Orange100,
-    danger = Color(0xFFC62828),
-    onDangerContainer = Red900,
-    dangerContainer = Red100,
-    info = Blue600,
-    onInfoContainer = Blue900,
-    infoContainer = Blue50,
-    neutral = Grey400,
-    onNeutralContainer = Grey500,
-    neutralContainer = Color(0xFFF0F2F5),
+    success = Color(0xFF15803D),
+    onSuccessContainer = Color(0xFF14532D),
+    successContainer = Color(0xFFDCFCE7),
+    warning = Color(0xFFB45309),
+    onWarningContainer = Color(0xFF78350F),
+    warningContainer = Color(0xFFFEF3C7),
+    danger = Color(0xFFDC2626),
+    onDangerContainer = Color(0xFF7F1D1D),
+    dangerContainer = Color(0xFFFEE2E2),
+    info = Color(0xFF1D4ED8),
+    onInfoContainer = Color(0xFF1E3A8A),
+    infoContainer = Nova.AccentSoft,
+    neutral = Nova.FgMuted,
+    onNeutralContainer = Nova.Fg,
+    neutralContainer = Nova.Subtle,
 )
 
 val DarkStatusColors = StatusColors(
-    success = Color(0xFF5EE0B4),
-    onSuccessContainer = Color(0xFFC9F7E6),
-    successContainer = Color(0xFF0D3B2E),
-    warning = Color(0xFFFFB866),
-    onWarningContainer = Color(0xFFFFE6C7),
-    warningContainer = Color(0xFF4A2A00),
-    danger = Red300,
-    onDangerContainer = Color(0xFFFFDAD6),
-    dangerContainer = Color(0xFF5C1717),
-    info = Blue300,
-    onInfoContainer = Blue50,
-    infoContainer = Color(0xFF12305A),
-    neutral = Night400,
-    onNeutralContainer = Night200,
-    neutralContainer = Night700,
+    success = Color(0xFF4ADE80),
+    onSuccessContainer = Color(0xFFBBF7D0),
+    successContainer = Color(0xFF0F2E22),
+    warning = Color(0xFFFBBF24),
+    onWarningContainer = Color(0xFFFDE68A),
+    warningContainer = Color(0xFF33260A),
+    danger = Color(0xFFF87171),
+    onDangerContainer = Color(0xFFFECACA),
+    dangerContainer = Color(0xFF3B1219),
+    info = Nova.NightOnSoft,
+    onInfoContainer = Color(0xFFDBEAFE),
+    infoContainer = Nova.NightAccentSoft,
+    neutral = Nova.NightFgMuted,
+    onNeutralContainer = Nova.NightFg,
+    neutralContainer = Nova.NightRaised,
 )

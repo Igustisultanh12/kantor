@@ -1,4 +1,21 @@
-# SISINDEN Android v1.9.1 (versionCode 22)
+# SISINDEN Android v2.0.0 (versionCode 23)
+
+Tampilan baru **"Nova"**, seragam dengan web (docs/PRD_REDESIGN_UIUX.md v1.1). Semua fitur dan data tetap sama.
+
+## Baru
+
+- **Dock bawah Nova**: Beranda · Surat · **Absen** (tombol bulat di tengah) · Pesan · Lainnya. Akun tanpa akses surat mendapat "Jaga", tanpa akses chat mendapat "Profil".
+- **Layar Absensi baru**: tombol absen bulat besar bergradien biru-indigo dengan cincin berdenyut ("Ketuk untuk absen"); setelah absen berubah menjadi centang hijau beserta jam. Baris "Minggu ini" Sen–Jum menandai hari hadir. Pilihan status, catatan, dan lokasi GPS tetap ada.
+- **Layar Lainnya = "Semua fitur"**: grid 4 kolom per grup yang bisa dicari, ditambah Profil dan Pengaturan. Fitur yang sudah ada di dock tidak ditampilkan dobel.
+- **Warna Nova**: mode terang netral dengan satu aksen biru #2563EB; mode gelap bergaya halaman Login (navy malam #050B1A, kaca navy, aurora biru/indigo/teal redup). Semua teks diukur ≥ 4,5:1.
+- **Ikon fitur lebih tenang**: kotak ber-tint lembut dengan ikon berwarna (menggantikan gradien jenuh), dibungkus kartu kaca bersudut 18.
+- Surat dan Pesan kini dibuka sebagai tab (tanpa tombol kembali).
+
+## Server
+
+- Tidak ada perubahan untuk aplikasi. (Web: tampilan Nova beta di balik Pengaturan → Tampilan Web.)
+
+---# SISINDEN Android v1.9.1 (versionCode 22)
 
 Perbaikan tampilan dari v1.9.0.
 

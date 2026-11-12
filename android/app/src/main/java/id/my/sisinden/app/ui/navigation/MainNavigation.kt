@@ -25,6 +25,14 @@ import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.EventAvailable
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.HowToReg
+import androidx.compose.material.icons.filled.ChatBubble
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -101,13 +109,29 @@ internal data class TabItem(
     val permission: String,
 )
 
-private val allTabs = listOf(
-    TabItem(Routes.HOME, "Beranda", Icons.Outlined.Home, Icons.Filled.Home, Perm.DASHBOARD_VIEW),
-    TabItem(Routes.DUTY, "Jaga", Icons.Outlined.EventAvailable, Icons.Filled.EventAvailable, Perm.DUTY_VIEW),
-    TabItem(Routes.ATTENDANCE, "Presensi", Icons.Outlined.HowToReg, Icons.Filled.HowToReg, Perm.ATTENDANCE_VIEW),
-    TabItem(Routes.MENU, "Menu", Icons.Outlined.Apps, Icons.Filled.Apps, Perm.DASHBOARD_VIEW),
-    TabItem(Routes.PROFILE, "Profil", Icons.Outlined.AccountCircle, Icons.Filled.AccountCircle, Perm.PROFILE_VIEW),
-)
+/*
+ * Dock Nova (PRD bagian 8): Beranda · Surat · Absen (tombol tengah) · Pesan · Lainnya.
+ * Slot kiri/kanan punya cadangan sesuai izin: tanpa akses surat → Jaga,
+ * tanpa akses chat → Profil. Jadi setiap jenis akun tetap mendapat dock yang relevan.
+ */
+private val homeTab = TabItem(Routes.HOME, "Beranda", Icons.Outlined.Home, Icons.Filled.Home, Perm.DASHBOARD_VIEW)
+private val lettersTab = TabItem(Routes.LETTERS, "Surat", Icons.Outlined.Email, Icons.Filled.Email, Perm.LETTER_LOGS_VIEW)
+private val dutyTab = TabItem(Routes.DUTY, "Jaga", Icons.Outlined.EventAvailable, Icons.Filled.EventAvailable, Perm.DUTY_VIEW)
+private val absenTab = TabItem(Routes.ATTENDANCE, "Absen", Icons.Outlined.QrCodeScanner, Icons.Filled.QrCodeScanner, Perm.ATTENDANCE_VIEW)
+private val chatTab = TabItem(Routes.CHAT, "Pesan", Icons.Outlined.ChatBubbleOutline, Icons.Filled.ChatBubble, Perm.CHAT_VIEW)
+private val profileTab = TabItem(Routes.PROFILE, "Profil", Icons.Outlined.AccountCircle, Icons.Filled.AccountCircle, Perm.PROFILE_VIEW)
+private val moreTab = TabItem(Routes.MENU, "Lainnya", Icons.Outlined.GridView, Icons.Filled.GridView, Perm.DASHBOARD_VIEW)
+
+internal fun novaTabs(perms: PermissionSet): List<TabItem> {
+    fun TabItem.ok() = takeIf { perms.has(it.permission) }
+    return listOfNotNull(
+        homeTab.ok(),
+        lettersTab.ok() ?: dutyTab.ok(),
+        absenTab.ok(),
+        chatTab.ok() ?: profileTab.ok(),
+        moreTab.ok(),
+    )
+}
 
 private const val REFRESH_KEY = "refresh_signal"
 
@@ -148,7 +172,7 @@ fun MainNavigation(
     val currentPerms: () -> PermissionSet = remember { { sessionState.value.permissions } }
     val backStack by nav.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
-    val tabs = allTabs.filter { perms.has(it.permission) }
+    val tabs = novaTabs(perms)
     val showBottomBar = currentRoute in Routes.tabs
 
     val context = LocalContext.current
@@ -292,7 +316,12 @@ fun MainNavigation(
                 }
             }
             composable(Routes.MENU) {
-                MenuScreen(permissions = currentPerms(), user = sessionState.value.user, onNavigate = navigate)
+                MenuScreen(
+                    permissions = currentPerms(),
+                    user = sessionState.value.user,
+                    onNavigate = navigate,
+                    dockRoutes = novaTabs(currentPerms()).map { it.route }.toSet(),
+                )
             }
             composable(Routes.PROFILE, deepLinks = appDeepLink("profile")) {
                 ProfileScreen(
@@ -309,7 +338,8 @@ fun MainNavigation(
             }
             composable(Routes.LETTERS, deepLinks = appDeepLink("letters")) {
                 Guard(currentPerms(), Perm.LETTER_LOGS_VIEW, back) {
-                    LetterLogsScreen(repository, currentPerms(), onBack = back, onOpenPdf = openPdf)
+                    // Surat = tab di dock Nova → tanpa tombol kembali.
+                    LetterLogsScreen(repository, currentPerms(), onBack = null, onOpenPdf = openPdf)
                 }
             }
             composable(Routes.SKHPP, deepLinks = appDeepLink("skhpp")) { entry ->
@@ -419,7 +449,7 @@ fun MainNavigation(
                     ChatHomeScreen(
                         repository = repository,
                         myUserId = sessionState.value.user.id,
-                        onBack = back,
+                        onBack = null, // Pesan = tab di dock Nova
                         onOpenThread = { uuid, title -> nav.navigate(Routes.chatThread(uuid, title)) { launchSingleTop = true } },
                         onCall = { uuid, video, peer -> nav.navigate(Routes.call(uuid, video, incoming = false, peer = peer)) },
                     )

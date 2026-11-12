@@ -124,7 +124,7 @@ private sealed interface LetterSheet {
 fun LetterLogsScreen(
     repository: SindenRepository,
     permissions: PermissionSet,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onOpenPdf: (String, String, String) -> Unit,
 ) {
     val vm: LetterLogsViewModel = viewModel { LetterLogsViewModel(repository) }

@@ -56,6 +56,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
+import id.my.sisinden.app.core.ui.theme.Nova
 import id.my.sisinden.app.core.ui.theme.Spacing
 
 /**
@@ -119,7 +120,7 @@ fun SindenTopBar(
                         center = Offset(size.width * 0.92f, 0f),
                     )
                     drawCircle(
-                        Brush.radialGradient(listOf((if (dark) Indigo600 else Cyan400).copy(alpha = if (dark) 0.10f else 0.22f), Color.Transparent), center = Offset(0f, size.height), radius = r * 0.8f),
+                        Brush.radialGradient(listOf((if (dark) Indigo600 else Nova.Violet).copy(alpha = if (dark) 0.10f else 0.22f), Color.Transparent), center = Offset(0f, size.height), radius = r * 0.8f),
                         radius = r * 0.8f,
                         center = Offset(0f, size.height),
                     )

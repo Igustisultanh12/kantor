@@ -127,7 +127,7 @@ private fun PollWhileVisible(key: Any, intervalMs: Long, block: suspend () -> Un
 fun ChatHomeScreen(
     repository: SindenRepository,
     myUserId: Int,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onOpenThread: (uuid: String, title: String) -> Unit,
     onCall: (uuid: String, video: Boolean, peer: String) -> Unit,
 ) {
@@ -171,7 +171,7 @@ fun ChatHomeScreen(
 @Composable
 private fun OperatorThreadList(
     vm: ChatHomeViewModel,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onOpenThread: (String, String) -> Unit,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -292,7 +292,7 @@ fun ChatThreadScreen(
     title: String,
     isOperator: Boolean,
     myUserId: Int,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onCall: (video: Boolean) -> Unit,
 ) {
     val context = LocalContext.current
@@ -451,7 +451,7 @@ fun ChatThreadScreen(
             confirmLabel = "Hapus",
             destructive = true,
             onDismiss = { confirmDelete = false },
-            onConfirm = { confirmDelete = false; vm.delete(onBack) },
+            onConfirm = { confirmDelete = false; vm.delete(onBack ?: {}) },
         )
     }
 }

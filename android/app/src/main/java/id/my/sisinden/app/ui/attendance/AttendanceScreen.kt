@@ -4,6 +4,31 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.QrCodeScanner
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import id.my.sisinden.app.core.ui.components.bouncyPress
+import id.my.sisinden.app.core.ui.components.rememberReduceMotion
+import id.my.sisinden.app.core.ui.theme.Indigo600
+import id.my.sisinden.app.core.ui.theme.SindenTheme
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -103,7 +128,7 @@ fun AttendanceScreen(repository: SindenRepository, canSubmit: Boolean) {
         else locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
     }
 
-    SindenScaffold(title = "Presensi", subtitle = Fmt.fullDate(LocalDate.now()), snackbarHostState = snackbar) { padding ->
+    SindenScaffold(title = "Absensi", subtitle = Fmt.fullDate(LocalDate.now()), snackbarHostState = snackbar) { padding ->
         RefreshableBox(refreshing, { vm.load(pullToRefresh = true) }, Modifier.padding(padding)) {
             LoadStateContent(state = state, onRetry = { vm.load() }) { data ->
                 LazyColumn(
@@ -111,6 +136,17 @@ fun AttendanceScreen(repository: SindenRepository, canSubmit: Boolean) {
                     contentPadding = PaddingValues(start = Spacing.screen, end = Spacing.screen, bottom = Spacing.xxl),
                     verticalArrangement = Arrangement.spacedBy(Spacing.md),
                 ) {
+                    // Figma "Android / Absensi": tombol absen bulat besar + status hari ini.
+                    item {
+                        AbsenHero(
+                            today = data.todayAttendance,
+                            canSubmit = canSubmit,
+                            submitting = form.submitting,
+                            statusLabel = form.status.label,
+                            onSubmit = vm::submit,
+                        )
+                    }
+                    item { WeekRow(data.attendances.orEmpty()) }
                     item { TodayCard(data.todayAttendance, data.totalAttendedToday, data.totalActivePersonnel) }
 
                     if (canSubmit) {
@@ -174,6 +210,159 @@ fun AttendanceScreen(repository: SindenRepository, canSubmit: Boolean) {
                         }
                     } else {
                         items(history, key = { it.id }) { HistoryRow(it) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Tombol absen Nova: lingkaran bergradien biru → indigo dengan cincin berdenyut.
+ * Ketuk = kirim presensi dengan status terpilih (bawaan "Hadir"). Setelah absen,
+ * berubah menjadi tanda centang hijau beserta jam. Reduced motion: cincin diam.
+ */
+@Composable
+private fun AbsenHero(
+    today: AttendanceDto?,
+    canSubmit: Boolean,
+    submitting: Boolean,
+    statusLabel: String,
+    onSubmit: () -> Unit,
+) {
+    val done = today != null
+    val reduce = rememberReduceMotion()
+    val t = rememberInfiniteTransition(label = "absenRing")
+    val ring by t.animateFloat(1f, 1.35f, infiniteRepeatable(tween(1800), RepeatMode.Restart), label = "ring")
+    val ringAlpha by t.animateFloat(0.35f, 0f, infiniteRepeatable(tween(1800), RepeatMode.Restart), label = "ringAlpha")
+    val success = SindenTheme.status.success
+    val brush = if (done) Brush.linearGradient(listOf(Color(0xFF22C55E), Color(0xFF15803D)))
+    else Brush.linearGradient(listOf(Color(0xFF3B82F6), Indigo600))
+    val enabled = canSubmit && !done && !submitting
+
+    Column(
+        Modifier.fillMaxWidth().padding(top = Spacing.md, bottom = Spacing.xs),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        StatusChip(
+            if (done) "Sudah absen hari ini" else "Belum absen hari ini",
+            if (done) Tone.SUCCESS else Tone.WARNING,
+        )
+        Spacer(Modifier.height(Spacing.lg))
+        Box(
+            Modifier
+                .size(212.dp)
+                .drawBehind {
+                    // cincin lembut tetap + cincin berdenyut (hanya bila belum absen)
+                    drawCircle((if (done) success else Indigo600).copy(alpha = 0.10f), radius = size.minDimension / 2f)
+                    if (!reduce && !done) {
+                        drawCircle(Color(0xFF2563EB).copy(alpha = ringAlpha), radius = size.minDimension / 2f * 0.74f * ring)
+                    }
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                Modifier
+                    .size(148.dp)
+                    .bouncyPress(0.94f)
+                    .shadow(18.dp, CircleShape, ambientColor = Indigo600, spotColor = Indigo600)
+                    .clip(CircleShape)
+                    .background(brush)
+                    .drawBehind { drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.28f), 0.5f to Color.Transparent)) }
+                    .border(3.dp, Color.White.copy(alpha = 0.85f), CircleShape)
+                    .clickable(
+                        enabled = enabled,
+                        role = Role.Button,
+                        onClickLabel = "Kirim presensi $statusLabel",
+                        onClick = onSubmit,
+                    )
+                    .semantics {
+                        contentDescription = when {
+                            done -> "Sudah absen pukul ${today?.timeShort ?: "-"}"
+                            !canSubmit -> "Akun ini tidak dapat mengirim presensi"
+                            else -> "Ketuk untuk absen sebagai $statusLabel"
+                        }
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    when {
+                        submitting -> CircularProgressIndicator(Modifier.size(36.dp), color = Color.White, strokeWidth = 3.dp)
+                        done -> Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(48.dp))
+                        else -> Icon(Icons.Outlined.QrCodeScanner, contentDescription = null, tint = Color.White, modifier = Modifier.size(44.dp))
+                    }
+                    Spacer(Modifier.height(Spacing.sm))
+                    Text(
+                        when {
+                            submitting -> "Mengirim…"
+                            done -> "${today?.timeShort ?: "-"} WIB"
+                            canSubmit -> "Ketuk untuk absen"
+                            else -> "Belum absen"
+                        },
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color.White,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+        }
+        if (!done && canSubmit) {
+            Text(
+                "Status: $statusLabel · ubah di bawah bila perlu",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = Spacing.sm),
+            )
+        }
+    }
+}
+
+/** Baris "Minggu ini" Sen–Jum: hijau = hadir, biru = hari ini (belum), abu = belum/tidak hadir. */
+@Composable
+private fun WeekRow(history: List<AttendanceDto>) {
+    val today = LocalDate.now()
+    val monday = today.with(java.time.DayOfWeek.MONDAY)
+    val attended = history.mapNotNull { Fmt.parseDate(it.dateOnly) }.toSet()
+    val names = listOf("Sen", "Sel", "Rab", "Kam", "Jum")
+    val success = SindenTheme.status.success
+    SindenCard(Modifier.fillMaxWidth()) {
+        Text("Minggu ini", style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.height(Spacing.md))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            names.forEachIndexed { i, name ->
+                val day = monday.plusDays(i.toLong())
+                val present = day in attended
+                val isToday = day == today
+                val label = when {
+                    present -> "$name, hadir"
+                    isToday -> "$name, hari ini, belum absen"
+                    day.isAfter(today) -> "$name, belum"
+                    else -> "$name, tidak ada presensi"
+                }
+                Column(
+                    Modifier.semantics(mergeDescendants = true) { contentDescription = label },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(name, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(6.dp))
+                    Box(
+                        Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(
+                                when {
+                                    present -> success
+                                    isToday -> MaterialTheme.colorScheme.primary
+                                    else -> MaterialTheme.colorScheme.surfaceVariant
+                                }
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        when {
+                            present -> Icon(Icons.Outlined.Check, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            isToday -> Box(Modifier.size(8.dp).clip(CircleShape).background(Color.White))
+                            else -> Icon(Icons.Outlined.Schedule, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+                        }
                     }
                 }
             }
