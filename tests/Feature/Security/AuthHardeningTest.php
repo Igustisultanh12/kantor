@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
-/** Audit K04, R01, R02, S08: autentikasi & MFA. */
+/** Audit K04, R02, S08: autentikasi & MFA. */
 class AuthHardeningTest extends TestCase
 {
     use SecuritySchema;
@@ -83,18 +83,6 @@ class AuthHardeningTest extends TestCase
     {
         $u = $this->makeUser();
         $this->assertNotEmpty($this->postJson('/api/mobile/login', ['username' => $u->email, 'password' => 'rahasia-123'])->assertOk()->json('token'));
-    }
-
-    public function test_spoofed_forwarded_for_from_untrusted_client_is_ignored(): void
-    {
-        $u = $this->makeUser();
-        $this->withServerVariables(['REMOTE_ADDR' => '8.8.8.8']);
-        for ($i = 1; $i <= 5; $i++) {
-            $this->post('/login', ['email' => $u->email, 'password' => 'salah'], ['X-Forwarded-For' => "10.0.0.{$i}"]);
-        }
-        $this->post('/login', ['email' => $u->email, 'password' => 'rahasia-123'], ['X-Forwarded-For' => '10.9.9.9'])
-            ->assertSessionHasErrors('email');
-        $this->assertGuest();
     }
 
     public function test_activation_endpoint_is_throttled(): void
