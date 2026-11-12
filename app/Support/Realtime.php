@@ -45,7 +45,7 @@ class Realtime
     /** Tabel teknis yang berubah terus (sesi, cache, log, token): tidak memicu muat ulang. */
     public const IGNORED_TABLES = [
         'sessions', 'cache', 'cache_locks', 'jobs', 'job_batches', 'failed_jobs', 'migrations', 'password_reset_tokens',
-        'personal_access_tokens', 'visitor_logs', 'audit_logs', 'device_tokens', 'user_devices',
+        'personal_access_tokens', 'visitor_logs', 'audit_logs', 'activity_logs', 'device_tokens', 'user_devices',
         'backup_share_access_logs', 'wa_sessions', 'telescope_entries', 'pulse_entries', 'pulse_values', 'pulse_aggregates',
     ];
 
@@ -54,7 +54,6 @@ class Realtime
 
     /** @var array<string, true> */
     private static array $pending = [];
-    private static bool $scheduled = false;
     /** @var array<string, string>|null */
     private static ?array $tableMap = null;
     private static ?bool $enabled = null;
@@ -70,7 +69,6 @@ class Realtime
     {
         self::$enabled = null;
         self::$pending = [];
-        self::$scheduled = false;
     }
 
     /** Dipanggil untuk setiap query SQL yang dijalankan (lihat AppServiceProvider). */
@@ -125,12 +123,9 @@ class Realtime
         if (!self::enabled()) {
             return;
         }
+        // Disiarkan oleh FlushRealtime::terminate() (HTTP) atau setelah job/perintah selesai (lihat AppServiceProvider).
         foreach ($modules as $m) {
             self::$pending[$m] = true;
-        }
-        if (!self::$scheduled) {
-            self::$scheduled = true;
-            app()->terminating(fn () => self::flush());
         }
     }
 
@@ -144,7 +139,6 @@ class Realtime
     {
         $modules = array_keys(self::$pending);
         self::$pending = [];
-        self::$scheduled = false;
         if ($modules === []) {
             return;
         }

@@ -463,6 +463,10 @@ Route::middleware('auth')->group(function () {
         Route::match(['delete', 'post'], '/visitor-logs/clear', [VisitorLogController::class, 'clearAll'])->name('visitor-logs.clear');
         Route::delete('/visitor-logs/{id}', [VisitorLogController::class, 'destroy'])->name('visitor-logs.destroy');
         Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
+
+        // Log Aktivitas: jejak aksi semua pengguna terhadap data (bukan login) + cetak PDF.
+        Route::get('/activity-logs', [\App\Http\Controllers\ActivityLogController::class, 'index'])->name('activity-logs.index');
+        Route::get('/activity-logs/pdf', [\App\Http\Controllers\ActivityLogController::class, 'pdf'])->middleware('throttle:10,1')->name('activity-logs.pdf');
         
         // Cek Sistem & Monitoring Server Admin (Speedtest, Disk, CPU, RAM, VRAM)
         Route::get('/admin/system-check', [SystemCheckController::class, 'index'])->name('system-check.index');

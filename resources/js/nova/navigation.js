@@ -78,6 +78,7 @@ export function buildNovaGroups(a, { unread = 0 } = {}) {
                 { label: 'Aktivitas & Peta', route: 'activities.index', match: 'activities.*', icon: 'map', show: notAnggota },
                 { label: 'Pengguna', route: 'users.index', match: 'users.*', icon: 'users', show: notAnggota && a.isAdmin.value },
                 { label: 'Log Pengunjung & Audit', route: 'visitor-logs.index', match: 'visitor-logs.*', icon: 'clipboard', show: notAnggota },
+                { label: 'Log Aktivitas', route: 'activity-logs.index', match: 'activity-logs.*', icon: 'activity', show: notAnggota && a.isAdmin.value },
                 { label: 'Backup', route: 'backup.index', match: 'backup.*', icon: 'archive', show: notAnggota && notDanUnit },
                 { label: 'Cek Sistem', route: 'system-check.index', match: 'system-check.*', icon: 'activity', show: notAnggota && a.isAdmin.value },
                 { label: 'Pengaturan', route: 'settings.index', match: 'settings.*', icon: 'settings', show: notAnggota && a.isAdmin.value },

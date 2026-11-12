@@ -31,6 +31,11 @@ class AppServiceProvider extends ServiceProvider
                 }
                 \App\Support\Realtime::inspectSql($query->sql);
             });
+            // Queue worker & perintah artisan: siarkan setelah tiap job / saat perintah selesai.
+            \Illuminate\Support\Facades\Event::listen([\Illuminate\Queue\Events\JobProcessed::class, \Illuminate\Queue\Events\JobFailed::class], fn () => \App\Support\Realtime::flush());
+            if (app()->runningInConsole()) {
+                app()->terminating(fn () => \App\Support\Realtime::flush());
+            }
         }
 
         // Set Standar Locale Indonesia untuk Tanggal & Waktu (Baku)

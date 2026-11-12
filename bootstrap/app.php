@@ -47,6 +47,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         // 3. KONFIGURASI STACK MIDDLEWARE WEB
+        // Sinyal realtime (Reverb) dikirim setelah respons, untuk semua rute.
+        $middleware->append(\App\Http\Middleware\FlushRealtime::class);
+
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
@@ -58,6 +61,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
             // Catat perangkat/sesi web yang sedang dipakai (halaman Perangkat & sesi).
             \App\Http\Middleware\TrackDeviceSession::class,
+
+            // Jejak aksi pengguna terhadap data (Log Aktivitas, khusus admin). Login tidak dicatat di sini.
+            \App\Http\Middleware\RecordActivity::class,
         ]);
 
     })

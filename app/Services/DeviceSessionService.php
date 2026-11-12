@@ -227,10 +227,23 @@ class DeviceSessionService
         if ($d && $d->ip_location_for === $ip && $d->ip_location) {
             return $d->ip_location;
         }
+        $label = self::lookupIp($ip);
+        if ($d && $label) {
+            $d->forceFill(['ip_location' => Str::limit($label, 160, ''), 'ip_location_for' => $ip])->saveQuietly();
+        }
+        return $label;
+    }
+
+    /** Perkiraan lokasi + provider dari IP publik (disimpan 1 hari per IP). Dipakai juga oleh log aktivitas. */
+    public static function lookupIp(?string $ip): ?string
+    {
+        if (!$ip) {
+            return null;
+        }
         if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
             return 'Jaringan lokal';
         }
-        $label = Cache::remember("ip-loc:{$ip}", 86400, function () use ($ip) {
+        return Cache::remember("ip-loc:{$ip}", 86400, function () use ($ip) {
             try {
                 $r = Http::timeout(2)->get("http://ip-api.com/json/{$ip}?fields=status,city,regionName,country,isp");
                 if ($r->successful() && $r->json('status') === 'success') {
@@ -241,10 +254,6 @@ class DeviceSessionService
             }
             return null;
         });
-        if ($d && $label) {
-            $d->forceFill(['ip_location' => Str::limit($label, 160, ''), 'ip_location_for' => $ip])->saveQuietly();
-        }
-        return $label;
     }
 
     /** Keluarkan satu perangkat. Mengembalikan false bila sesi tidak ditemukan / milik orang lain. */
