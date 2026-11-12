@@ -49,6 +49,7 @@ const form = useForm({
     ui_glass_blur: Number(props.settings.ui_glass_blur ?? 26),
     ui_glass_opacity: Number(props.settings.ui_glass_opacity ?? 42),
     ui_motion_enabled: props.settings.ui_motion_enabled !== undefined ? String(props.settings.ui_motion_enabled) : '1',
+    ui_nova: props.settings.ui_nova !== undefined ? String(props.settings.ui_nova) : '0',
     ui_background: null,
     ui_background_clear: false,
     _method: 'PUT'
@@ -492,6 +493,15 @@ onUnmounted(() => { if (waInterval) clearInterval(waInterval); });
                                         <span class="text-[11px] font-extrabold text-slate-700 uppercase tracking-wider">Animasi Interaktif</span>
                                         <select v-model="form.ui_motion_enabled" class="rounded-xl border-slate-200 text-xs font-bold py-1.5">
                                             <option value="1">Aktif</option><option value="0">Mati</option>
+                                        </select>
+                                    </label>
+                                    <label class="sm:col-span-2 flex items-center justify-between gap-3 p-3 bg-blue-50/60 rounded-2xl border border-blue-200 cursor-pointer">
+                                        <span class="min-w-0">
+                                            <span class="block text-[11px] font-extrabold text-slate-700 uppercase tracking-wider">Tampilan Nova (beta)</span>
+                                            <span class="block text-xs text-slate-600 mt-0.5">Sidebar 5 grup, mode gelap, dan Ctrl+K. Tiap pengguna tetap bisa memilih "Kembali ke tampilan lama".</span>
+                                        </span>
+                                        <select v-model="form.ui_nova" class="rounded-xl border-slate-200 text-xs font-bold py-1.5 shrink-0">
+                                            <option value="0">Mati</option><option value="1">Aktif</option>
                                         </select>
                                     </label>
                                 </div>

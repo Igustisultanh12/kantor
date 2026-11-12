@@ -1,4 +1,7 @@
 import '../css/app.css';
+import '@fontsource-variable/geist-mono';
+import '../css/nova.css';
+import '../css/nova-dark-compat.css';
 import './bootstrap';
 
 import { createInertiaApp } from '@inertiajs/vue3';

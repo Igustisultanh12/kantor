@@ -2,7 +2,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'; 
-import axios from 'axios'; 
+import axios from 'axios';
+import PersonnelLanyard from '@/Components/nova/PersonnelLanyard.vue';
 
 const props = defineProps({
     stats: Object,
@@ -15,6 +16,14 @@ const props = defineProps({
 
 const page = usePage();
 const currentUser = computed(() => page.props.auth.user);
+
+// Lanyard: nama satuan & logo dari Pengaturan
+const lanyardAgency = 'DENINTEL KODAERAL V'; // tulisan lanyard (permintaan pengguna)
+const lanyardLogo = computed(() => {
+    const logo = page.props.settings?.agency_logo || page.props.settings?.logo;
+    if (!logo) return null;
+    return (logo.startsWith('http') || logo.startsWith('/storage')) ? logo : '/storage/' + logo;
+});
 const isCommanderOrAdmin = computed(() => {
     const role = (currentUser.value?.role || '').toLowerCase();
     return role === 'admin' || role === 'komandan' || role === 'pasops' || currentUser.value?.name === 'I Gusti Sultan H.A, A.Md.Kom';
@@ -572,10 +581,14 @@ onUnmounted(() => {
                     </p>
                 </div>
 
-                <div class="flex items-center gap-3 shrink-0">
+                <div class="flex flex-col md:flex-row items-center gap-6 shrink-0 self-stretch md:self-auto">
                     <Link :href="route('letters.index')" class="px-5 py-3 bg-blue-600 text-white rounded-2xl font-extrabold text-xs uppercase tracking-wider hover:bg-blue-700 transition shadow-md shadow-blue-500/20">
                         + Buat Surat Baru
                     </Link>
+                    <!-- Lanyard kartu identitas personel yang login -->
+                    <div class="dash-lanyard">
+                        <PersonnelLanyard :user="$page.props.auth.user" :agency="lanyardAgency" :logo="lanyardLogo" />
+                    </div>
                 </div>
             </div>
 
@@ -1260,3 +1273,9 @@ onUnmounted(() => {
         </Teleport>
     </AuthenticatedLayout>
 </template>
+
+<style scoped>
+/* Lanyard menggantung dari tepi atas kartu sambutan (padding kartu 24/32 px). */
+.dash-lanyard { margin: -24px 0 -40px; }
+@media (min-width: 640px) { .dash-lanyard { margin: -32px 0 -48px; } }
+</style>
