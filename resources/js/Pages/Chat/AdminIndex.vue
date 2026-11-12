@@ -320,14 +320,14 @@
                             <span v-if="att.purged || !att.file_path" class="shrink-0 text-slate-400 text-[10px] font-semibold italic">
                               Berkas Terhapus
                             </span>
-                            <a 
+                            <button
                               v-else
-                              :href="`/live-chat/attachment/download?path=${encodeURIComponent(att.file_path)}&name=${encodeURIComponent(att.original_name)}`" 
-                              target="_blank" 
-                              class="shrink-0 text-blue-600 hover:text-blue-800 font-bold underline text-[10px]"
-                            >
-                              Unduh
-                            </a>
+                              type="button"
+                              class="shrink-0 text-blue-600 hover:text-blue-800 font-bold underline text-[10px] cursor-pointer"
+                              @click="previewAttachment = att"
+                              >
+                                Lihat
+                              </button>
                           </div>
                         </div>
                       </div>
@@ -364,14 +364,14 @@
                             <span v-if="att.purged || !att.file_path" class="shrink-0 text-amber-300 text-[10px] font-semibold italic">
                               Berkas Terhapus
                             </span>
-                            <a 
+                            <button
                               v-else
-                              :href="`/live-chat/attachment/download?path=${encodeURIComponent(att.file_path)}&name=${encodeURIComponent(att.original_name)}`" 
-                              target="_blank" 
-                              class="shrink-0 text-blue-400 hover:text-blue-300 font-bold underline text-[10px]"
-                            >
-                              Unduh
-                            </a>
+                              type="button"
+                              class="shrink-0 text-blue-400 hover:text-blue-300 font-bold underline text-[10px] cursor-pointer"
+                              @click="previewAttachment = att"
+                              >
+                                Lihat
+                              </button>
                           </div>
                         </div>
                       </div>
@@ -686,6 +686,9 @@
       @call-ended="onCallEnded"
       @call-accepted="onCallAccepted"
     />
+
+    <!-- Pratinjau lampiran di dalam aplikasi (tidak membuka tab/link baru) -->
+    <AttachmentPreview :attachment="previewAttachment" @close="previewAttachment = null" />
   </AuthenticatedLayout>
 </template>
 
@@ -694,6 +697,9 @@ import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import VideoCallModal from '@/Components/Chat/VideoCallModal.vue';
+import AttachmentPreview from '@/Components/Chat/AttachmentPreview.vue';
+
+const previewAttachment = ref(null);
 import { playNotificationSound } from '@/Utils/sound';
 import axios from 'axios';
 import Swal from 'sweetalert2';

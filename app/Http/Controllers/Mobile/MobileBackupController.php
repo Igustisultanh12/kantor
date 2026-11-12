@@ -21,8 +21,8 @@ use Illuminate\Support\Facades\Validator;
  * Aturan akses sama dengan web (App\Support\BackupAccess) dan alur minta
  * akses memakai App\Services\PcAccessService.
  *
- * Aplikasi hanya membaca (lihat, pratinjau, unduh) serta mengelola izin akses;
- * unggah & penataan berkas tetap lewat web.
+ * Aplikasi bisa melihat, pratinjau, unduh, mengelola izin akses, dan (pemilik/admin)
+ * ganti nama, salin, pindah, serta hapus berkas. Unggah tetap lewat web.
  */
 class MobileBackupController extends Controller
 {
@@ -175,6 +175,63 @@ class MobileBackupController extends Controller
         }
         $mime = @mime_content_type($fullPath) ?: 'application/octet-stream';
         return FileSecurityService::streamDecryptedDownload($fullPath, $backup->file_name, $mime);
+    }
+
+    // ----------------------------------------------------------- Kelola berkas (pemilik/admin)
+    // Logika & aturan kuota sama dengan web (BackupController::bulk*), hanya dibungkus JSON.
+
+    public function move(Request $request, Pc $pc): JsonResponse
+    {
+        return $this->manage($request, $pc, fn ($req) => app(\App\Http\Controllers\BackupController::class)->bulkMove($req));
+    }
+
+    public function copy(Request $request, Pc $pc): JsonResponse
+    {
+        return $this->manage($request, $pc, fn ($req) => app(\App\Http\Controllers\BackupController::class)->bulkCopy($req));
+    }
+
+    public function destroy(Request $request, Pc $pc): JsonResponse
+    {
+        return $this->manage($request, $pc, fn ($req) => app(\App\Http\Controllers\BackupController::class)->bulkDelete($req));
+    }
+
+    public function rename(Request $request, $id): JsonResponse
+    {
+        $item = Backup::find((int) $id);
+        $pc = $item ? Pc::find($item->pc_id) : null;
+        if (!$item || !$pc) {
+            return response()->json(['status' => 'error', 'message' => 'Berkas tidak ditemukan.'], 404);
+        }
+        if (!BackupAccess::canManage($request->user(), $pc)) {
+            return $this->denied('Hanya pemilik penyimpanan yang bisa mengganti nama.');
+        }
+        $name = trim((string) (($request->json()->all() ?: $request->all())['name'] ?? ''));
+        if ($name === '' || mb_strlen($name) > 255 || preg_match('#[\\\\/:*?"<>|]#', $name)) {
+            return response()->json(['status' => 'error', 'message' => 'Nama tidak boleh kosong atau memakai karakter \\ / : * ? " < > |'], 422);
+        }
+        $item->update(['file_name' => $item->is_folder ? strtoupper($name) : $name]);
+
+        return response()->json(['status' => 'success', 'message' => 'Nama berhasil diganti.']);
+    }
+
+    private function manage(Request $request, Pc $pc, callable $action): JsonResponse
+    {
+        if (!BackupAccess::canManage($request->user(), $pc)) {
+            return $this->denied('Hanya pemilik penyimpanan yang bisa mengubah isinya.');
+        }
+        $request->merge(['pc_id' => $pc->id]);
+        try {
+            $response = $action($request);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(['status' => 'error', 'message' => $e->validator->errors()->first()], 422);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage() ?: 'Item tidak ditemukan.'], $e->getStatusCode());
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return response()->json(['status' => 'error', 'message' => 'Folder tujuan tidak ditemukan.'], 404);
+        }
+        return $response instanceof JsonResponse
+            ? $response
+            : response()->json(['status' => 'success', 'message' => 'Selesai.']);
     }
 
     // ----------------------------------------------------------- Minta akses

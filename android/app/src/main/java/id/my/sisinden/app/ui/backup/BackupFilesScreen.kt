@@ -56,6 +56,16 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import id.my.sisinden.app.core.ui.components.ConfirmDialog
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.DriveFileRenameOutline
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.ContentCut
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -195,7 +205,48 @@ class BackupFilesViewModel(
     }
 
     suspend fun image(item: BackupItemDto, thumbnail: Boolean): ApiResult<ByteArray?> = repository.backupImage(item.id, thumbnail)
+
+    // ---- Papan klip (salin/potong lalu tempel di folder lain) & operasi kelola
+
+    val clipboard = MutableStateFlow<BackupClip?>(null)
+    private val _working = MutableStateFlow(false)
+    val working: StateFlow<Boolean> = _working.asStateFlow()
+
+    fun clip(item: BackupItemDto, cut: Boolean) {
+        clipboard.value = BackupClip(item, cut)
+        messages.post(if (cut) "\"${item.name}\" siap dipindah. Buka folder tujuan lalu tekan Tempel." else "\"${item.name}\" disalin. Buka folder tujuan lalu tekan Tempel.")
+    }
+
+    fun paste() {
+        val c = clipboard.value ?: return
+        val target = folderId.value
+        perform {
+            if (c.cut) repository.backupMove(pcId, listOf(c.item.id), target) else repository.backupCopy(pcId, listOf(c.item.id), target)
+        }.also { clipboard.value = null }
+    }
+
+    fun rename(item: BackupItemDto, name: String) = perform { repository.backupRename(item.id, name) }
+
+    fun delete(item: BackupItemDto) {
+        if (clipboard.value?.item?.id == item.id) clipboard.value = null
+        perform { repository.backupDelete(pcId, listOf(item.id)) }
+    }
+
+    private fun perform(action: suspend () -> ApiResult<id.my.sisinden.app.data.model.SimpleResponse>) {
+        if (_working.value) return
+        _working.value = true
+        viewModelScope.launch {
+            when (val res = action()) {
+                is ApiResult.Success -> { messages.post(res.data.message ?: "Selesai."); reload() }
+                is ApiResult.Failure -> messages.post(res.error.message)
+            }
+            _working.value = false
+        }
+    }
 }
+
+/** Item di papan klip: [cut] = pindah, selain itu salin. */
+data class BackupClip(val item: BackupItemDto, val cut: Boolean)
 
 @Composable
 fun BackupFilesScreen(
@@ -212,18 +263,24 @@ fun BackupFilesScreen(
     val search by vm.search.collectAsStateWithLifecycle()
     val downloading by vm.downloading.collectAsStateWithLifecycle()
     val downloaded by vm.downloaded.collectAsStateWithLifecycle()
+    val clipboard by vm.clipboard.collectAsStateWithLifecycle()
+    val working by vm.working.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     CollectMessages(vm.messages, snackbar)
 
     var actionsFor by remember { mutableStateOf<BackupItemDto?>(null) }
     var previewing by remember { mutableStateOf<BackupItemDto?>(null) }
+    var menuFor by remember { mutableStateOf<BackupItemDto?>(null) }
+    var propertiesFor by remember { mutableStateOf<BackupItemDto?>(null) }
+    var renaming by remember { mutableStateOf<BackupItemDto?>(null) }
+    var deleting by remember { mutableStateOf<BackupItemDto?>(null) }
 
     val data = (state as? LoadState.Ready)?.data
     val crumbs = data?.breadcrumbs.orEmpty()
 
     // Tombol kembali: naik satu folder dulu sebelum keluar.
-    BackHandler(enabled = folderId != null && previewing == null) {
+    BackHandler(enabled = folderId != null && previewing == null && menuFor == null) {
         vm.openFolder(crumbs.dropLast(1).lastOrNull()?.id)
     }
 
@@ -294,6 +351,40 @@ fun BackupFilesScreen(
                     Text("Mode lihat: Anda bisa melihat dan mengunduh berkas.", style = MaterialTheme.typography.bodySmall)
                 }
             }
+            // Bilah tempel: muncul setelah Salin/Potong dari menu tekan lama.
+            AnimatedVisibility(
+                visible = clipboard != null,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                val clip = clipboard
+                Row(
+                    Modifier.padding(horizontal = Spacing.screen, vertical = Spacing.xs).fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.primaryContainer)
+                        .padding(start = Spacing.md, end = Spacing.xs, top = Spacing.xs, bottom = Spacing.xs),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        if (clip?.cut == true) Icons.Rounded.ContentCut else Icons.Rounded.ContentCopy,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(Spacing.sm))
+                    Text(
+                        (if (clip?.cut == true) "Pindahkan: " else "Salin: ") + clip?.item?.name.orEmpty(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { vm.clipboard.value = null }) { Text("Batal") }
+                    TextButton(onClick = { vm.paste() }, enabled = !working && search.isBlank()) {
+                        Text(if (search.isBlank()) "Tempel di sini" else "Buka folder dulu")
+                    }
+                }
+            }
             Spacer(Modifier.height(Spacing.xs))
 
             RefreshableBox(refreshing, { vm.load(pullToRefresh = true) }) {
@@ -339,6 +430,8 @@ fun BackupFilesScreen(
                                             else -> actionsFor = item
                                         }
                                     },
+                                    // Tekan lama: menu Properti, Salin, Potong, Unduh, dll.
+                                    onLongClick = { menuFor = item },
                                     modifier = Modifier.appear(index, key = listKey).bouncyPress(),
                                 )
                             }
@@ -378,6 +471,96 @@ fun BackupFilesScreen(
         }
     }
 
+    val canManage = data?.canManage == true
+
+    menuFor?.let { item ->
+        FormSheet(title = item.name.orEmpty(), onDismiss = { menuFor = null }) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val (icon, gradient) = kindStyle(item.kind)
+                LivelyIconTile(icon, gradient, size = 44.dp, iconSize = 22.dp, corner = 14.dp)
+                Spacer(Modifier.width(Spacing.md))
+                Text(
+                    if (item.isFolder) "Folder · ${item.childCount ?: 0} item" else listOfNotNull(item.sizeHuman, item.dateHuman).joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.height(Spacing.sm))
+            val close = { menuFor = null }
+            if (item.isFolder) {
+                MenuAction(Icons.Rounded.FolderOpen, "Buka folder") { close(); vm.openFolder(item.id) }
+            } else {
+                if (item.kind in PREVIEWABLE) MenuAction(Icons.Rounded.Visibility, "Pratinjau") { close(); previewing = item }
+                MenuAction(Icons.Rounded.Download, "Unduh ke perangkat", enabled = downloading == null) { close(); vm.download(item, saveAfter = true) }
+                MenuAction(Icons.Rounded.OpenInNew, "Buka dengan aplikasi lain", enabled = downloading == null) { close(); vm.download(item, saveAfter = false) }
+            }
+            if (canManage) {
+                MenuAction(Icons.Rounded.ContentCopy, "Salin") { close(); vm.clip(item, cut = false) }
+                MenuAction(Icons.Rounded.ContentCut, "Potong (pindahkan)") { close(); vm.clip(item, cut = true) }
+                MenuAction(Icons.Rounded.DriveFileRenameOutline, "Ganti nama") { close(); renaming = item }
+            }
+            MenuAction(Icons.Rounded.Info, "Properti") { close(); propertiesFor = item }
+            if (canManage) {
+                MenuAction(Icons.Rounded.Delete, "Hapus", destructive = true) { close(); deleting = item }
+            }
+        }
+    }
+
+    propertiesFor?.let { item ->
+        FormSheet(title = "Properti", onDismiss = { propertiesFor = null }) {
+            val location = when {
+                search.isNotBlank() -> "Hasil pencarian \"$search\""
+                crumbs.isEmpty() -> "Beranda"
+                else -> "Beranda / " + crumbs.joinToString(" / ") { it.name.orEmpty() }
+            }
+            InfoRow("Nama", item.name)
+            InfoRow("Jenis", if (item.isFolder) "Folder" else (item.extension?.uppercase()?.let { "Berkas $it" } ?: "Berkas"))
+            if (item.isFolder) InfoRow("Isi", "${item.childCount ?: 0} item") else InfoRow("Ukuran", item.sizeHuman)
+            InfoRow("Lokasi", location)
+            InfoRow("Diunggah", item.dateHuman)
+            InfoRow("Penyimpanan", data?.pc?.name)
+            InfoRow("Pemilik", data?.pc?.owner?.label)
+            InfoRow("Hak Anda", if (canManage) "Kelola (salin, pindah, ganti nama, hapus)" else "Lihat & unduh")
+        }
+    }
+
+    renaming?.let { item ->
+        var name by remember(item.id) { mutableStateOf(item.name.orEmpty()) }
+        AlertDialog(
+            onDismissRequest = { renaming = null },
+            title = { Text(if (item.isFolder) "Ganti nama folder" else "Ganti nama berkas") },
+            text = {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it.take(255) },
+                    singleLine = true,
+                    label = { Text("Nama baru") },
+                    supportingText = { Text("Tidak boleh memakai \\ / : * ? \" < > |") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { renaming = null; vm.rename(item, name) },
+                    enabled = name.isNotBlank() && name.trim() != item.name && name.none { it in "\\/:*?\"<>|" },
+                ) { Text("Simpan") }
+            },
+            dismissButton = { TextButton(onClick = { renaming = null }) { Text("Batal") } },
+        )
+    }
+
+    deleting?.let { item ->
+        ConfirmDialog(
+            title = if (item.isFolder) "Hapus folder?" else "Hapus berkas?",
+            message = if (item.isFolder) "\"${item.name}\" beserta seluruh isinya akan dihapus permanen dan tidak bisa dikembalikan."
+            else "\"${item.name}\" akan dihapus permanen dan tidak bisa dikembalikan.",
+            confirmLabel = "Hapus",
+            destructive = true,
+            onDismiss = { deleting = null },
+            onConfirm = { deleting = null; vm.delete(item) },
+        )
+    }
+
     previewing?.let { item ->
         FilePreview(
             item = item,
@@ -387,6 +570,25 @@ fun BackupFilesScreen(
             onSave = { vm.download(item, saveAfter = true) },
             busy = downloading == item.id,
         )
+    }
+}
+
+/** Baris aksi pada menu tekan lama (tinggi minimal 48dp agar mudah disentuh). */
+@Composable
+private fun MenuAction(icon: ImageVector, label: String, enabled: Boolean = true, destructive: Boolean = false, onClick: () -> Unit) {
+    val color = when {
+        !enabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+        destructive -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(12.dp))
+            .clickable(enabled = enabled, onClick = onClick).padding(horizontal = Spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(Spacing.md))
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = color)
     }
 }
 

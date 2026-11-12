@@ -623,12 +623,32 @@ class LiveChatController extends Controller
      */
     public function downloadAttachment(Request $request)
     {
-        $path = $request->query('path');
-        if (!$path || !Storage::disk('public')->exists($path)) {
+        $path = (string) $request->query('path', '');
+        // Hanya berkas di chat_attachments/{uuid}/ milik utas yang boleh diakses user ini.
+        if (!preg_match('#^chat_attachments/([A-Za-z0-9\-]+)/[^/\\\\]+$#', $path, $m) || str_contains($path, '..')) {
+            abort(404, 'Berkas lampiran tidak ditemukan.');
+        }
+        $user = Auth::user();
+        $isAdmin = $user->role === 'admin' || $user->name === 'I Gusti Sultan H.A, A.Md.Kom';
+        $thread = LiveChatThread::where('uuid', $m[1])->first();
+        if (!$thread || (!$isAdmin && (int) $thread->user_id !== (int) $user->id)) {
+            abort(403, 'Akses ditolak.');
+        }
+        if (!Storage::disk('public')->exists($path)) {
             abort(404, 'Berkas lampiran tidak ditemukan.');
         }
 
-        return Storage::disk('public')->download($path);
+        $name = preg_replace('/[^A-Za-z0-9_\-\.]/', '_', (string) $request->query('name', basename($path))) ?: basename($path);
+        $headers = ['X-Content-Type-Options' => 'nosniff', 'Cache-Control' => 'private, no-store'];
+
+        // ?inline=1 dipakai pratinjau di dalam aplikasi: hanya gambar, PDF, dan teks yang ditampilkan langsung.
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $inlineTypes = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp', 'pdf' => 'application/pdf', 'txt' => 'text/plain; charset=utf-8'];
+        if ($request->boolean('inline') && isset($inlineTypes[$ext])) {
+            return Storage::disk('public')->response($path, $name, $headers + ['Content-Type' => $inlineTypes[$ext]], 'inline');
+        }
+
+        return Storage::disk('public')->download($path, $name, $headers);
     }
 
     // ==========================================

@@ -286,4 +286,31 @@ class BackupAccessTest extends TestCase
         $this->postJson("/api/mobile/backup/access/{$id}/verify", ['code' => $code], $req)->assertStatus(422);
         $this->assertSame('verifying', PcAccessRequest::find($id)->status);
     }
+
+    public function test_owner_can_rename_move_and_delete_from_app_but_others_cannot(): void
+    {
+        $own = $this->bearer($this->owner);
+        $other = $this->bearer($this->stranger);
+        $folder = \App\Models\Backup::where('pc_id', $this->pc->id)->where('is_folder', true)->first();
+        $file = \App\Models\Backup::create([
+            'pc_id' => $this->pc->id, 'file_name' => 'catatan.txt', 'file_path' => 'x/catatan.txt',
+            'file_size' => 10, 'file_type' => 'txt', 'is_folder' => false,
+        ]);
+
+        // Rekan tanpa hak kelola ditolak.
+        $this->postJson("/api/mobile/backup/files/{$file->id}/rename", ['name' => 'a.txt'], $other)->assertStatus(403);
+        $this->postJson("/api/mobile/backup/pcs/{$this->pc->id}/move", ['ids' => [$file->id], 'target_folder_id' => $folder->id], $other)->assertStatus(403);
+
+        // Nama dengan karakter terlarang ditolak, nama wajar diterima.
+        $this->postJson("/api/mobile/backup/files/{$file->id}/rename", ['name' => 'a/b.txt'], $own)->assertStatus(422);
+        $this->postJson("/api/mobile/backup/files/{$file->id}/rename", ['name' => 'laporan.txt'], $own)->assertOk();
+        $this->assertSame('laporan.txt', $file->fresh()->file_name);
+
+        // Pindah (potong) ke folder, lalu folder tidak bisa dipindah ke dirinya sendiri.
+        $this->postJson("/api/mobile/backup/pcs/{$this->pc->id}/move", ['ids' => [$file->id], 'target_folder_id' => $folder->id], $own)
+            ->assertOk()->assertJsonPath('status', 'success');
+        $this->assertSame($folder->id, (int) $file->fresh()->parent_id);
+        $this->postJson("/api/mobile/backup/pcs/{$this->pc->id}/move", ['ids' => [$folder->id], 'target_folder_id' => $folder->id], $own)
+            ->assertStatus(422);
+    }
 }

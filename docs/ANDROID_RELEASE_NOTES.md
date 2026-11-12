@@ -1,3 +1,10 @@
+# SISINDEN Android v2.0.2 (versionCode 25)
+
+- **Kartu identitas (lanyard) di Beranda**, sama seperti di web: tali bertuliskan "DENINTEL KODAERAL V", kartu berisi pangkat, nama, NRP, dan jabatan. Ketuk kartu untuk membalik, geser untuk mengayun. Ayunan otomatis mati bila animasi sistem dimatikan.
+- **Lampiran chat dibuka di dalam aplikasi**: gambar (bisa dizoom), PDF, dan teks tampil di pratinjau penuh dengan tombol Simpan ke perangkat. Lampiran tidak lagi dibuka lewat peramban/tautan.
+- **Explore Backup: tekan lama pada berkas/folder** untuk membuka menu Pratinjau, Unduh ke perangkat, Buka dengan aplikasi lain, Salin, Potong (pindahkan), Ganti nama, Properti, dan Hapus. Setelah Salin/Potong, buka folder tujuan lalu tekan **Tempel di sini**. Salin/Potong/Ganti nama/Hapus hanya untuk pemilik penyimpanan dan admin, dan butuh server yang sudah diperbarui.
+
+---
 # SISINDEN Android v2.0.1 (versionCode 24)
 
 Perapian tampilan Nova dari v2.0.0.
@@ -10,7 +17,9 @@ Perapian tampilan Nova dari v2.0.0.
 - Logo SISINDEN di Beranda diberi alas terang agar terlihat jelas di header biru/navy.
 - Judul header selalu tepat di tengah walau ada tombol "Kembali"; baris status di Pengaturan → Notifikasi lebih renggang.
 
----# SISINDEN Android v2.0.0 (versionCode 23)
+---
+
+# SISINDEN Android v2.0.0 (versionCode 23)
 
 Tampilan baru **"Nova"**, seragam dengan web (docs/PRD_REDESIGN_UIUX.md v1.1). Semua fitur dan data tetap sama.
 

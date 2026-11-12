@@ -314,6 +314,19 @@ interface SindenApiService {
         @Query("search") search: String? = null,
     ): Response<BackupFilesResponse>
 
+    // Kelola berkas backup (pemilik/admin): salin, pindah, hapus, ganti nama.
+    @POST("api/mobile/backup/pcs/{pc}/copy")
+    suspend fun backupCopy(@Path("pc") pcId: Int, @Body body: BackupBulkRequest): Response<SimpleResponse>
+
+    @POST("api/mobile/backup/pcs/{pc}/move")
+    suspend fun backupMove(@Path("pc") pcId: Int, @Body body: BackupBulkRequest): Response<SimpleResponse>
+
+    @POST("api/mobile/backup/pcs/{pc}/delete")
+    suspend fun backupDelete(@Path("pc") pcId: Int, @Body body: BackupBulkRequest): Response<SimpleResponse>
+
+    @POST("api/mobile/backup/files/{id}/rename")
+    suspend fun backupRename(@Path("id") id: Int, @Body body: BackupRenameRequest): Response<SimpleResponse>
+
     @POST("api/mobile/backup/pcs/{pc}/access")
     suspend fun backupRequestAccess(@Path("pc") pcId: Int, @Body body: BackupAccessReasonRequest): Response<BackupAccessResponse>
 

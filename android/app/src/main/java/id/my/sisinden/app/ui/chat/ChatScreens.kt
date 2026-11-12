@@ -304,6 +304,7 @@ fun ChatThreadScreen(
     var text by rememberSaveable(uuid) { mutableStateOf("") }
     var menu by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var previewing by remember { mutableStateOf<ChatAttachmentDto?>(null) }
     val listState = rememberLazyListState()
     val mySide = if (isOperator) "ADMIN" else "USER"
 
@@ -370,7 +371,7 @@ fun ChatThreadScreen(
                         verticalArrangement = Arrangement.spacedBy(Spacing.sm),
                     ) {
                         items(ui.messages, key = { it.id }) { m ->
-                            MessageBubble(m, mine = m.senderType == mySide, context = context)
+                            MessageBubble(m, mine = m.senderType == mySide, onOpenAttachment = { previewing = it })
                         }
                     }
                 }
@@ -454,10 +455,12 @@ fun ChatThreadScreen(
             onConfirm = { confirmDelete = false; vm.delete(onBack ?: {}) },
         )
     }
+
+    previewing?.let { a -> ChatAttachmentPreview(repository, a, onDismiss = { previewing = null }) }
 }
 
 @Composable
-private fun MessageBubble(m: ChatMessageDto, mine: Boolean, context: Context) {
+private fun MessageBubble(m: ChatMessageDto, mine: Boolean, onOpenAttachment: (ChatAttachmentDto) -> Unit) {
     val time = Fmt.parseDateTime(m.createdAt)?.let { Fmt.time(it) }.orEmpty()
     if (m.isSystem) {
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -490,7 +493,7 @@ private fun MessageBubble(m: ChatMessageDto, mine: Boolean, context: Context) {
                 Spacer(Modifier.height(2.dp))
             }
             m.attachments.orEmpty().forEach { a ->
-                AttachmentView(a, fg, context)
+                AttachmentView(a, fg) { onOpenAttachment(a) }
                 Spacer(Modifier.height(Spacing.xs))
             }
             if (!m.message.isNullOrBlank()) {
@@ -507,9 +510,10 @@ private fun MessageBubble(m: ChatMessageDto, mine: Boolean, context: Context) {
 }
 
 @Composable
-private fun AttachmentView(a: ChatAttachmentDto, fg: Color, context: Context) {
+private fun AttachmentView(a: ChatAttachmentDto, fg: Color, onOpen: () -> Unit) {
     val url = a.publicUrl(SessionStore.DEFAULT_BASE_URL)
-    val open = { if (url != null) openUrl(context, url) }
+    // Lampiran selalu dibuka di pratinjau dalam aplikasi, bukan dilempar ke peramban.
+    val open = { if (url != null) onOpen() }
     if (a.isImage && url != null) {
         AsyncImage(
             model = url,
@@ -532,11 +536,3 @@ private fun AttachmentView(a: ChatAttachmentDto, fg: Color, context: Context) {
     }
 }
 
-private fun openUrl(context: Context, url: String) {
-    try {
-        context.expectExternalActivity()
-        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    } catch (_: ActivityNotFoundException) {
-        // Tidak ada aplikasi peramban/penampil: abaikan.
-    }
-}

@@ -150,6 +150,23 @@ fun DashboardScreen(
                 }
             }
 
+            // Kartu identitas personel (lanyard), sama seperti di dashboard web.
+            Column(Modifier.appear(index = 2)) {
+                Text(
+                    "Kartu identitas",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = Spacing.screen),
+                )
+                Text(
+                    "Ketuk kartu untuk membalik, geser untuk mengayun.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = Spacing.screen),
+                )
+                PersonnelLanyard(session.user)
+            }
+
             if (perms.has(Perm.DUTY_VIEW)) Box(Modifier.appear(index = 2)) {
                 DutySection(
                     state = state,

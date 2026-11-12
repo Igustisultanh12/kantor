@@ -105,3 +105,12 @@ data class BackupAccessResponse(
 data class BackupAccessReasonRequest(@SerializedName("reason") val reason: String?)
 data class BackupAccessCodeRequest(@SerializedName("code") val code: String)
 data class BackupAccessNoteRequest(@SerializedName("note") val note: String?)
+
+data class BackupBulkRequest(
+    @SerializedName("ids") val ids: List<Int>,
+    @SerializedName("target_folder_id") val targetFolderId: Int?,
+)
+
+data class BackupRenameRequest(
+    @SerializedName("name") val name: String,
+)

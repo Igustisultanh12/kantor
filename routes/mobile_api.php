@@ -370,7 +370,11 @@ Route::get('/api/mobile/backup/files/{id}/thumbnail', [MobileBackupController::c
 Route::get('/api/mobile/backup/files/{id}/content', [MobileBackupController::class, 'content'])->whereNumber('id')->middleware(['mobile.auth:backup.view', 'throttle:60,1']);
 Route::get('/api/mobile/backup/files/{id}/office-pdf', [MobileBackupController::class, 'officePdf'])->whereNumber('id')->middleware(['mobile.auth:backup.view', 'throttle:20,1']);
 Route::get('/api/mobile/backup/files/{id}/download',[MobileBackupController::class, 'download'])->whereNumber('id')->middleware(['mobile.auth:backup.view', 'throttle:30,1']);
-Route::post('/api/mobile/backup/pcs/{pc}/access', [MobileBackupController::class, 'requestAccess'])->whereNumber('pc')->middleware(['mobile.auth:backup.view', 'throttle:10,1']);
+Route::post('/api/mobile/backup/pcs/{pc}/move', [MobileBackupController::class, 'move'])->whereNumber('pc')->middleware(['mobile.auth:backup.view', 'throttle:30,1']);
+Route::post('/api/mobile/backup/pcs/{pc}/copy', [MobileBackupController::class, 'copy'])->whereNumber('pc')->middleware(['mobile.auth:backup.view', 'throttle:20,1']);
+Route::post('/api/mobile/backup/pcs/{pc}/delete', [MobileBackupController::class, 'destroy'])->whereNumber('pc')->middleware(['mobile.auth:backup.view', 'throttle:20,1']);
+Route::post('/api/mobile/backup/files/{id}/rename', [MobileBackupController::class, 'rename'])->whereNumber('id')->middleware(['mobile.auth:backup.view', 'throttle:30,1']);
+Route::post('/api/mobile/backup/pcs/{pc}/access',[MobileBackupController::class, 'requestAccess'])->whereNumber('pc')->middleware(['mobile.auth:backup.view', 'throttle:10,1']);
 Route::post('/api/mobile/backup/access/{accessRequest}/resend', [MobileBackupController::class, 'resend'])->whereNumber('accessRequest')->middleware(['mobile.auth:backup.view', 'throttle:6,1']);
 Route::post('/api/mobile/backup/access/{accessRequest}/verify', [MobileBackupController::class, 'verify'])->whereNumber('accessRequest')->middleware(['mobile.auth:backup.view', 'throttle:10,1']);
 Route::post('/api/mobile/backup/access/{accessRequest}/approve', [MobileBackupController::class, 'approve'])->whereNumber('accessRequest')->middleware('mobile.auth:backup.view');

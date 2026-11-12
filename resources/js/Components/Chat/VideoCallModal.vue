@@ -240,6 +240,21 @@
             <span v-if="isMuted" class="bg-red-600/90 px-1.5 py-0.5 rounded">Mute</span>
           </div>
         </div>
+
+        <!-- Pesan kendala kamera lokal -->
+        <div
+          v-if="cameraNotice"
+          role="status"
+          class="absolute top-3 left-3 right-3 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:max-w-md z-30 flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl bg-amber-950/90 border border-amber-700/70 text-amber-100 text-xs shadow-xl backdrop-blur"
+        >
+          <svg class="w-4 h-4 mt-0.5 shrink-0 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          </svg>
+          <p class="flex-1 leading-relaxed">{{ cameraNotice }}</p>
+          <button type="button" class="shrink-0 text-amber-300 hover:text-white cursor-pointer" aria-label="Tutup pesan" @click="cameraNotice = ''">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
       </div>
 
       <!-- Bilah Kontrol Bawah (Toolbar Melayang Gaya Militer Asli) -->
@@ -278,17 +293,42 @@
           </svg>
         </button>
 
-        <!-- 3. Tombol Flip / Ganti Kamera -->
-        <button 
-          @click="flipCamera" 
-          type="button" 
-          class="p-3 sm:p-3.5 rounded-xl sm:rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 shadow-md transition cursor-pointer flex flex-col items-center gap-1 active:scale-95"
-          title="Ganti Sudut Kamera"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-        </button>
+        <!-- 3. Tombol Flip / Ganti Kamera (di PC membuka daftar kamera) -->
+        <div class="relative">
+          <button
+            @click="flipCamera"
+            type="button"
+            class="p-3 sm:p-3.5 rounded-xl sm:rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 shadow-md transition cursor-pointer flex flex-col items-center gap-1 active:scale-95"
+            title="Ganti Kamera"
+            aria-label="Ganti Kamera"
+            :aria-expanded="showCameraMenu"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+          <div
+            v-if="showCameraMenu"
+            class="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-72 max-w-[80vw] rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl p-1.5 z-40"
+            role="menu"
+          >
+            <p class="px-3 pt-2 pb-1.5 text-[11px] font-semibold text-slate-400">Pilih kamera</p>
+            <p v-if="cameraList.length === 0" class="px-3 pb-2.5 text-xs text-slate-400">Tidak ada kamera terdeteksi di perangkat ini.</p>
+            <button
+              v-for="cam in cameraList"
+              :key="cam.id"
+              type="button"
+              role="menuitemradio"
+              :aria-checked="cam.id === activeCameraId"
+              class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left text-xs cursor-pointer transition"
+              :class="cam.id === activeCameraId ? 'bg-blue-600/20 text-white' : 'text-slate-200 hover:bg-slate-800'"
+              @click="switchToCamera(cam.id)"
+            >
+              <span class="w-2 h-2 rounded-full shrink-0" :class="cam.id === activeCameraId ? 'bg-blue-400' : 'bg-slate-600'"></span>
+              <span class="truncate">{{ cam.label }}</span>
+            </button>
+          </div>
+        </div>
 
         <!-- 4. Tombol Akhiri Panggilan (Hang Up) -->
         <button 
@@ -368,6 +408,87 @@ let signalingTimer = null;
 let durationTimer = null;
 let availableCameras = [];
 let currentCameraIndex = 0;
+let agoraSdk = null;
+
+// Kamera di PC: pesan kendala + daftar kamera untuk dipilih
+const CAMERA_PREF_KEY = 'sinden.callCameraId';
+const cameraNotice = ref('');
+const cameraList = ref([]);
+const showCameraMenu = ref(false);
+const activeCameraId = ref('');
+const isCameraBusy = ref(false);
+
+const describeCameraError = (err) => {
+  const name = err?.name || err?.originalError?.name || '';
+  const code = err?.code || '';
+  if (name === 'NotAllowedError' || code === 'PERMISSION_DENIED') {
+    return 'Izin kamera ditolak. Klik ikon gembok di bilah alamat, izinkan Kamera, lalu tekan tombol kamera lagi.';
+  }
+  if (name === 'NotReadableError' || name === 'TrackStartError' || code === 'NOT_READABLE') {
+    return 'Kamera sedang dipakai aplikasi lain (Zoom, WhatsApp, Kamera Windows). Tutup aplikasi itu, lalu tekan tombol kamera lagi.';
+  }
+  if (name === 'NotFoundError' || name === 'OverconstrainedError' || code === 'DEVICE_NOT_FOUND') {
+    return 'Kamera tidak ditemukan. Pasang webcam atau pilih kamera lain.';
+  }
+  return 'Kamera tidak bisa dinyalakan. Coba tekan tombol kamera lagi atau pilih kamera lain.';
+};
+
+const refreshCameraList = async () => {
+  if (!agoraSdk) return;
+  try {
+    availableCameras = await agoraSdk.getCameras();
+    cameraList.value = availableCameras.map((c, i) => ({ id: c.deviceId, label: c.label || `Kamera ${i + 1}` }));
+  } catch (e) {}
+};
+
+// Buat track kamera: pakai kamera pilihan terakhir bila masih ada, kalau tidak kamera depan/bawaan.
+const createCameraTrack = async () => {
+  const saved = localStorage.getItem(CAMERA_PREF_KEY);
+  await refreshCameraList();
+  const useSaved = saved && availableCameras.some((c) => c.deviceId === saved);
+  const config = useSaved
+    ? { encoderConfig: '720p_2', cameraId: saved }
+    : { encoderConfig: '720p_2', facingMode: 'user' };
+  let track;
+  try {
+    track = await agoraSdk.createCameraVideoTrack(config);
+  } catch (err) {
+    if (!useSaved) throw err;
+    localStorage.removeItem(CAMERA_PREF_KEY);
+    track = await agoraSdk.createCameraVideoTrack({ encoderConfig: '720p_2', facingMode: 'user' });
+  }
+  const label = track.getTrackLabel?.() || '';
+  const match = availableCameras.findIndex((c) => (useSaved ? c.deviceId === saved : c.label === label));
+  currentCameraIndex = match >= 0 ? match : 0;
+  activeCameraId.value = availableCameras[currentCameraIndex]?.deviceId || '';
+  return track;
+};
+
+// Pasang ulang kamera dari nol: dipakai saat kamera gagal di awal atau macet.
+const startCameraFresh = async () => {
+  if (!agoraSdk) return false;
+  if (localVideoTrack) {
+    try { if (agoraClient) await agoraClient.unpublish([localVideoTrack]); } catch (e) {}
+    try { localVideoTrack.stop(); localVideoTrack.close(); } catch (e) {}
+    localVideoTrack = null;
+  }
+  try {
+    localVideoTrack = await createCameraTrack();
+  } catch (err) {
+    console.warn('Kamera gagal dinyalakan:', err);
+    cameraNotice.value = describeCameraError(err);
+    isCameraOff.value = true;
+    return false;
+  }
+  if (agoraClient && agoraClient.connectionState === 'CONNECTED') {
+    try { await agoraClient.publish([localVideoTrack]); } catch (e) { console.warn('Gagal publish kamera:', e); }
+  }
+  await nextTick();
+  if (localVideoContainerRef.value) localVideoTrack.play(localVideoContainerRef.value);
+  isCameraOff.value = false;
+  cameraNotice.value = '';
+  return true;
+};
 
 // URL basis panggilan
 const baseUrl = computed(() => {
@@ -498,6 +619,17 @@ const initAgoraRoom = async () => {
       }
     });
 
+    // Kamera lokal yang tidak mengirim gambar (penutup privasi tertutup, dipakai
+    // aplikasi lain, atau kamera virtual) memicu FRAMERATE_INPUT_TOO_LOW.
+    client.on('exception', (evt) => {
+      if (Number(evt?.uid) !== Number(client.uid)) return;
+      if (evt.msg === 'FRAMERATE_INPUT_TOO_LOW' && localVideoTrack && !isCameraOff.value) {
+        cameraNotice.value = 'Kamera tidak mengirim gambar. Buka penutup kamera, tutup aplikasi lain yang memakai kamera, atau pilih kamera lain.';
+      } else if (evt.msg === 'FRAMERATE_INPUT_TOO_LOW_RECOVER') {
+        cameraNotice.value = '';
+      }
+    });
+
     // Tangani saat lawan bicara keluar dari bilik panggilan
     client.on('user-left', () => {
       hangUpCall();
@@ -545,14 +677,13 @@ const initAgoraRoom = async () => {
       isMuted.value = true;
     }
 
+    agoraSdk = AgoraRTC;
     try {
-      localVideoTrack = await AgoraRTC.createCameraVideoTrack({
-        encoderConfig: '720p_2',
-        facingMode: 'user',
-      });
+      localVideoTrack = await createCameraTrack();
     } catch (camErr) {
       console.warn('Akses kamera ditolak atau tidak tersedia:', camErr);
       isCameraOff.value = true;
+      cameraNotice.value = describeCameraError(camErr);
     }
 
     // Batalkan aliran jika panggilan ditutup saat meminta izin mic/kamera
@@ -579,9 +710,7 @@ const initAgoraRoom = async () => {
     }
 
     // Ambil daftar kamera perangkat untuk keperluan flip kamera
-    try {
-      availableCameras = await AgoraRTC.getCameras();
-    } catch (e) {}
+    await refreshCameraList();
 
     connectionStatusText.value = 'Tersambung ke Saluran';
 
@@ -681,23 +810,65 @@ const toggleMute = () => {
   }
 };
 
-const toggleCamera = () => {
-  if (localVideoTrack) {
-    const nextState = !isCameraOff.value;
-    localVideoTrack.setEnabled(!nextState);
-    isCameraOff.value = nextState;
+const toggleCamera = async () => {
+  if (isCameraBusy.value || !agoraSdk) return;
+  isCameraBusy.value = true;
+  try {
+    if (!localVideoTrack) {
+      // Kamera gagal saat panggilan dimulai: dulu tombol ini diam saja, sekarang dicoba ulang.
+      await startCameraFresh();
+      return;
+    }
+    if (!isCameraOff.value) {
+      await localVideoTrack.setEnabled(false);
+      isCameraOff.value = true;
+      cameraNotice.value = '';
+      return;
+    }
+    try {
+      await localVideoTrack.setEnabled(true);
+      isCameraOff.value = false;
+    } catch (err) {
+      // Perangkat sempat dilepas/diambil aplikasi lain: buat ulang track-nya.
+      console.warn('setEnabled(true) gagal, kamera dipasang ulang:', err);
+      await startCameraFresh();
+    }
+  } finally {
+    isCameraBusy.value = false;
   }
 };
 
+const switchToCamera = async (deviceId, remember = true) => {
+  showCameraMenu.value = false;
+  if (!deviceId) return;
+  if (remember) localStorage.setItem(CAMERA_PREF_KEY, deviceId);
+  if (!localVideoTrack) {
+    isCameraBusy.value = true;
+    try { await startCameraFresh(); } finally { isCameraBusy.value = false; }
+    return;
+  }
+  try {
+    await localVideoTrack.setDevice(deviceId);
+    currentCameraIndex = Math.max(0, availableCameras.findIndex((c) => c.deviceId === deviceId));
+    activeCameraId.value = deviceId;
+    cameraNotice.value = '';
+  } catch (err) {
+    console.warn('Gagal beralih kamera:', err);
+    cameraNotice.value = describeCameraError(err);
+  }
+};
+
+// Di HP: putar ke kamera berikutnya. Di PC (layar lebar): buka daftar kamera.
 const flipCamera = async () => {
-  if (localVideoTrack && availableCameras.length > 1) {
-    try {
-      currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
-      const nextCam = availableCameras[currentCameraIndex];
-      await localVideoTrack.setDevice(nextCam.deviceId);
-    } catch (err) {
-      console.warn('Gagal beralih kamera:', err);
-    }
+  await refreshCameraList();
+  const isDesktop = window.matchMedia('(min-width: 768px) and (pointer: fine)').matches;
+  if (isDesktop) {
+    showCameraMenu.value = !showCameraMenu.value;
+    return;
+  }
+  if (availableCameras.length > 1) {
+    const next = availableCameras[(currentCameraIndex + 1) % availableCameras.length];
+    await switchToCamera(next.deviceId, false);
   }
 };
 
@@ -955,6 +1126,9 @@ const cleanupMedia = () => {
   callDuration.value = 0;
   isMuted.value = false;
   isCameraOff.value = false;
+  isCameraBusy.value = false;
+  cameraNotice.value = '';
+  showCameraMenu.value = false;
   isRemoteVideoOff.value = false;
   connectionStatusText.value = 'Menghubungkan...';
 };

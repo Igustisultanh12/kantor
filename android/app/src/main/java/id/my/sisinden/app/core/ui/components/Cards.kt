@@ -3,6 +3,8 @@ package id.my.sisinden.app.core.ui.components
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -65,10 +67,13 @@ fun Modifier.pressScale(interaction: MutableInteractionSource): Modifier {
  * tepi terang bergradien, kilau atas, dan bayangan lembut berwarna — tidak
  * ada lagi garis abu tebal. Warna kustom dari pemanggil tetap dihormati.
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun SindenCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    /** Tekan lama (mis. menu konteks berkas). Bila diisi, [onClick] juga lewat jalur ini. */
+    onLongClick: (() -> Unit)? = null,
     containerColor: Color = MaterialTheme.colorScheme.surface,
     border: BorderStroke? = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outlineVariant),
     contentPadding: Dp = Spacing.lg,
@@ -96,7 +101,22 @@ fun SindenCard(
             drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = if (dark) 0.03f else 0.6f), 0.35f to Color.Transparent))
         }
     }
-    if (onClick != null) {
+    if (onLongClick != null) {
+        val interaction = remember { MutableInteractionSource() }
+        Surface(
+            modifier = lifted.pressScale(interaction).clip(shape).combinedClickable(
+                interactionSource = interaction,
+                indication = LocalIndication.current,
+                onClick = { onClick?.invoke() },
+                onLongClick = onLongClick,
+            ),
+            shape = shape,
+            color = color,
+            border = stroke,
+        ) {
+            Column(sheen.padding(contentPadding), content = content)
+        }
+    } else if (onClick != null) {
         val interaction = remember { MutableInteractionSource() }
         Surface(
             onClick = onClick,
@@ -218,10 +238,11 @@ fun ListRowCard(
     leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable RowScope.() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     /** Chip di bawah teks — tidak memakan lebar judul seperti [trailing]. */
     badge: (@Composable () -> Unit)? = null,
 ) {
-    SindenCard(modifier = modifier.fillMaxWidth(), onClick = onClick, contentPadding = Spacing.md) {
+    SindenCard(modifier = modifier.fillMaxWidth(), onClick = onClick, onLongClick = onLongClick, contentPadding = Spacing.md) {
         Row(Modifier.heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically) {
             if (leading != null) {
                 leading()
