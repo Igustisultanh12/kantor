@@ -224,6 +224,12 @@ class GoogleAuthController extends Controller
             $googleAvatar = $googleData['picture'] ?? null;
             $googleName = $googleData['name'] ?? 'Google User';
 
+            // Hanya email yang sudah diverifikasi Google boleh dipakai mencocokkan akun (audit S08).
+            if (($googleData['email_verified'] ?? false) !== true && ($googleData['email_verified'] ?? '') !== 'true') {
+                Log::warning('[GOOGLE_OAUTH] Email Google belum terverifikasi, ditolak.');
+                $googleEmail = '';
+            }
+
             if (!$googleId || !$googleEmail) {
                 if ($action === 'link') {
                     return redirect()->route('profile.edit')->with('error', 'Data identitas Google tidak lengkap.');
@@ -308,7 +314,12 @@ class GoogleAuthController extends Controller
 
             $targetRedirect = session()->pull('google_oauth_redirect') ?: session('url.intended');
 
-            if ($requiresMfa && !empty($user->phone)) {
+            if ($requiresMfa && empty($user->phone)) {
+                Auth::guard('web')->logout();
+                return redirect()->route('login')->with('error', 'Verifikasi 2 langkah aktif, tetapi nomor WhatsApp akun belum terdaftar. Hubungi Admin.');
+            }
+
+            if ($requiresMfa) {
                 $otp = str_pad((string)random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
                 $expiresAt = now()->addMinutes(5)->timestamp;
 
@@ -331,7 +342,7 @@ class GoogleAuthController extends Controller
                         . "Kode OTP verifikasi Anda adalah:\n"
                         . "*{$otp}*\n\n"
                         . "Kode ini berlaku selama 5 menit. Jangan berikan kode ini kepada siapapun.";
-                    WhatsappService::sendMessage($user->phone, $waMsg);
+                    WhatsappService::sendMessage($user->phone, $waMsg, null, true); // OTP = pesan wajib
                 } catch (\Exception $e) {
                     Log::error("[2FA_WA_ERROR] Gagal mengirim OTP Google Login: " . $e->getMessage());
                 }
@@ -352,7 +363,8 @@ class GoogleAuthController extends Controller
             ]);
 
             // Pengalihan ke target redirect atau dashboard
-            if (!empty($targetRedirect) && is_string($targetRedirect)) {
+            // Hanya tujuan di domain aplikasi sendiri (audit S08: open redirect).
+            if (!empty($targetRedirect) && is_string($targetRedirect) && self::isSafeRedirect($targetRedirect, $request)) {
                 return redirect()->to($targetRedirect);
             }
 
@@ -373,6 +385,19 @@ class GoogleAuthController extends Controller
             }
             return redirect()->route('login')->with('error', 'Terjadi kesalahan sistem saat masuk dengan Google: ' . ' (' . \App\Support\ErrorRef::log($e) . ')');
         }
+    }
+
+    /** Tujuan redirect relatif atau berhost sama dengan aplikasi. */
+    public static function isSafeRedirect(string $target, Request $request): bool
+    {
+        if (str_starts_with($target, '//') || str_starts_with($target, '\\') || str_starts_with($target, '/\\') || preg_match('/[\x00-\x1f]/', $target)) {
+            return false;
+        }
+        $host = parse_url($target, PHP_URL_HOST);
+        if ($host === null || $host === false) {
+            return str_starts_with($target, '/');
+        }
+        return in_array(strtolower($host), array_filter([strtolower((string) parse_url(config('app.url'), PHP_URL_HOST)), strtolower($request->getHost())]), true);
     }
 
     /**

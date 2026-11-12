@@ -74,26 +74,16 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
+        // Audit K04: login web TIDAK lagi menerbitkan token API (dulu cabang JSON ini melewati OTP).
+        // Aplikasi memakai POST /api/mobile/login yang punya alur OTP sendiri.
         if ($request->wantsJson() || $request->expectsJson() || $request->is('api/*')) {
-            $token = method_exists($user, 'createToken') 
-                ? $user->createToken('sinden_mobile_token')->plainTextToken 
-                : (session()->getId() ?: 'sinden_token_' . \Illuminate\Support\Str::random(40));
-
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
             return response()->json([
-                'status' => 'success',
-                'token' => $token,
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email ?? '',
-                    'username' => $user->username ?? $user->nrp ?? '',
-                    'nrp' => $user->nrp ?? $user->username ?? '',
-                    'role' => $user->role ?? 'user',
-                    'pangkat' => $user->pangkat ?? 'Prajurit',
-                    'korps' => $user->korps ?? '',
-                    'jabatan' => $user->jabatan ?? '',
-                ],
-            ]);
+                'status' => 'error',
+                'message' => 'Login aplikasi memakai /api/mobile/login.',
+            ], 410);
         }
 
         // OTORITAS KEAMANAN: 2FA WhatsApp ditentukan oleh status mfa_enabled pada akun personel (dikelola oleh Admin)
@@ -104,7 +94,15 @@ class AuthenticatedSessionController extends Controller
             ?: $request->query('redirect') 
             ?: session('url.intended');
 
-        if ($requiresMfa && !empty($user->phone) && !$request->wantsJson() && !$request->expectsJson() && !$request->is('api/*')) {
+        // MFA aktif tetapi nomor WA kosong = tolak (dulu OTP dilewati diam-diam).
+        if ($requiresMfa && empty($user->phone)) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            return back()->withErrors(['email' => 'Verifikasi 2 langkah aktif, tetapi nomor WhatsApp akun belum terdaftar. Hubungi Admin.']);
+        }
+
+        if ($requiresMfa) {
             $otp = str_pad((string)random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
             $expiresAt = now()->addMinutes(5)->timestamp;
 
@@ -113,6 +111,7 @@ class AuthenticatedSessionController extends Controller
                 'mfa_otp' => $otp,
                 'mfa_expires_at' => $expiresAt,
                 'mfa_attempts' => 0,
+                'mfa_resends' => 0,
                 'url.intended' => $targetRedirect,
             ]);
 
@@ -127,7 +126,7 @@ class AuthenticatedSessionController extends Controller
                     . "*{$otp}*\n\n"
                     . "Kode ini berlaku selama 5 menit.\n"
                     . "Peringatan: Dokumen intelijen bersifat rahasia. Jangan berikan kode ini kepada siapa pun demi keamanan kedinasan.";
-                \App\Services\WhatsappService::sendMessage($user->phone, $waMsg);
+                \App\Services\WhatsappService::sendMessage($user->phone, $waMsg, null, true); // OTP = pesan wajib
             } catch (\Exception $waErr) {
                 \Illuminate\Support\Facades\Log::error("Gagal kirim OTP 2FA: " . $waErr->getMessage());
             }
@@ -136,6 +135,7 @@ class AuthenticatedSessionController extends Controller
         }
 
         $request->session()->regenerate();
+        session(['mfa_verified' => true]); // login tanpa MFA (akun tidak mewajibkan OTP)
 
         if ($request->filled('latitude') && $request->filled('longitude')) {
             session([
@@ -163,7 +163,7 @@ class AuthenticatedSessionController extends Controller
             if ($parsedPath && !in_array($parsedPath, ['/login', '/logout', '/register', '/password/reset'])) {
                 $appHost = parse_url(config('app.url'), PHP_URL_HOST);
                 $targetHost = parse_url($targetRedirect, PHP_URL_HOST);
-                if (empty($targetHost) || $targetHost === $appHost || $targetHost === $request->getHost()) {
+                if (\App\Http\Controllers\Auth\GoogleAuthController::isSafeRedirect($targetRedirect, $request)) {
                     return redirect()->to($targetRedirect);
                 }
             }
@@ -285,7 +285,7 @@ class AuthenticatedSessionController extends Controller
             if ($parsedPath && !in_array($parsedPath, ['/login', '/logout', '/register', '/password/reset'])) {
                 $appHost = parse_url(config('app.url'), PHP_URL_HOST);
                 $targetHost = parse_url($targetRedirect, PHP_URL_HOST);
-                if (empty($targetHost) || $targetHost === $appHost || $targetHost === $request->getHost()) {
+                if (\App\Http\Controllers\Auth\GoogleAuthController::isSafeRedirect($targetRedirect, $request)) {
                     return redirect()->to($targetRedirect);
                 }
             }
@@ -322,6 +322,13 @@ class AuthenticatedSessionController extends Controller
             return back()->withErrors(['otp' => 'Nomor WhatsApp tidak valid.']);
         }
 
+        // Batasi kirim ulang (audit R02): tiap kirim ulang tidak lagi memberi percobaan tanpa batas.
+        $resends = (int) session('mfa_resends', 0);
+        if ($resends >= 3) {
+            session()->forget(['mfa_user_id', 'mfa_otp', 'mfa_expires_at', 'mfa_attempts', 'mfa_resends']);
+            return redirect()->route('login')->withErrors(['email' => 'Batas kirim ulang OTP tercapai. Silakan login kembali.']);
+        }
+
         $otp = str_pad((string)random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
         $expiresAt = now()->addMinutes(5)->timestamp;
 
@@ -329,6 +336,7 @@ class AuthenticatedSessionController extends Controller
             'mfa_otp' => $otp,
             'mfa_expires_at' => $expiresAt,
             'mfa_attempts' => 0,
+            'mfa_resends' => $resends + 1,
         ]);
 
         try {
@@ -339,7 +347,7 @@ class AuthenticatedSessionController extends Controller
                 . "Kode OTP baru Anda adalah:\n"
                 . "*{$otp}*\n\n"
                 . "Kode ini berlaku selama 5 menit.";
-            \App\Services\WhatsappService::sendMessage($user->phone, $waMsg);
+            \App\Services\WhatsappService::sendMessage($user->phone, $waMsg, null, true); // OTP = pesan wajib
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Gagal kirim ulang OTP 2FA: " . $e->getMessage());
         }

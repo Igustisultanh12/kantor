@@ -164,6 +164,46 @@ Route::post('/api/mobile/login', function (Request $request) {
             return response()->json(['status' => 'error', 'message' => 'Akun belum aktif atau sedang ditangguhkan oleh Admin.'], 403);
         }
 
+        // Verifikasi 2 langkah (audit K04): akun ber-MFA wajib OTP WhatsApp sebelum token diterbitkan.
+        if ($user->mfa_enabled) {
+            if (empty($user->phone)) {
+                return response()->json(['status' => 'error', 'code' => 'mfa_no_phone', 'message' => 'Verifikasi 2 langkah aktif, tetapi nomor WhatsApp akun belum terdaftar. Hubungi Admin.'], 403);
+            }
+            $cacheKey = 'mobile_mfa:' . $user->id;
+            $otpInput = trim((string) ($data['otp'] ?? ''));
+
+            if ($otpInput === '') {
+                $otp = str_pad((string) random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
+                \Illuminate\Support\Facades\Cache::put($cacheKey, ['hash' => Hash::make($otp), 'attempts' => 0], now()->addMinutes(5));
+                try {
+                    \App\Services\WhatsappService::sendMessage($user->phone,
+                        "*OTORITAS KEAMANAN SINDEN*\nKODE VERIFIKASI DUA LANGKAH (APLIKASI)\n\nYth. {$user->pangkat} {$user->name}\nKode OTP Anda: *{$otp}*\n\nBerlaku 5 menit. Jangan berikan kode ini kepada siapa pun.", null, true);
+                } catch (\Throwable $e) {
+                    Log::error('[MOBILE_API_LOGIN] Gagal kirim OTP: ' . $e->getMessage());
+                }
+                return response()->json([
+                    'status' => 'mfa_required',
+                    'code' => 'mfa_required',
+                    'message' => 'Kode OTP telah dikirim ke WhatsApp Anda. Masukkan kode untuk melanjutkan.',
+                ], 202);
+            }
+
+            $pending = \Illuminate\Support\Facades\Cache::get($cacheKey);
+            if (!$pending) {
+                return response()->json(['status' => 'error', 'code' => 'mfa_expired', 'message' => 'Kode OTP kedaluwarsa. Silakan masuk ulang untuk meminta kode baru.'], 422);
+            }
+            if ($pending['attempts'] >= 5) {
+                \Illuminate\Support\Facades\Cache::forget($cacheKey);
+                return response()->json(['status' => 'error', 'code' => 'mfa_locked', 'message' => 'Terlalu banyak percobaan salah. Silakan masuk ulang.'], 429);
+            }
+            if (!Hash::check($otpInput, $pending['hash'])) {
+                $pending['attempts']++;
+                \Illuminate\Support\Facades\Cache::put($cacheKey, $pending, now()->addMinutes(5));
+                return response()->json(['status' => 'error', 'code' => 'mfa_invalid', 'message' => 'Kode OTP tidak sesuai. Sisa kesempatan: ' . (5 - $pending['attempts'])], 422);
+            }
+            \Illuminate\Support\Facades\Cache::forget($cacheKey);
+        }
+
         if (!Schema::hasTable('personal_access_tokens')) {
             Log::critical('[MOBILE_API_LOGIN] Tabel personal_access_tokens belum dimigrasikan.');
             return response()->json([
