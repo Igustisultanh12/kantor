@@ -178,6 +178,11 @@ const submit = () => {
     });
 };
 
+const cancelBooking = (log) => {
+    if (!confirm(`Batalkan booking nomor ${log.full_number}?\nNomor ini akan dihapus dari Agenda Surat.`)) return;
+    router.delete(route('letter-logs.destroy', log.id), { preserveScroll: true });
+};
+
 const triggerUpload = (id) => {
     activeLogId.value = id;
     fileInput.value.click(); 
@@ -320,7 +325,10 @@ const handleFileUpload = (event) => {
                                             <div class="text-[9px] text-indigo-500 font-black uppercase">Kepada: {{ log.recipient || '-' }}</div>
                                         </td>
                                         <td class="px-8 py-5 text-right">
-                                            <button v-if="!log.is_archived" @click="triggerUpload(log.id)" class="bg-white border border-indigo-200 text-indigo-600 px-4 py-2 rounded-xl text-[9px] font-black uppercase hover:bg-indigo-600 hover:text-white transition-all">Upload PDF</button>
+                                            <div v-if="!log.is_archived" class="inline-flex items-center gap-2">
+                                                <button @click="triggerUpload(log.id)" class="bg-white border border-indigo-200 text-indigo-600 px-4 py-2 rounded-xl text-[9px] font-black uppercase hover:bg-indigo-600 hover:text-white transition-all">Upload PDF</button>
+                                                <button v-if="log.can_cancel" @click="cancelBooking(log)" class="bg-white border border-rose-200 text-rose-600 px-4 py-2 rounded-xl text-[9px] font-black uppercase hover:bg-rose-600 hover:text-white transition-all" title="Batalkan booking nomor ini">Batal</button>
+                                            </div>
                                             <span v-else class="text-emerald-500 font-black text-[10px] uppercase italic"> Terarsip</span>
                                         </td>
                                     </tr>

@@ -22,7 +22,9 @@ class LetterLogController extends Controller
         return Inertia::render('LetterLogs/Index', [
             'categories' => Category::all(),
             'sub_categories' => LetterSubCategory::all(), 
-            'logs' => LetterLog::with(['category', 'subCategory'])->latest()->paginate(1000),
+            'logs' => tap(LetterLog::with(['category', 'subCategory'])->latest()->paginate(1000), function ($page) {
+                $page->getCollection()->transform(fn ($log) => $log->setAttribute('can_cancel', self::canCancel($log)));
+            }),
             'priorities' => [
                 'B' => 'BIASA',
                 'R' => 'RAHASIA',
@@ -114,7 +116,8 @@ class LetterLogController extends Controller
                 'subject' => $request->subject,
                 'recipient' => $request->recipient, 
                 'date' => $request->date,
-                'is_archived' => false
+                'is_archived' => false,
+                'user_id' => auth()->id(),
             ]);
 
             DB::commit();
@@ -195,6 +198,43 @@ class LetterLogController extends Controller
             'print_logs' => $logs,
             'filter_name' => strtoupper($categoryName)
         ]);
+    }
+
+    /**
+     * Batalkan booking nomor yang belum diarsipkan (PDF belum diunggah).
+     * Boleh oleh pem-booking sendiri atau Admin; booking lama tanpa pemilik hanya Admin.
+     * Bila yang dibatalkan nomor terakhir kategori itu, nomornya dipakai lagi oleh booking berikutnya.
+     */
+    public function destroy(Request $request, LetterLog $letterLog)
+    {
+        if ($letterLog->is_archived) {
+            return back()->with('error', 'Nomor yang sudah diarsipkan (PDF terunggah) tidak dapat dibatalkan.');
+        }
+        abort_unless(self::canCancel($letterLog), 403, 'Hanya pem-booking nomor atau Admin yang dapat membatalkan.');
+
+        $nomor = $letterLog->full_number;
+        $letterLog->delete();
+
+        \App\Models\AuditLog::create([
+            'user_id' => auth()->id(),
+            'admin_name' => auth()->user()->name,
+            'action' => 'BATAL_NOMOR_SURAT',
+            'target_personnel' => $nomor,
+            'description' => "Membatalkan booking nomor surat {$nomor} (perihal: {$letterLog->subject})",
+            'ip_address' => $request->ip(),
+        ]);
+
+        return back()->with('success', "Booking nomor {$nomor} dibatalkan.");
+    }
+
+    private static function canCancel(LetterLog $log): bool
+    {
+        $user = auth()->user();
+        if (!$user || $log->is_archived) {
+            return false;
+        }
+        return \App\Support\MobileAccess::isSuperAdmin($user)
+            || ($log->user_id !== null && (int) $log->user_id === (int) $user->id);
     }
 
     /**

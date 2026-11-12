@@ -310,6 +310,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/letter-logs', [LetterLogController::class, 'index'])->name('letter-logs.index');
     Route::post('/letter-logs', [LetterLogController::class, 'store'])->name('letter-logs.store');
     Route::get('/letter-logs/next-number', [LetterLogController::class, 'getNextNumber'])->name('letter-logs.next-number');
+    Route::delete('/letter-logs/{letterLog}', [LetterLogController::class, 'destroy'])->whereNumber('letterLog')->name('letter-logs.destroy');
     
     // --- MODUL SURAT PERINTAH (SP) JAGA SIAGA SINTEL ---
     Route::get('/sp-jaga', [SpJagaController::class, 'index'])->name('sp-jaga.index');

@@ -25,6 +25,7 @@ class LetterLog extends Model
         'date',
         'is_archived',
         'number',
+        'user_id', // pem-booking nomor (untuk pembatalan)
     ];
 
     /**

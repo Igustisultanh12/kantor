@@ -653,6 +653,7 @@ Route::post('/api/mobile/letter-logs', function (Request $request) {
             'recipient' => $data['recipient'],
             'date' => substr((string) $data['date'], 0, 10),
             'is_archived' => false,
+            'user_id' => $request->user()?->id,
         ]);
 
         return response()->json(['status' => 'success', 'message' => "Agenda surat nomor {$nextSeq} tercatat.", 'data' => $log]);
