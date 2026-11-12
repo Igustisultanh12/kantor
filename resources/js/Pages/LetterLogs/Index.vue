@@ -4,6 +4,9 @@ import { useForm, Head, router, Link, usePage } from '@inertiajs/vue3';
 import { ref, watch, computed } from 'vue';
 import axios from 'axios';
 import html2pdf from 'html2pdf.js';
+import Swal from 'sweetalert2';
+
+const toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2200, timerProgressBar: true });
 
 const props = defineProps({
     categories: Array,
@@ -173,14 +176,33 @@ const submit = () => {
         preserveScroll: true,
         onSuccess: () => {
             form.reset('subject', 'recipient', 'sub_category_id', 'sequence');
-            alert('Nomor surat berhasil di-booking!');
+            toast.fire({ icon: 'success', title: 'Nomor surat berhasil di-booking' });
         }
     });
 };
 
-const cancelBooking = (log) => {
-    if (!confirm(`Batalkan booking nomor ${log.full_number}?\nNomor ini akan dihapus dari Agenda Surat.`)) return;
-    router.delete(route('letter-logs.destroy', log.id), { preserveScroll: true });
+const cancelBooking = async (log) => {
+    const res = await Swal.fire({
+        icon: 'warning',
+        title: 'Batalkan booking nomor?',
+        html: `<div style="font-family:monospace;font-weight:800;margin-bottom:6px">${log.full_number}</div><div style="font-size:13px">Nomor ini akan dihapus dari Agenda Surat. Tindakan ini tercatat di audit log.</div>`,
+        showCancelButton: true,
+        confirmButtonText: 'Ya, batalkan',
+        cancelButtonText: 'Kembali',
+        confirmButtonColor: '#e11d48',
+        reverseButtons: true,
+        focusCancel: true,
+    });
+    if (!res.isConfirmed) return;
+    router.delete(route('letter-logs.destroy', log.id), {
+        preserveScroll: true,
+        onSuccess: (page) => {
+            const err = page.props.flash?.error;
+            if (err) Swal.fire({ icon: 'error', title: 'Gagal', text: err });
+            else toast.fire({ icon: 'success', title: 'Booking nomor dibatalkan' });
+        },
+        onError: () => Swal.fire({ icon: 'error', title: 'Gagal', text: 'Anda tidak berhak membatalkan nomor ini.' }),
+    });
 };
 
 const triggerUpload = (id) => {
@@ -190,14 +212,14 @@ const triggerUpload = (id) => {
 
 const handleFileUpload = (event) => {
     const file = event.target.files[0];
-    if (!file || file.type !== 'application/pdf') return alert('Pilih file PDF');
+    if (!file || file.type !== 'application/pdf') return Swal.fire({ icon: 'warning', title: 'Pilih file PDF', text: 'Hanya berkas PDF yang dapat diarsipkan.' });
     router.post(route('letters.store-direct'), {
         letter_log_id: activeLogId.value,
         file: file
     }, {
         onBefore: () => isUploading.value = true,
         onFinish: () => { isUploading.value = false; event.target.value = ''; },
-        onSuccess: () => alert('Berhasil diarsipkan!')
+        onSuccess: () => toast.fire({ icon: 'success', title: 'Berhasil diarsipkan' })
     });
 };
 </script>
