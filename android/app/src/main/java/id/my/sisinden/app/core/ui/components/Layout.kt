@@ -56,6 +56,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import id.my.sisinden.app.core.ui.theme.Nova
 import id.my.sisinden.app.core.ui.theme.Spacing
 
@@ -83,8 +86,18 @@ fun SindenScaffold(
         topBar = { SindenTopBar(title = title, subtitle = subtitle, onBack = onBack, actions = actions) },
         snackbarHost = { if (snackbarHostState != null) SnackbarHost(snackbarHostState) },
         floatingActionButton = floatingActionButton,
-        content = content,
-    )
+    ) { p ->
+        // Jarak napas di bawah top bar membulat: isi (kotak cari, kartu pertama)
+        // tidak boleh menempel ke tepi bawah header.
+        content(
+            PaddingValues(
+                start = p.calculateStartPadding(LayoutDirection.Ltr),
+                end = p.calculateEndPadding(LayoutDirection.Ltr),
+                top = p.calculateTopPadding() + Spacing.md,
+                bottom = p.calculateBottomPadding(),
+            )
+        )
+    }
 }
 
 /**
@@ -130,7 +143,9 @@ fun SindenTopBar(
                 .padding(horizontal = Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.widthIn(min = 64.dp), contentAlignment = Alignment.CenterStart) {
+            // Slot kiri & kanan sama lebar → judul tepat di tengah (tombol "Kembali" ±104dp).
+            val sideSlot = if (onBack != null) 104.dp else 64.dp
+            Box(Modifier.widthIn(min = sideSlot), contentAlignment = Alignment.CenterStart) {
                 if (onBack != null) LabeledBackButton(onBack)
             }
             Column(
@@ -164,7 +179,7 @@ fun SindenTopBar(
                 }
             }
             Row(
-                Modifier.widthIn(min = 64.dp),
+                Modifier.widthIn(min = sideSlot),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
                 content = actions,

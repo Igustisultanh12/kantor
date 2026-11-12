@@ -26,8 +26,8 @@ android {
         applicationId = "id.my.sisinden.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 23
-        versionName = "2.0.0"
+        versionCode = 24
+        versionName = "2.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -82,6 +82,18 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+            // Render layar ke PNG hanya bila diminta: gradle testDebugUnitTest -Pscreens
+            all {
+                it.systemProperty("sinden.screens", if (project.hasProperty("screens")) "true" else "false")
+                it.systemProperty("roborazzi.test.record", "true")
+                it.systemProperty("sinden.screens.out", rootProject.layout.buildDirectory.dir("screens").get().asFile.absolutePath)
+            }
+        }
+    }
 }
 
 dependencies {
@@ -121,6 +133,13 @@ dependencies {
 
     // Testing
     testImplementation(libs.junit)
+    // Render layar Compose ke PNG di JVM (pemeriksaan tata letak terang/gelap tanpa HP)
+    testImplementation("org.robolectric:robolectric:4.13")
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.32.2")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.32.2")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

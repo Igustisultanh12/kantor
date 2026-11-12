@@ -251,7 +251,7 @@ private fun AbsenHero(
         Spacer(Modifier.height(Spacing.lg))
         Box(
             Modifier
-                .size(212.dp)
+                .size(224.dp)
                 .drawBehind {
                     // cincin lembut tetap + cincin berdenyut (hanya bila belum absen)
                     drawCircle((if (done) success else Indigo600).copy(alpha = 0.10f), radius = size.minDimension / 2f)
@@ -263,7 +263,7 @@ private fun AbsenHero(
         ) {
             Box(
                 Modifier
-                    .size(148.dp)
+                    .size(164.dp)
                     .bouncyPress(0.94f)
                     .shadow(18.dp, CircleShape, ambientColor = Indigo600, spotColor = Indigo600)
                     .clip(CircleShape)
@@ -285,7 +285,8 @@ private fun AbsenHero(
                     },
                 contentAlignment = Alignment.Center,
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // Teks dibatasi di dalam lingkaran (aman untuk ukuran teks Besar/Sangat besar).
+                Column(Modifier.padding(horizontal = 26.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     when {
                         submitting -> CircularProgressIndicator(Modifier.size(36.dp), color = Color.White, strokeWidth = 3.dp)
                         done -> Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(48.dp))
@@ -474,6 +475,6 @@ private fun HistoryRow(item: AttendanceDto) {
         title = Fmt.parseDate(item.dateOnly)?.let { Fmt.fullDate(it) } ?: (item.dateOnly ?: "-"),
         subtitle = listOfNotNull(item.timeShort?.let { "$it WIB" }, item.locationName?.takeIf { it.isNotBlank() }).joinToString(" · "),
         supporting = item.notes,
-        trailing = { StatusChip(item.statusLabel, statusTone(item.status)) },
+        badge = { StatusChip(item.statusLabel, statusTone(item.status)) },
     )
 }

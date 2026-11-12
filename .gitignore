@@ -36,3 +36,4 @@ android/app/build/
 # Impeccable: binari diunduh otomatis saat pertama dipakai; setelan lokal tidak dibagikan
 **/impeccable/scripts/bin/
 .claude/settings.local.json
+/android/build/

@@ -19,6 +19,8 @@ import java.util.concurrent.TimeUnit
 class ApiClient(
     private val session: SessionManager,
     private val store: SessionStore,
+    /** Hanya untuk test render layar (data contoh, tanpa jaringan). Aplikasi selalu null. */
+    private val fixtureInterceptor: Interceptor? = null,
 ) {
     @Volatile private var cachedBaseUrl: String? = null
     @Volatile private var cachedService: SindenApiService? = null
@@ -53,6 +55,8 @@ class ApiClient(
 
     val httpClient: OkHttpClient by lazy {
         val builder = OkHttpClient.Builder()
+        fixtureInterceptor?.let { builder.addInterceptor(it) }
+        builder
             .addInterceptor(AuthInterceptor())
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(45, TimeUnit.SECONDS) // PDF dihasilkan di server dan bisa memakan waktu

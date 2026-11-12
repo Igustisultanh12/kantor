@@ -192,7 +192,7 @@ fun LetterLogsScreen(
                                     subtitle = "Kepada: ${item.recipient.orEmpty().ifBlank { "-" }}",
                                     supporting = "${item.fullNumber ?: "No. ${item.sequence}"} · ${Fmt.shortDate(item.date)}",
                                     leading = { IconBadge(Icons.Outlined.Email, MaterialTheme.colorScheme.primary) },
-                                    trailing = { StatusChip(item.categoryName ?: "Umum", Tone.INFO) },
+                                    badge = { StatusChip(item.categoryName ?: "Umum", Tone.INFO) },
                                     onClick = { sheet = LetterSheet.Detail(item) },
                                 )
                             }

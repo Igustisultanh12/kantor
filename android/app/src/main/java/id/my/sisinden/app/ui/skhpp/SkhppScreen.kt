@@ -169,7 +169,7 @@ fun SkhppScreen(
                                     subtitle = s.pangkatKorpsNrp?.takeIf { it.isNotBlank() && it != "-" } ?: s.kategoriLabel,
                                     supporting = "${s.nomorSkhpp ?: "Belum bernomor"} · ${Fmt.shortDate(s.tanggalSurat)}",
                                     leading = { IconBadge(Icons.Outlined.VerifiedUser, toneAccent(skhppTone(s))) },
-                                    trailing = { StatusChip(s.statusLabel, skhppTone(s)) },
+                                    badge = { StatusChip(s.statusLabel, skhppTone(s)) },
                                     onClick = { detail = s },
                                 )
                             }

@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -192,6 +193,14 @@ fun FeatureTile(
         )
     }
 }
+
+/**
+ * Jumlah kolom grid [FeatureTile]: 4 pada huruf normal, 3 bila huruf diperbesar
+ * (Pengaturan "Ukuran teks" atau setelan sistem) agar label seperti "Notifikasi"
+ * tidak terpenggal di tengah kata.
+ */
+@Composable
+fun rememberTileColumns(): Int = if (LocalDensity.current.fontScale > 1.1f) 3 else 4
 
 /** Gradien bawaan per [Tone], untuk ubin yang tidak punya palet khusus. */
 fun toneGradient(tone: Tone): TileGradient = when (tone) {

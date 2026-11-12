@@ -28,6 +28,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -160,12 +162,18 @@ fun StatTile(
     SindenCard(modifier = modifier, onClick = onClick, contentPadding = Spacing.md) {
         IconBadge(icon, tint, size = 44.dp, iconSize = 24.dp)
         Spacer(Modifier.height(Spacing.md))
+        // Angka (mis. saldo) tidak boleh terpotong "Rp 125.750…": mengecil sampai muat.
+        val base = MaterialTheme.typography.titleLarge
+        var style by remember(value, base) { mutableStateOf(base) }
         Text(
             value,
-            style = MaterialTheme.typography.titleLarge,
+            style = style,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            softWrap = false,
+            onTextLayout = { r ->
+                if (r.hasVisualOverflow && style.fontSize.value > 12f) style = style.copy(fontSize = style.fontSize * 0.9f)
+            },
         )
         Text(
             label,
@@ -210,6 +218,8 @@ fun ListRowCard(
     leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable RowScope.() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
+    /** Chip di bawah teks — tidak memakan lebar judul seperti [trailing]. */
+    badge: (@Composable () -> Unit)? = null,
 ) {
     SindenCard(modifier = modifier.fillMaxWidth(), onClick = onClick, contentPadding = Spacing.md) {
         Row(Modifier.heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -237,6 +247,7 @@ fun ListRowCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+                if (badge != null) Box(Modifier.padding(top = 4.dp)) { badge() }
             }
             if (trailing != null) {
                 Spacer(Modifier.width(Spacing.sm))

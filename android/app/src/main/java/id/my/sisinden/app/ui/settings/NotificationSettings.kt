@@ -118,8 +118,8 @@ internal fun NotificationCard(repository: SindenRepository, onMessage: (String) 
             Spacer(Modifier.width(Spacing.md))
             Text("Notifikasi & panggilan", style = MaterialTheme.typography.titleSmall)
         }
-        Spacer(Modifier.height(Spacing.sm))
-        Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+        Spacer(Modifier.height(Spacing.md))
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
             CheckRow(
                 ok = status.allowed,
                 title = "Izin notifikasi",

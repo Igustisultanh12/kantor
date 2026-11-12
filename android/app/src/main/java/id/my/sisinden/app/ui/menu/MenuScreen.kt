@@ -28,6 +28,7 @@ import id.my.sisinden.app.core.security.Perm
 import id.my.sisinden.app.core.security.PermissionSet
 import id.my.sisinden.app.core.ui.components.EmptyState
 import id.my.sisinden.app.core.ui.components.FeatureTile
+import id.my.sisinden.app.core.ui.components.rememberTileColumns
 import id.my.sisinden.app.core.ui.components.SearchField
 import id.my.sisinden.app.core.ui.components.SindenScaffold
 import id.my.sisinden.app.core.ui.components.appear
@@ -73,11 +74,12 @@ fun MenuScreen(
     }.filter { q.isEmpty() || it.title.lowercase().contains(q) || it.group.lowercase().contains(q) }
 
     val grouped = items.groupBy { it.group }
+    val cols = rememberTileColumns()
 
     SindenScaffold(title = "Semua fitur", subtitle = "Modul sesuai hak akses ${user.roleLabel}") { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(start = Spacing.screen, end = Spacing.screen, top = Spacing.lg, bottom = Spacing.xxl),
+            contentPadding = PaddingValues(start = Spacing.screen, end = Spacing.screen, top = Spacing.xs, bottom = Spacing.xxl),
             verticalArrangement = Arrangement.spacedBy(Spacing.sm),
         ) {
             item {
@@ -105,7 +107,7 @@ fun MenuScreen(
                             .semantics { heading() },
                     )
                 }
-                groupItems.chunked(4).forEachIndexed { rowIdx, row ->
+                groupItems.chunked(cols).forEachIndexed { rowIdx, row ->
                     val appearIndex = index++
                     item(key = "r-$group-$rowIdx") {
                         Row(
@@ -122,7 +124,7 @@ fun MenuScreen(
                                 )
                             }
                             // sel kosong agar baris terakhir tetap rata kiri
-                            repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+                            repeat(cols - row.size) { Spacer(Modifier.weight(1f)) }
                         }
                     }
                 }

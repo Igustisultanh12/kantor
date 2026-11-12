@@ -1,4 +1,16 @@
-# SISINDEN Android v2.0.0 (versionCode 23)
+# SISINDEN Android v2.0.1 (versionCode 24)
+
+Perapian tampilan Nova dari v2.0.0.
+
+- **Mode gelap terbaca di semua layar**: judul dan teks yang sebelumnya hitam di atas kartu gelap (sapaan Beranda, "Jadwal jaga saya", "Minggu ini", "Riwayat 30 hari", Profil, Warta, Daftar Jaga, perihal surat) kini memakai warna teks tema.
+- **Tidak ada lagi elemen bertabrakan**: ubin "Fitur Utama" diberi jarak dan tidak menempel ke tepi; kotak cari/kartu pertama tidak lagi menempel ke header; isi memudar halus di atas dock alih-alih terpotong.
+- **Kartu daftar lebih lega**: chip kategori/status (Agenda Surat, SKHPP, Pelanggaran, riwayat Absen) dipindah ke bawah teks, jadi perihal tidak terpotong.
+- **Ukuran teks "Besar/Sangat besar"**: grid fitur otomatis 3 kolom agar kata tidak terpenggal ("Notifikas-i"); nilai saldo mengecil sampai muat, tidak pernah terpotong.
+- Tombol absen bulat sedikit lebih besar dan tulisan "Ketuk untuk absen" selalu di dalam lingkaran.
+- Logo SISINDEN di Beranda diberi alas terang agar terlihat jelas di header biru/navy.
+- Judul header selalu tepat di tengah walau ada tombol "Kembali"; baris status di Pengaturan → Notifikasi lebih renggang.
+
+---# SISINDEN Android v2.0.0 (versionCode 23)
 
 Tampilan baru **"Nova"**, seragam dengan web (docs/PRD_REDESIGN_UIUX.md v1.1). Semua fitur dan data tetap sama.
 

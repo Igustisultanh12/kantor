@@ -86,6 +86,7 @@ import id.my.sisinden.app.core.ui.components.StatTile
 import id.my.sisinden.app.core.ui.components.Tone
 import id.my.sisinden.app.core.ui.components.dataOrNull
 import id.my.sisinden.app.core.ui.components.shimmerBrush
+import id.my.sisinden.app.core.ui.components.rememberTileColumns
 import id.my.sisinden.app.core.ui.components.toneAccent
 import id.my.sisinden.app.core.ui.theme.Blue400
 import id.my.sisinden.app.core.ui.theme.Blue600
@@ -145,7 +146,7 @@ fun DashboardScreen(
 
             if (features.isNotEmpty()) {
                 Box(Modifier.appear(index = 1)) {
-                    MainFeatures(features.take(4), unread = summary?.notificationsUnread ?: 0, onNavigate = onNavigate)
+                    MainFeatures(features.take(rememberTileColumns()), unread = summary?.notificationsUnread ?: 0, onNavigate = onNavigate)
                 }
             }
 
@@ -213,11 +214,17 @@ private fun HeaderWithAccount(
     ) {
         // Baris navigasi atas: logo + tombol berlabel (Livin: "Pesan", "Keluar")
         Row(Modifier.fillMaxWidth().padding(vertical = Spacing.sm), verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                painterResource(R.drawable.ic_sinden_mark),
-                contentDescription = null,
-                modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)),
-            )
+            // Logo berwarna gelap → diberi alas terang agar terbaca di atas header biru/navy.
+            Box(
+                Modifier
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color.White.copy(alpha = 0.92f))
+                    .padding(5.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(painterResource(R.drawable.ic_sinden_mark), contentDescription = null, modifier = Modifier.fillMaxSize())
+            }
             Spacer(Modifier.width(Spacing.sm))
             Column(Modifier.weight(1f)) {
                 Text("SISINDEN", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = Color.White)
@@ -390,8 +397,8 @@ private fun MainFeatures(features: List<Feature>, unread: Int, onNavigate: (Stri
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
         SectionHeader("Fitur Utama Anda", actionLabel = "Semua", onAction = { onNavigate(Routes.MENU) })
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = Spacing.lg),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            Modifier.fillMaxWidth().padding(horizontal = Spacing.screen),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
         ) {
             features.forEach { f ->
                 FeatureTile(
@@ -403,7 +410,7 @@ private fun MainFeatures(features: List<Feature>, unread: Int, onNavigate: (Stri
                     modifier = Modifier.weight(1f),
                 )
             }
-            repeat(4 - features.size) { Spacer(Modifier.weight(1f)) }
+            repeat(rememberTileColumns() - features.size) { Spacer(Modifier.weight(1f)) }
         }
         SoftDivider(Modifier.fillMaxWidth().padding(horizontal = Spacing.screen))
     }

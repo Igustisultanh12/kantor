@@ -170,7 +170,7 @@ fun ViolationsScreen(
                                     subtitle = listOfNotNull(v.rank, v.nrp?.let { "NRP $it" }, v.unit).joinToString(" · "),
                                     supporting = v.caseDescription,
                                     leading = { InitialsAvatar(v.name.orEmpty().split(" ").take(2).joinToString("") { it.take(1) }, size = 40.dp) },
-                                    trailing = { StatusChip(ViolationStatus.label(v.status), violationTone(v.status)) },
+                                    badge = { StatusChip(ViolationStatus.label(v.status), violationTone(v.status)) },
                                     onClick = { detail = v },
                                 )
                             }

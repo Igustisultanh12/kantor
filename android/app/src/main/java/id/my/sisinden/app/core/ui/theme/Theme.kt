@@ -2,6 +2,7 @@ package id.my.sisinden.app.core.ui.theme
 
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -208,7 +209,10 @@ fun SindenTheme(
             colorScheme = colors,
             typography = SindenTypography,
             shapes = SindenShapes,
-            content = content,
-        )
+        ) {
+            // Warna teks/ikon bawaan mengikuti tema. Tanpa ini, Text di luar Surface
+            // (kartu kaca, kolom ber-background) jatuh ke hitam → tak terbaca di mode gelap.
+            CompositionLocalProvider(LocalContentColor provides colors.onBackground, content = content)
+        }
     }
 }

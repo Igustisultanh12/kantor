@@ -11,6 +11,15 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.unit.IntOffset
 import id.my.sisinden.app.core.ui.components.IosEase
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
@@ -256,20 +265,15 @@ fun MainNavigation(
         { route -> if (route in Routes.tabs) nav.navigateToTab(route) else nav.navigate(route) { launchSingleTop = true } }
     }
 
-    GlassBackground {
-    Scaffold(
-        containerColor = Color.Transparent,
-        contentWindowInsets = if (showBottomBar) WindowInsets(0, 0, 0, 0) else WindowInsets.navigationBars,
-        bottomBar = {
-            if (showBottomBar) {
-                SindenBottomBar(tabs = tabs, currentRoute = currentRoute, onSelect = { nav.navigateToTab(it) })
-            }
-        },
-    ) { padding ->
+    AppShell(
+        tabs = tabs,
+        currentRoute = currentRoute,
+        showBottomBar = showBottomBar,
+        onSelectTab = { nav.navigateToTab(it) },
+    ) {
         NavHost(
             navController = nav,
             startDestination = Routes.HOME,
-            modifier = Modifier.padding(padding),
             // Transisi bergaya iOS: antar-tab = crossfade + zoom halus; masuk ke
             // halaman detail = push dari kanan dengan parallax halaman lama.
             // Layar memakai latar transparan (aurora di belakang), jadi dua layar tidak
@@ -520,8 +524,47 @@ fun MainNavigation(
             }
         }
     }
+}
+
+/** Kerangka utama: latar aurora + dock bawah. Dipakai juga oleh test render layar. */
+@Composable
+internal fun AppShell(
+    tabs: List<TabItem>,
+    currentRoute: String?,
+    showBottomBar: Boolean,
+    onSelectTab: (String) -> Unit,
+    content: @Composable () -> Unit,
+) {
+    GlassBackground {
+        Scaffold(
+            containerColor = Color.Transparent,
+            contentWindowInsets = if (showBottomBar) WindowInsets(0, 0, 0, 0) else WindowInsets.navigationBars,
+            bottomBar = {
+                if (showBottomBar) SindenBottomBar(tabs = tabs, currentRoute = currentRoute, onSelect = onSelectTab)
+            },
+        ) { padding ->
+            Box(
+                Modifier
+                    .padding(padding)
+                    .then(if (showBottomBar) Modifier.fadeBottomEdge(28.dp) else Modifier)
+            ) { content() }
+        }
     }
 }
+
+/** Isi memudar lembut di tepi bawah (di atas dock), bukan terpotong lurus. */
+private fun Modifier.fadeBottomEdge(height: Dp): Modifier = this
+    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+    .drawWithContent {
+        drawContent()
+        val h = height.toPx()
+        drawRect(
+            Brush.verticalGradient(listOf(Color.Black, Color.Transparent), startY = size.height - h, endY = size.height),
+            topLeft = Offset(0f, size.height - h),
+            size = Size(size.width, h),
+            blendMode = BlendMode.DstIn,
+        )
+    }
 
 /** Navigasi antar-tab dengan pemulihan state (scroll, filter) masing-masing tab. */
 fun NavHostController.navigateToTab(route: String) {
