@@ -329,6 +329,8 @@ fun LoginScreen(
             onToken = vm::onTurnstileToken,
             onWidgetError = vm::onTurnstileError,
             onCancel = vm::cancelCheck,
+            card = state.card,
+            reduceMotion = reduce,
         )
     }
 }

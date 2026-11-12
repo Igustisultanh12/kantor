@@ -1,3 +1,9 @@
+# SISINDEN Android v2.2.1 (versionCode 31)
+
+- **Animasi masuk baru: kartu identitas.** Saat kredensial diperiksa, tampil kartu personel dengan garis pemindai. Begitu diterima, kartu berputar 3D menampilkan foto, nama, pangkat/NRP, dan bilah verifikasi sebelum masuk ke beranda. Mengikuti pengaturan kurangi animasi di HP.
+- Batas percobaan masuk kini dihitung per akun, sehingga beberapa HP di Wi-Fi kantor yang sama tidak saling kena "terlalu banyak permintaan".
+
+---
 # SISINDEN Android v2.2.0 (versionCode 30)
 
 Pembaruan keamanan (audit 2026-11).

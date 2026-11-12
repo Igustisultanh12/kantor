@@ -83,6 +83,9 @@ fun SecurityCheckOverlay(
     onToken: (String) -> Unit,
     onWidgetError: (String) -> Unit,
     onCancel: () -> Unit,
+    /** Data kartu identitas (diisi saat kredensial diterima). */
+    card: IdentityCardInfo? = null,
+    reduceMotion: Boolean = false,
 ) {
     AnimatedVisibility(visible = step != AuthStep.IDLE, enter = fadeIn(tween(200)), exit = fadeOut(tween(200))) {
         BackHandler(enabled = step == AuthStep.SECURITY, onBack = onCancel)
@@ -105,11 +108,11 @@ fun SecurityCheckOverlay(
                     .padding(Spacing.xxl),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                PulsingShield(done = step == AuthStep.FINISHING)
+                IdentityCard(verified = step == AuthStep.FINISHING, info = card, reduceMotion = reduceMotion)
                 Spacer(Modifier.height(Spacing.lg))
                 Text(
                     when (step) {
-                        AuthStep.FINISHING -> "Verifikasi berhasil"
+                        AuthStep.FINISHING -> if (card != null) "Selamat datang" else "Verifikasi berhasil"
                         else -> "Mohon tunggu sebentar"
                     },
                     style = MaterialTheme.typography.titleLarge,

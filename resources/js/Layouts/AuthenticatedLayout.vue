@@ -9,6 +9,7 @@ import NovaShell from '@/Layouts/NovaShell.vue';
 import { isNovaOn } from '@/nova/flag';
 import { reportDevice } from '@/Utils/deviceReport';
 import { startRealtime } from '@/Utils/realtime';
+import LoginWelcome from '@/Components/LoginWelcome.vue';
 
 const page = usePage();
 const nova = computed(() => (typeof window !== 'undefined') && isNovaOn(page.props.settings));
@@ -24,4 +25,5 @@ onMounted(() => {
 <template>
     <NovaShell v-if="nova"><slot /></NovaShell>
     <ClassicLayout v-else><slot /></ClassicLayout>
+    <LoginWelcome />
 </template>

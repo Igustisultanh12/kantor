@@ -17,7 +17,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 /** Durasi minimum tiap tahap animasi agar terbaca (ms). */
 private const val MIN_STEP_MS = 700L
-private const val FINISH_MS = 900L
+/** Cukup untuk kartu identitas berputar (700 ms) + bilah verifikasi terisi. */
+private const val FINISH_MS = 1600L
 private const val TOKEN_SHOW_MS = 600L
 
 /** Pesan ramah untuk kode error widget Turnstile. */
@@ -44,6 +45,8 @@ data class LoginUiState(
     val otp: String = "",
     val otpError: String? = null,
     val infoMessage: String? = null,
+    /** Kartu identitas yang ditampilkan saat kredensial diterima. */
+    val card: IdentityCardInfo? = null,
 ) {
     val busy: Boolean get() = step != AuthStep.IDLE
 }
@@ -151,7 +154,10 @@ class LoginViewModel(private val repository: SindenRepository) : ViewModel() {
         _state.update { it.copy(step = AuthStep.SESSION) }
         viewModelScope.launch {
             val started = System.currentTimeMillis()
-            val res = repository.login(s.identifier, s.password, token, otp) {
+            val res = repository.login(s.identifier, s.password, token, otp) { user ->
+                _state.update {
+                    it.copy(card = IdentityCardInfo(user.name.orEmpty(), user.pangkat, user.nrp, user.jabatan, user.avatarUrl))
+                }
                 val elapsed = System.currentTimeMillis() - started
                 if (elapsed < MIN_STEP_MS) delay(MIN_STEP_MS - elapsed)
                 _state.update { it.copy(step = AuthStep.FINISHING) }

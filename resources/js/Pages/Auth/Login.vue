@@ -9,6 +9,11 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import Swal from 'sweetalert2';
 import { animate, stagger } from 'framer-motion/dom';
 import { reduced, T, applyMotionSetting } from '@/motion';
+import IdentityCardLoader from '@/Components/IdentityCardLoader.vue';
+
+// Animasi kartu identitas: pemindaian saat kredensial diperiksa; kartu terverifikasi
+// tampil di beranda setelah berhasil masuk (flag di sessionStorage, lihat LoginWelcome).
+const checking = ref(false);
 
 const props = defineProps({
     canResetPassword: { type: Boolean },
@@ -166,7 +171,13 @@ const submit = async () => {
             ? route('login', { redirect: currentRedirect })
             : route('login');
 
+        try { sessionStorage.setItem('sinden_login_welcome', '1'); } catch (_) {}
         form.post(postRoute, {
+            onStart: () => { checking.value = true; },
+            onError: () => {
+                checking.value = false;
+                try { sessionStorage.removeItem('sinden_login_welcome'); } catch (_) {}
+            },
             onFinish: () => form.reset('password'),
         });
     } catch (e) {
@@ -247,6 +258,13 @@ onUnmounted(() => {
 </script>
 
 <template>
+    <Teleport to="body">
+        <Transition name="idc-ov">
+            <div v-if="checking" class="fixed inset-0 z-[9999] grid place-items-center bg-slate-950/85 backdrop-blur-md">
+                <IdentityCardLoader :verified="false" label="Memeriksa kredensial..." />
+            </div>
+        </Transition>
+    </Teleport>
     <Head title="Otoritas Login - SINDEN" />
 
     <div
@@ -485,6 +503,11 @@ onUnmounted(() => {
         </div>
     </div>
 </template>
+
+<style>
+.idc-ov-enter-active, .idc-ov-leave-active { transition: opacity .25s ease; }
+.idc-ov-enter-from, .idc-ov-leave-to { opacity: 0; }
+</style>
 
 <style scoped>
 /* ---------- Latar aurora ---------- */

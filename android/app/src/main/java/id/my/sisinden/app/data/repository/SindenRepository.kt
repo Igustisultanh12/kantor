@@ -62,7 +62,7 @@ class SindenRepository(
         password: String,
         turnstileToken: String? = null,
         otp: String? = null,
-        beforeSessionStart: suspend () -> Unit = {},
+        beforeSessionStart: suspend (UserProfile) -> Unit = {},
     ): ApiResult<UserProfile> {
         val device = "SISINDEN Android (${Build.MANUFACTURER} ${Build.MODEL})".take(100)
         return when (val res = call { login(LoginRequest(username.trim(), password, device, turnstileToken, otp?.trim()?.takeIf { it.isNotEmpty() })) }) {
@@ -73,7 +73,7 @@ class SindenRepository(
                     return ApiResult.Failure(ApiError(ErrorKind.MFA_REQUIRED, res.data.message ?: "Masukkan kode OTP yang dikirim ke WhatsApp Anda.", 202))
                 }
                 if (res.data.status == "success" && !token.isNullOrBlank() && user != null) {
-                    beforeSessionStart()
+                    beforeSessionStart(user)
                     // Baru saja masuk dengan kata sandi → tidak perlu PIN lagi untuk sesi ini.
                     appLock.unlock()
                     session.startSession(token, user)
