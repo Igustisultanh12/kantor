@@ -295,6 +295,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::match(['patch', 'post'], '/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::post('/profile/mfa', [ProfileController::class, 'updateMfa'])->middleware('throttle:6,1')->name('profile.mfa');
     Route::post('/profile/google/unlink', [GoogleAuthController::class, 'unlinkGoogle'])->name('profile.google.unlink');
 
     // Perangkat & sesi aktif (lihat & keluarkan perangkat lain)

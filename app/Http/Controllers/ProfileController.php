@@ -73,6 +73,44 @@ class ProfileController extends Controller
     }
 
     /**
+     * Aktifkan / nonaktifkan verifikasi 2 langkah (OTP WhatsApp) milik sendiri.
+     * Wajib kata sandi saat ini; mengaktifkan butuh nomor WhatsApp agar akun tidak terkunci.
+     */
+    public function updateMfa(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'enabled' => ['required', 'boolean'],
+            'password' => ['required', 'current_password'],
+        ], [
+            'password.current_password' => 'Kata sandi tidak sesuai.',
+        ]);
+
+        $user = $request->user();
+        $enable = (bool) $data['enabled'];
+
+        if ($enable && blank($user->phone)) {
+            return back()->withErrors(['mfa' => 'Isi nomor WhatsApp di profil terlebih dahulu sebelum mengaktifkan OTP.']);
+        }
+
+        $user->forceFill(['mfa_enabled' => $enable])->save();
+        if ($enable) {
+            // Sesi ini baru saja dikonfirmasi dengan kata sandi: jangan dikeluarkan oleh CheckMFA.
+            $request->session()->put('mfa_verified', true);
+        }
+
+        \App\Models\AuditLog::create([
+            'user_id' => $user->id,
+            'admin_name' => $user->name,
+            'action' => $enable ? 'MFA_DIAKTIFKAN' : 'MFA_DINONAKTIFKAN',
+            'target_personnel' => $user->name,
+            'description' => ($enable ? 'Mengaktifkan' : 'Menonaktifkan') . ' verifikasi 2 langkah (OTP WhatsApp) pada akun sendiri',
+            'ip_address' => $request->ip(),
+        ]);
+
+        return back()->with('status', $enable ? 'mfa-enabled' : 'mfa-disabled');
+    }
+
+    /**
      * Menghapus akun pengguna.
      */
     public function destroy(Request $request): RedirectResponse

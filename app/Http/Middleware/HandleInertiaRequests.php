@@ -90,6 +90,8 @@ class HandleInertiaRequests extends Middleware
                     'can_access_cash' => \App\Support\MobileAccess::canAccessCash($request->user()),
                     'can_view_commander_account' => \App\Support\MobileAccess::canViewCommanderAccount($request->user()),
                     'is_developer' => \App\Support\MobileAccess::isDeveloper($request->user()),
+                    'mfa_enabled' => (bool) $request->user()->mfa_enabled,
+                    'has_phone' => filled($request->user()->phone),
                     'is_pasops' => \App\Support\MobileAccess::isPasops($request->user()),
                     'is_sp_jaga_admin' => \App\Support\MobileAccess::isSpJagaAdmin($request->user()),
                     'google_id'     => $request->user()->google_id ?? null,

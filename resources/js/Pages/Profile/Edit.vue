@@ -4,6 +4,7 @@ import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue';
 import GoogleAccountForm from './Partials/GoogleAccountForm.vue';
 import DeviceSessions from './Partials/DeviceSessions.vue';
+import MfaForm from './Partials/MfaForm.vue';
 import { Head } from '@inertiajs/vue3';
 
 defineProps({
@@ -50,6 +51,11 @@ defineProps({
                 <!-- 3. Pembaruan Kata Sandi -->
                 <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0]">
                     <UpdatePasswordForm class="max-w-xl" />
+                </div>
+
+                <!-- 3b. Verifikasi 2 langkah (OTP WhatsApp) -->
+                <div id="mfa" class="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl sm:rounded-3xl shadow-xs border border-[#E2E8F0]">
+                    <MfaForm class="max-w-xl" />
                 </div>
 
                 <!-- 4. Perangkat & sesi aktif (web + Android) -->
