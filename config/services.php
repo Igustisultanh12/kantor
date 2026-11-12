@@ -48,6 +48,14 @@ return [
         'app_certificate' => env('AGORA_APP_CERTIFICATE'),
     ],
 
+    // Geofence presensi (audit S06). Kosong = pemeriksaan jarak tidak aktif.
+    'attendance' => [
+        'office_lat' => env('ATTENDANCE_OFFICE_LAT'),
+        'office_lng' => env('ATTENDANCE_OFFICE_LNG'),
+        'radius_m' => env('ATTENDANCE_RADIUS_M', 500),
+        'max_accuracy_m' => env('ATTENDANCE_MAX_ACCURACY_M', 150),
+    ],
+
     // Token integrasi portal PESS (wajib diisi di .env produksi; tanpa nilai bawaan).
     'pess' => [
         'token' => env('PESS_API_TOKEN'),

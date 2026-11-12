@@ -1476,6 +1476,8 @@ Route::post('/api/mobile/attendances', function (Request $request) {
             'device_model' => 'nullable|string|max:150',
             'notes' => 'nullable|string|max:1000',
             'photo' => 'required|string',
+            'accuracy' => 'nullable|numeric|min:0',
+            'is_mock' => 'nullable|boolean',
         ], [
             'latitude.required' => 'Presensi wajib lokasi GPS. Perbarui aplikasi SISINDEN lalu aktifkan GPS.',
             'longitude.required' => 'Presensi wajib lokasi GPS. Perbarui aplikasi SISINDEN lalu aktifkan GPS.',
@@ -1487,6 +1489,27 @@ Route::post('/api/mobile/attendances', function (Request $request) {
         $timeNow = now()->format('H:i:s');
         $lat = isset($data['latitude']) ? (float) $data['latitude'] : null;
         $lng = isset($data['longitude']) ? (float) $data['longitude'] : null;
+
+        // Audit S06: lokasi palsu, akurasi, & geofence dicek di server.
+        $guard = \App\Support\AttendanceGuard::check(
+            (string) $data['status'], $lat, $lng,
+            isset($data['accuracy']) ? (float) $data['accuracy'] : null,
+            filter_var($data['is_mock'] ?? false, FILTER_VALIDATE_BOOLEAN)
+        );
+        if ($guard !== null) {
+            return response()->json(['status' => 'error', 'code' => 'attendance_rejected', 'message' => $guard], 422);
+        }
+
+        // Presensi pertama hari ini tidak boleh ditimpa (dulu bisa diulang berkali-kali).
+        $existing = \App\Models\Attendance::where('user_id', $user->id)->where('attendance_date', $today)->first();
+        if ($existing && $existing->time_in) {
+            return response()->json([
+                'status' => 'error',
+                'code' => 'attendance_exists',
+                'message' => 'Presensi hari ini sudah tercatat pukul ' . substr((string) $existing->time_in, 0, 5) . ' WIB.',
+                'attendance' => $existing,
+            ], 409);
+        }
         $locName = $data['location_name'] ?? null;
         if (empty($locName) && $lat !== null && $lng !== null) {
             $locName = "GPS: {$lat}, {$lng}";

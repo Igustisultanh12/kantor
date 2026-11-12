@@ -19,8 +19,9 @@ class AttendanceController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'latitude' => 'nullable|numeric',
-            'longitude' => 'nullable|numeric',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
+            'accuracy' => 'nullable|numeric|min:0',
             'location_name' => 'nullable|string|max:255',
             'device_model' => 'nullable|string|max:255',
             'status' => 'nullable|string|in:hadir,dinas_luar,piket,izin',
@@ -32,10 +33,24 @@ class AttendanceController extends Controller
         $today = now()->toDateString();
         $timeNow = now()->format('H:i:s');
 
-        // Deteksi IP Address
-        $ipAddress = $request->header('X-Forwarded-For') 
-            ? trim(explode(',', $request->header('X-Forwarded-For'))[0]) 
-            : $request->ip();
+        // IP dari proxy tepercaya saja (audit S06/R01): header X-Forwarded-For mentah bisa dipalsukan.
+        $ipAddress = $request->ip();
+
+        $status = $request->status ?: 'hadir';
+        $guard = \App\Support\AttendanceGuard::check(
+            $status,
+            $request->filled('latitude') ? (float) $request->latitude : null,
+            $request->filled('longitude') ? (float) $request->longitude : null,
+            $request->filled('accuracy') ? (float) $request->accuracy : null,
+            false
+        );
+        if ($guard !== null) {
+            return back()->with('error', $guard);
+        }
+        $existing = Attendance::where('user_id', $user->id)->where('attendance_date', $today)->first();
+        if ($existing && $existing->time_in) {
+            return back()->with('error', 'Presensi hari ini sudah tercatat pukul ' . substr((string) $existing->time_in, 0, 5) . ' WIB.');
+        }
 
         // Deteksi Perangkat (Merk & Tipe HP)
         $deviceInfo = $request->device_model;
@@ -81,8 +96,9 @@ class AttendanceController extends Controller
                 try {
                     $parts = explode(',', $request->photo);
                     if (count($parts) === 2) {
-                        $decoded = base64_decode($parts[1]);
-                        if ($decoded) {
+                        $decoded = base64_decode($parts[1], true);
+                        // Hanya gambar asli <= 5 MB yang disimpan (audit S06).
+                        if ($decoded && strlen($decoded) <= 5 * 1024 * 1024 && @getimagesizefromstring($decoded)) {
                             $filename = 'attendances/presensi_' . $user->id . '_' . date('Ymd_His') . '_' . Str::random(6) . '.jpg';
                             Storage::disk('public')->put($filename, $decoded);
                             $photoPath = $filename;
@@ -91,15 +107,14 @@ class AttendanceController extends Controller
                 } catch (\Exception $e) {
                     Log::warning("Gagal menyimpan foto presensi: " . $e->getMessage());
                 }
-            } else {
-                $photoPath = $request->photo;
             }
+            // Nilai selain data URI (mis. URL luar) tidak lagi disimpan sebagai foto.
         }
 
         // Data yang akan disimpan / diperbarui
         $saveData = [
             'time_in' => $timeNow,
-            'status' => $request->status ?: 'hadir',
+            'status' => $status,
             'ip_address' => $ipAddress,
             'device' => $deviceInfo,
             'user_agent' => $request->userAgent(),
