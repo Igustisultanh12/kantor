@@ -37,3 +37,4 @@ android/app/build/
 **/impeccable/scripts/bin/
 .claude/settings.local.json
 /android/build/
+android/.kotlin/

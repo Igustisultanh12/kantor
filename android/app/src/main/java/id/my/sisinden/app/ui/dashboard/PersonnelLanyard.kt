@@ -235,7 +235,7 @@ private fun CardFront(user: UserProfile, jabatan: String) {
                 verticalAlignment = Alignment.Top,
             ) {
                 Box(Modifier.size(26.dp).clip(RoundedCornerShape(7.dp)).background(Color.White.copy(alpha = 0.92f)).padding(3.dp)) {
-                    Image(painterResource(R.drawable.ic_sinden_mark), contentDescription = null, modifier = Modifier.fillMaxSize())
+                    id.my.sisinden.app.ui.common.AgencyLogo(contentDescription = null, modifier = Modifier.fillMaxSize())
                 }
                 Spacer(Modifier.width(8.dp))
                 Text(AGENCY, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.9.sp, lineHeight = 13.sp)
@@ -303,7 +303,7 @@ private fun CardBack() {
         ) {
             Spacer(Modifier.weight(1f))
             Box(Modifier.size(72.dp).clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.92f)).padding(8.dp)) {
-                Image(painterResource(R.drawable.ic_sinden_mark), contentDescription = null, modifier = Modifier.fillMaxSize())
+                id.my.sisinden.app.ui.common.AgencyLogo(contentDescription = null, modifier = Modifier.fillMaxSize())
             }
             Spacer(Modifier.height(12.dp))
             Text(AGENCY, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.9.sp, textAlign = TextAlign.Center)

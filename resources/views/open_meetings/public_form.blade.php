@@ -188,7 +188,12 @@
         <!-- HEADER KEDINASAN -->
         <div class="header-banner">
             <div class="header-logo">
-                <img src="{{ asset('images/logo_sinden_app_icon.png') }}" alt="Logo SINDEN" onerror="this.src='{{ asset('images/logo_tni_al.png') }}'" />
+                @php
+                    // Logo di dalam halaman = logo instansi (Pengaturan); logo aplikasi hanya untuk ikon.
+                    $agencyLogo = \App\Models\Setting::where('key', 'agency_logo')->value('value');
+                    $agencyLogoUrl = $agencyLogo ? (str_starts_with($agencyLogo, 'http') ? $agencyLogo : asset('storage/' . $agencyLogo)) : asset('images/logo.png');
+                @endphp
+                <img src="{{ $agencyLogoUrl }}" alt="Logo Instansi" onerror="this.onerror=null;this.src='{{ asset('images/logo.png') }}'" />
             </div>
 
             <div class="kop-instansi">KOMANDO DAERAH TNI AL V</div>

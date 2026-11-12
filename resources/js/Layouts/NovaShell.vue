@@ -21,7 +21,7 @@ const settings = computed(() => page.props.settings || {});
 const agencyName = computed(() => settings.value.agency_name || 'DENINTEL KODAERAL V');
 const appLogo = computed(() => {
     const logo = settings.value.agency_logo || settings.value.logo;
-    if (!logo) return null;
+    if (!logo) return '/images/logo.png'; // lambang instansi bawaan, bukan logo aplikasi
     return (logo.startsWith('http') || logo.startsWith('/storage')) ? logo : '/storage/' + logo;
 });
 const motionOn = computed(() => String(settings.value.ui_motion_enabled ?? '1') !== '0');
@@ -368,7 +368,7 @@ const initials = computed(() => (user.value.name || 'US').split(/\s+/).slice(0, 
                             <button type="button" :aria-pressed="themePref === 'system'" @click="setTheme('system')">Sistem</button>
                         </div>
                         <Link :href="safeRoute('profile.edit')" role="menuitem"><NovaIcon name="user" :size="16" />Profil</Link>
-                        <button type="button" role="menuitem" @click="backToClassic"><NovaIcon name="undo" :size="16" />Kembali ke tampilan lama</button>
+                        <button type="button" role="menuitem" @click="backToClassic"><NovaIcon name="undo" :size="16" />Ganti ke tampilan lama</button>
                         <hr />
                         <Link :href="safeRoute('logout')" method="post" as="button" role="menuitem" class="nv-danger"><NovaIcon name="logout" :size="16" />Keluar</Link>
                     </div>

@@ -15,7 +15,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.QrCodeScanner
+import androidx.compose.material.icons.outlined.SentimentSatisfied
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -118,14 +122,50 @@ fun AttendanceScreen(repository: SindenRepository, canSubmit: Boolean) {
     val snackbar = remember { SnackbarHostState() }
     CollectMessages(vm.messages, snackbar)
 
+    // Alur absen: GPS wajib → kamera depan → foto otomatis saat tersenyum → kirim.
+    var pendingAbsen by rememberSaveable { mutableStateOf(false) }
+    var cameraOpen by remember { mutableStateOf(false) }
+
+    val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) cameraOpen = true
+        else vm.messages.post("Izin kamera ditolak. Presensi wajib foto senyum.")
+    }
+    val openCamera = {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) cameraOpen = true
+        else cameraPermission.launch(Manifest.permission.CAMERA)
+    }
+
     val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
         if (result.values.any { it }) vm.fetchLocation()
+        else { pendingAbsen = false; vm.locationDenied() }
     }
     val requestLocation = {
         val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
         if (granted) vm.fetchLocation()
         else locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+    }
+    val startAbsen: () -> Unit = {
+        if (!form.submitting) {
+            if (form.location != null) openCamera()
+            else { vm.clearLocation(); pendingAbsen = true; requestLocation() }
+        }
+    }
+    // Setelah lokasi didapat, lanjut otomatis ke kamera; bila gagal, berhenti (pesan tampil di baris lokasi).
+    LaunchedEffect(pendingAbsen, form.location, form.locationError, form.locating) {
+        if (pendingAbsen && !form.locating) {
+            if (form.location != null) { pendingAbsen = false; openCamera() }
+            else if (form.locationError != null) {
+                pendingAbsen = false
+                vm.messages.post(form.locationError!!)
+            }
+        }
+    }
+    if (cameraOpen) {
+        SmileCameraDialog(
+            onCaptured = { photo -> cameraOpen = false; vm.submit(photo) },
+            onDismiss = { cameraOpen = false },
+        )
     }
 
     SindenScaffold(title = "Absensi", subtitle = Fmt.fullDate(LocalDate.now()), snackbarHostState = snackbar) { padding ->
@@ -143,7 +183,7 @@ fun AttendanceScreen(repository: SindenRepository, canSubmit: Boolean) {
                             canSubmit = canSubmit,
                             submitting = form.submitting,
                             statusLabel = form.status.label,
-                            onSubmit = vm::submit,
+                            onSubmit = startAbsen,
                         )
                     }
                     item { WeekRow(data.attendances.orEmpty()) }
@@ -184,13 +224,18 @@ fun AttendanceScreen(repository: SindenRepository, canSubmit: Boolean) {
                                 LocationRow(
                                     form = form,
                                     onRequest = requestLocation,
-                                    onClear = vm::clearLocation,
                                 )
                                 Spacer(Modifier.height(Spacing.lg))
                                 PrimaryButton(
-                                    text = if (data.todayAttendance == null) "Kirim presensi" else "Perbarui presensi",
-                                    onClick = vm::submit,
-                                    loading = form.submitting,
+                                    text = if (data.todayAttendance == null) "Foto senyum & kirim presensi" else "Foto senyum & perbarui presensi",
+                                    onClick = startAbsen,
+                                    loading = form.submitting || pendingAbsen,
+                                )
+                                Spacer(Modifier.height(Spacing.xs))
+                                Text(
+                                    "Presensi wajib GPS aktif dan foto wajah tersenyum.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }
@@ -290,7 +335,7 @@ private fun AbsenHero(
                     when {
                         submitting -> CircularProgressIndicator(Modifier.size(36.dp), color = Color.White, strokeWidth = 3.dp)
                         done -> Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(48.dp))
-                        else -> Icon(Icons.Outlined.QrCodeScanner, contentDescription = null, tint = Color.White, modifier = Modifier.size(44.dp))
+                        else -> Icon(Icons.Outlined.SentimentSatisfied, contentDescription = null, tint = Color.White, modifier = Modifier.size(44.dp))
                     }
                     Spacer(Modifier.height(Spacing.sm))
                     Text(
@@ -435,7 +480,7 @@ private fun StatusOption(status: AttendanceStatus, selected: Boolean, onSelect: 
 }
 
 @Composable
-private fun LocationRow(form: AttendanceForm, onRequest: () -> Unit, onClear: () -> Unit) {
+private fun LocationRow(form: AttendanceForm, onRequest: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Outlined.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.width(Spacing.sm))
@@ -444,7 +489,7 @@ private fun LocationRow(form: AttendanceForm, onRequest: () -> Unit, onClear: ()
             when {
                 form.locating -> Text("Mengambil lokasi…", style = MaterialTheme.typography.bodyMedium)
                 loc != null -> {
-                    Text("Lokasi terlampir", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Text("Lokasi GPS terlampir", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     Text(
                         String.format(java.util.Locale.US, "%.5f, %.5f", loc.latitude, loc.longitude) + (loc.accuracyMeters?.let { " (±${it.toInt()} m)" } ?: ""),
                         style = MaterialTheme.typography.bodySmall,
@@ -452,9 +497,9 @@ private fun LocationRow(form: AttendanceForm, onRequest: () -> Unit, onClear: ()
                     )
                 }
                 else -> {
-                    Text("Tanpa lokasi", style = MaterialTheme.typography.bodyMedium)
+                    Text("Lokasi GPS wajib", style = MaterialTheme.typography.bodyMedium)
                     Text(
-                        form.locationError ?: "Lampirkan lokasi GPS bila diminta satuan.",
+                        form.locationError ?: "Lokasi diambil otomatis saat absen. Pastikan GPS aktif.",
                         style = MaterialTheme.typography.bodySmall,
                         color = if (form.locationError != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -463,7 +508,7 @@ private fun LocationRow(form: AttendanceForm, onRequest: () -> Unit, onClear: ()
         }
         when {
             form.locating -> CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-            form.location != null -> IconButton(onClick = onClear) { Icon(Icons.Outlined.Close, contentDescription = "Hapus lokasi") }
+            form.location != null -> OutlinedButton(onClick = onRequest) { Text("Perbarui") }
             else -> OutlinedButton(onClick = onRequest) { Text("Ambil") }
         }
     }

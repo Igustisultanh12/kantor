@@ -1,3 +1,11 @@
+# SISINDEN Android v2.1.0 (versionCode 29)
+
+- **Absensi wajib foto senyum**: tombol absen kini membuka kamera depan. Foto diambil otomatis setelah wajah terdeteksi **tersenyum** (hanya satu wajah, cukup dekat). Mengetuk tombol saja tidak lagi cukup. Foto ikut tersimpan di data presensi.
+- **Absensi wajib GPS**: lokasi diambil otomatis saat absen. GPS harus menyala, dan lokasi palsu (fake GPS) ditolak. Tidak ada lagi pilihan "kirim tanpa lokasi".
+- **Logo instansi di dalam aplikasi**: splash, layar masuk, kunci PIN, header Beranda, dan kartu identitas (lanyard) kini memakai logo instansi dari Pengaturan web. Logo SISINDEN hanya dipakai sebagai ikon aplikasi.
+- Deteksi wajah memakai Google Play services. Pada pemakaian pertama modul mungkin perlu diunduh sebentar (butuh internet).
+
+---
 # SISINDEN Android v2.0.5 (versionCode 28)
 
 - **Dikeluarkan dari perangkat langsung terasa**: bila pemilik akun mengeluarkan HP ini dari web **Profil > Perangkat & sesi**, aplikasi langsung kembali ke layar masuk dan menampilkan popup "Maaf, Anda telah keluar - Perangkat ini telah dikeluarkan dari akun Anda". Sebelumnya HP baru keluar saat membuka menu berikutnya, dengan pesan "Sesi berakhir".

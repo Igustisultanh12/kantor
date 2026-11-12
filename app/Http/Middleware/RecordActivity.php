@@ -14,8 +14,10 @@ use Laravel\Sanctum\PersonalAccessToken;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Mencatat setiap aksi tulis (POST/PUT/PATCH/DELETE) pengguna yang login, dari web
- * maupun aplikasi Android, ke tabel activity_logs: siapa, aksi apa, data mana,
+ * Mencatat aksi tulis penting (POST/PUT/PATCH/DELETE) pengguna yang login, dari web
+ * maupun aplikasi Android: hanya modul arsip & persuratan, dokumen, dan keuangan
+ * (ActivityLog::IMPORTANT_MODULES). Ubah profil/data pribadi, absensi, chat, dll. tidak
+ * dicatat. Disimpan ke tabel activity_logs: siapa, aksi apa, data mana,
  * perangkat, IP, lokasi IP, GPS terakhir perangkat, dan berhasil/gagal.
  *
  * Login/logout & alur autentikasi TIDAK dicatat di sini (sudah ada di Log Pengunjung).
@@ -32,6 +34,10 @@ class RecordActivity
         'broadcasting/auth', 'api/mobile/broadcasting/auth',
         'profile/devices/report', 'api/mobile/devices/heartbeat', 'api/mobile/push/*',
         '*typing*', 'live-chat/*/call/signal', '*/call/signal', 'api/mobile/chat/*/call/signal',
+        // Arsip Backup: potongan unggahan, verifikasi/permintaan akses, unduh — bukan perubahan arsip.
+        '*upload-chunk*', '*cancel-upload*', '*start-extract*', 'pc-backup/verify', 'pc-backup/request',
+        '*/access', '*/access/*', 'api/mobile/backup/request-access', 'pc-backup/bulk-download-zip', 'shared-folder/*',
+        'sc-submissions/notify-sintel', 'sc-submissions/sync-skhpp',
     ];
 
     private const SENSITIVE = '/(pass|token|secret|otp|captcha|turnstile|pin\b|^pin|api_key|apikey|private|credential|_token)/i';
@@ -41,10 +47,12 @@ class RecordActivity
         'sub-categories' => 'Kategori Surat', 'skhpp' => 'SKHPP', 'signature' => 'Tanda Tangan Elektronik', 'signatures' => 'Tanda Tangan Elektronik',
         'tte' => 'Tanda Tangan Elektronik', 'stamp' => 'Stempel', 'stamps' => 'Stempel', 'sp-jaga' => 'SP Jaga', 'duty-roster' => 'SP Jaga',
         'attendance' => 'Absensi', 'attendances' => 'Absensi', 'absensi' => 'Absensi', 'live-chat' => 'Chat Dinas', 'chat' => 'Chat Dinas',
-        'pc-backup' => 'Backup', 'backup' => 'Backup', 'cash' => 'Kas', 'technical-unit-cash' => 'Kas Unit Teknis',
+        'pc-backup' => 'Arsip Backup', 'backup' => 'Arsip Backup', 'cash' => 'Kas', 'technical-unit-cash' => 'Kas Unit Teknis',
+        'technical-cash' => 'Kas Unit Teknis', 'signature-requests' => 'Tanda Tangan Elektronik', 'otoritas-stempel' => 'Stempel',
         'commander-account' => 'Rekening Komandan', 'commander' => 'Rekening Komandan', 'rekening-ibu-beti' => 'Rekening Ibu Beti',
-        'ibu-beti' => 'Rekening Ibu Beti', 'mitra' => 'Mitra', 'simpan-pinjam' => 'Koperasi', 'koperasi' => 'Koperasi',
-        'sc-submission' => 'Security Clearance', 'sc' => 'Security Clearance', 'tracking-sc' => 'Security Clearance', 'pess' => 'Security Clearance',
+        'ibu-beti' => 'Rekening Ibu Beti', 'mitra' => 'Mitra', 'mitras' => 'Mitra', 'simpan-pinjam' => 'Koperasi', 'koperasi' => 'Koperasi',
+        'sc-submission' => 'Security Clearance', 'sc-submissions' => 'Security Clearance', 'sc' => 'Security Clearance',
+        'tracking-sc' => 'Security Clearance', 'pess' => 'Security Clearance', 'submissions' => 'Security Clearance',
         'soldier-violations' => 'Pelanggaran', 'violations' => 'Pelanggaran', 'rapat-terbuka' => 'Rapat Terbuka', 'open-meetings' => 'Rapat Terbuka',
         'activities' => 'Kegiatan', 'print-service' => 'Layanan Cetak', 'print' => 'Layanan Cetak', 'users' => 'Pengguna',
         'personnel' => 'Personel', 'settings' => 'Pengaturan', 'profile' => 'Profil', 'notifications' => 'Notifikasi',
@@ -106,7 +114,11 @@ class RecordActivity
         if (in_array($request->method(), ['GET', 'HEAD', 'OPTIONS'], true)) {
             return false;
         }
-        return !$request->is(...self::SKIP_PATHS);
+        if ($request->is(...self::SKIP_PATHS)) {
+            return false;
+        }
+        // Hanya arsip & persuratan, dokumen, dan keuangan (lihat ActivityLog::IMPORTANT_MODULES).
+        return in_array($this->moduleLabel($request, $request->route()?->getName()), ActivityLog::IMPORTANT_MODULES, true);
     }
 
     private function build(Request $request, Response $response, $user, float $started): array
@@ -165,7 +177,10 @@ class RecordActivity
     private function moduleLabel(Request $request, ?string $routeName): string
     {
         [$segs, $names] = $this->segments($request, $routeName);
-        foreach (array_merge($names, $segs) as $s) {
+        // "admin" hanya awalan nama rute (admin.backup.*, admin.pess.*): cari modul aslinya dulu.
+        $keys = array_merge($names, $segs);
+        $keys = array_merge(array_diff($keys, ['admin']), ['admin']);
+        foreach ($keys as $s) {
             if (isset(self::MODULE_LABELS[$s])) {
                 return self::MODULE_LABELS[$s];
             }

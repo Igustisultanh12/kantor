@@ -78,22 +78,39 @@ class AttendanceViewModel(
     fun setNotes(notes: String) = _form.update { it.copy(notes = notes.take(1000)) }
     fun clearLocation() = _form.update { it.copy(location = null, locationError = null) }
 
-    /** Dipanggil setelah izin lokasi diberikan pengguna. */
+    fun locationDenied() = _form.update {
+        it.copy(locating = false, locationError = "Izin lokasi ditolak. Presensi wajib GPS: izinkan lokasi untuk SISINDEN.")
+    }
+
+    /** Dipanggil setelah izin lokasi diberikan pengguna. Presensi wajib GPS aktif. */
     @SuppressLint("MissingPermission")
     fun fetchLocation() {
         if (_form.value.locating) return
         _form.update { it.copy(locating = true, locationError = null) }
         viewModelScope.launch {
-            val point = runCatching { currentLocation() }.getOrNull()
+            val lm = appContext.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+            val gpsOn = lm != null && runCatching { lm.isProviderEnabled(LocationManager.GPS_PROVIDER) }.getOrDefault(false)
+            if (!gpsOn) {
+                _form.update { it.copy(locating = false, location = null, locationError = "GPS mati. Nyalakan Lokasi/GPS di HP, lalu coba lagi.") }
+                return@launch
+            }
+            val loc = runCatching { currentLocation() }.getOrNull()
             _form.update {
-                if (point != null) it.copy(locating = false, location = point)
-                else it.copy(locating = false, locationError = "Lokasi belum didapat. Pastikan GPS aktif lalu coba lagi, atau kirim tanpa lokasi.")
+                when {
+                    loc == null -> it.copy(locating = false, location = null, locationError = "Lokasi GPS belum didapat. Pastikan GPS aktif dan sinyal baik, lalu coba lagi.")
+                    loc.isMockLocation() -> it.copy(locating = false, location = null, locationError = "Lokasi palsu (fake GPS) terdeteksi. Matikan aplikasi pemalsu lokasi.")
+                    else -> it.copy(locating = false, location = loc.toGeoPoint())
+                }
             }
         }
     }
 
+    @Suppress("DEPRECATION")
+    private fun Location.isMockLocation(): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) isMock else isFromMockProvider
+
     @SuppressLint("MissingPermission")
-    private suspend fun currentLocation(): GeoPoint? {
+    private suspend fun currentLocation(): Location? {
         val lm = appContext.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return null
         val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
             .filter { runCatching { lm.isProviderEnabled(it) }.getOrDefault(false) }
@@ -109,34 +126,49 @@ class AttendanceViewModel(
                         lm.getCurrentLocation(provider, signal, appContext.mainExecutor) { loc -> cont.resume(loc) }
                     }
                 }
-                if (fresh != null) return fresh.toGeoPoint()
+                if (fresh != null) return fresh
             }
         }
-        // 2) Lokasi terakhir yang diketahui (maks. 10 menit) sebagai cadangan.
+        // 2) Lokasi terakhir yang diketahui (maks. 5 menit) sebagai cadangan.
         val recent = providers.mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }
-            .filter { System.currentTimeMillis() - it.time < 10 * 60 * 1000 }
+            .filter { System.currentTimeMillis() - it.time < 5 * 60 * 1000 }
             .maxByOrNull { it.time }
-        return recent?.toGeoPoint()
+        return recent
     }
 
     private fun Location.toGeoPoint() = GeoPoint(latitude, longitude, if (hasAccuracy()) accuracy else null)
 
-    fun submit() {
+    /**
+     * Kirim presensi. Wajib: lokasi GPS ([AttendanceForm.location]) dan
+     * [photo] selfie tersenyum dari [SmileCameraDialog].
+     */
+    fun submit(photo: String) {
         val f = _form.value
         if (f.submitting) return
+        val loc = f.location
+        if (loc == null) {
+            messages.post("Presensi wajib lokasi GPS. Ambil lokasi dulu.")
+            return
+        }
+        if (photo.isBlank()) {
+            messages.post("Presensi wajib foto senyum.")
+            return
+        }
         _form.update { it.copy(submitting = true) }
         viewModelScope.launch {
             val res = repository.recordAttendance(
                 status = f.status.code,
-                lat = f.location?.latitude,
-                lng = f.location?.longitude,
+                lat = loc.latitude,
+                lng = loc.longitude,
                 notes = f.notes,
+                photo = photo,
             )
             _form.update { it.copy(submitting = false) }
             when (res) {
                 is ApiResult.Success -> {
                     messages.post(res.data.message ?: "Presensi tercatat.")
-                    _form.update { it.copy(notes = "") }
+                    // Lokasi dibuang agar presensi berikutnya mengambil GPS segar.
+                    _form.update { it.copy(notes = "", location = null) }
                     load()
                 }
                 is ApiResult.Failure -> messages.post(res.error.message)

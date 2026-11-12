@@ -93,7 +93,7 @@ fun BrandBackdrop(
 }
 
 /**
- * Logo SISINDEN yang "mengambang" halus (naik-turun 10dp, 5 detik/siklus —
+ * Logo instansi yang "mengambang" halus (naik-turun 10dp, 5 detik/siklus —
  * sama dengan animasi `float-logo` di web) dengan cahaya lembut berdenyut.
  */
 @Composable
@@ -123,10 +123,8 @@ fun FloatingLogo(modifier: Modifier = Modifier, size: Dp = 132.dp) {
             },
         contentAlignment = Alignment.Center,
     ) {
-        Image(
-            painterResource(R.drawable.ic_sinden_mark),
-            contentDescription = "Logo SISINDEN",
-            contentScale = ContentScale.Fit,
+        AgencyLogo(
+            contentDescription = "Logo instansi",
             modifier = Modifier
                 .size(size)
                 .graphicsLayer { translationY = -liftPx * lift },

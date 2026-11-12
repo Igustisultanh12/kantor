@@ -26,8 +26,8 @@ android {
         applicationId = "id.my.sisinden.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 28
-        versionName = "2.0.5"
+        versionCode = 29
+        versionName = "2.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -123,6 +123,13 @@ dependencies {
 
     // Image Loading
     implementation(libs.coil.compose)
+
+    // Presensi: kamera depan (CameraX 1.3.x = compileSdk 34) + deteksi senyum
+    // ML Kit lewat Google Play services (model diunduh otomatis, APK tetap kecil).
+    implementation("androidx.camera:camera-camera2:1.3.4")
+    implementation("androidx.camera:camera-lifecycle:1.3.4")
+    implementation("androidx.camera:camera-view:1.3.4")
+    implementation("com.google.android.gms:play-services-mlkit-face-detection:17.1.0")
 
     // Asynchronous Coroutines
     implementation(libs.kotlinx.coroutines.android)

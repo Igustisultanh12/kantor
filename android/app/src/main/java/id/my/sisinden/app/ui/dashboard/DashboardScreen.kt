@@ -240,7 +240,7 @@ private fun HeaderWithAccount(
                     .padding(5.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Image(painterResource(R.drawable.ic_sinden_mark), contentDescription = null, modifier = Modifier.fillMaxSize())
+                id.my.sisinden.app.ui.common.AgencyLogo(contentDescription = null, modifier = Modifier.fillMaxSize())
             }
             Spacer(Modifier.width(Spacing.sm))
             Column(Modifier.weight(1f)) {

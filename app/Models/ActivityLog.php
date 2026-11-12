@@ -18,6 +18,19 @@ class ActivityLog extends Model
 {
     public const UPDATED_AT = null;
 
+    /**
+     * Modul yang direkam (permintaan pengguna 2026-11-12): hanya arsip &
+     * persuratan, dokumen, dan keuangan. Aksi lain seperti ubah profil/data
+     * pribadi, absensi, chat, notifikasi, dan pengaturan TIDAK dicatat.
+     */
+    public const IMPORTANT_MODULES = [
+        // Arsip & persuratan / dokumen
+        'Surat', 'Agenda Surat', 'Kategori Surat', 'SKHPP', 'Tanda Tangan Elektronik', 'Stempel',
+        'SP Jaga', 'Security Clearance', 'Arsip Backup',
+        // Keuangan
+        'Kas', 'Kas Unit Teknis', 'Rekening Komandan', 'Rekening Ibu Beti', 'Koperasi', 'Mitra',
+    ];
+
     protected $guarded = ['id'];
 
     protected $casts = [

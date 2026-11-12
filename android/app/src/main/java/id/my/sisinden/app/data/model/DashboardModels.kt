@@ -75,6 +75,8 @@ data class CreateAttendanceRequest(
     @SerializedName("longitude") val longitude: Double? = null,
     @SerializedName("device_model") val deviceModel: String? = null,
     @SerializedName("notes") val notes: String? = null,
+    /** Selfie tersenyum (JPEG data URL), wajib sejak v2.1.0. */
+    @SerializedName("photo") val photo: String? = null,
 )
 
 data class AttendanceActionResponse(

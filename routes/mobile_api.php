@@ -1429,12 +1429,17 @@ Route::post('/api/mobile/attendances', function (Request $request) {
         $data = mobile_payload($request);
         $v = Validator::make($data, [
             'status' => 'required|in:hadir,dinas_luar,piket,izin',
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180',
+            // Presensi Android wajib GPS + selfie tersenyum (sejak aplikasi v2.1.0).
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
             'location_name' => 'nullable|string|max:255',
             'device_model' => 'nullable|string|max:150',
             'notes' => 'nullable|string|max:1000',
-            'photo' => 'nullable|string',
+            'photo' => 'required|string',
+        ], [
+            'latitude.required' => 'Presensi wajib lokasi GPS. Perbarui aplikasi SISINDEN lalu aktifkan GPS.',
+            'longitude.required' => 'Presensi wajib lokasi GPS. Perbarui aplikasi SISINDEN lalu aktifkan GPS.',
+            'photo.required' => 'Presensi wajib foto senyum. Perbarui aplikasi SISINDEN ke versi terbaru.',
         ]);
         if ($v->fails()) return mobile_validation_error($v);
 
@@ -1456,6 +1461,9 @@ Route::post('/api/mobile/attendances', function (Request $request) {
                 \Illuminate\Support\Facades\Storage::disk('public')->put($filename, $decoded);
                 $photoPath = $filename;
             }
+        }
+        if (!$photoPath) {
+            return response()->json(['status' => 'error', 'message' => 'Foto presensi tidak valid. Ulangi foto senyum.'], 422);
         }
 
         $saveData = [

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { usePage, Link } from '@inertiajs/vue3';
+import { setNovaPreference } from '@/nova/flag';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import Swal from 'sweetalert2';
@@ -46,13 +47,19 @@ const settings = computed(() => page.props.settings || {});
 const agencyName = computed(() => settings.value.agency_name || 'DENINTEL KODAERAL V');
 const appLogo = computed(() => {
     const logo = settings.value.agency_logo || settings.value.logo;
-    if (!logo) return null;
+    if (!logo) return '/images/logo.png'; // lambang instansi bawaan, bukan logo aplikasi
     return (logo.startsWith('http') || logo.startsWith('/storage')) ? logo : '/storage/' + logo;
 });
 const isAdmin = computed(() => page.props.auth.user.role === 'admin');
 const user = computed(() => page.props.auth.user);
 
 const commandPaletteRef = ref(null);
+
+// Pengguna memilih tampilan Nova di perangkat ini (lihat resources/js/nova/flag.js).
+const switchToNova = () => {
+    setNovaPreference('1');
+    router.reload();
+};
 
 const openGlobalCommandPalette = () => {
     commandPaletteRef.value?.openPalette();
@@ -641,7 +648,9 @@ onUnmounted(() => {
                             <p class="text-slate-400 truncate text-[10px]">NRP. {{ user.nrp || '--------' }}</p>
                         </div>
                     </Link>
-                    
+
+                    <button type="button" @click="isMobileMenuOpen = false; switchToNova()" class="w-full mb-2 py-2 px-3 text-center text-xs text-[#2563EB] bg-blue-50 hover:bg-blue-100 rounded-xl font-bold transition duration-150 cursor-pointer block">Ganti ke tampilan Nova</button>
+
                     <Link :href="route('logout')" method="post" as="button" class="w-full py-2 px-3 text-center text-xs text-[#EF4444] bg-red-50 hover:bg-red-100 rounded-xl font-bold transition duration-150 cursor-pointer block"> Keluar Sistem
                     </Link>
                 </div>
@@ -983,6 +992,11 @@ onUnmounted(() => {
                     </div>
                 </Link>
 
+                <button type="button" @click="switchToNova" title="Ganti ke tampilan Nova" class="w-full mb-1 py-2.5 px-3 text-xs text-[#2563EB] hover:bg-blue-50 rounded-xl font-bold border border-transparent hover:border-blue-100/50 transition duration-150 cursor-pointer flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>
+                    <span class="sinden-side-label">Tampilan Nova</span>
+                </button>
+
                 <Link :href="route('logout')" method="post" as="button" title="Keluar Sistem" class="w-full py-2.5 px-3 text-xs text-[#EF4444] hover:bg-red-50 rounded-xl font-bold border border-transparent hover:border-red-100/50 transition duration-150 cursor-pointer flex items-center justify-center gap-2">
                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17l5-5-5-5M20 12H9M12 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/></svg>
                     <span class="sinden-side-label">Keluar Sistem</span>
@@ -1100,6 +1114,7 @@ onUnmounted(() => {
                         </template>
                         <template #content>
                             <DropdownLink :href="route('profile.edit')" class="text-xs font-bold text-slate-700"> Edit Profil </DropdownLink>
+                            <button type="button" @click="switchToNova" class="block w-full px-4 py-2 text-start text-xs font-bold leading-5 text-blue-700 transition duration-150 ease-in-out hover:bg-gray-100 focus:bg-gray-100 focus:outline-none">Ganti ke tampilan Nova</button>
                             <DropdownLink :href="route('logout')" method="post" as="button" class="text-rose-600 font-bold text-xs"> Keluar Sistem 
                             </DropdownLink>
                         </template>

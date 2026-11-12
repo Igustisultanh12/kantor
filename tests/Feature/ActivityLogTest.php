@@ -94,6 +94,27 @@ class ActivityLogTest extends TestCase
         $this->assertSame(1, ActivityLog::count(), 'GET, login, dan logout tidak boleh masuk Log Aktivitas');
     }
 
+    public function test_only_archive_letters_and_finance_are_recorded(): void
+    {
+        Route::middleware(['web', 'auth'])->group(function () {
+            Route::patch('/profile', fn () => back())->name('profile.update');
+            Route::post('/attendances', fn () => back())->name('attendances.store');
+            Route::post('/technical-cash', fn () => back())->name('technical-cash.store');
+            Route::delete('/pc-backup/destroy/{id}', fn () => back())->name('backup.destroy');
+            Route::post('/pc-backup/upload-chunk', fn () => back())->name('backup.upload-chunk');
+        });
+
+        $u = $this->actingAs($this->anggota);
+        $u->patch('/profile', ['name' => 'Budi', 'phone' => '0812'])->assertRedirect();
+        $u->post('/attendances', ['status' => 'hadir'])->assertRedirect();
+        $u->post('/pc-backup/upload-chunk')->assertRedirect();
+        $this->assertSame(0, ActivityLog::count(), 'Data pribadi, absensi, dan potongan unggahan tidak dicatat');
+
+        $u->post('/technical-cash', ['amount' => 50000])->assertRedirect();
+        $u->delete('/pc-backup/destroy/9')->assertRedirect();
+        $this->assertSame(['Kas Unit Teknis', 'Arsip Backup'], ActivityLog::orderBy('id')->pluck('module')->all());
+    }
+
     public function test_admin_can_view_and_print_pdf_but_member_cannot(): void
     {
         $this->actingAs($this->anggota)->post('/letters/7/approve')->assertRedirect();

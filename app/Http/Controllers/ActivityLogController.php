@@ -27,7 +27,7 @@ class ActivityLogController extends Controller
             'logs' => $logs,
             'filters' => $filters,
             'users' => User::orderBy('name')->get(['id', 'name', 'pangkat', 'nrp']),
-            'modules' => ActivityLog::query()->whereNotNull('module')->distinct()->orderBy('module')->pluck('module'),
+            'modules' => ActivityLog::query()->whereIn('module', ActivityLog::IMPORTANT_MODULES)->distinct()->orderBy('module')->pluck('module'),
             'pdfLimit' => self::PDF_LIMIT,
         ]);
     }
@@ -80,6 +80,7 @@ class ActivityLogController extends Controller
     private function query(array $f): Builder
     {
         return ActivityLog::query()
+            ->whereIn('module', ActivityLog::IMPORTANT_MODULES)
             ->when($f['user_id'], fn ($q, $v) => $q->where('user_id', $v))
             ->when($f['module'], fn ($q, $v) => $q->where('module', $v))
             ->when($f['channel'], fn ($q, $v) => $q->where('channel', $v))

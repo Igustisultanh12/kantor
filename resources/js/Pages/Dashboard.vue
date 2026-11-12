@@ -21,7 +21,7 @@ const currentUser = computed(() => page.props.auth.user);
 const lanyardAgency = 'DENINTEL KODAERAL V'; // tulisan lanyard (permintaan pengguna)
 const lanyardLogo = computed(() => {
     const logo = page.props.settings?.agency_logo || page.props.settings?.logo;
-    if (!logo) return null;
+    if (!logo) return '/images/logo.png'; // lambang instansi bawaan, bukan logo aplikasi
     return (logo.startsWith('http') || logo.startsWith('/storage')) ? logo : '/storage/' + logo;
 });
 const isCommanderOrAdmin = computed(() => {

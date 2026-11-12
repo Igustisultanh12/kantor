@@ -113,7 +113,10 @@ class SindenRepository(
         session.end(LogoutReason.USER)
     }
 
-    suspend fun getConfig(): ApiResult<ConfigResponse> = call { getConfig() }
+    suspend fun getConfig(): ApiResult<ConfigResponse> = call { getConfig() }.also { res ->
+        // Simpan logo instansi terbaru untuk dipakai di seluruh aplikasi.
+        if (res is ApiResult.Success) id.my.sisinden.app.ui.common.AgencyBrand.update(appContext, res.data.agencyLogo)
+    }
 
     suspend fun pushTest() = call { pushTest() }
 
@@ -137,12 +140,13 @@ class SindenRepository(
 
     suspend fun attendances() = call { attendances() }
 
-    suspend fun recordAttendance(status: String, lat: Double?, lng: Double?, notes: String?) = call {
+    suspend fun recordAttendance(status: String, lat: Double?, lng: Double?, notes: String?, photo: String? = null) = call {
         recordAttendance(
             CreateAttendanceRequest(
                 status = status,
                 latitude = lat,
                 longitude = lng,
+                photo = photo,
                 deviceModel = "${Build.MANUFACTURER} ${Build.MODEL} (Android ${Build.VERSION.RELEASE})".take(150),
                 notes = notes?.takeIf { it.isNotBlank() },
             )

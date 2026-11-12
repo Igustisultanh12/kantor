@@ -338,9 +338,21 @@ class MobileApiSecurityTest extends TestCase
         $victim = $this->makeUser();
         $actor = $this->makeUser();
 
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $photo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
+        // Tanpa GPS / foto senyum → ditolak.
+        $this->withToken($this->tokenFor($actor))
+            ->postJson('/api/mobile/attendances', ['status' => 'hadir'])
+            ->assertStatus(422);
+        $this->withToken($this->tokenFor($actor))
+            ->postJson('/api/mobile/attendances', ['status' => 'hadir', 'latitude' => -7.25, 'longitude' => 112.75])
+            ->assertStatus(422);
+        $this->assertSame(0, DB::table('attendances')->count());
+
         $this->withToken($this->tokenFor($actor))
             ->withHeaders(['X-User-Id' => (string) $victim->id])
-            ->postJson('/api/mobile/attendances', ['status' => 'hadir', 'user_id' => $victim->id])
+            ->postJson('/api/mobile/attendances', ['status' => 'hadir', 'user_id' => $victim->id, 'latitude' => -7.25, 'longitude' => 112.75, 'photo' => $photo])
             ->assertOk();
 
         $this->assertSame(1, DB::table('attendances')->where('user_id', $actor->id)->count());

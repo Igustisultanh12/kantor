@@ -1,5 +1,6 @@
-// Feature flag `ui_nova` (PRD bagian 12): Admin menyalakannya di Pengaturan,
-// dan setiap pengguna bisa mencoba / kembali ke tampilan lama di perangkatnya.
+// Pilihan tampilan web: Nova (bawaan) atau tampilan lama (Classic).
+// Admin menentukan bawaan lewat Pengaturan (`ui_nova`, kosong = Nova),
+// dan setiap pengguna bisa memilih sendiri di perangkatnya (menu profil).
 //   ?nova=1  → pakai Nova di perangkat ini
 //   ?nova=0  → pakai tampilan lama di perangkat ini
 //   ?nova=auto → ikuti Pengaturan admin lagi
@@ -27,5 +28,5 @@ export function isNovaOn(settings) {
     const pref = readNovaPreference();
     if (pref === '1') return true;
     if (pref === '0') return false;
-    return String(settings?.ui_nova ?? '0') === '1';
+    return String(settings?.ui_nova ?? '1') !== '0';
 }
