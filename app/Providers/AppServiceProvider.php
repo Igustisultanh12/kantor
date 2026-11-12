@@ -21,6 +21,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Realtime (Laravel Reverb): setiap query tulis dari aksi pengguna (POST/PUT/PATCH/DELETE)
+        // atau proses latar menandai modulnya berubah, lalu disiarkan sekali di akhir request.
+        // Request GET tidak memicu sinyal agar penandaan "sudah dibaca" saat polling tidak berputar tanpa henti.
+        if (\App\Support\Realtime::enabled()) {
+            \Illuminate\Support\Facades\DB::listen(function (\Illuminate\Database\Events\QueryExecuted $query) {
+                if (!app()->runningInConsole() && in_array(request()->method(), ['GET', 'HEAD', 'OPTIONS'], true)) {
+                    return;
+                }
+                \App\Support\Realtime::inspectSql($query->sql);
+            });
+        }
+
         // Set Standar Locale Indonesia untuk Tanggal & Waktu (Baku)
         \Carbon\Carbon::setLocale('id');
         \Illuminate\Support\Carbon::setLocale('id');

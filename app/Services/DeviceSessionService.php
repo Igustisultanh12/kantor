@@ -25,7 +25,8 @@ class DeviceSessionService
     public function touchWeb(Request $request): void
     {
         $user = $request->user();
-        if (!$user || !$request->hasSession() || !UserDevice::ensureSchema()) {
+        // Request API aplikasi (Bearer) juga lewat grup web: itu bukan sesi peramban.
+        if (!$user || !$request->hasSession() || $request->bearerToken() || $request->is('api/*') || !UserDevice::ensureSchema()) {
             return;
         }
         $sid = $request->session()->getId();
@@ -132,6 +133,12 @@ class DeviceSessionService
                 ->get(['id', 'ip_address', 'user_agent', 'last_activity']);
             foreach ($sessions as $s) {
                 $d = $devices->first(fn ($x) => $x->kind === 'web' && $x->session_id === $s->id);
+                // Rute API aplikasi berada di grup web sehingga tiap panggilan aplikasi ikut membuat baris
+                // sesi. Itu bukan login peramban: tampilkan hanya sesi yang tercatat dari peramban.
+                $ua = (string) $s->user_agent;
+                if (!$d && (str_starts_with($ua, 'SISINDEN-Android') || !str_contains($ua, 'Mozilla/'))) {
+                    continue;
+                }
                 $items[] = $this->payload('web', $s->id, $d, [
                     'ip' => $d?->ip ?: $s->ip_address,
                     'user_agent' => $s->user_agent,

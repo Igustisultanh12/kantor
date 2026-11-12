@@ -1,3 +1,11 @@
+# SISINDEN Android v2.0.4 (versionCode 27)
+
+- **Realtime tanpa refresh**: Beranda, Agenda Surat, SKHPP, Daftar Jaga, Absensi, Warta, Chat, Backup, keuangan, dan menu data lainnya memuat ulang sendiri saat ada data baru atau data diubah (dari web maupun HP lain). Tidak perlu tarik-untuk-segarkan.
+- Memakai server realtime SISINDEN sendiri (Laravel Reverb). Yang dikirim lewat sambungan realtime hanya nama modul yang berubah; datanya tetap diambil lewat API yang memeriksa hak akses.
+- Sambungan hanya aktif selama aplikasi tampil (hemat baterai). Saat aplikasi dibuka kembali, layar memuat ulang sekali agar perubahan selama di latar belakang ikut tampil.
+- Fitur ini aktif setelah server menyalakan Reverb (lihat docs/REALTIME_REVERB.md). Sebelum itu aplikasi tetap berjalan seperti v2.0.3.
+
+---
 # SISINDEN Android v2.0.3 (versionCode 26)
 
 - **Perangkat & sesi**: aplikasi kini melaporkan info perangkat (merek & model HP, versi Android dan aplikasi, ID perangkat, baterai, jenis jaringan, lokasi GPS terakhir) ke halaman web **Profil > Perangkat & sesi**. Dari halaman itu pemilik akun bisa mengeluarkan HP ini dari jarak jauh; aplikasi langsung kembali ke layar masuk dan notifikasi push ke HP itu berhenti.

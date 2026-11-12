@@ -1,5 +1,6 @@
 package id.my.sisinden.app.ui.duty
 
+import id.my.sisinden.app.core.realtime.onRealtime
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import id.my.sisinden.app.core.network.ApiError
@@ -53,6 +54,7 @@ class DutyRosterViewModel(
     private var job: Job? = null
 
     init {
+        onRealtime("duty") { load() }
         load()
     }
 

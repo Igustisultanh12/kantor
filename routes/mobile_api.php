@@ -218,6 +218,8 @@ Route::get('/api/mobile/config', function () {
         // Konfigurasi klien Firebase (publik, sama seperti isi google-services.json).
         'push' => \App\Support\PushNotifier::clientConfig(),
         'push_enabled' => \App\Support\PushNotifier::enabled(),
+        // Realtime (Laravel Reverb). Null bila server belum mengaktifkannya.
+        'realtime' => \App\Support\Realtime::clientConfig(),
         'server_time' => now()->toIso8601String(),
     ]);
 })->middleware('throttle:60,1');
@@ -1536,6 +1538,11 @@ Route::post('/api/mobile/push/register', function (Request $request) {
     \App\Models\DeviceToken::register($request->user()->id, $data['token'], $data['app_version'] ?? null, $data['device_name'] ?? null);
     return response()->json(['status' => 'success', 'push_enabled' => \App\Support\PushNotifier::enabled()]);
 })->middleware(['mobile.auth', 'throttle:30,1']);
+
+// Otorisasi kanal privat realtime (Reverb/Pusher) untuk aplikasi Android (token Bearer).
+Route::post('/api/mobile/broadcasting/auth', function (Request $request) {
+    return \Illuminate\Support\Facades\Broadcast::auth($request);
+})->middleware(['mobile.auth', 'throttle:60,1']);
 
 // Info perangkat untuk halaman web Profil > Perangkat & sesi.
 Route::post('/api/mobile/devices/heartbeat', [\App\Http\Controllers\DeviceSessionController::class, 'heartbeat'])->middleware(['mobile.auth', 'throttle:30,1']);

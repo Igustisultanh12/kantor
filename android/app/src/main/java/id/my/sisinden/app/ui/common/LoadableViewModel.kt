@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import id.my.sisinden.app.core.realtime.onRealtime
 
 /**
  * Pola dasar layar modul: muat data, pull-to-refresh, dan aksi tulis
@@ -32,6 +33,12 @@ abstract class LoadableViewModel<T> : ViewModel() {
     private var loadJob: Job? = null
 
     protected abstract suspend fun fetch(): ApiResult<T>
+
+    init {
+        // Realtime: data layar ikut berubah saat ada perubahan di server, tanpa tarik-untuk-segarkan.
+        // Hanya bila data sudah tampil (muat ulang senyap, tanpa skeleton).
+        onRealtime { if (_state.value is LoadState.Ready) load() }
+    }
 
     fun load(pullToRefresh: Boolean = false) {
         loadJob?.cancel()

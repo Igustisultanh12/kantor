@@ -1,5 +1,6 @@
 package id.my.sisinden.app.ui.dashboard
 
+import id.my.sisinden.app.core.realtime.onRealtime
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -36,6 +37,7 @@ class DashboardViewModel(
     private var job: Job? = null
 
     init {
+        onRealtime { load() } // Beranda merangkum semua modul
         load()
     }
 

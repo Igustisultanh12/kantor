@@ -126,7 +126,21 @@ data class ConfigResponse(
     /** Konfigurasi klien Firebase (publik) — null bila admin belum mengatur. */
     @SerializedName("push") val push: PushConfigDto? = null,
     @SerializedName("push_enabled") val pushEnabled: Boolean? = null,
+    /** Realtime (Laravel Reverb) — null bila server belum mengaktifkan. */
+    @SerializedName("realtime") val realtime: RealtimeConfigDto? = null,
 )
+
+data class RealtimeConfigDto(
+    @SerializedName("key") val key: String? = null,
+    @SerializedName("host") val host: String? = null,
+    @SerializedName("port") val port: Int? = null,
+    @SerializedName("scheme") val scheme: String? = null,
+    @SerializedName("auth_endpoint") val authEndpoint: String? = null,
+    @SerializedName("channel") val channel: String? = null,
+    @SerializedName("event") val event: String? = null,
+) {
+    val isComplete: Boolean get() = !key.isNullOrBlank() && !host.isNullOrBlank()
+}
 
 data class PushConfigDto(
     @SerializedName("api_key") val apiKey: String? = null,

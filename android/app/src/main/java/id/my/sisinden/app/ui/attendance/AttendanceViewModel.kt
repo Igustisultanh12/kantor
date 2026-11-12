@@ -1,5 +1,6 @@
 package id.my.sisinden.app.ui.attendance
 
+import id.my.sisinden.app.core.realtime.onRealtime
 import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Location
@@ -52,6 +53,7 @@ class AttendanceViewModel(
     val messages = UiMessages()
 
     init {
+        onRealtime("attendance") { load() }
         load()
     }
 

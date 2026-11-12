@@ -1,5 +1,6 @@
 package id.my.sisinden.app.ui.chat
 
+import id.my.sisinden.app.core.realtime.onRealtime
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
@@ -60,6 +61,7 @@ class ChatHomeViewModel(private val repository: SindenRepository) : ViewModel() 
     private var userSearchJob: Job? = null
 
     init {
+        onRealtime("chat") { load() }
         load()
     }
 
@@ -162,6 +164,8 @@ class ChatThreadViewModel(
     private var lastTypingPing = 0L
 
     init {
+        // Pesan baru langsung tampil (selain polling berkala).
+        onRealtime("chat") { viewModelScope.launch { poll() } }
         viewModelScope.launch {
             when (val res = repository.chatMessages(uuid)) {
                 is ApiResult.Success -> {

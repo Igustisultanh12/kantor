@@ -26,8 +26,8 @@ android {
         applicationId = "id.my.sisinden.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 26
-        versionName = "2.0.3"
+        versionCode = 27
+        versionName = "2.0.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -98,6 +98,8 @@ android {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    // Realtime: klien protokol Pusher untuk Laravel Reverb (server sendiri).
+    implementation("com.pusher:pusher-java-client:2.4.4")
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

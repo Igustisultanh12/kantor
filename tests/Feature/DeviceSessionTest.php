@@ -128,12 +128,18 @@ class DeviceSessionTest extends TestCase
             ['id' => 'sesi-kantor', 'user_id' => $this->me->id, 'ip_address' => '36.80.1.2', 'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0 Safari/537.36', 'payload' => '', 'last_activity' => now()->timestamp],
             ['id' => 'sesi-orang', 'user_id' => $this->other->id, 'ip_address' => '1.1.1.1', 'user_agent' => 'x', 'payload' => '', 'last_activity' => now()->timestamp],
         ]);
-        $this->me->createToken('hp')->plainTextToken;
+        // Panggilan API aplikasi ikut membuat baris sesi (rute mobile ada di grup web): jangan tampil sebagai "web".
+        DB::table('sessions')->insert(['id' => 'sesi-api-hp', 'user_id' => $this->me->id, 'ip_address' => '10.0.0.5', 'user_agent' => 'SISINDEN-Android/2.0.3', 'payload' => '', 'last_activity' => now()->timestamp]);
+        $hp = $this->me->createToken('hp')->plainTextToken;
+        $this->postJson('/api/mobile/devices/heartbeat', ['model' => 'A55'], $this->bearer($hp))->assertOk();
+        $this->assertSame(0, UserDevice::where('kind', 'web')->count(), 'Request API tidak boleh tercatat sebagai sesi web');
         $oldRemember = $this->me->fresh()->remember_token;
 
         $list = collect($this->actingAs($this->me)->getJson('/profile/devices')->assertOk()->json('devices'));
         $this->assertTrue($list->contains(fn ($d) => $d['kind'] === 'web' && $d['id'] === 'sesi-kantor' && str_contains((string) $d['ip_location'], 'Surabaya')));
         $this->assertFalse($list->contains(fn ($d) => $d['id'] === 'sesi-orang'));
+        $this->assertFalse($list->contains(fn ($d) => $d['id'] === 'sesi-api-hp'));
+        $this->assertSame(1, $list->where('kind', 'android')->count());
 
         $this->actingAs($this->me)->postJson('/profile/devices/logout-others')->assertOk();
         $this->assertSame(0, DB::table('sessions')->where('id', 'sesi-kantor')->count());

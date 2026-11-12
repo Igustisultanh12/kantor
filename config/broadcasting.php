@@ -41,6 +41,12 @@ return [
                 'scheme' => env('REVERB_SCHEME', 'https'),
                 'useTLS' => env('REVERB_SCHEME', 'https') === 'https',
             ],
+            // Alamat yang dipakai peramban & aplikasi Android (lewat proxy Nginx, biasanya 443).
+            'public' => [
+                'host' => env('REVERB_PUBLIC_HOST', env('REVERB_HOST')),
+                'port' => env('REVERB_PUBLIC_PORT', env('REVERB_PORT', 443)),
+                'scheme' => env('REVERB_PUBLIC_SCHEME', env('REVERB_SCHEME', 'https')),
+            ],
             'client_options' => [
                 // Guzzle client options: https://docs.guzzlephp.org/en/stable/request-options.html
             ],

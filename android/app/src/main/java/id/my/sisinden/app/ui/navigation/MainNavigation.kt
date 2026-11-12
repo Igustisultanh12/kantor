@@ -50,6 +50,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import id.my.sisinden.app.core.data.SessionStore
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -195,6 +198,16 @@ fun MainNavigation(
         onPauseOrDispose { CommsState.mainUiVisible = false }
     }
 
+    // Realtime (Laravel Reverb): tersambung selama aplikasi tampil; saat kembali dari latar belakang
+    // semua layar memuat ulang sekali karena sinyal selama terputus bisa terlewat.
+    var realtimeCfg by remember { mutableStateOf<id.my.sisinden.app.data.model.RealtimeConfigDto?>(null) }
+    var realtimeResumes by remember { mutableStateOf(0) }
+    LifecycleResumeEffect(realtimeCfg) {
+        id.my.sisinden.app.core.realtime.RealtimeClient.start(realtimeCfg, SessionStore.DEFAULT_BASE_URL, repository.session.token)
+        if (realtimeResumes++ > 0) id.my.sisinden.app.core.realtime.RealtimeClient.nudge()
+        onPauseOrDispose { id.my.sisinden.app.core.realtime.RealtimeClient.stop() }
+    }
+
     // Notifikasi push (FCM): ambil konfigurasi Firebase dari server lalu daftarkan perangkat.
     LaunchedEffect(myUserId) {
         val cfg = when (val res = repository.getConfig()) {
@@ -202,6 +215,7 @@ fun MainNavigation(
             is ApiResult.Failure -> null
         }
         PushManager.configure(context, cfg?.push)
+        realtimeCfg = cfg?.realtime
         PushManager.register(context, repository)
         // Pembaruan aplikasi dari APK yang diunggah Admin di Pengaturan web.
         AppUpdater.schedule(context)

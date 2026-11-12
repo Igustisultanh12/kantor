@@ -8,12 +8,17 @@ import ClassicLayout from '@/Layouts/ClassicLayout.vue';
 import NovaShell from '@/Layouts/NovaShell.vue';
 import { isNovaOn } from '@/nova/flag';
 import { reportDevice } from '@/Utils/deviceReport';
+import { startRealtime } from '@/Utils/realtime';
 
 const page = usePage();
 const nova = computed(() => (typeof window !== 'undefined') && isNovaOn(page.props.settings));
 
 // Info perangkat untuk Profil > Perangkat & sesi (maks. tiap 5 menit, tanpa meminta izin baru).
-onMounted(() => { reportDevice(); });
+onMounted(() => {
+    reportDevice();
+    // Data halaman ikut berubah otomatis saat ada perubahan di server (Laravel Reverb).
+    startRealtime(page);
+});
 </script>
 
 <template>

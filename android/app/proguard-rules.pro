@@ -12,3 +12,10 @@
     @android.webkit.JavascriptInterface <methods>;
 }
 -keepattributes JavascriptInterface
+
+# Realtime (Laravel Reverb lewat klien Pusher): kelas event & websocket dipakai lewat refleksi/Gson.
+-keep class com.pusher.client.** { *; }
+-keep class org.java_websocket.** { *; }
+-dontwarn com.pusher.client.**
+-dontwarn org.java_websocket.**
+-dontwarn org.slf4j.**

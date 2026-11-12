@@ -1,5 +1,6 @@
 package id.my.sisinden.app.ui.notifications
 
+import id.my.sisinden.app.core.realtime.onRealtime
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -65,7 +66,10 @@ class NotificationsViewModel(private val repository: SindenRepository) : ViewMod
     val refreshing: StateFlow<Boolean> = _refreshing.asStateFlow()
     val messages = UiMessages()
 
-    init { load() }
+    init {
+        load()
+        onRealtime("notifications") { load() }
+    }
 
     fun load(pull: Boolean = false) {
         if (pull) _refreshing.value = true else _state.value = LoadState.Loading
