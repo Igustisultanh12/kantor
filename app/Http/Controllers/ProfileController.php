@@ -107,6 +107,8 @@ class ProfileController extends Controller
             'ip_address' => $request->ip(),
         ]);
 
+        \App\Support\MfaNotifier::changed($user, $enable, $user, $request->ip());
+
         return back()->with('status', $enable ? 'mfa-enabled' : 'mfa-disabled');
     }
 

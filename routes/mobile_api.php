@@ -236,7 +236,7 @@ Route::post('/api/mobile/login', function (Request $request) {
     } catch (\Throwable $e) {
         return mobile_error($e, 'Kendala server saat login. Coba beberapa saat lagi.');
     }
-})->middleware('throttle:10,1');
+})->middleware('throttle:mobile-login');
 
 Route::get('/api/mobile/config', function () {
     $settings = \App\Models\Setting::pluck('value', 'key')->toArray();

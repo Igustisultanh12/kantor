@@ -54,6 +54,23 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
+        // Login aplikasi: dibatasi per akun + IP (bukan per IP saja) agar banyak personel di
+        // Wi-Fi kantor yang sama (satu IP publik) tidak saling kena "Too Many Attempts".
+        // Alur OTP memakai 2 permintaan per login, jadi batasnya dilonggarkan.
+        \Illuminate\Support\Facades\RateLimiter::for('mobile-login', function (\Illuminate\Http\Request $request) {
+            $data = $request->json()->all() ?: $request->all();
+            $id = strtolower(trim((string) ($data['username'] ?? $data['email'] ?? $data['nrp'] ?? '')));
+            $tooMany = fn () => response()->json([
+                'status' => 'error',
+                'code' => 'rate_limited',
+                'message' => 'Terlalu banyak percobaan masuk. Tunggu 1 menit lalu coba lagi.',
+            ], 429);
+            return [
+                \Illuminate\Cache\RateLimiting\Limit::perMinute(10)->by('mlogin:' . $id . '|' . $request->ip())->response($tooMany),
+                \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by('mlogin-ip:' . $request->ip())->response($tooMany),
+            ];
+        });
+
         Vite::prefetch(concurrency: 3);
     }
 }

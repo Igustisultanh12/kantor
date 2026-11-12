@@ -591,11 +591,16 @@ class UserController extends Controller
             $updateData['must_change_password'] = false;
         }
 
+        $mfaBefore = (bool) $user->mfa_enabled;
         if ($request->has('mfa_enabled')) {
             $updateData['mfa_enabled'] = (bool)$request->mfa_enabled;
         }
 
         $user->update($updateData);
+
+        if ($request->has('mfa_enabled') && $mfaBefore !== (bool) $request->mfa_enabled) {
+            \App\Support\MfaNotifier::changed($user->fresh(), (bool) $request->mfa_enabled, auth()->user(), $request->ip());
+        }
 
         AuditLog::create([
             'user_id'          => auth()->id(),
@@ -745,6 +750,8 @@ class UserController extends Controller
             'description'      => "Mengubah status M2F OTP WhatsApp untuk {$user->name} ({$user->nrp}) menjadi " . ($newStatus ? 'Aktif' : 'Nonaktif'),
             'ip_address'       => request()->ip(),
         ]);
+
+        \App\Support\MfaNotifier::changed($user, (bool) $newStatus, auth()->user(), request()->ip());
 
         if (request()->wantsJson() || request()->ajax()) {
             return response()->json([
