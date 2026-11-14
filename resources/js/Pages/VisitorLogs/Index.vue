@@ -1,4 +1,5 @@
 <script setup>
+import { ask, notify } from '@/Utils/dialog';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3'; 
 import { onMounted, onUnmounted, ref, watch } from 'vue';
@@ -9,11 +10,11 @@ const props = defineProps({
 });
 
 // Hapus Riwayat
-const confirmDeleteLogs = () => {
-    if (confirm('LAPOR! Apakah Anda yakin ingin MENGHAPUS seluruh riwayat log pengunjung? Tindakan ini tidak dapat dibatalkan.')) {
+const confirmDeleteLogs = async () => {
+    if (await ask('LAPOR! Apakah Anda yakin ingin MENGHAPUS seluruh riwayat log pengunjung? Tindakan ini tidak dapat dibatalkan.')) {
         router.delete(route('visitor-logs.clear'), {
-            onSuccess: () => alert('Lapor! Seluruh riwayat log pengunjung telah berhasil dihapus.'),
-            onError: (err) => alert('Gagal menghapus log: ' + JSON.stringify(err)),
+            onSuccess: () => notify('Lapor! Seluruh riwayat log pengunjung telah berhasil dihapus.'),
+            onError: (err) => notify('Gagal menghapus log: ' + JSON.stringify(err)),
             preserveScroll: true
         });
     }
@@ -33,7 +34,7 @@ const openMap = (location) => {
         const url = `https://www.google.com/maps?q=${lat},${lon}`;
         window.open(url, '_blank');
     } else {
-        alert('Data koordinat GPS belum tersedia (Hanya tersedia estimasi wilayah via IP).');
+        notify('Data koordinat GPS belum tersedia (Hanya tersedia estimasi wilayah via IP).');
     }
 };
 

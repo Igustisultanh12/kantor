@@ -1,4 +1,5 @@
 <script setup>
+import { ask, notify } from '@/Utils/dialog';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
 import { ref, onMounted, computed, watch, nextTick } from 'vue';
@@ -231,12 +232,12 @@ const openEditMode = () => {
     showModal.value = true;
 };
 
-const deleteActivity = (id) => {
-    if (confirm('Lapor! Apakah Bapak Letnan yakin ingin memusnahkan data plotting rencana kegiatan ini?')) {
+const deleteActivity = async (id) => {
+    if (await ask('Lapor! Apakah Bapak Letnan yakin ingin memusnahkan data plotting rencana kegiatan ini?')) {
         router.delete(route('activities.destroy', id), {
             onSuccess: () => {
                 showDetailModal.value = false;
-                alert('Lapor! Data plotting telah berhasil dimusnahkan.');
+                notify('Lapor! Data plotting telah berhasil dimusnahkan.');
             }
         });
     }
@@ -291,7 +292,7 @@ const chartOptions = {
 
 const submit = () => {
     if (!form.latitude || !form.longitude) {
-        alert('Lapor! Lokasi belum ditentukan. Silakan gunakan kolom pencarian atau klik pada peta.');
+        notify('Lapor! Lokasi belum ditentukan. Silakan gunakan kolom pencarian atau klik pada peta.');
         return;
     }
     const options = {
@@ -301,12 +302,12 @@ const submit = () => {
             isAddingNewCategory.value = false;
             form.reset();
             searchInput.value = '';
-            alert('Lapor! Data plotting berhasil diamankan.');
+            notify('Lapor! Data plotting berhasil diamankan.');
             detectRegionsFromCoordinates(); 
         },
         onError: (errors) => {
             console.error("Gagal menyimpan:", errors);
-            alert('Lapor! Gagal menyimpan data. Cek log server.');
+            notify('Lapor! Gagal menyimpan data. Cek log server.');
         },
         onFinish: () => {
             form.processing = false;

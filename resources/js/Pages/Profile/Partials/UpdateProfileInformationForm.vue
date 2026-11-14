@@ -1,4 +1,5 @@
 <script setup>
+import { ask, notify } from '@/Utils/dialog';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
@@ -40,7 +41,7 @@ const updatePhotoPreview = () => {
     if (!photo) return;
 
     if (photo.size > 3 * 1024 * 1024) {
-        alert('Ukuran file foto maksimal 3 MB');
+        notify('Ukuran file foto maksimal 3 MB');
         return;
     }
 

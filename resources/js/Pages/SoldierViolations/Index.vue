@@ -1,4 +1,5 @@
 <script setup>
+import { ask, notify } from '@/Utils/dialog';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { useForm, Head, router } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
@@ -106,11 +107,11 @@ const submit = () => {
         onSuccess: () => {
             showCreateModal.value = false;
             form.reset();
-            alert('Lapor! Data kasus dan paket berkas awal berhasil diamankan.');
+            notify('Lapor! Data kasus dan paket berkas awal berhasil diamankan.');
         },
         onError: (errors) => {
             console.error(errors);
-            alert('Gagal menyimpan data kasus. Periksa kembali form berkas lampiran Anda.');
+            notify('Gagal menyimpan data kasus. Periksa kembali form berkas lampiran Anda.');
         }
     });
 };
@@ -122,18 +123,18 @@ const submitUpdate = () => {
         onSuccess: () => {
             showUpdateModal.value = false;
             updateForm.reset({ catatan_baru: '', lampiran: [], putusan: [] });
-            alert('Lapor! Update perkembangan dan berkas telah disinkronkan.');
+            notify('Lapor! Update perkembangan dan berkas telah disinkronkan.');
         },
         onError: (errors) => {
             console.error(errors);
-            alert('Gagal memperbarui data. Periksa kembali jaringan atau rute server Anda.');
+            notify('Gagal memperbarui data. Periksa kembali jaringan atau rute server Anda.');
         }
     });
 };
 
 // Hapus Riwayat Update Tertentu
-const deleteHistoryItem = (updateId) => {
-    if (confirm('Lapor! Hapus baris riwayat perkembangan ini beserta file fisiknya secara permanen?')) {
+const deleteHistoryItem = async (updateId) => {
+    if (await ask('Lapor! Hapus baris riwayat perkembangan ini beserta file fisiknya secara permanen?')) {
         router.post(route('soldier-violations.delete-update', selectedCase.value.id), {
             _method: 'DELETE',
             update_id: updateId
@@ -151,10 +152,10 @@ const deleteHistoryItem = (updateId) => {
 };
 
 // Bersihkan/Hapus Seluruh Data Kasus
-const deleteCase = (id) => {
-    if (confirm('PERINGATAN! Seluruh data dan seluruh riwayat berkas kasus ini akan dimusnahkan secara total. Lanjutkan?')) {
+const deleteCase = async (id) => {
+    if (await ask('PERINGATAN! Seluruh data dan seluruh riwayat berkas kasus ini akan dimusnahkan secara total. Lanjutkan?')) {
         router.delete(route('soldier-violations.destroy', id), {
-            onSuccess: () => alert('Lapor! Seluruh data telah dimusnahkan dari server.')
+            onSuccess: () => notify('Lapor! Seluruh data telah dimusnahkan dari server.')
         });
     }
 };

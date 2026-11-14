@@ -306,6 +306,7 @@
 </template>
 
 <script setup>
+import { ask, notify } from '@/Utils/dialog';
 import { ref } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import SindenBackdrop from '@/Components/SindenBackdrop.vue';
@@ -415,8 +416,8 @@ const submitSkhpp = () => {
   });
 };
 
-const executeSignKomandan = (id) => {
-  if (confirm('Konfirmasi: Eksekusi stempel dan tanda tangan digital pada berkas SKHPP ini?')) {
+const executeSignKomandan = async (id) => {
+  if (await ask('Konfirmasi: Eksekusi stempel dan tanda tangan digital pada berkas SKHPP ini?')) {
     isLoading.value = true;
     router.post(`/admin/submissions/sign-komandan/${id}`, {}, {
       onFinish: () => { isLoading.value = false; }
@@ -424,8 +425,8 @@ const executeSignKomandan = (id) => {
   }
 };
 
-const forwardToSinkodv = (id) => {
-  if (confirm('Konfirmasi: Teruskan seluruh data berkas dan dokumen SKHPP ini ke sistem SINKODV?')) {
+const forwardToSinkodv = async (id) => {
+  if (await ask('Konfirmasi: Teruskan seluruh data berkas dan dokumen SKHPP ini ke sistem SINKODV?')) {
     isLoading.value = true;
     router.post(`/admin/submissions/forward-sinkodv/${id}`, {}, {
       onFinish: () => { isLoading.value = false; }
@@ -438,9 +439,9 @@ const forwardToSinkodv = (id) => {
 // =========================================================================
 
 // 1. Otorisasi Akses ACC / TOLAK Akun Portal PESS
-const changeAccountStatus = (id, status) => {
+const changeAccountStatus = async (id, status) => {
   const teks = status === 'approved' ? 'MENYETUJUI' : 'MENOLAK';
-  if (confirm(`Apakah Anda yakin ingin ${teks} permohonan akses akun portal personel ini?`)) {
+  if (await ask(`Apakah Anda yakin ingin ${teks} permohonan akses akun portal personel ini?`)) {
     isLoading.value = true;
     router.post(`/admin/applicants/${id}/update-status`, { status: status }, {
       onFinish: () => { isLoading.value = false; }
@@ -467,8 +468,8 @@ const submitEditApplicant = () => {
 };
 
 // 4. Eksekusi Penghapusan Akun Permanen (Auto-Cascade)
-const deleteAccount = (id) => {
-  if (confirm(' PERINGATAN MILITER: Menghapus akun pendaftar ini akan memusnahkan seluruh file riwayat pengajuan DRH mereka secara permanen dari pangkalan radar Si Sinden! Lanjutkan?')) {
+const deleteAccount = async (id) => {
+  if (await ask(' PERINGATAN MILITER: Menghapus akun pendaftar ini akan memusnahkan seluruh file riwayat pengajuan DRH mereka secara permanen dari pangkalan radar Si Sinden! Lanjutkan?')) {
     isLoading.value = true;
     router.delete(`/admin/applicants/${id}/delete`, {
       onFinish: () => { isLoading.value = false; }

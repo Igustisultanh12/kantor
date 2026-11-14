@@ -1,4 +1,5 @@
 <script setup>
+import { ask, notify } from '@/Utils/dialog';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'; 
@@ -507,7 +508,7 @@ const closeAttendanceModal = () => {
 
 const submitAttendance = () => {
     if (!attendanceForm.value.photo) {
-        alert('Perhatian: Harap lakukan pemotretan wajah dengan tersenyum terlebih dahulu sebelum menyimpan presensi kehadiran.');
+        notify('Perhatian: Harap lakukan pemotretan wajah dengan tersenyum terlebih dahulu sebelum menyimpan presensi kehadiran.');
         return;
     }
 
@@ -519,7 +520,7 @@ const submitAttendance = () => {
             isSubmittingAttendance.value = false;
         },
         onError: (err) => {
-            alert('Gagal mencatat presensi: ' + Object.values(err)[0]);
+            notify('Gagal mencatat presensi: ' + Object.values(err)[0]);
             isSubmittingAttendance.value = false;
         }
     });

@@ -1,4 +1,5 @@
 <script setup>
+import { ask, notify } from '@/Utils/dialog';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
@@ -87,8 +88,8 @@ const submit = () => {
     }
 };
 
-const deleteItem = (id) => {
-    if (confirm('Lapor! Hapus catatan transaksi ini dari pangkalan secara permanen?')) {
+const deleteItem = async (id) => {
+    if (await ask('Lapor! Hapus catatan transaksi ini dari pangkalan secara permanen?')) {
         form.delete(route('commander.destroy', id), {
             onSuccess: () => Swal.fire('Terhapus', 'Catatan dibersihkan.', 'success')
         });

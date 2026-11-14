@@ -1,4 +1,5 @@
 <script setup>
+import { ask, notify } from '@/Utils/dialog';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import AuditTrailModal from '@/Components/AuditTrailModal.vue';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
@@ -76,14 +77,14 @@ const updateLetter = () => {
         preserveScroll: true,
         onSuccess: () => {
             isEditing.value = false;
-            alert('Arsip berhasil diperbarui');
+            notify('Arsip berhasil diperbarui');
         },
-        onError: (err) => alert('Gagal menyimpan: ' + Object.values(err)[0])
+        onError: (err) => notify('Gagal menyimpan: ' + Object.values(err)[0])
     });
 };
 
-const deleteLetter = (id) => {
-    if (confirm('Apakah Anda yakin ingin menghapus arsip ini?')) {
+const deleteLetter = async (id) => {
+    if (await ask('Apakah Anda yakin ingin menghapus arsip ini?')) {
         router.delete(route('letters.destroy', id), { preserveScroll: true });
     }
 };

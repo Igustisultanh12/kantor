@@ -1,4 +1,5 @@
 <script setup>
+import { ask, notify } from '@/Utils/dialog';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { useForm, Head, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, onMounted, onUnmounted } from 'vue'; 
@@ -125,8 +126,8 @@ const uploadApk = () => {
         onError: (errors) => { apkError.value = Object.values(errors)[0] || 'Unggah APK gagal.'; },
     });
 };
-const deleteApk = () => {
-    if (!confirm('Hapus APK pembaruan dari server? Aplikasi di HP tidak akan ditawari pembaruan ini lagi.')) return;
+const deleteApk = async () => {
+    if (!await ask('Hapus APK pembaruan dari server? Aplikasi di HP tidak akan ditawari pembaruan ini lagi.')) return;
     router.delete(route('settings.app-update.destroy'), { preserveScroll: true });
 };
 
