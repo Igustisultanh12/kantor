@@ -62,6 +62,40 @@ class MitraPaymentController extends Controller
     }
 
     /**
+     * Cetak PDF matriks pembayaran mitra (format dinas, sama dengan PDF Daftar Hadir Rapat).
+     * ?download=1 untuk mengunduh; tanpa itu ditampilkan di pratinjau.
+     */
+    public function exportPdf(Request $request)
+    {
+        $tahun = (int) $request->input('tahun', date('Y'));
+        $mitras = Mitra::with(['payments' => fn ($q) => $q->where('tahun', $tahun)])
+            ->orderBy('sort_order')->orderBy('id')->get()
+            ->map(function ($mitra) {
+                $matrix = array_fill(1, 12, false);
+                foreach ($mitra->payments as $p) {
+                    if ($p->bulan >= 1 && $p->bulan <= 12) {
+                        $matrix[$p->bulan] = (bool) $p->is_paid;
+                    }
+                }
+                $mitra->payment_matrix = $matrix;
+                return $mitra;
+            });
+
+        $user = $request->user();
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.mitra_payment_report', [
+            'mitras' => $mitras,
+            'tahun' => $tahun,
+            'commander' => OpenMeetingController::getCommanderData(),
+            'creatorName' => $user->name,
+            'creatorPangkatNrp' => trim(($user->pangkat ?? '') . ($user->nrp ? ' NRP ' . $user->nrp : '')),
+            'creatorJabatan' => $user->jabatan ?: 'Pengelola Pembayaran Mitra',
+        ])->setPaper([0, 0, 935.43, 609.45]); // Folio 330 x 215 mm, lanskap
+
+        $file = "Pembayaran_Mitra_{$tahun}.pdf";
+        return $request->boolean('download') ? $pdf->download($file) : $pdf->stream($file);
+    }
+
+    /**
      * Tambah Data Mitra Baru
      */
     public function store(Request $request)

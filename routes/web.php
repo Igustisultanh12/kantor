@@ -429,6 +429,7 @@ Route::middleware('auth')->group(function () {
     // MODUL MANAJEMEN PENCATATAN PEMBAYARAN MITRA (MATRIX BULANAN & CETAK PDF)
     // =========================================================================
     Route::get('/mitras', [MitraPaymentController::class, 'index'])->name('mitras.index');
+    Route::get('/mitras/pdf', [MitraPaymentController::class, 'exportPdf'])->middleware('perm:mitra.view')->name('mitras.pdf');
     Route::post('/mitras', [MitraPaymentController::class, 'store'])->middleware('perm:mitra.manage')->name('mitras.store');
     Route::put('/mitras/{id}', [MitraPaymentController::class, 'update'])->middleware('perm:mitra.manage')->name('mitras.update');
     Route::delete('/mitras/{id}', [MitraPaymentController::class, 'destroy'])->middleware('perm:mitra.manage')->name('mitras.destroy');

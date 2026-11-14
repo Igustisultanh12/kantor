@@ -3,7 +3,6 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import Swal from 'sweetalert2';
-import html2pdf from 'html2pdf.js';
 
 const props = defineProps({
     mitras: Array,
@@ -18,7 +17,6 @@ const selectedYear = ref(props.currentYear);
 const showCreateModal = ref(false);
 const showEditModal = ref(false);
 const showPreviewModal = ref(false);
-const previewImage = ref(null);
 
 const months = [
     { id: 1, full: 'Januari', short: 'Jan' },
@@ -149,32 +147,10 @@ const deleteMitra = (id, nama) => {
     });
 };
 
-// Open Pratinjau PDF Mode Landscape
-const openPreview = () => {
-    const element = document.getElementById('area-mitra-cetak');
-    const opt = {
-        margin: [0.3, 0.3, 0.3, 0.3],
-        html2canvas: { scale: 2, useCORS: true, width: 1100 },
-        jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
-    };
-    html2pdf().set(opt).from(element).outputImg().then((img) => {
-        previewImage.value = img.src;
-        showPreviewModal.value = true;
-    });
-};
-
-// Download File PDF Resmi Format Gambar Lampiran User
-const downloadPDF = () => {
-    const element = document.getElementById('area-mitra-cetak');
-    const opt = {
-        margin: 0.3,
-        filename: `DAFTAR_NAMA_MITRA_${selectedYear.value}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
-    };
-    html2pdf().set(opt).from(element).save();
-};
+// Pratinjau & unduh memakai PDF resmi dari server (format sama dengan Daftar Hadir Rapat).
+const pdfUrl = computed(() => route('mitras.pdf', { tahun: selectedYear.value }));
+const openPreview = () => { showPreviewModal.value = true; };
+const downloadPDF = () => { window.location.href = route('mitras.pdf', { tahun: selectedYear.value, download: 1 }); };
 </script>
 
 <template>
@@ -296,7 +272,7 @@ const downloadPDF = () => {
                                             :class="mitra.payment_matrix[m.id] ? 'bg-emerald-500 text-white border border-emerald-600 shadow-emerald-200' : 'bg-slate-100 text-slate-300 border border-slate-200 hover:bg-slate-200 hover:text-slate-500'"
                                             :title="`${mitra.nama} - Bulan ${m.full} ${selectedYear}: ${mitra.payment_matrix[m.id] ? 'Sudah Bayar (Klik untuk batal)' : 'Belum Bayar (Klik untuk lunas)'}`"
                                         >
-                                            <span v-if="mitra.payment_matrix[m.id]"></span>
+                                            <span v-if="mitra.payment_matrix[m.id]"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg></span>
                                             <span v-else class="text-xs opacity-40">-</span>
                                         </button>
                                     </td>
@@ -400,54 +376,6 @@ const downloadPDF = () => {
             </div>
         </div>
 
-        <!-- HIDDEN CETAK LANDSCAPE PDF TEMPLATE (SESUAI GAMBAR LAMPIRAN) -->
-        <div style="position: absolute; left: -9999px;">
-            <div id="area-mitra-cetak" class="p-8 bg-white text-black" style="width: 1080px; font-family: 'Times New Roman', serif;">
-                
-                <!-- Kop / Judul Utama Sesuai Gambar Foto Lampiran -->
-                <div class="text-center mb-6 uppercase">
-                    <h2 style="margin: 0; font-size: 18px; font-weight: bold; letter-spacing: 1px;">DAFTAR NAMA  NAMA MITRA</h2>
-                    <p style="margin: 4px 0 0 0; font-size: 11px; font-weight: bold;">TAHUN {{ selectedYear }}</p>
-                </div>
-
-                <!-- Tabel Matriks 12 Bulan Format Gambar -->
-                <table class="w-full border-collapse border-[1.5px] border-black text-[10px]">
-                    <thead>
-                        <tr style="background-color: #f8fafc; text-transform: uppercase; font-weight: bold; text-align: center;">
-                            <th style="border: 1px solid #000; padding: 6px 2px; width: 4%;">NO</th>
-                            <th style="border: 1px solid #000; padding: 6px 4px; width: 14%; text-align: left;">NAMA</th>
-                            <th style="border: 1px solid #000; padding: 6px 4px; width: 24%; text-align: left;">PT</th>
-                            <th style="border: 1px solid #000; padding: 6px 4px; width: 12%;">NO. TLP</th>
-                            
-                            <!-- 12 Bulan Headers ditulis vertikal / ringkas -->
-                            <th v-for="m in months" :key="m.id" style="border: 1px solid #000; padding: 4px 1px; width: 3.8%; font-size: 9px;">
-                                {{ m.full }}
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="(mitra, index) in filteredMitras" :key="mitra.id">
-                            <td style="border: 1px solid #000; padding: 5px 2px; text-align: center; font-weight: bold;">{{ index + 1 }}.</td>
-                            <td style="border: 1px solid #000; padding: 5px 4px; font-weight: bold;">{{ mitra.nama }}</td>
-                            <td style="border: 1px solid #000; padding: 5px 4px; text-transform: uppercase;">{{ mitra.pt || '-' }}</td>
-                            <td style="border: 1px solid #000; padding: 5px 4px; text-align: center; font-family: monospace;">{{ mitra.no_tlp || '-' }}</td>
-
-                            <!-- Value 12 Bulan Checkmarks -->
-                            <td v-for="m in months" :key="m.id" style="border: 1px solid #000; padding: 5px 1px; text-align: center; font-weight: bold;">
-                                <span v-if="mitra.payment_matrix[m.id]" style="font-size: 12px;"></span>
-                                <span v-else style="color: #666;">-</span>
-                            </td>
-                        </tr>
-                        <tr v-if="filteredMitras.length === 0">
-                            <td colspan="16" style="border: 1px solid #000; padding: 30px; text-align: center; font-weight: bold; color: #9ca3af;"> BELUM ADA DATA MITRA TERDAFTAR
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-
-            </div>
-        </div>
-
         <!-- MODAL PRATINJAU PDF LANDSCAPE -->
         <div v-if="showPreviewModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
             <div class="bg-white rounded-3xl shadow-2xl max-w-6xl w-full h-[90vh] overflow-hidden flex flex-col">
@@ -459,7 +387,7 @@ const downloadPDF = () => {
                     <button @click="showPreviewModal = false" class="text-slate-400 hover:text-white font-bold text-2xl">&times;</button>
                 </div>
                 <div class="flex-1 overflow-y-auto bg-slate-800 p-4 md:p-8 flex justify-center items-start">
-                    <img :src="previewImage" class="shadow-2xl border bg-white max-w-[1050px] w-full h-auto" />
+                    <iframe :src="pdfUrl" class="w-full h-full min-h-[70vh] bg-white rounded-xl shadow-2xl" title="Pratinjau PDF Pembayaran Mitra"></iframe>
                 </div>
                 <div class="p-6 border-t bg-slate-50 flex justify-end gap-3 font-extrabold">
                     <button @click="showPreviewModal = false" class="px-6 py-2.5 text-xs uppercase text-slate-500">Batal</button>
