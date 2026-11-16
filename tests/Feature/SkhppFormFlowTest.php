@@ -20,8 +20,10 @@ class SkhppFormFlowTest extends TestCase
     {
         parent::setUp();
         Storage::fake('public');
+        Storage::fake('local');
         (require database_path('migrations/2026_08_05_130000_create_skhpps_and_skhpp_members_tables.php'))->up();
         (require database_path('migrations/2026_11_16_100000_add_form_fields_to_skhpps_table.php'))->up();
+        (require database_path('migrations/2026_11_16_170000_add_manual_signature_to_skhpps_table.php'))->up();
         Schema::create('categories', function (Blueprint $t) {
             $t->id(); $t->string('name'); $t->string('code'); $t->integer('start_number')->default(1); $t->boolean('is_telegram')->default(false); $t->timestamps();
         });
@@ -90,5 +92,45 @@ class SkhppFormFlowTest extends TestCase
         $this->assertSame(1, (int) $skhpp->nomor_urut);
         $this->assertStringStartsWith('R / 1 / SKHPP / ', $skhpp->nomor_skhpp);
         $this->assertDatabaseHas('letter_logs', ['full_number' => $skhpp->nomor_skhpp, 'sub_category_id' => null]);
+    }
+
+    public function test_manual_signature_flow_books_number_then_publishes_on_upload(): void
+    {
+        $operator = $this->makeUser();
+        $this->actingAs($operator)->post('/skhpp', $this->payload(['nomor_manual' => '55b']))->assertSessionHasNoErrors();
+        $skhpp = Skhpp::firstOrFail();
+
+        // Orang lain (bukan pengaju/Admin) tidak boleh mengajukan TTD manual.
+        $this->actingAs($this->makeUser())->post("/skhpp/{$skhpp->id}/ttd-manual")->assertForbidden();
+        // Belum diajukan manual → unggah ditolak.
+        $this->actingAs($operator)->post("/skhpp/{$skhpp->id}/ttd-manual/unggah", [
+            'berkas_ttd' => UploadedFile::fake()->create('ttd.pdf', 50, 'application/pdf'), 'tanggal_ttd' => now()->toDateString(),
+        ])->assertStatus(422);
+
+        $this->actingAs($operator)->post("/skhpp/{$skhpp->id}/ttd-manual")->assertRedirect();
+        $skhpp->refresh();
+        $this->assertSame('manual', $skhpp->ttd_mode);
+        $this->assertSame('pending', $skhpp->status);
+        $nomor = $skhpp->nomor_skhpp;
+        $this->assertStringStartsWith('R / 55b / SKHPP / ', $nomor);
+        $this->assertDatabaseCount('letter_logs', 0);
+
+        $this->actingAs($operator)->post("/skhpp/{$skhpp->id}/ttd-manual/unggah", [
+            'berkas_ttd' => UploadedFile::fake()->create('ttd.pdf', 50, 'application/pdf'),
+            'tanggal_ttd' => now()->subDay()->toDateString(),
+        ])->assertSessionHasNoErrors()->assertRedirect();
+
+        $skhpp->refresh();
+        $this->assertSame('approved', $skhpp->status);
+        $this->assertSame($nomor, $skhpp->nomor_skhpp);
+        $this->assertSame(now()->subDay()->toDateString(), $skhpp->tanggal_skhpp->toDateString());
+        $this->assertNull($skhpp->approved_by);
+        $this->assertSame($operator->id, (int) $skhpp->signed_uploaded_by);
+        Storage::disk('local')->assertExists($skhpp->signed_file);
+        $this->assertDatabaseHas('letter_logs', ['full_number' => $nomor, 'sequence' => '55b']);
+        $this->assertArrayNotHasKey('signed_file', $skhpp->toArray());
+        $this->assertTrue($skhpp->toArray()['has_signed_file']);
+
+        $this->actingAs($operator)->get("/skhpp/{$skhpp->id}/ttd-manual/berkas")->assertOk();
     }
 }

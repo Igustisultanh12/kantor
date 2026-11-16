@@ -401,17 +401,38 @@ class SkhppController extends Controller
             return back()->with('error', 'Otoritas ditolak! Hanya Komandan yang berwenang menandatangani SKHPP.');
         }
 
-        $skhpp = Skhpp::findOrFail($id);
+        // TTE Komandan: mode TTD manual (bila sebelumnya diajukan) dibatalkan agar QR tercetak.
+        $formattedNo = $this->terbitkan(Skhpp::findOrFail($id), $request, ['ttd_mode' => null]);
 
+        return back()->with('success', "SKHPP Resmi disetujui Komandan! Nomor: {$formattedNo} (Tersinkron ke Buku Nomor Agenda)");
+    }
+
+    /**
+     * Penomoran SKHPP (dipakai pengesahan TTE, pengajuan TTD manual, dan unggah TTD manual).
+     * @return array{0:int,1:string,2:string,3:string,4:\App\Models\Category,5:string,6:int} [urut, label urut, nomor lengkap, prioritas, kategori agenda, bulan romawi, tahun]
+     */
+    private function nomorResmi(Skhpp $skhpp, Request $request): array
+    {
         $currentYear = date('Y');
         $currentMonth = date('n');
         $romanMonth = $this->getRomanMonth($currentMonth);
 
         $isPerusahaan = ($skhpp->kategori_personel === 'perusahaan');
         $targetCode = $isPerusahaan ? 'SKHPP-P' : 'SKHPP-D';
-        $categoryName = $isPerusahaan 
-            ? 'SKHPP Mitra Kerja / Perusahaan' 
+        $categoryName = $isPerusahaan
+            ? 'SKHPP Mitra Kerja / Perusahaan'
             : 'SKHPP Dinas Militer & PNS';
+
+        $skhppCategory = \App\Models\Category::firstOrCreate(
+            ['code' => $targetCode],
+            ['name' => $categoryName, 'start_number' => 1]
+        );
+
+        // TTD MANUAL: nomor yang sudah tercetak & ditandatangani di kertas tidak boleh berubah lagi.
+        if ($skhpp->ttd_mode === 'manual' && $skhpp->nomor_skhpp && (int)$skhpp->nomor_urut > 0) {
+            $label = ($skhpp->nomor_manual && (int)$skhpp->nomor_manual === (int)$skhpp->nomor_urut) ? $skhpp->nomor_manual : (string)$skhpp->nomor_urut;
+            return [(int)$skhpp->nomor_urut, $label, $skhpp->nomor_skhpp, trim(explode('/', $skhpp->nomor_skhpp)[0]) ?: 'R', $skhppCategory, $skhpp->bulan_romawi ?: $romanMonth, (int)($skhpp->tahun ?: $currentYear)];
+        }
 
         // PENOMORAN TERPISAH KATEGORI (SKHPP-P & SKHPP-D INDEPENDEN) & PERTAHANKAN NOMOR SAAT PENGAJUAN ULANG
         if ($request->filled('custom_nomor_urut') && (int)$request->custom_nomor_urut > 0) {
@@ -435,11 +456,6 @@ class SkhppController extends Controller
 
         $priority = $request->input('priority', 'R'); // R (RAHASIA), B (BIASA), K (KILAT)
 
-        $skhppCategory = \App\Models\Category::firstOrCreate(
-            ['code' => $targetCode],
-            ['name' => $categoryName, 'start_number' => 1]
-        );
-
         $cleanCode = explode('-', $skhppCategory->code)[0]; // 'SKHPP'
 
         if ($request->filled('custom_nomor_skhpp')) {
@@ -449,7 +465,19 @@ class SkhppController extends Controller
             $formattedNo = "{$priority} / {$seqLabel} / {$cleanCode} / {$romanMonth} / {$currentYear}";
         }
 
-        $skhpp->update([
+        return [$nextSeq, $seqLabel, $formattedNo, $priority, $skhppCategory, $romanMonth, (int)$currentYear];
+    }
+
+    /**
+     * Sahkan SKHPP: beri nomor, tandai terbit, lalu sinkron ke Agenda Surat, Tracking SC, dan notifikasi.
+     * $extra menimpa kolom bawaan (mis. data TTD manual). Mengembalikan nomor lengkap.
+     */
+    private function terbitkan(Skhpp $skhpp, Request $request, array $extra = []): string
+    {
+        $user = auth()->user();
+        [$nextSeq, $seqLabel, $formattedNo, $priority, $skhppCategory, $romanMonth, $currentYear] = $this->nomorResmi($skhpp, $request);
+
+        $skhpp->update(array_merge([
             'status' => 'approved',
             'nomor_skhpp' => $formattedNo,
             'nomor_urut' => $nextSeq,
@@ -459,7 +487,7 @@ class SkhppController extends Controller
             'approved_by' => $user->id,
             'approved_at' => now(),
             'catatan_revisi' => null,
-        ]);
+        ], $extra));
 
         // SINKRONISASI OTOMATIS KE BUKU AGENDA SURAT SINDEN (LETTER_LOGS)
         try {
@@ -574,7 +602,76 @@ class SkhppController extends Controller
             \Illuminate\Support\Facades\Log::warning("Gagal kirim notif SKHPP disetujui: " . $e->getMessage());
         }
 
-        return back()->with('success', "SKHPP Resmi disetujui Komandan! Nomor: {$formattedNo} (Tersinkron ke Buku Nomor Agenda)");
+        return $formattedNo;
+    }
+
+    /** TTD manual hanya untuk SKHPP yang belum terbit, oleh pengajunya atau Admin. */
+    private function authorizeTtdManual(Skhpp $skhpp): void
+    {
+        $this->authorizeSkhppEdit($skhpp);
+        abort_if(strtolower((string) $skhpp->status) === 'approved', 422, 'SKHPP ini sudah terbit.');
+    }
+
+    /**
+     * TTD Manual langkah 1: nomor dibooking supaya tercetak di kertas, lalu petugas mencetak
+     * dan memintakan tanda tangan basah Komandan. Status tetap pending sampai hasilnya diunggah.
+     */
+    public function ajukanTtdManual(Request $request, $id)
+    {
+        $skhpp = Skhpp::findOrFail($id);
+        $this->authorizeTtdManual($skhpp);
+
+        [$nextSeq, , $formattedNo, , , $romanMonth, $year] = $this->nomorResmi($skhpp, $request);
+
+        $skhpp->update([
+            'ttd_mode' => 'manual',
+            'status' => 'pending',
+            'catatan_revisi' => null,
+            'nomor_skhpp' => $formattedNo,
+            'nomor_urut' => $nextSeq,
+            'bulan_romawi' => $romanMonth,
+            'tahun' => $year,
+        ]);
+
+        return back()->with('success', "SKHPP {$skhpp->nama} diajukan TTD manual dengan nomor {$formattedNo}. Cetak, mintakan tanda tangan Komandan, lalu unggah hasilnya.");
+    }
+
+    /**
+     * TTD Manual langkah 2: unggah SKHPP yang sudah ditandatangani → SKHPP terbit
+     * dan tersinkron seperti pengesahan TTE (tanpa QR, karena tanda tangannya di kertas).
+     */
+    public function unggahTtdManual(Request $request, $id)
+    {
+        $skhpp = Skhpp::findOrFail($id);
+        $this->authorizeTtdManual($skhpp);
+        abort_unless($skhpp->ttd_mode === 'manual', 422, 'SKHPP ini belum diajukan TTD manual.');
+
+        $request->validate([
+            'berkas_ttd' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'tanggal_ttd' => 'required|date|before_or_equal:today',
+        ]);
+
+        // Berkas bertanda tangan disimpan di disk privat; hanya bisa dibuka lewat route berizin.
+        $path = $request->file('berkas_ttd')->store('skhpp_signed', 'local');
+
+        $formattedNo = $this->terbitkan($skhpp, $request, [
+            'tanggal_skhpp' => $request->date('tanggal_ttd'),
+            'approved_by' => null, // disahkan lewat tanda tangan basah, bukan akun Komandan
+            'signed_file' => $path,
+            'signed_uploaded_by' => auth()->id(),
+            'signed_uploaded_at' => now(),
+        ]);
+
+        return back()->with('success', "SKHPP bertanda tangan berhasil diunggah. SKHPP terbit dengan nomor {$formattedNo} (tersinkron ke Agenda Surat).");
+    }
+
+    /** Buka berkas SKHPP bertanda tangan manual. */
+    public function berkasTtdManual($id)
+    {
+        $skhpp = Skhpp::findOrFail($id);
+        abort_unless($skhpp->signed_file && Storage::disk('local')->exists($skhpp->signed_file), 404);
+
+        return response()->file(Storage::disk('local')->path($skhpp->signed_file));
     }
 
     /**
@@ -784,7 +881,8 @@ class SkhppController extends Controller
 
         // Generate QR Code TTD Image
         $qr_base64 = null;
-        if ($skhpp->status === 'approved') {
+        $manual = $skhpp->ttd_mode === 'manual'; // tanda tangan basah: tanpa QR
+        if ($skhpp->status === 'approved' && !$manual) {
             try {
                 $verifyUrl = route('skhpp.verify', $skhpp->verification_code);
                 $qrData = file_get_contents('https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' . urlencode($verifyUrl));
@@ -804,6 +902,10 @@ class SkhppController extends Controller
         $tglSkhpp = $skhpp->tanggal_skhpp ? new \DateTime($skhpp->tanggal_skhpp) : ($skhpp->approved_at ? new \DateTime($skhpp->approved_at) : new \DateTime());
         $tanggal_skhpp_indo = $tglSkhpp ? ($tglSkhpp->format('j') . ' ' . $months[(int)$tglSkhpp->format('n') - 1] . ' ' . $tglSkhpp->format('Y')) : '';
         $bulan_tahun_indo = $tglSkhpp ? ($months[(int)$tglSkhpp->format('n') - 1] . ' ' . $tglSkhpp->format('Y')) : '';
+        // Naskah untuk TTD manual: hari dikosongkan (diisi tangan saat ditandatangani), bulan & tahun tetap tercetak.
+        if ($manual && $skhpp->status !== 'approved') {
+            $tanggal_skhpp_indo = ' ' . $bulan_tahun_indo;
+        }
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.skhpp', compact(
             'skhpp', 'foto1_base64', 'foto2_base64', 'qr_base64',
@@ -895,13 +997,14 @@ class SkhppController extends Controller
         $skhpp = Skhpp::findOrFail($id);
         $skhpp->update([
             'status' => 'pending',
+            'ttd_mode' => null, // kembali ke jalur TTE
             'catatan_revisi' => null,
             'submitted_at' => now(),
         ]);
 
         // Kirim Notifikasi Sistem In-App Bell & WA ke Komandan
         try {
-            $komandan = User::where('role', 'komandan')->whereNotNull('phone')->first() 
+            $komandan = User::where('role', 'komandan')->whereNotNull('phone')->first()
                      ?? User::where('role', 'admin')->whereNotNull('phone')->first();
             $katName = ($skhpp->kategori_personel === 'perusahaan') ? 'SKHPP-P (Mitra Kerja/Perusahaan)' : 'SKHPP-D (Dinas Militer & PNS)';
             $directUrl = url('/signature-requests?open_skhpp=' . $skhpp->id . '&tab=skhpp');

@@ -145,6 +145,92 @@ const reSubmitTte = (skhpp) => {
     });
 };
 
+// ---------- TTD manual (tanda tangan basah) ----------
+const bolehTtdManual = (skhpp) => isAdmin.value || Number(skhpp.submitted_by) === Number(user.value.id);
+const menungguTtdManual = (skhpp) => skhpp.ttd_mode === 'manual' && skhpp.status !== 'approved';
+const aman = (teks) => String(teks ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+// Langkah 1: booking nomor & tandai menunggu tanda tangan basah, lalu tawarkan cetak.
+const ajukanTtdManual = (skhpp) => {
+    Swal.fire({
+        title: 'AJUKAN TTD MANUAL?',
+        html: `
+            <div class="text-left text-xs space-y-3 font-sans">
+                <p class="text-slate-600">SKHPP atas nama <b>${aman(skhpp.nama)}</b> akan ditandatangani Komandan secara manual (tanda tangan basah), bukan TTE.</p>
+                <ol class="list-decimal pl-5 space-y-1 text-slate-700">
+                    <li>Nomor SKHPP langsung diberikan supaya tercetak di naskah.</li>
+                    <li>Cetak PDF, lalu ajukan ke Komandan untuk ditandatangani.</li>
+                    <li>Unggah SKHPP yang sudah ditandatangani lewat tombol <b>Unggah TTD</b>.</li>
+                </ol>
+                <p class="text-amber-700 font-semibold">SKHPP baru berstatus terbit setelah berkas bertanda tangan diunggah.</p>
+            </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Ajukan TTD Manual',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#0f766e',
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        router.post(route('skhpp.ttd-manual', skhpp.id), {}, {
+            preserveScroll: true,
+            onSuccess: () => Swal.fire({
+                title: 'SIAP DICETAK',
+                text: 'Nomor sudah diberikan. Cetak naskahnya, mintakan tanda tangan Komandan, lalu unggah hasilnya.',
+                icon: 'success',
+                showCancelButton: true,
+                confirmButtonText: 'Cetak PDF Sekarang',
+                cancelButtonText: 'Nanti',
+                confirmButtonColor: '#059669',
+            }).then((r) => { if (r.isConfirmed) window.open(route('skhpp.export-pdf', skhpp.id), '_blank'); }),
+        });
+    });
+};
+
+// Langkah 2: unggah naskah yang sudah ditandatangani → SKHPP terbit.
+const unggahTtdManual = (skhpp) => {
+    const hariIni = new Date().toLocaleDateString('en-CA'); // yyyy-mm-dd waktu setempat
+    Swal.fire({
+        title: 'UNGGAH SKHPP BERTANDA TANGAN',
+        html: `
+            <div class="text-left text-xs space-y-3 font-sans">
+                <div class="bg-teal-50 p-2.5 rounded-xl border border-teal-100">
+                    <p class="font-black text-teal-700 text-[10px] uppercase mb-0.5">${aman(skhpp.nomor_skhpp || 'Nomor belum ada')}</p>
+                    <p class="font-bold text-slate-800">${aman(skhpp.nama)}</p>
+                </div>
+                <div>
+                    <label for="swal-berkas-ttd" class="block font-bold uppercase mb-1 text-slate-700 text-[10px]">Berkas hasil scan / foto (PDF, JPG, PNG — maks. 10 MB)</label>
+                    <input id="swal-berkas-ttd" type="file" accept="application/pdf,image/jpeg,image/png" class="w-full text-xs p-2 border rounded-xl" />
+                </div>
+                <div>
+                    <label for="swal-tanggal-ttd" class="block font-bold uppercase mb-1 text-slate-700 text-[10px]">Tanggal ditandatangani</label>
+                    <input id="swal-tanggal-ttd" type="date" value="${hariIni}" max="${hariIni}" class="w-full text-xs font-bold p-2.5 border rounded-xl" />
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Unggah & Terbitkan',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#059669',
+        preConfirm: () => {
+            const berkas = document.getElementById('swal-berkas-ttd').files[0];
+            const tanggal = document.getElementById('swal-tanggal-ttd').value;
+            if (!berkas) return Swal.showValidationMessage('Pilih berkas SKHPP yang sudah ditandatangani.');
+            if (berkas.size > 10 * 1024 * 1024) return Swal.showValidationMessage('Ukuran berkas melebihi 10 MB.');
+            if (!tanggal) return Swal.showValidationMessage('Isi tanggal ditandatangani.');
+            return { berkas_ttd: berkas, tanggal_ttd: tanggal };
+        },
+    }).then((result) => {
+        if (!result.isConfirmed || !result.value) return;
+        router.post(route('skhpp.ttd-manual.unggah', skhpp.id), result.value, {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => Swal.fire('SKHPP TERBIT', 'Berkas bertanda tangan tersimpan dan SKHPP tercatat di Agenda Surat.', 'success'),
+            onError: (errors) => Swal.fire('GAGAL MENGUNGGAH', Object.values(errors)[0] || 'Periksa kembali berkas dan tanggalnya.', 'error'),
+        });
+    });
+};
+
 const rejectSkhpp = (skhpp) => {
     Swal.fire({
         title: 'TOLAK / MINTA REVISI',
@@ -307,7 +393,9 @@ const formatDate = (dateStr) => {
                                 </td>
 
                                 <td class="py-4 px-6 text-center">
-                                    <span v-if="skhpp.status === 'approved'" class="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1"> TERBIT (TTD QR)
+                                    <span v-if="skhpp.status === 'approved'" class="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1"> {{ skhpp.ttd_mode === 'manual' ? 'TERBIT (TTD MANUAL)' : 'TERBIT (TTD QR)' }}
+                                    </span>
+                                    <span v-else-if="menungguTtdManual(skhpp)" class="px-3 py-1 bg-teal-100 text-teal-700 rounded-full text-[9px] font-black uppercase tracking-wider block"> MENUNGGU TTD MANUAL
                                     </span>
                                     <span v-else-if="skhpp.status === 'rejected'" class="px-3 py-1 bg-rose-100 text-rose-700 rounded-full text-[9px] font-black uppercase tracking-wider block"> REVISI / DITOLAK
                                     </span>
@@ -342,6 +430,16 @@ const formatDate = (dateStr) => {
                                             <button @click="reSubmitTte(skhpp)"class="px-2.5 py-1.5 bg-cyan-50 text-cyan-700 hover:bg-cyan-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs flex items-center gap-1"title="Ajukan Ulang TTE ke Komandan (Khusus Admin)"> Ajukan TTE Ulang
                                             </button>
                                         </template>
+
+                                        <!-- TTD manual: ajukan → cetak & tanda tangan basah → unggah hasil -->
+                                        <template v-if="skhpp.status !== 'approved' && bolehTtdManual(skhpp)">
+                                            <button v-if="!menungguTtdManual(skhpp)" @click="ajukanTtdManual(skhpp)" class="px-2.5 py-1.5 bg-teal-50 text-teal-700 hover:bg-teal-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs" title="Cetak, tanda tangan basah Komandan, lalu unggah hasilnya"> Ajukan TTD Manual
+                                            </button>
+                                            <button v-else @click="unggahTtdManual(skhpp)" class="px-2.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs" title="Unggah SKHPP yang sudah ditandatangani Komandan"> Unggah TTD
+                                            </button>
+                                        </template>
+                                        <a v-if="skhpp.has_signed_file" :href="route('skhpp.ttd-manual.berkas', skhpp.id)" target="_blank" class="px-2.5 py-1.5 bg-teal-50 text-teal-700 hover:bg-teal-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs" title="Buka SKHPP bertanda tangan yang diunggah"> Berkas TTD
+                                        </a>
 
                                         <template v-if="isCommander && skhpp.status !== 'approved'">
                                             <button @click="approveSkhpp(skhpp)"class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs"title="Setujui & TTD QR Komandan"> TTD Komandan

@@ -39,6 +39,10 @@ class Skhpp extends Model
         'label_foto_1',
         'label_foto_2',
         'status',
+        'ttd_mode',
+        'signed_file',
+        'signed_uploaded_by',
+        'signed_uploaded_at',
         'verification_code',
         'submitted_by',
         'operator_name',
@@ -56,7 +60,17 @@ class Skhpp extends Model
         'tanggal_skhpp' => 'date',
         'submitted_at' => 'datetime',
         'approved_at' => 'datetime',
+        'signed_uploaded_at' => 'datetime',
     ];
+
+    // Path berkas bertanda tangan tidak dikirim ke browser; cukup penanda ada/tidaknya.
+    protected $hidden = ['signed_file'];
+    protected $appends = ['has_signed_file'];
+
+    public function getHasSignedFileAttribute(): bool
+    {
+        return !empty($this->attributes['signed_file'] ?? null);
+    }
 
     public function members()
     {

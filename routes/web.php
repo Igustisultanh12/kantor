@@ -545,6 +545,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/skhpp/{id}/update', [SkhppController::class, 'update'])->name('skhpp.update');
     Route::post('/skhpp/{id}/approve', [SkhppController::class, 'approve'])->name('skhpp.approve');
     Route::post('/skhpp/{id}/reject', [SkhppController::class, 'reject'])->name('skhpp.reject');
+    // TTD manual: ajukan (booking nomor) → cetak & tanda tangan basah → unggah hasil
+    Route::post('/skhpp/{id}/ttd-manual', [SkhppController::class, 'ajukanTtdManual'])->name('skhpp.ttd-manual');
+    Route::post('/skhpp/{id}/ttd-manual/unggah', [SkhppController::class, 'unggahTtdManual'])->name('skhpp.ttd-manual.unggah');
+    Route::get('/skhpp/{id}/ttd-manual/berkas', [SkhppController::class, 'berkasTtdManual'])->name('skhpp.ttd-manual.berkas');
     Route::delete('/skhpp/{id}', [SkhppController::class, 'destroy'])->name('skhpp.destroy');
 
     // System In-App Bell Notifications Routes
