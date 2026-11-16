@@ -39,7 +39,9 @@
         .sub .no { display: inline-block; width: 37pt; vertical-align: bottom; }
 
         /* Data personel: huruf di 71pt, label di 106pt, titik dua di 232pt. */
-        .data { margin-left: 71pt; margin-bottom: 14pt; }
+        /* Lebar tabel dikunci (lebar isi 500pt − 71pt) supaya isi yang panjang turun baris, bukan terpotong di tepi kanan. */
+        .data { margin-left: 71pt; margin-bottom: 14pt; width: 429pt; }
+        .data td.i { width: 261pt; word-wrap: break-word; }
         .data td.h { width: 35pt; }
         .data td.l { width: 126pt; }
         .data td.t { width: 7pt; }
@@ -112,7 +114,7 @@
             <td class="h">{{ chr(97 + $loop->index) }}.</td>
             <td class="l">{{ $labelBaris }}</td>
             <td class="t">:</td>
-            <td>{{ $isiBaris }}</td>
+            <td class="i">{{ $isiBaris }}</td>
         </tr>
         @endforeach
     </table>
