@@ -319,7 +319,7 @@ const formatDateIndo = (dateStr) => {
                                 <div class="text-left">Dikeluarkan di Surabaya</div>
                                 <div class="border-b border-black pb-0.5 mb-1 flex justify-between items-center text-[12pt]">
                                     <span>pada tanggal</span>
-                                    <span>{{ formatDateIndo(skhpp.tanggal_skhpp || skhpp.approved_at || skhpp.created_at) }}</span>
+                                    <span class="flex-1 text-center">{{ formatDateIndo(skhpp.tanggal_skhpp || skhpp.approved_at || skhpp.created_at) }}</span>
                                 </div>
                                 <div class="font-normal text-center whitespace-nowrap mt-1 leading-snug"> Komandan Detasemen Intelijen Kodaeral V,
                                 </div>
