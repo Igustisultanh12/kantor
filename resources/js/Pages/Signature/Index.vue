@@ -1121,7 +1121,9 @@ const getStatusClass = (status) => {
                     <div class="text-left">Dikeluarkan di Surabaya</div>
                     <div class="border-b border-black pb-0.5 mb-1 flex justify-between items-center text-[10pt] sm:text-[12pt]">
                         <span>pada tanggal</span>
-                        <span class="flex-1 text-center">{{ selectedSkhpp.tanggal_skhpp ? new Date(selectedSkhpp.tanggal_skhpp).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '5 Agustus 2026' }}</span>
+                        <!-- Hari di tengah, bulan & tahun di kanan (sama dengan PDF) -->
+                        <span class="flex-1 text-center">{{ selectedSkhpp.tanggal_skhpp ? new Date(selectedSkhpp.tanggal_skhpp).getDate() : '5' }}</span>
+                        <span>{{ selectedSkhpp.tanggal_skhpp ? new Date(selectedSkhpp.tanggal_skhpp).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) : 'Agustus 2026' }}</span>
                     </div>
                     <div class="font-normal text-center whitespace-nowrap mt-1 leading-snug"> Komandan Detasemen Intelijen Kodaeral V,
                     </div>

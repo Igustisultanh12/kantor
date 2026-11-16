@@ -143,8 +143,9 @@
                     <table style="width: 229pt; border-bottom: 1px solid #000;">
                         <tr>
                             <td style="width: 70pt; white-space: nowrap; padding-bottom: 1pt;">pada tanggal</td>
-                            {{-- Tanggal di tengah ruang sisa (bukan menempel kanan) --}}
-                            <td style="text-align: center; padding-bottom: 1pt;">{{ $tanggal_skhpp_indo }}</td>
+                            {{-- Hari di tengah ruang kosong, bulan & tahun menempel kanan (seperti naskah acuan) --}}
+                            <td style="text-align: center; padding-bottom: 1pt;">{{ \Illuminate\Support\Str::before($tanggal_skhpp_indo, ' ') }}</td>
+                            <td style="width: 1%; text-align: right; white-space: nowrap; padding-bottom: 1pt;">{{ \Illuminate\Support\Str::after($tanggal_skhpp_indo, ' ') }}</td>
                         </tr>
                     </table>
                 </div>
