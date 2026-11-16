@@ -62,6 +62,25 @@ const TEKS_IDENTITAS = {
 };
 const teks = computed(() => TEKS_IDENTITAS[identitas.jenis]);
 
+// Dasar surat pengantar (Poin 1c): tiga isian → satu kalimat yang disimpan di surat_pengantar.
+const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+const uraiPengantar = (teksLama) => {
+    const m = (teksLama || '').match(/^Surat\s+(.+?)\s+No\.?\s*(.+?)\s+tanggal\s+(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/i);
+    const bulan = m ? BULAN.findIndex((b) => b.toLowerCase() === m[4].toLowerCase()) : -1;
+    if (bulan < 0) return { dari: '', nomor: '', tanggal: '' };
+    return { dari: m[1], nomor: m[2], tanggal: `${m[5]}-${String(bulan + 1).padStart(2, '0')}-${m[3].padStart(2, '0')}` };
+};
+const pengantar = reactive(uraiPengantar(s.surat_pengantar));
+// Data lama yang kalimatnya tidak berpola "Surat … No. … tanggal …" dibiarkan apa adanya sampai ketiga isian diisi.
+const pengantarLama = pengantar.dari ? '' : (s.surat_pengantar || '');
+const teksPengantar = computed(() => {
+    const dari = pengantar.dari.trim();
+    const nomor = pengantar.nomor.trim();
+    if (!dari || !nomor || !pengantar.tanggal) return pengantarLama;
+    const [y, m, d] = pengantar.tanggal.split('-').map(Number);
+    return `Surat ${dari} No. ${nomor} tanggal ${d} ${BULAN[m - 1]} ${y}, tentang permohonan Security Clearance.`;
+});
+
 // Pengikut
 const tambahPengikut = () => form.members.push({ nama: '', pangkat_nrp_nik: '', jabatan: '' });
 const hapusPengikut = (i) => form.members.splice(i, 1);
@@ -84,6 +103,7 @@ const submit = () => {
         const adaPengikut = data.has_pengikut && data.members.length > 0;
         return {
             ...data,
+            surat_pengantar: teksPengantar.value,
             kategori_personel: format.value === 'perusahaan' ? 'perusahaan' : (identitas.jenis === 'NRP' ? 'militer' : 'sipil_dinas'),
             jenis_identitas: identitas.jenis,
             pangkat_korps_nrp: punyaPangkat.value ? gabungPangkat(identitas.pangkat, identitas.jenis, identitas.nomor) : '',
@@ -175,13 +195,24 @@ const input = 'w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-
         <!-- 2. Surat pengantar (Poin 1c) -->
         <div :class="kartu">
             <h2 :class="judul">2. Dasar Surat Pengantar (Poin 1c)</h2>
-            <div>
-                <label for="skhpp-pengantar" :class="label">Isi Surat Pengantar / Permohonan Security Clearance *</label>
-                <textarea id="skhpp-pengantar" v-model="form.surat_pengantar" rows="3" required
-                    placeholder="Contoh: Surat Karumkital Dr. Oepomo Kodaeral V No. R/19/III/2026 tanggal 30 Maret 2026, tentang permohonan Security Clearance."
-                    :class="input" class="!font-medium"></textarea>
-                <p v-if="form.errors.surat_pengantar" class="mt-1 text-xs text-rose-600 font-medium">{{ form.errors.surat_pengantar }}</p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                    <label for="skhpp-pengantar-dari" :class="label">Surat Dari *</label>
+                    <input id="skhpp-pengantar-dari" type="text" v-model="pengantar.dari" :required="!pengantarLama" placeholder="Contoh: Dandenma Kodaeral V" :class="input" />
+                </div>
+                <div>
+                    <label for="skhpp-pengantar-nomor" :class="label">Nomor Surat *</label>
+                    <input id="skhpp-pengantar-nomor" type="text" v-model="pengantar.nomor" :required="!pengantarLama" placeholder="Contoh: R/19/III/2026" :class="input" />
+                </div>
+                <div>
+                    <label for="skhpp-pengantar-tgl" :class="label">Tanggal Surat *</label>
+                    <input id="skhpp-pengantar-tgl" type="date" v-model="pengantar.tanggal" :required="!pengantarLama" :class="input" />
+                </div>
             </div>
+            <p v-if="teksPengantar" class="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200" role="status">
+                Tertulis di poin 1c: <b class="text-slate-800">{{ teksPengantar }}</b>
+            </p>
+            <p v-if="form.errors.surat_pengantar" class="text-xs text-rose-600 font-medium">{{ form.errors.surat_pengantar }}</p>
         </div>
 
         <!-- 3. Data personel (Poin 2) -->
