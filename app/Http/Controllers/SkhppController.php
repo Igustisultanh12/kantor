@@ -122,6 +122,7 @@ class SkhppController extends Controller
             'jenis_identitas' => 'nullable|in:NRP,NIP,NIM,NIK',
             'letter_sub_category_id' => 'nullable|integer|exists:sub_categories,id',
             'nomor_manual' => ['nullable', 'regex:/^\d{1,6}[A-Za-z]{0,2}$/'], // hanya nomor urut, boleh berhuruf: 120 / 120a
+            'ttd_mode' => 'nullable|in:tte,manual', // pilihan di form: TTE (QR) atau TTD manual (tanda tangan basah)
             'jabatan_pekerjaan' => 'required|string',
             'tempat_lahir' => 'required|string',
             'tanggal_lahir' => 'required|date',
@@ -193,6 +194,12 @@ class SkhppController extends Controller
                     'jabatan' => $m['jabatan'],
                 ]);
             }
+        }
+
+        // Dipilih TTD manual di form: nomor langsung dibooking untuk dicetak; tidak masuk antrean TTE Komandan.
+        if ($request->ttd_mode === 'manual') {
+            $nomor = $this->bookingTtdManual($skhpp, $request);
+            return redirect()->route('skhpp.index')->with('success', "Permohonan SKHPP tersimpan untuk TTD manual dengan nomor {$nomor}. Cetak, mintakan tanda tangan Komandan, lalu unggah hasilnya.");
         }
 
         // Sinkronisasi ke Antrean TTD Komandan (SignatureRequest)
@@ -286,6 +293,7 @@ class SkhppController extends Controller
             'jenis_identitas' => 'nullable|in:NRP,NIP,NIM,NIK',
             'letter_sub_category_id' => 'nullable|integer|exists:sub_categories,id',
             'nomor_manual' => ['nullable', 'regex:/^\d{1,6}[A-Za-z]{0,2}$/'], // hanya nomor urut, boleh berhuruf: 120 / 120a
+            'ttd_mode' => 'nullable|in:tte,manual', // pilihan di form: TTE (QR) atau TTD manual (tanda tangan basah)
             'jabatan_pekerjaan' => 'required|string',
             'tempat_lahir' => 'required|string',
             'tanggal_lahir' => 'required|date',
@@ -362,6 +370,15 @@ class SkhppController extends Controller
                     'jabatan' => $m['jabatan'],
                 ]);
             }
+        }
+
+        // Pilihan TTE / TTD manual di form Revisi (permintaan tanpa ttd_mode, mis. dari aplikasi lama, tidak mengubah apa pun).
+        if ($request->ttd_mode === 'manual') {
+            $nomor = $this->bookingTtdManual($skhpp, $request);
+            return redirect()->route('skhpp.index')->with('success', "Data SKHPP diperbarui untuk TTD manual dengan nomor {$nomor}. Cetak, mintakan tanda tangan Komandan, lalu unggah hasilnya.");
+        }
+        if ($request->ttd_mode === 'tte' && $skhpp->ttd_mode === 'manual') {
+            $skhpp->update(['ttd_mode' => null]);
         }
 
         // Kirim Notifikasi WA ke Komandan
@@ -621,6 +638,14 @@ class SkhppController extends Controller
         $skhpp = Skhpp::findOrFail($id);
         $this->authorizeTtdManual($skhpp);
 
+        $formattedNo = $this->bookingTtdManual($skhpp, $request);
+
+        return back()->with('success', "SKHPP {$skhpp->nama} diajukan TTD manual dengan nomor {$formattedNo}. Cetak, mintakan tanda tangan Komandan, lalu unggah hasilnya.");
+    }
+
+    /** Tandai SKHPP menunggu tanda tangan basah dan booking nomornya (dipakai tombol di daftar & pilihan di form). */
+    private function bookingTtdManual(Skhpp $skhpp, Request $request): string
+    {
         [$nextSeq, , $formattedNo, , , $romanMonth, $year] = $this->nomorResmi($skhpp, $request);
 
         $skhpp->update([
@@ -633,7 +658,7 @@ class SkhppController extends Controller
             'tahun' => $year,
         ]);
 
-        return back()->with('success', "SKHPP {$skhpp->nama} diajukan TTD manual dengan nomor {$formattedNo}. Cetak, mintakan tanda tangan Komandan, lalu unggah hasilnya.");
+        return $formattedNo;
     }
 
     /**

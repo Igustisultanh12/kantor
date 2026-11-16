@@ -19,6 +19,7 @@ const form = useForm({
     is_pernikahan: Boolean(s.is_pernikahan),
     letter_sub_category_id: s.letter_sub_category_id || '',
     nomor_manual: s.nomor_manual || '',
+    ttd_mode: s.ttd_mode === 'manual' ? 'manual' : 'tte',
     surat_pengantar: s.surat_pengantar || '',
     nama: s.nama || '',
     pangkat_korps_nrp: s.pangkat_korps_nrp || '',
@@ -114,9 +115,11 @@ const submit = () => {
     }).post(isEdit.value ? route('skhpp.update', props.skhpp.id) : route('skhpp.store'), {
         onSuccess: () => Swal.fire(
             'BERHASIL',
-            isEdit.value
-                ? 'Revisi data SKHPP telah diperbarui & dikirim ulang ke TTD Komandan.'
-                : 'Permohonan SKHPP telah diterbitkan dan dikirim ke TTD Komandan.',
+            form.ttd_mode === 'manual'
+                ? 'SKHPP tersimpan untuk TTD manual. Cetak naskahnya, mintakan tanda tangan Komandan, lalu unggah hasilnya lewat tombol "Unggah TTD".'
+                : (isEdit.value
+                    ? 'Revisi data SKHPP telah diperbarui & dikirim ulang ke TTD Komandan.'
+                    : 'Permohonan SKHPP telah diterbitkan dan dikirim ke TTD Komandan.'),
             'success',
         ),
     });
@@ -164,6 +167,37 @@ const input = 'w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-
                 <span class="text-xs font-semibold text-slate-700">Untuk pengajuan nikah <span class="font-medium text-slate-500">(memakai 2 pas foto: calon suami &amp; calon istri)</span></span>
             </label>
             <p v-if="form.errors.kategori_personel" class="text-xs text-rose-600 font-medium">{{ form.errors.kategori_personel }}</p>
+
+            <!-- Cara tanda tangan Komandan -->
+            <div class="pt-2 border-t border-slate-100">
+                <span :class="label" id="skhpp-ttd-label">Tanda Tangan Komandan</span>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1" role="radiogroup" aria-labelledby="skhpp-ttd-label">
+                    <button
+                        v-for="opsi in [
+                            { nilai: 'tte', nama: 'TTE (elektronik)', ket: 'Dikirim ke Komandan untuk disahkan di aplikasi; terbit dengan QR.' },
+                            { nilai: 'manual', nama: 'TTD manual', ket: 'Dicetak, ditandatangani basah, lalu hasilnya diunggah.' },
+                        ]"
+                        :key="opsi.nilai"
+                        type="button"
+                        role="radio"
+                        :aria-checked="form.ttd_mode === opsi.nilai"
+                        @click="form.ttd_mode = opsi.nilai"
+                        :class="form.ttd_mode === opsi.nilai ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/20' : 'border-slate-200 bg-white hover:bg-slate-50'"
+                        class="flex items-center gap-3 p-4 rounded-2xl border text-left transition-all cursor-pointer"
+                    >
+                        <span :class="form.ttd_mode === opsi.nilai ? 'border-emerald-600' : 'border-slate-300'" class="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0">
+                            <span v-if="form.ttd_mode === opsi.nilai" class="w-2 h-2 rounded-full bg-emerald-600"></span>
+                        </span>
+                        <span>
+                            <span class="block text-sm font-bold text-slate-900">{{ opsi.nama }}</span>
+                            <span class="block text-[11px] text-slate-500 font-medium">{{ opsi.ket }}</span>
+                        </span>
+                    </button>
+                </div>
+                <p v-if="form.ttd_mode === 'manual'" class="mt-2 text-[11px] text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200" role="status">
+                    Nomor SKHPP langsung diberikan saat disimpan supaya tercetak di naskah. SKHPP baru berstatus terbit setelah berkas bertanda tangan diunggah.
+                </p>
+            </div>
 
             <!-- Sinkronisasi Agenda Surat & penomoran -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
@@ -357,7 +391,7 @@ const input = 'w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-
             <Link :href="route('skhpp.index')" class="px-6 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold uppercase rounded-2xl transition-all">Batal</Link>
             <button type="submit" :disabled="form.processing"
                 class="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-2xl shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-50 cursor-pointer">
-                {{ form.processing ? 'Mengirim...' : (isEdit ? 'Simpan & Ajukan Ulang ke Komandan' : 'Kirim Permohonan SKHPP ke Komandan') }}
+                {{ form.processing ? 'Mengirim...' : (form.ttd_mode === 'manual' ? 'Simpan untuk TTD Manual' : (isEdit ? 'Simpan & Ajukan Ulang ke Komandan' : 'Kirim Permohonan SKHPP ke Komandan')) }}
             </button>
         </div>
     </form>

@@ -133,4 +133,29 @@ class SkhppFormFlowTest extends TestCase
 
         $this->actingAs($operator)->get("/skhpp/{$skhpp->id}/ttd-manual/berkas")->assertOk();
     }
+
+    public function test_choosing_manual_signature_in_the_form_books_the_number_on_save(): void
+    {
+        $operator = $this->makeUser();
+        $this->actingAs($operator)->post('/skhpp', $this->payload(['ttd_mode' => 'manual']))->assertSessionHasNoErrors()->assertRedirect();
+
+        $skhpp = Skhpp::firstOrFail();
+        $this->assertSame('manual', $skhpp->ttd_mode);
+        $this->assertSame('pending', $skhpp->status);
+        $this->assertStringStartsWith('R / 1 / SKHPP / ', $skhpp->nomor_skhpp);
+
+        // Revisi dengan pilihan TTE mengembalikannya ke jalur TTE; tanpa pilihan tidak mengubah apa pun.
+        $this->actingAs($operator)->post("/skhpp/{$skhpp->id}/update", $this->payload())->assertSessionHasNoErrors();
+        $this->assertSame('manual', $skhpp->fresh()->ttd_mode);
+        $this->actingAs($operator)->post("/skhpp/{$skhpp->id}/update", $this->payload(['ttd_mode' => 'tte']))->assertSessionHasNoErrors();
+        $this->assertNull($skhpp->fresh()->ttd_mode);
+    }
+
+    public function test_choosing_tte_in_the_form_keeps_the_normal_flow(): void
+    {
+        $this->actingAs($this->makeUser())->post('/skhpp', $this->payload(['ttd_mode' => 'tte']))->assertSessionHasNoErrors();
+        $skhpp = Skhpp::firstOrFail();
+        $this->assertNull($skhpp->ttd_mode);
+        $this->assertNull($skhpp->nomor_skhpp);
+    }
 }
