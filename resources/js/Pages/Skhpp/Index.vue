@@ -408,7 +408,7 @@ const formatDate = (dateStr) => {
 
                                 <td class="py-4 px-6 text-right">
                                     <div class="flex items-center justify-end gap-2">
-                                        <button @click="openAuditTrail(skhpp.nomor_skhpp || skhpp.nama)" class="px-2.5 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-700 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs flex items-center gap-1" title="Jejak Audit & Riwayat Dokumen">
+                                        <button v-if="!menungguTtdManual(skhpp)" @click="openAuditTrail(skhpp.nomor_skhpp || skhpp.nama)" class="px-2.5 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-700 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs flex items-center gap-1" title="Jejak Audit & Riwayat Dokumen">
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                             Audit
                                         </button>
@@ -416,7 +416,7 @@ const formatDate = (dateStr) => {
                                         <a :href="route('skhpp.export-pdf', skhpp.id)" target="_blank" class="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs flex items-center gap-1" title="Unduh PDF DomPDF"> PDF
                                         </a>
 
-                                        <Link :href="route('skhpp.show', skhpp.id)" class="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs" title="Pratinjau Dokumen"> Detail
+                                        <Link v-if="!menungguTtdManual(skhpp)" :href="route('skhpp.show', skhpp.id)" class="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs" title="Pratinjau Dokumen"> Detail
                                         </Link>
 
                                         <!-- Tombol Edit & Revisi untuk Operator jika Ditolak/Pending -->
@@ -424,14 +424,15 @@ const formatDate = (dateStr) => {
                                         </Link>
 
                                         <!-- Tombol Khusus Admin untuk Atur Nomor & Ajukan TTE Ulang -->
-                                        <template v-if="isAdmin">
+                                        <template v-if="isAdmin && !menungguTtdManual(skhpp)">
                                             <button @click="changeNomorSkhpp(skhpp)"class="px-2.5 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs"title="Atur / Loncati Nomor Urut SKHPP (Khusus Admin)"> Atur Nomor
                                             </button>
                                             <button @click="reSubmitTte(skhpp)"class="px-2.5 py-1.5 bg-cyan-50 text-cyan-700 hover:bg-cyan-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs flex items-center gap-1"title="Ajukan Ulang TTE ke Komandan (Khusus Admin)"> Ajukan TTE Ulang
                                             </button>
                                         </template>
 
-                                        <!-- TTD manual: ajukan → cetak & tanda tangan basah → unggah hasil -->
+                                        <!-- TTD manual: ajukan → cetak & tanda tangan basah → unggah hasil.
+                                             Selama menunggu TTD manual, baris hanya menampilkan PDF (untuk dicetak), Edit Data, Unggah TTD, dan Tolak. -->
                                         <template v-if="skhpp.status !== 'approved' && bolehTtdManual(skhpp)">
                                             <button v-if="!menungguTtdManual(skhpp)" @click="ajukanTtdManual(skhpp)" class="px-2.5 py-1.5 bg-teal-50 text-teal-700 hover:bg-teal-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs" title="Cetak, tanda tangan basah Komandan, lalu unggah hasilnya"> Ajukan TTD Manual
                                             </button>
@@ -442,13 +443,13 @@ const formatDate = (dateStr) => {
                                         </a>
 
                                         <template v-if="isCommander && skhpp.status !== 'approved'">
-                                            <button @click="approveSkhpp(skhpp)"class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs"title="Setujui & TTD QR Komandan"> TTD Komandan
+                                            <button v-if="!menungguTtdManual(skhpp)" @click="approveSkhpp(skhpp)"class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs"title="Setujui & TTD QR Komandan"> TTD Komandan
                                             </button>
                                             <button @click="rejectSkhpp(skhpp)"class="px-3 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs"title="Tolak Permohonan"> Tolak
                                             </button>
                                         </template>
 
-                                        <button @click="deleteSkhpp(skhpp)"class="p-1.5 bg-slate-100 text-slate-400 hover:text-rose-600 rounded-xl transition-all"title="Hapus SKHPP">
+                                        <button v-if="!menungguTtdManual(skhpp)" @click="deleteSkhpp(skhpp)"class="p-1.5 bg-slate-100 text-slate-400 hover:text-rose-600 rounded-xl transition-all"title="Hapus SKHPP">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                         </button>
                                     </div>
