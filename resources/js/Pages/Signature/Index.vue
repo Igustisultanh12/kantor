@@ -1074,6 +1074,12 @@ const getStatusClass = (status) => {
                         <span>:</span>
                         <span>{{ selectedSkhpp.alamat }}</span>
                     </div>
+
+                    <div v-if="selectedSkhpp.has_pengikut && selectedSkhpp.members?.length" class="grid grid-cols-[120px_10px_1fr] sm:grid-cols-[160px_15px_1fr]">
+                        <span>h. Pengikut</span>
+                        <span>:</span>
+                        <span>{{ selectedSkhpp.members.length }} orang (daftar nama terlampir)</span>
+                    </div>
                 </div>
 
                 <div class="flex items-start font-normal mt-2">

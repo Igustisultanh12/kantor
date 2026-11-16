@@ -1,0 +1,92 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Skhpp;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use Tests\Feature\Security\SecuritySchema;
+use Tests\TestCase;
+
+/** Form SKHPP → pengesahan: jenis identitas, pengikut, nomor manual, dan sinkron Jenis Surat ke Agenda Surat. */
+class SkhppFormFlowTest extends TestCase
+{
+    use SecuritySchema;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Storage::fake('public');
+        (require database_path('migrations/2026_08_05_130000_create_skhpps_and_skhpp_members_tables.php'))->up();
+        (require database_path('migrations/2026_11_16_100000_add_form_fields_to_skhpps_table.php'))->up();
+        Schema::create('categories', function (Blueprint $t) {
+            $t->id(); $t->string('name'); $t->string('code'); $t->integer('start_number')->default(1); $t->boolean('is_telegram')->default(false); $t->timestamps();
+        });
+        Schema::create('sub_categories', function (Blueprint $t) {
+            $t->id(); $t->foreignId('category_id'); $t->string('name'); $t->string('sub_code')->nullable(); $t->timestamps();
+        });
+        Schema::create('letter_logs', function (Blueprint $t) {
+            $t->id(); $t->string('full_number'); $t->string('sequence'); $t->string('priority')->nullable(); $t->foreignId('category_id');
+            $t->foreignId('sub_category_id')->nullable(); $t->text('subject')->nullable(); $t->string('recipient')->nullable(); $t->date('date')->nullable();
+            $t->boolean('is_archived')->default(false); $t->string('number')->nullable(); $t->foreignId('user_id')->nullable(); $t->timestamps();
+        });
+        DB::table('categories')->insert(['id' => 1, 'name' => 'SKHPP Dinas Militer & PNS', 'code' => 'SKHPP-D']);
+        DB::table('sub_categories')->insert(['id' => 7, 'category_id' => 1, 'name' => 'PNS']);
+    }
+
+    private function payload(array $over = []): array
+    {
+        return array_merge([
+            'kategori_personel' => 'sipil_dinas', 'is_pernikahan' => false, 'surat_pengantar' => 'Surat uji',
+            'nama' => 'Ketut Uji', 'jenis_identitas' => 'NIP', 'pangkat_korps_nrp' => 'Penata III/c NIP 197305121998031002',
+            'jabatan_pekerjaan' => 'Staf', 'tempat_lahir' => 'Denpasar', 'tanggal_lahir' => '1973-05-12',
+            'jenis_kelamin' => 'Laki-laki', 'agama' => 'Hindu', 'alamat' => 'Jl. Uji', 'peruntukan' => 'uji',
+            'foto_1' => UploadedFile::fake()->image('foto.jpg', 30, 40),
+        ], $over);
+    }
+
+    public function test_manual_number_followers_and_letter_type_flow_through_approval(): void
+    {
+        $this->actingAs($this->makeUser())->post('/skhpp', $this->payload([
+            'letter_sub_category_id' => 7,
+            'nomor_manual' => 'R / 171 / SKHPP / XI / 2026',
+            'has_pengikut' => true,
+            'members' => [
+                ['nama' => 'Ani', 'pangkat_nrp_nik' => '3515', 'jabatan' => 'Anggota'],
+                ['nama' => 'Made', 'pangkat_nrp_nik' => '3516', 'jabatan' => 'Anggota'],
+            ],
+        ]))->assertSessionHasNoErrors()->assertRedirect();
+
+        $skhpp = Skhpp::with('members')->firstOrFail();
+        $this->assertSame('NIP', $skhpp->jenis_identitas);
+        $this->assertSame('R / 171 / SKHPP / XI / 2026', $skhpp->nomor_skhpp);
+        $this->assertCount(2, $skhpp->members);
+
+        $this->actingAs($this->makeUser(['role' => 'komandan']))->post("/skhpp/{$skhpp->id}/approve")->assertRedirect();
+
+        $skhpp->refresh();
+        $this->assertSame('approved', $skhpp->status);
+        $this->assertSame('R / 171 / SKHPP / XI / 2026', $skhpp->nomor_skhpp);
+        $this->assertSame(171, (int) $skhpp->nomor_urut);
+        $this->assertDatabaseHas('letter_logs', [
+            'full_number' => 'R / 171 / SKHPP / XI / 2026', 'category_id' => 1, 'sub_category_id' => 7,
+        ]);
+    }
+
+    public function test_without_manual_number_the_next_automatic_number_is_used(): void
+    {
+        $this->actingAs($this->makeUser())->post('/skhpp', $this->payload())->assertSessionHasNoErrors();
+        $skhpp = Skhpp::firstOrFail();
+        $this->assertNull($skhpp->nomor_skhpp);
+
+        $this->actingAs($this->makeUser(['role' => 'komandan']))->post("/skhpp/{$skhpp->id}/approve")->assertRedirect();
+
+        $skhpp->refresh();
+        $this->assertSame(1, (int) $skhpp->nomor_urut);
+        $this->assertStringStartsWith('R / 1 / SKHPP / ', $skhpp->nomor_skhpp);
+        $this->assertDatabaseHas('letter_logs', ['full_number' => $skhpp->nomor_skhpp, 'sub_category_id' => null]);
+    }
+}

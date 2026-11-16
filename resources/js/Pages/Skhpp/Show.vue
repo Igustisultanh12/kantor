@@ -3,11 +3,15 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, onMounted } from 'vue';
 import Swal from 'sweetalert2';
+import { jenisIdentitas, berpangkat, labelIdentitas, jumlahPengikut, teksPengikut } from '@/Utils/skhppIdentitas';
 
 const props = defineProps({
     skhpp: Object,
     verificationUrl: String,
 });
+
+const jenisId = computed(() => jenisIdentitas(props.skhpp));
+const nPengikut = computed(() => jumlahPengikut(props.skhpp));
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
@@ -165,7 +169,7 @@ const formatDateIndo = (dateStr) => {
                                     <div>Dengan ini menerangkan bahwa hasil penelitian terhadap :</div>
                                     
                                     <!-- Militer / PNS dengan Pangkat/NRP/NIP -->
-                                    <table v-if="skhpp.pangkat_korps_nrp" class="w-full mt-2 text-[12pt] pl-[45px]" style="line-height: 1.5;">
+                                    <table v-if="berpangkat(jenisId)" class="w-full mt-2 text-[12pt] pl-[45px]" style="line-height: 1.5;">
                                         <tr>
                                             <td class="w-6 font-normal align-top">a.</td>
                                             <td class="w-36 font-normal align-top">Nama</td>
@@ -174,7 +178,7 @@ const formatDateIndo = (dateStr) => {
                                         </tr>
                                         <tr>
                                             <td class="font-normal align-top">b.</td>
-                                            <td class="font-normal align-top">Pangkat/Korp/NRP</td>
+                                            <td class="font-normal align-top">{{ labelIdentitas(jenisId) }}</td>
                                             <td class="align-top">:</td>
                                             <td class="align-top font-normal">{{ skhpp.pangkat_korps_nrp }}</td>
                                         </tr>
@@ -208,6 +212,12 @@ const formatDateIndo = (dateStr) => {
                                             <td class="align-top">:</td>
                                             <td class="align-top font-normal">{{ skhpp.alamat }}</td>
                                         </tr>
+                                        <tr v-if="nPengikut > 0">
+                                            <td class="font-normal align-top">h.</td>
+                                            <td class="font-normal align-top">Pengikut</td>
+                                            <td class="align-top">:</td>
+                                            <td class="align-top font-normal">{{ teksPengikut(nPengikut) }}</td>
+                                        </tr>
                                     </table>
 
                                     <!-- Sipil / Pelajar / Mahasiswa / Perusahaan dengan NIK -->
@@ -220,7 +230,7 @@ const formatDateIndo = (dateStr) => {
                                         </tr>
                                         <tr>
                                             <td class="font-normal align-top">b.</td>
-                                            <td class="font-normal align-top">NIK</td>
+                                            <td class="font-normal align-top">{{ labelIdentitas(jenisId) }}</td>
                                             <td class="align-top">:</td>
                                             <td class="align-top font-normal">{{ skhpp.nik || '-' }}</td>
                                         </tr>
@@ -253,6 +263,12 @@ const formatDateIndo = (dateStr) => {
                                             <td class="font-normal align-top">Alamat rumah</td>
                                             <td class="align-top">:</td>
                                             <td class="align-top font-normal">{{ skhpp.alamat }}</td>
+                                        </tr>
+                                        <tr v-if="nPengikut > 0">
+                                            <td class="font-normal align-top">h.</td>
+                                            <td class="font-normal align-top">Pengikut</td>
+                                            <td class="align-top">:</td>
+                                            <td class="align-top font-normal">{{ teksPengikut(nPengikut) }}</td>
                                         </tr>
                                     </table>
                                 </div>

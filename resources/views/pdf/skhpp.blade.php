@@ -100,7 +100,12 @@
                 <td style="vertical-align: top;">
                     <div>Dengan ini menerangkan bahwa hasil penelitian terhadap :</div>
                     
-                    @if($skhpp->pangkat_korps_nrp)
+                    @php
+                        // Sama dengan resources/js/Utils/skhppIdentitas.js (data lama tanpa jenis_identitas ditebak dari kolom terisi).
+                        $jenisId = $skhpp->jenis_identitas ?: ($skhpp->pangkat_korps_nrp ? 'NRP' : 'NIK');
+                        $jumlahPengikut = $skhpp->has_pengikut ? count($skhpp->members) : 0;
+                    @endphp
+                    @if(in_array($jenisId, ['NRP', 'NIP']))
                     <table class="table-data" style="width: 100%; margin-top: 4px; padding-left: 45px;">
                         <tr>
                             <td style="width: 25px; vertical-align: top;">a.</td>
@@ -110,7 +115,7 @@
                         </tr>
                         <tr>
                             <td style="vertical-align: top;">b.</td>
-                            <td style="vertical-align: top;">Pangkat/Korp/NRP</td>
+                            <td style="vertical-align: top;">{{ $jenisId === 'NIP' ? 'Pangkat/Gol/NIP' : 'Pangkat/Korp/NRP' }}</td>
                             <td style="vertical-align: top;">:</td>
                             <td style="vertical-align: top;">{{ $skhpp->pangkat_korps_nrp }}</td>
                         </tr>
@@ -144,6 +149,14 @@
                             <td style="vertical-align: top;">:</td>
                             <td style="vertical-align: top;">{{ $skhpp->alamat }}</td>
                         </tr>
+                        @if($jumlahPengikut > 0)
+                        <tr>
+                            <td style="vertical-align: top;">h.</td>
+                            <td style="vertical-align: top;">Pengikut</td>
+                            <td style="vertical-align: top;">:</td>
+                            <td style="vertical-align: top;">{{ $jumlahPengikut }} orang (daftar nama terlampir)</td>
+                        </tr>
+                        @endif
                     </table>
                     @else
                     <table class="table-data" style="width: 100%; margin-top: 4px; padding-left: 45px;">
@@ -155,7 +168,7 @@
                         </tr>
                         <tr>
                             <td style="vertical-align: top;">b.</td>
-                            <td style="vertical-align: top;">NIK</td>
+                            <td style="vertical-align: top;">{{ $jenisId === 'NIM' ? 'NIM' : 'NIK' }}</td>
                             <td style="vertical-align: top;">:</td>
                             <td style="vertical-align: top;">{{ $skhpp->nik ?? '-' }}</td>
                         </tr>
@@ -189,6 +202,14 @@
                             <td style="vertical-align: top;">:</td>
                             <td style="vertical-align: top;">{{ $skhpp->alamat }}</td>
                         </tr>
+                        @if($jumlahPengikut > 0)
+                        <tr>
+                            <td style="vertical-align: top;">h.</td>
+                            <td style="vertical-align: top;">Pengikut</td>
+                            <td style="vertical-align: top;">:</td>
+                            <td style="vertical-align: top;">{{ $jumlahPengikut }} orang (daftar nama terlampir)</td>
+                        </tr>
+                        @endif
                     </table>
                     @endif
                 </td>

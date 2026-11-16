@@ -1,0 +1,329 @@
+<script setup>
+// Form SKHPP bersama untuk halaman Buat (tanpa prop skhpp) dan Revisi (dengan prop skhpp).
+import { Link, useForm } from '@inertiajs/vue3';
+import { ref, reactive, computed } from 'vue';
+import Swal from 'sweetalert2';
+import { JENIS_IDENTITAS, berpangkat, gabungPangkat, uraiIdentitas, teksPengikut } from '@/Utils/skhppIdentitas';
+
+const props = defineProps({
+    skhpp: { type: Object, default: null },
+    // { dinas: { kode, nama, jenis: [{id, name}] }, perusahaan: {...} } — kategori & jenis surat di Agenda Surat
+    agendaSurat: { type: Object, default: () => ({}) },
+});
+
+const isEdit = computed(() => !!props.skhpp);
+const s = props.skhpp || {};
+
+const form = useForm({
+    kategori_personel: s.kategori_personel || 'militer',
+    is_pernikahan: Boolean(s.is_pernikahan),
+    letter_sub_category_id: s.letter_sub_category_id || '',
+    nomor_manual: s.nomor_manual || '',
+    surat_pengantar: s.surat_pengantar || '',
+    nama: s.nama || '',
+    pangkat_korps_nrp: s.pangkat_korps_nrp || '',
+    nik: s.nik || '',
+    jenis_identitas: s.jenis_identitas || null,
+    jabatan_pekerjaan: s.jabatan_pekerjaan || '',
+    tempat_lahir: s.tempat_lahir || '',
+    tanggal_lahir: s.tanggal_lahir ? s.tanggal_lahir.split('T')[0] : '',
+    jenis_kelamin: s.jenis_kelamin || 'Laki-laki',
+    agama: s.agama || 'Islam',
+    alamat: s.alamat || '',
+    has_pengikut: Boolean(s.has_pengikut),
+    members: (s.members || []).map((m) => ({ nama: m.nama, pangkat_nrp_nik: m.pangkat_nrp_nik, jabatan: m.jabatan })),
+    peruntukan: s.peruntukan || '',
+    foto_1: null,
+    foto_2: null,
+});
+
+// Jenis SKHPP hanya dua format: Dinas (SKHPP-D) dan Mitra Kerja (SKHPP-P).
+// Militer / PNS tidak dipilih terpisah lagi — mengikuti jenis nomor identitas (NRP = militer).
+const format = ref(s.kategori_personel === 'perusahaan' ? 'perusahaan' : 'dinas');
+
+// Identitas: dropdown jenis + nomor; pangkat hanya untuk NRP/NIP.
+const identitas = reactive(props.skhpp ? uraiIdentitas(props.skhpp) : { jenis: 'NRP', pangkat: '', nomor: '' });
+const punyaPangkat = computed(() => berpangkat(identitas.jenis));
+
+const agenda = computed(() => props.agendaSurat[format.value] || { kode: '', nama: '', jenis: [] });
+
+const pilihFormat = (nilai) => {
+    if (format.value !== nilai) form.letter_sub_category_id = ''; // jenis surat milik kategori agenda yang lain
+    format.value = nilai;
+    // Bantu pilih jenis identitas yang paling umum selama nomornya belum diisi.
+    if (!identitas.nomor) identitas.jenis = nilai === 'perusahaan' ? 'NIK' : 'NRP';
+};
+
+const TEKS_IDENTITAS = {
+    NRP: { pangkat: 'Pangkat / Korps', contohPangkat: 'Contoh: Kapten Laut (K/W)', contohNomor: 'Contoh: 22608/P' },
+    NIP: { pangkat: 'Pangkat / Golongan', contohPangkat: 'Contoh: Penata III/c', contohNomor: 'Contoh: 197305121998031002' },
+    NIM: { contohNomor: 'Nomor Induk Mahasiswa' },
+    NIK: { contohNomor: 'Contoh: 3515081205640009' },
+};
+const teks = computed(() => TEKS_IDENTITAS[identitas.jenis]);
+
+// Pengikut
+const tambahPengikut = () => form.members.push({ nama: '', pangkat_nrp_nik: '', jabatan: '' });
+const hapusPengikut = (i) => form.members.splice(i, 1);
+const togglePengikut = () => {
+    if (form.has_pengikut && form.members.length === 0) tambahPengikut();
+};
+
+// Foto
+const preview1 = ref(s.foto_1 ? '/storage/' + s.foto_1 : null);
+const preview2 = ref(s.foto_2 ? '/storage/' + s.foto_2 : null);
+const pilihFoto = (e, kolom, preview) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    form[kolom] = file;
+    preview.value = URL.createObjectURL(file);
+};
+
+const submit = () => {
+    form.transform((data) => {
+        const adaPengikut = data.has_pengikut && data.members.length > 0;
+        return {
+            ...data,
+            kategori_personel: format.value === 'perusahaan' ? 'perusahaan' : (identitas.jenis === 'NRP' ? 'militer' : 'sipil_dinas'),
+            jenis_identitas: identitas.jenis,
+            pangkat_korps_nrp: punyaPangkat.value ? gabungPangkat(identitas.pangkat, identitas.jenis, identitas.nomor) : '',
+            nik: punyaPangkat.value ? '' : identitas.nomor.trim(),
+            has_pengikut: adaPengikut,
+            members: adaPengikut ? data.members : [],
+        };
+    }).post(isEdit.value ? route('skhpp.update', props.skhpp.id) : route('skhpp.store'), {
+        onSuccess: () => Swal.fire(
+            'BERHASIL',
+            isEdit.value
+                ? 'Revisi data SKHPP telah diperbarui & dikirim ulang ke TTD Komandan.'
+                : 'Permohonan SKHPP telah diterbitkan dan dikirim ke TTD Komandan.',
+            'success',
+        ),
+    });
+};
+
+const kartu = 'bg-white p-6 rounded-3xl shadow-xs border border-slate-100 space-y-4';
+const judul = 'text-xs font-black uppercase tracking-wider text-emerald-600 border-b pb-2';
+const label = 'block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1';
+const input = 'w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500';
+</script>
+
+<template>
+    <form @submit.prevent="submit" class="space-y-6">
+
+        <!-- 1. Jenis SKHPP -->
+        <div :class="kartu">
+            <h2 :class="judul">1. Jenis SKHPP</h2>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" role="radiogroup" aria-label="Jenis SKHPP">
+                <button
+                    v-for="opsi in [
+                        { nilai: 'dinas', nama: 'Dinas — Militer / PNS', ket: 'Format SKHPP-D' },
+                        { nilai: 'perusahaan', nama: 'Mitra Kerja / Perusahaan', ket: 'Format SKHPP-P' },
+                    ]"
+                    :key="opsi.nilai"
+                    type="button"
+                    role="radio"
+                    :aria-checked="format === opsi.nilai"
+                    @click="pilihFormat(opsi.nilai)"
+                    :class="format === opsi.nilai ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/20' : 'border-slate-200 bg-white hover:bg-slate-50'"
+                    class="flex items-center gap-3 p-4 rounded-2xl border text-left transition-all cursor-pointer"
+                >
+                    <span :class="format === opsi.nilai ? 'border-emerald-600' : 'border-slate-300'" class="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0">
+                        <span v-if="format === opsi.nilai" class="w-2 h-2 rounded-full bg-emerald-600"></span>
+                    </span>
+                    <span>
+                        <span class="block text-sm font-bold text-slate-900">{{ opsi.nama }}</span>
+                        <span class="block text-[11px] text-slate-500 font-medium">{{ opsi.ket }}</span>
+                    </span>
+                </button>
+            </div>
+
+            <label class="flex items-center gap-2.5 cursor-pointer select-none w-fit">
+                <input type="checkbox" v-model="form.is_pernikahan" class="w-4 h-4 text-emerald-600 rounded-md focus:ring-emerald-500" />
+                <span class="text-xs font-semibold text-slate-700">Untuk pengajuan nikah <span class="font-medium text-slate-500">(memakai 2 pas foto: calon suami &amp; calon istri)</span></span>
+            </label>
+            <p v-if="form.errors.kategori_personel" class="text-xs text-rose-600 font-medium">{{ form.errors.kategori_personel }}</p>
+
+            <!-- Sinkronisasi Agenda Surat & penomoran -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                <div>
+                    <label for="skhpp-jenis-surat" :class="label">Jenis Surat (Agenda Surat)</label>
+                    <select id="skhpp-jenis-surat" v-model="form.letter_sub_category_id" :disabled="!agenda.jenis.length" :class="input" class="disabled:bg-slate-50 disabled:text-slate-400">
+                        <option value="">{{ agenda.jenis.length ? '— Tanpa jenis surat —' : 'Belum ada jenis surat di kategori ini' }}</option>
+                        <option v-for="j in agenda.jenis" :key="j.id" :value="j.id">{{ j.name }}</option>
+                    </select>
+                    <p class="mt-1 text-[11px] text-slate-500">
+                        Saat disahkan, SKHPP dicatat di Agenda Surat pada kategori <b class="text-slate-700">{{ agenda.nama }} ({{ agenda.kode }})</b>.
+                    </p>
+                    <p v-if="form.errors.letter_sub_category_id" class="mt-1 text-xs text-rose-600 font-medium">{{ form.errors.letter_sub_category_id }}</p>
+                </div>
+
+                <div>
+                    <label for="skhpp-nomor-manual" :class="label">Nomor SKHPP <span class="font-medium normal-case text-slate-500">(opsional)</span></label>
+                    <input id="skhpp-nomor-manual" type="text" v-model="form.nomor_manual" maxlength="100" placeholder="Contoh: R / 171 / SKHPP / XI / 2026" :class="input" />
+                    <p class="mt-1 text-[11px] text-slate-500">Kosongkan untuk nomor otomatis. Isi hanya jika nomor harus ditentukan manual.</p>
+                    <p v-if="form.errors.nomor_manual" class="mt-1 text-xs text-rose-600 font-medium">{{ form.errors.nomor_manual }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Surat pengantar (Poin 1c) -->
+        <div :class="kartu">
+            <h2 :class="judul">2. Dasar Surat Pengantar (Poin 1c)</h2>
+            <div>
+                <label for="skhpp-pengantar" :class="label">Isi Surat Pengantar / Permohonan Security Clearance *</label>
+                <textarea id="skhpp-pengantar" v-model="form.surat_pengantar" rows="3" required
+                    placeholder="Contoh: Surat Karumkital Dr. Oepomo Kodaeral V No. R/19/III/2026 tanggal 30 Maret 2026, tentang permohonan Security Clearance."
+                    :class="input" class="!font-medium"></textarea>
+                <p v-if="form.errors.surat_pengantar" class="mt-1 text-xs text-rose-600 font-medium">{{ form.errors.surat_pengantar }}</p>
+            </div>
+        </div>
+
+        <!-- 3. Data personel (Poin 2) -->
+        <div :class="kartu">
+            <h2 :class="judul">3. Data Personel yang Diteliti (Poin 2)</h2>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="sm:col-span-2">
+                    <label for="skhpp-nama" :class="label">Nama Lengkap &amp; Gelar *</label>
+                    <input id="skhpp-nama" type="text" v-model="form.nama" required placeholder="Contoh: dr. Lilis Haryani atau Sardijono, S.H." :class="input" />
+                    <p v-if="form.errors.nama" class="mt-1 text-xs text-rose-600 font-medium">{{ form.errors.nama }}</p>
+                </div>
+
+                <!-- Nomor identitas: jenis (dropdown) + nomor -->
+                <div :class="punyaPangkat ? '' : 'sm:col-span-2'">
+                    <label for="skhpp-nomor" :class="label">Nomor Identitas *</label>
+                    <div class="flex">
+                        <select v-model="identitas.jenis" aria-label="Jenis nomor identitas"
+                            class="w-24 shrink-0 text-xs font-bold pl-4 pr-8 py-2.5 rounded-l-xl border-slate-200 bg-slate-50 focus:border-emerald-500 focus:ring-emerald-500 focus:z-10">
+                            <option v-for="j in JENIS_IDENTITAS" :key="j" :value="j">{{ j }}</option>
+                        </select>
+                        <input id="skhpp-nomor" type="text" v-model="identitas.nomor" required
+                            :inputmode="identitas.jenis === 'NIK' ? 'numeric' : 'text'"
+                            :placeholder="teks.contohNomor"
+                            :class="input" class="!rounded-l-none -ml-px focus:z-10" />
+                    </div>
+                    <p v-if="form.errors.pangkat_korps_nrp || form.errors.nik" class="mt-1 text-xs text-rose-600 font-medium">{{ form.errors.pangkat_korps_nrp || form.errors.nik }}</p>
+                </div>
+
+                <div v-if="punyaPangkat">
+                    <label for="skhpp-pangkat" :class="label">{{ teks.pangkat }} *</label>
+                    <input id="skhpp-pangkat" type="text" v-model="identitas.pangkat" required :placeholder="teks.contohPangkat" :class="input" />
+                </div>
+
+                <div class="sm:col-span-2">
+                    <label for="skhpp-jabatan" :class="label">{{ punyaPangkat ? 'Jabatan' : 'Pekerjaan' }} *</label>
+                    <input id="skhpp-jabatan" type="text" v-model="form.jabatan_pekerjaan" required
+                        :placeholder="punyaPangkat ? 'Contoh: Ka/PS BP Tg. Sadari Diskes Kodaeral V' : 'Contoh: Pimpinan CV Afnalia Jaya / Mahasiswa'"
+                        :class="input" />
+                    <p v-if="form.errors.jabatan_pekerjaan" class="mt-1 text-xs text-rose-600 font-medium">{{ form.errors.jabatan_pekerjaan }}</p>
+                </div>
+
+                <div>
+                    <label for="skhpp-tempat" :class="label">Tempat Lahir *</label>
+                    <input id="skhpp-tempat" type="text" v-model="form.tempat_lahir" required placeholder="Contoh: Surabaya" :class="input" />
+                </div>
+
+                <div>
+                    <label for="skhpp-tgl" :class="label">Tanggal Lahir *</label>
+                    <input id="skhpp-tgl" type="date" v-model="form.tanggal_lahir" required :class="input" />
+                    <p v-if="form.errors.tanggal_lahir" class="mt-1 text-xs text-rose-600 font-medium">{{ form.errors.tanggal_lahir }}</p>
+                </div>
+
+                <div>
+                    <label for="skhpp-jk" :class="label">Jenis Kelamin *</label>
+                    <select id="skhpp-jk" v-model="form.jenis_kelamin" required :class="input">
+                        <option value="Laki-laki">Laki-laki</option>
+                        <option value="Perempuan">Perempuan</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="skhpp-agama" :class="label">Agama *</label>
+                    <input id="skhpp-agama" type="text" v-model="form.agama" required list="skhpp-daftar-agama" :class="input" />
+                    <datalist id="skhpp-daftar-agama">
+                        <option v-for="a in ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu']" :key="a" :value="a"></option>
+                    </datalist>
+                </div>
+
+                <div class="sm:col-span-2">
+                    <label for="skhpp-alamat" :class="label">Alamat Rumah Lengkap *</label>
+                    <textarea id="skhpp-alamat" v-model="form.alamat" rows="2" required placeholder="Contoh: Jl. Petukangan 62 Ampel Surabaya." :class="input" class="!font-medium"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Pengikut (Poin 2h + Lampiran) -->
+        <div :class="kartu">
+            <h2 :class="judul">4. Pengikut / Rombongan (Poin 2h)</h2>
+
+            <label class="flex items-center gap-2.5 cursor-pointer select-none w-fit">
+                <input type="checkbox" v-model="form.has_pengikut" @change="togglePengikut" class="w-4 h-4 text-emerald-600 rounded-md focus:ring-emerald-500" />
+                <span class="text-xs font-semibold text-slate-700">Lebih dari 1 orang (ada pengikut)</span>
+            </label>
+
+            <div v-if="form.has_pengikut" class="space-y-3">
+                <p class="text-xs text-amber-800 font-medium bg-amber-50 p-3 rounded-xl border border-amber-200" role="status">
+                    Poin 2h akan tertulis: <b>Pengikut : {{ teksPengikut(form.members.length) }}</b>.
+                    Nama-nama di bawah ini dimuat pada lembar 2 (Lampiran).
+                </p>
+
+                <div v-for="(member, idx) in form.members" :key="idx" class="grid grid-cols-1 sm:grid-cols-[1.5rem_1fr_1fr_1fr_auto] gap-2 sm:items-center p-3 sm:p-0 bg-slate-50 sm:bg-transparent rounded-2xl">
+                    <span class="text-xs font-bold text-slate-500 tabular-nums">{{ idx + 1 }}.</span>
+                    <input type="text" v-model="member.nama" required placeholder="Nama lengkap" :aria-label="`Nama pengikut ${idx + 1}`" :class="input" />
+                    <input type="text" v-model="member.pangkat_nrp_nik" required placeholder="NRP / NIP / NIM / NIK" :aria-label="`Nomor identitas pengikut ${idx + 1}`" :class="input" />
+                    <input type="text" v-model="member.jabatan" required placeholder="Jabatan / pekerjaan" :aria-label="`Jabatan pengikut ${idx + 1}`" :class="input" />
+                    <button type="button" @click="hapusPengikut(idx)" class="text-xs font-bold text-rose-600 hover:underline px-2 py-2 text-left cursor-pointer">Hapus</button>
+                </div>
+
+                <button type="button" @click="tambahPengikut" class="px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-bold uppercase rounded-xl transition-all cursor-pointer">
+                    + Tambah Pengikut
+                </button>
+            </div>
+        </div>
+
+        <!-- 5. Peruntukan (Poin 4) -->
+        <div :class="kartu">
+            <h2 :class="judul">5. Peruntukan SKHPP (Poin 4)</h2>
+            <div>
+                <label for="skhpp-peruntukan" :class="label">Maksud &amp; Peruntukan *</label>
+                <textarea id="skhpp-peruntukan" v-model="form.peruntukan" rows="3" required
+                    placeholder="Contoh: Dalam rangka sebagai persyaratan mengikuti program pendidikan spesialis Bidang Ilmu Penyakit Dalam di Universitas Sebelas Maret (UNS) Solo"
+                    :class="input" class="!font-medium"></textarea>
+                <p v-if="form.errors.peruntukan" class="mt-1 text-xs text-rose-600 font-medium">{{ form.errors.peruntukan }}</p>
+            </div>
+        </div>
+
+        <!-- 6. Pas foto -->
+        <div :class="kartu">
+            <h2 :class="judul">6. Pas Foto{{ isEdit ? ' (kosongkan jika tidak diubah)' : '' }}</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="skhpp-foto1" :class="label" class="!mb-2">{{ form.is_pernikahan ? 'Foto 1: Calon Suami' : 'Pas Foto Personel (3x4)' }}{{ isEdit ? '' : ' *' }}</label>
+                    <input id="skhpp-foto1" type="file" @change="pilihFoto($event, 'foto_1', preview1)" accept="image/jpeg,image/png" :required="!isEdit"
+                        class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100" />
+                    <p v-if="form.errors.foto_1" class="mt-1 text-xs text-rose-600 font-medium">{{ form.errors.foto_1 }}</p>
+                    <img v-if="preview1" :src="preview1" alt="Pratinjau foto 1" class="mt-3 w-32 h-40 object-cover rounded-xl border border-slate-200 shadow-md" />
+                </div>
+
+                <div v-if="form.is_pernikahan">
+                    <label for="skhpp-foto2" :class="label" class="!mb-2">Foto 2: Calon Istri{{ isEdit ? '' : ' *' }}</label>
+                    <input id="skhpp-foto2" type="file" @change="pilihFoto($event, 'foto_2', preview2)" accept="image/jpeg,image/png" :required="!isEdit"
+                        class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100" />
+                    <p v-if="form.errors.foto_2" class="mt-1 text-xs text-rose-600 font-medium">{{ form.errors.foto_2 }}</p>
+                    <img v-if="preview2" :src="preview2" alt="Pratinjau foto 2" class="mt-3 w-32 h-40 object-cover rounded-xl border border-slate-200 shadow-md" />
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap justify-end gap-4 pt-4">
+            <Link :href="route('skhpp.index')" class="px-6 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold uppercase rounded-2xl transition-all">Batal</Link>
+            <button type="submit" :disabled="form.processing"
+                class="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-2xl shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-50 cursor-pointer">
+                {{ form.processing ? 'Mengirim...' : (isEdit ? 'Simpan & Ajukan Ulang ke Komandan' : 'Kirim Permohonan SKHPP ke Komandan') }}
+            </button>
+        </div>
+    </form>
+</template>

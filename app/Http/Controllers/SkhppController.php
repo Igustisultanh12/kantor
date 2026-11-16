@@ -66,7 +66,26 @@ class SkhppController extends Controller
      */
     public function create()
     {
-        return Inertia::render('Skhpp/Create');
+        return Inertia::render('Skhpp/Create', ['agendaSurat' => $this->agendaSurat()]);
+    }
+
+    /**
+     * Kategori & Jenis Surat di Agenda Surat tempat SKHPP dicatat saat disahkan
+     * (SKHPP-D untuk dinas, SKHPP-P untuk mitra kerja) — ditampilkan di form.
+     */
+    private function agendaSurat(): array
+    {
+        $cats = \App\Models\Category::with('subCategories')->whereIn('code', ['SKHPP-D', 'SKHPP-P'])->get()->keyBy('code');
+        $out = [];
+        foreach (['dinas' => ['SKHPP-D', 'SKHPP Dinas Militer & PNS'], 'perusahaan' => ['SKHPP-P', 'SKHPP Mitra Kerja / Perusahaan']] as $format => [$code, $default]) {
+            $cat = $cats->get($code);
+            $out[$format] = [
+                'kode' => $code,
+                'nama' => $cat->name ?? $default,
+                'jenis' => $cat ? $cat->subCategories->map(fn ($s) => ['id' => $s->id, 'name' => $s->name])->values() : [],
+            ];
+        }
+        return $out;
     }
 
     /**
@@ -81,6 +100,9 @@ class SkhppController extends Controller
             'nama' => 'required|string',
             'pangkat_korps_nrp' => 'nullable|string',
             'nik' => 'nullable|string',
+            'jenis_identitas' => 'nullable|in:NRP,NIP,NIM,NIK',
+            'letter_sub_category_id' => 'nullable|integer|exists:sub_categories,id',
+            'nomor_manual' => 'nullable|string|max:100',
             'jabatan_pekerjaan' => 'required|string',
             'tempat_lahir' => 'required|string',
             'tanggal_lahir' => 'required|date',
@@ -117,6 +139,8 @@ class SkhppController extends Controller
             'nama' => $request->nama,
             'pangkat_korps_nrp' => $request->pangkat_korps_nrp,
             'nik' => $request->nik,
+            'jenis_identitas' => $request->jenis_identitas,
+            'letter_sub_category_id' => $request->letter_sub_category_id,
             'jabatan_pekerjaan' => $request->jabatan_pekerjaan,
             'tempat_lahir' => $request->tempat_lahir,
             'tanggal_lahir' => $request->tanggal_lahir,
@@ -129,6 +153,9 @@ class SkhppController extends Controller
             'foto_2' => $foto2Path,
             'label_foto_1' => $request->is_pernikahan ? 'Foto Calon Suami' : 'Foto Utama Personel',
             'label_foto_2' => $request->is_pernikahan ? 'Foto Calon Istri' : null,
+            // Nomor manual langsung tampil di draf; saat disahkan dipakai apa adanya (lihat approve()).
+            'nomor_manual' => $request->nomor_manual,
+            'nomor_skhpp' => $request->nomor_manual,
             'status' => 'pending',
             'verification_code' => $code,
             'submitted_by' => $user->id,
@@ -218,7 +245,8 @@ class SkhppController extends Controller
         $this->authorizeSkhppEdit($skhpp);
 
         return Inertia::render('Skhpp/Edit', [
-            'skhpp' => $skhpp
+            'skhpp' => $skhpp,
+            'agendaSurat' => $this->agendaSurat(),
         ]);
     }
 
@@ -237,6 +265,9 @@ class SkhppController extends Controller
             'nama' => 'required|string',
             'pangkat_korps_nrp' => 'nullable|string',
             'nik' => 'nullable|string',
+            'jenis_identitas' => 'nullable|in:NRP,NIP,NIM,NIK',
+            'letter_sub_category_id' => 'nullable|integer|exists:sub_categories,id',
+            'nomor_manual' => 'nullable|string|max:100',
             'jabatan_pekerjaan' => 'required|string',
             'tempat_lahir' => 'required|string',
             'tanggal_lahir' => 'required|date',
@@ -269,6 +300,14 @@ class SkhppController extends Controller
 
         $user = auth()->user();
 
+        // Nomor manual diubah/dihapus: nomor draf ikut, kecuali nomor draf itu hasil booking Admin.
+        if ($request->nomor_manual !== $skhpp->nomor_manual) {
+            if ($request->nomor_manual || $skhpp->nomor_skhpp === $skhpp->nomor_manual) {
+                $skhpp->nomor_skhpp = $request->nomor_manual;
+            }
+            $skhpp->nomor_manual = $request->nomor_manual;
+        }
+
         $skhpp->update([
             'kategori_personel' => $request->kategori_personel,
             'is_pernikahan' => $request->is_pernikahan,
@@ -276,6 +315,8 @@ class SkhppController extends Controller
             'nama' => $request->nama,
             'pangkat_korps_nrp' => $request->pangkat_korps_nrp,
             'nik' => $request->nik,
+            'jenis_identitas' => $request->jenis_identitas,
+            'letter_sub_category_id' => $request->letter_sub_category_id,
             'jabatan_pekerjaan' => $request->jabatan_pekerjaan,
             'tempat_lahir' => $request->tempat_lahir,
             'tanggal_lahir' => $request->tanggal_lahir,
@@ -363,6 +404,9 @@ class SkhppController extends Controller
         } elseif (!empty($skhpp->nomor_urut) && (int)$skhpp->nomor_urut > 0) {
             // PERTAHANKAN NOMOR LAMA JIKA SUDAH ADA / DIATUR ADMIN SEBELUMNYA
             $nextSeq = (int)$skhpp->nomor_urut;
+        } elseif ($skhpp->nomor_manual && preg_match('/\d+/', $skhpp->nomor_manual, $mSeq) && (int)$mSeq[0] > 0) {
+            // NOMOR MANUAL DARI FORM: nomor urutnya diambil dari angka pertama (mis. "R/171/SKHPP/VIII/2026" → 171)
+            $nextSeq = (int)$mSeq[0];
         } else {
             $seqQuery = Skhpp::where('tahun', $currentYear);
             if ($isPerusahaan) {
@@ -385,6 +429,8 @@ class SkhppController extends Controller
 
         if ($request->filled('custom_nomor_skhpp')) {
             $formattedNo = trim($request->custom_nomor_skhpp);
+        } elseif ($skhpp->nomor_manual) {
+            $formattedNo = trim($skhpp->nomor_manual);
         } else {
             // EXACT FORMAT: {$priority} / {$sequence} / {$cleanCode} / {$romanMonth} / {$year}
             $formattedNo = "{$priority} / {$nextSeq} / {$cleanCode} / {$romanMonth} / {$currentYear}";
@@ -409,6 +455,10 @@ class SkhppController extends Controller
                 'sequence' => (string)$nextSeq,
                 'priority' => $priority,
                 'category_id' => $skhppCategory->id,
+                // Jenis Surat yang dipilih di form SKHPP (hanya bila memang milik kategori ini)
+                'sub_category_id' => $skhpp->letter_sub_category_id
+                    ? \App\Models\LetterSubCategory::where('id', $skhpp->letter_sub_category_id)->where('category_id', $skhppCategory->id)->value('id')
+                    : null,
                 'subject' => "SKHPP - {$skhpp->nama} (" . strtoupper($skhpp->kategori_personel) . ") - " . $skhpp->peruntukan,
                 'recipient' => 'Yth. Asintel Dankodaeral V',
                 'date' => now()->toDateString(),

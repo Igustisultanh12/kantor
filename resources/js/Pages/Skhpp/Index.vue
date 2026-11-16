@@ -282,7 +282,7 @@ const formatDate = (dateStr) => {
                                         <div>
                                             <div class="font-bold text-slate-900">{{ skhpp.nama }}</div>
                                             <div class="text-[10px] text-blue-600 font-semibold uppercase">
-                                                {{ skhpp.kategori_personel === 'militer' ? (skhpp.pangkat_korps_nrp || 'MILITER') : ('NIK: ' + (skhpp.nik || '-')) }}
+                                                {{ skhpp.pangkat_korps_nrp || ((skhpp.jenis_identitas || 'NIK') + ': ' + (skhpp.nik || '-')) }}
                                             </div>
                                             <div class="text-[10px] text-slate-400">{{ skhpp.jabatan_pekerjaan }}</div>
                                         </div>
