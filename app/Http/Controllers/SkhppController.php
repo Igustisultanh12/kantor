@@ -73,6 +73,25 @@ class SkhppController extends Controller
      * Kategori & Jenis Surat di Agenda Surat tempat SKHPP dicatat saat disahkan
      * (SKHPP-D untuk dinas, SKHPP-P untuk mitra kerja) — ditampilkan di form.
      */
+    /**
+     * Kolom penomoran draf dari nomor urut manual di form ("120" / "120a").
+     * Kosong = semua dikosongkan supaya saat disahkan memakai nomor otomatis berikutnya.
+     */
+    private function nomorDraf(?string $manual): array
+    {
+        if (!filled($manual)) {
+            return ['nomor_manual' => null, 'nomor_skhpp' => null, 'nomor_urut' => null];
+        }
+        $roman = $this->getRomanMonth(date('n'));
+        return [
+            'nomor_manual' => $manual,
+            'nomor_skhpp' => "R / {$manual} / SKHPP / {$roman} / " . date('Y'),
+            'nomor_urut' => (int) $manual,
+            'bulan_romawi' => $roman,
+            'tahun' => (int) date('Y'),
+        ];
+    }
+
     private function agendaSurat(): array
     {
         $cats = \App\Models\Category::with('subCategories')->whereIn('code', ['SKHPP-D', 'SKHPP-P'])->get()->keyBy('code');
@@ -102,7 +121,7 @@ class SkhppController extends Controller
             'nik' => 'nullable|string',
             'jenis_identitas' => 'nullable|in:NRP,NIP,NIM,NIK',
             'letter_sub_category_id' => 'nullable|integer|exists:sub_categories,id',
-            'nomor_manual' => 'nullable|string|max:100',
+            'nomor_manual' => ['nullable', 'regex:/^\d{1,6}[A-Za-z]{0,2}$/'], // hanya nomor urut, boleh berhuruf: 120 / 120a
             'jabatan_pekerjaan' => 'required|string',
             'tempat_lahir' => 'required|string',
             'tanggal_lahir' => 'required|date',
@@ -153,9 +172,8 @@ class SkhppController extends Controller
             'foto_2' => $foto2Path,
             'label_foto_1' => $request->is_pernikahan ? 'Foto Calon Suami' : 'Foto Utama Personel',
             'label_foto_2' => $request->is_pernikahan ? 'Foto Calon Istri' : null,
-            // Nomor manual langsung tampil di draf; saat disahkan dipakai apa adanya (lihat approve()).
-            'nomor_manual' => $request->nomor_manual,
-            'nomor_skhpp' => $request->nomor_manual,
+            // Nomor urut manual (mis. 120 / 120a) langsung dibooking di draf; dipakai lagi saat disahkan (lihat approve()).
+            ...$this->nomorDraf($request->nomor_manual),
             'status' => 'pending',
             'verification_code' => $code,
             'submitted_by' => $user->id,
@@ -267,7 +285,7 @@ class SkhppController extends Controller
             'nik' => 'nullable|string',
             'jenis_identitas' => 'nullable|in:NRP,NIP,NIM,NIK',
             'letter_sub_category_id' => 'nullable|integer|exists:sub_categories,id',
-            'nomor_manual' => 'nullable|string|max:100',
+            'nomor_manual' => ['nullable', 'regex:/^\d{1,6}[A-Za-z]{0,2}$/'], // hanya nomor urut, boleh berhuruf: 120 / 120a
             'jabatan_pekerjaan' => 'required|string',
             'tempat_lahir' => 'required|string',
             'tanggal_lahir' => 'required|date',
@@ -300,12 +318,9 @@ class SkhppController extends Controller
 
         $user = auth()->user();
 
-        // Nomor manual diubah/dihapus: nomor draf ikut, kecuali nomor draf itu hasil booking Admin.
+        // Nomor urut manual diubah/dihapus: nomor draf ikut (dihapus = kembali ke penomoran otomatis).
         if ($request->nomor_manual !== $skhpp->nomor_manual) {
-            if ($request->nomor_manual || $skhpp->nomor_skhpp === $skhpp->nomor_manual) {
-                $skhpp->nomor_skhpp = $request->nomor_manual;
-            }
-            $skhpp->nomor_manual = $request->nomor_manual;
+            $skhpp->fill($this->nomorDraf($request->nomor_manual));
         }
 
         $skhpp->update([
@@ -404,9 +419,6 @@ class SkhppController extends Controller
         } elseif (!empty($skhpp->nomor_urut) && (int)$skhpp->nomor_urut > 0) {
             // PERTAHANKAN NOMOR LAMA JIKA SUDAH ADA / DIATUR ADMIN SEBELUMNYA
             $nextSeq = (int)$skhpp->nomor_urut;
-        } elseif ($skhpp->nomor_manual && preg_match('/\d+/', $skhpp->nomor_manual, $mSeq) && (int)$mSeq[0] > 0) {
-            // NOMOR MANUAL DARI FORM: nomor urutnya diambil dari angka pertama (mis. "R/171/SKHPP/VIII/2026" → 171)
-            $nextSeq = (int)$mSeq[0];
         } else {
             $seqQuery = Skhpp::where('tahun', $currentYear);
             if ($isPerusahaan) {
@@ -417,6 +429,9 @@ class SkhppController extends Controller
             $lastSeq = $seqQuery->max('nomor_urut') ?? 0;
             $nextSeq = $lastSeq + 1;
         }
+
+        // Nomor urut manual dari form boleh berhuruf (120a): hurufnya dipertahankan selama angkanya masih sama.
+        $seqLabel = ($skhpp->nomor_manual && (int)$skhpp->nomor_manual === $nextSeq) ? $skhpp->nomor_manual : (string)$nextSeq;
 
         $priority = $request->input('priority', 'R'); // R (RAHASIA), B (BIASA), K (KILAT)
 
@@ -429,11 +444,9 @@ class SkhppController extends Controller
 
         if ($request->filled('custom_nomor_skhpp')) {
             $formattedNo = trim($request->custom_nomor_skhpp);
-        } elseif ($skhpp->nomor_manual) {
-            $formattedNo = trim($skhpp->nomor_manual);
         } else {
             // EXACT FORMAT: {$priority} / {$sequence} / {$cleanCode} / {$romanMonth} / {$year}
-            $formattedNo = "{$priority} / {$nextSeq} / {$cleanCode} / {$romanMonth} / {$currentYear}";
+            $formattedNo = "{$priority} / {$seqLabel} / {$cleanCode} / {$romanMonth} / {$currentYear}";
         }
 
         $skhpp->update([
@@ -452,7 +465,7 @@ class SkhppController extends Controller
         try {
             \App\Models\LetterLog::create([
                 'full_number' => $formattedNo,
-                'sequence' => (string)$nextSeq,
+                'sequence' => $seqLabel,
                 'priority' => $priority,
                 'category_id' => $skhppCategory->id,
                 // Jenis Surat yang dipilih di form SKHPP (hanya bila memang milik kategori ini)

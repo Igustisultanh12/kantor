@@ -52,7 +52,7 @@ class SkhppFormFlowTest extends TestCase
     {
         $this->actingAs($this->makeUser())->post('/skhpp', $this->payload([
             'letter_sub_category_id' => 7,
-            'nomor_manual' => 'R / 171 / SKHPP / XI / 2026',
+            'nomor_manual' => '171a',
             'has_pengikut' => true,
             'members' => [
                 ['nama' => 'Ani', 'pangkat_nrp_nik' => '3515', 'jabatan' => 'Anggota'],
@@ -60,19 +60,21 @@ class SkhppFormFlowTest extends TestCase
             ],
         ]))->assertSessionHasNoErrors()->assertRedirect();
 
+        $roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'][date('n') - 1];
+        $nomor = 'R / 171a / SKHPP / ' . $roman . ' / ' . date('Y');
         $skhpp = Skhpp::with('members')->firstOrFail();
         $this->assertSame('NIP', $skhpp->jenis_identitas);
-        $this->assertSame('R / 171 / SKHPP / XI / 2026', $skhpp->nomor_skhpp);
+        $this->assertSame($nomor, $skhpp->nomor_skhpp);
         $this->assertCount(2, $skhpp->members);
 
         $this->actingAs($this->makeUser(['role' => 'komandan']))->post("/skhpp/{$skhpp->id}/approve")->assertRedirect();
 
         $skhpp->refresh();
         $this->assertSame('approved', $skhpp->status);
-        $this->assertSame('R / 171 / SKHPP / XI / 2026', $skhpp->nomor_skhpp);
+        $this->assertSame($nomor, $skhpp->nomor_skhpp);
         $this->assertSame(171, (int) $skhpp->nomor_urut);
         $this->assertDatabaseHas('letter_logs', [
-            'full_number' => 'R / 171 / SKHPP / XI / 2026', 'category_id' => 1, 'sub_category_id' => 7,
+            'full_number' => $nomor, 'sequence' => '171a', 'category_id' => 1, 'sub_category_id' => 7,
         ]);
     }
 

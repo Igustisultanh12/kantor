@@ -160,9 +160,13 @@ const input = 'w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-
                 </div>
 
                 <div>
-                    <label for="skhpp-nomor-manual" :class="label">Nomor SKHPP <span class="font-medium normal-case text-slate-500">(opsional)</span></label>
-                    <input id="skhpp-nomor-manual" type="text" v-model="form.nomor_manual" maxlength="100" placeholder="Contoh: R / 171 / SKHPP / XI / 2026" :class="input" />
-                    <p class="mt-1 text-[11px] text-slate-500">Kosongkan untuk nomor otomatis. Isi hanya jika nomor harus ditentukan manual.</p>
+                    <label for="skhpp-nomor-manual" :class="label">Nomor Urut SKHPP <span class="font-medium normal-case text-slate-500">(opsional)</span></label>
+                    <input id="skhpp-nomor-manual" type="text" v-model.trim="form.nomor_manual" maxlength="8" pattern="[0-9]{1,6}[A-Za-z]{0,2}"
+                        title="Angka saja, boleh diikuti huruf. Contoh: 120 atau 120a" placeholder="Contoh: 120 atau 120a" :class="input" />
+                    <p class="mt-1 text-[11px] text-slate-500">
+                        <template v-if="form.nomor_manual">Nomor menjadi <b class="text-slate-700">R / {{ form.nomor_manual }} / SKHPP / (bulan) / (tahun)</b>.</template>
+                        <template v-else>Cukup angkanya saja, boleh berhuruf (120a). Kosongkan untuk nomor otomatis.</template>
+                    </p>
                     <p v-if="form.errors.nomor_manual" class="mt-1 text-xs text-rose-600 font-medium">{{ form.errors.nomor_manual }}</p>
                 </div>
             </div>
