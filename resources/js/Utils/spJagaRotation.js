@@ -143,6 +143,76 @@ export const buildPerwiraTable = (count, phase, startDay, endDay) => {
     return { rows, columns: col + 1 };
 };
 
+/** Susun tabel lampiran dari daftar [hari, index perwira] (urut hari), dengan aturan kolom yang sama seperti buildPerwiraTable. */
+export const buildPerwiraTableFromDays = (count, days) => {
+    const rows = Array.from({ length: count }, () => Array(7).fill('-'));
+    if (!count) return { rows, columns: 0 };
+    let col = 0;
+    let prev = -1;
+    for (const [d, idx] of days) {
+        if (prev >= 0 && idx <= prev) col++;
+        if (col < 7) rows[idx][col] = String(d).padStart(2, '0');
+        prev = idx;
+    }
+    return { rows, columns: col + 1 };
+};
+
+/** Cocokkan baris perwira lama ke daftar baru (user_id, lalu NRP, lalu nama). -1 = sudah dihapus. */
+const matchRow = (rows, person) => {
+    if (person?.user_id) {
+        const i = rows.findIndex(p => p.user_id && String(p.user_id) === String(person.user_id));
+        if (i >= 0) return i;
+    }
+    return findPerson(rows, person);
+};
+
+/**
+ * Hitung ulang jadwal perwira untuk REVISI di tengah periode.
+ * Hari sebelum effDay: tetap seperti SP yang sudah terbit (perwira yang dihapus tidak lagi tercantum).
+ * Mulai effDay: rotasi resmi dilanjutkan dengan daftar perwira baru, mulai dari perwira berikutnya
+ * (urutan lama) setelah yang jaga pada hari sebelumnya — aturan yang sama seperti saat susunan perwira berubah antar-bulan.
+ *
+ * @param oldRows  baris perwira SP terbit (punya tgl_1..tgl_7)
+ * @param newRows  baris perwira setelah diubah
+ * @returns {{ rows: string[][], columns: number }}
+ */
+export const recomputePerwiraFromDay = (oldRows, newRows, startDay, endDay, effDay) => {
+    const count = newRows.length;
+    const oldDays = [];
+    oldRows.forEach((p, i) => {
+        for (let k = 1; k <= 7; k++) {
+            const d = parseInt(p[`tgl_${k}`], 10);
+            if (d >= startDay && d <= endDay) oldDays.push([d, i]);
+        }
+    });
+    const peta = oldRows.map(p => matchRow(newRows, p));
+
+    // Hari yang sudah dijalani tetap.
+    const days = oldDays
+        .filter(([d]) => d < effDay)
+        .map(([d, i]) => [d, peta[i]])
+        .filter(([, i]) => i >= 0);
+
+    // Perwira pertama mulai effDay: berikutnya (urutan lama) setelah yang jaga kemarin dan masih tercantum.
+    let first = 0;
+    const kemarin = oldDays.find(([d]) => d === effDay - 1);
+    if (kemarin && oldRows.length) {
+        for (let s = 1; s <= oldRows.length; s++) {
+            const kandidat = peta[mod(kemarin[1] + s, oldRows.length)];
+            if (kandidat >= 0) { first = kandidat; break; }
+        }
+    }
+
+    // Pola resmi dimulai dari putaran penuh pada perwira `first`.
+    const pattern = perwiraPattern(count);
+    for (let d = Math.max(effDay, startDay); d <= endDay && count; d++) {
+        days.push([d, pattern[mod(first + d - effDay, pattern.length)]]);
+    }
+
+    days.sort((a, b) => a[0] - b[0]);
+    return buildPerwiraTableFromDays(count, days);
+};
+
 /** Index divisi yang jaga pada tanggal startDate, melanjutkan anchor dari SP sebelumnya. */
 export const resolveDivisiStart = (anchor, divisiCount, startDate) => {
     if (!divisiCount || !anchor?.divisi || !anchor.end_date || !startDate) return null;

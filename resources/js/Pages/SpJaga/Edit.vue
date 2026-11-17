@@ -5,6 +5,7 @@ import { ref, computed } from 'vue';
 import Swal from 'sweetalert2';
 import {
     buildPerwiraTable, buildDivisiTexts, resolvePerwiraPhase, resolveDivisiStart, phaseFromTable, findDivisiOnDay,
+    recomputePerwiraFromDay,
 } from '@/Utils/spJagaRotation';
 
 const props = defineProps({
@@ -205,12 +206,67 @@ const addPerwira = () => {
         tgl_6: '-',
         tgl_7: '-',
     });
+    if (props.revisi) hitungUlangRevisi(true);
 };
 
 const removePerwira = (idx) => {
     if (form.perwiras.length > 1) {
         form.perwiras.splice(idx, 1);
+        if (props.revisi) hitungUlangRevisi(true);
     }
+};
+
+// ---------- Revisi: hitung ulang tanggal perwira mulai hari revisi ----------
+// Jadwal SP yang sudah terbit (dasar revisi); tanggal sebelum hari revisi diambil dari sini.
+const perwiraTerbit = JSON.parse(JSON.stringify(form.perwiras));
+
+const rentangPeriode = () => {
+    let y = parseInt(form.tahun, 10);
+    let m = parseInt(form.bulan, 10);
+    let endDay = new Date(y, m, 0).getDate();
+    if (form.tmt_selesai) {
+        const [ty, tm, td] = form.tmt_selesai.split('-').map(v => parseInt(v, 10));
+        if (ty && tm && td) { y = ty; m = tm; endDay = td; }
+    }
+    const mulai = (form.tmt_mulai || '').split('-').map(v => parseInt(v, 10));
+    const startDay = (mulai[0] === y && mulai[1] === m && mulai[2] <= endDay) ? mulai[2] : 1;
+    return { y, m, startDay, endDay };
+};
+
+/**
+ * Perwira ditambah/dihapus saat revisi → tanggal perwira dihitung ulang dengan rotasi resmi mulai hari ini
+ * (tanggal TTE revisi). Tanggal yang sudah lewat tetap. Revisi sebelum periode dimulai = hitung penuh.
+ * Tanggal anggota mengikuti divisi, jadi tidak berubah saat anggota ditambah/dihapus.
+ */
+const hitungUlangRevisi = (beriTahu = true) => {
+    const { y, m, startDay, endDay } = rentangPeriode();
+    const now = new Date();
+    const hariIni = (now.getFullYear() * 12 + now.getMonth() + 1) * 100 + now.getDate();
+    const awal = (y * 12 + m) * 100 + startDay;
+    const akhir = (y * 12 + m) * 100 + endDay;
+
+    if (hariIni <= awal) {
+        generateJadwalJaga(beriTahu);
+        return;
+    }
+
+    const effDay = hariIni > akhir ? endDay + 1 : now.getDate();
+    const { rows, columns } = recomputePerwiraFromDay(perwiraTerbit, form.perwiras, startDay, endDay, effDay);
+    form.perwiras.forEach((p, r) => {
+        for (let k = 1; k <= 7; k++) p[`tgl_${k}`] = rows[r][k - 1];
+    });
+
+    if (columns > 7) {
+        Swal.fire({ title: 'Kolom Tanggal Tidak Cukup', text: `Dibutuhkan ${columns} kolom tanggal, sedangkan lampiran maksimal 7 kolom. Sesuaikan tanggal secara manual.`, icon: 'warning', confirmButtonColor: '#2563eb' });
+        return;
+    }
+    if (!beriTahu) return;
+    Swal.fire({
+        toast: true, position: 'top-end', timer: 3500, showConfirmButton: false, icon: 'success',
+        title: effDay > endDay
+            ? 'Periode SP sudah selesai; tanggal jaga tidak dihitung ulang.'
+            : `Tanggal jaga perwira dihitung ulang mulai tanggal ${effDay}; tanggal sebelumnya tetap.`,
+    });
 };
 
 const addAnggotaToDivisi = (divIdx) => {
@@ -321,7 +377,9 @@ const generateJadwalJaga = (showNotification = true) => {
 const confirmAndGenerateJadwalJaga = () => {
     Swal.fire({
         title: 'Hitung Ulang Jadwal Jaga?',
-        text: 'Tanggal dinas jaga perwira dan anggota akan dihitung ulang secara otomatis berdasarkan periode TMT. Data tanggal dinas yang ada saat ini akan diperbarui.',
+        text: props.revisi
+            ? 'Tanggal jaga perwira dihitung ulang mulai hari ini dengan rotasi resmi; tanggal yang sudah lewat tetap seperti SP yang terbit.'
+            : 'Tanggal dinas jaga perwira dan anggota akan dihitung ulang secara otomatis berdasarkan periode TMT. Data tanggal dinas yang ada saat ini akan diperbarui.',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonText: 'Ya, Hitung Ulang',
@@ -330,7 +388,8 @@ const confirmAndGenerateJadwalJaga = () => {
         cancelButtonColor: '#64748b',
     }).then((result) => {
         if (result.isConfirmed) {
-            generateJadwalJaga(true);
+            if (props.revisi) hitungUlangRevisi(true);
+            else generateJadwalJaga(true);
         }
     });
 };
@@ -383,6 +442,10 @@ const submit = () => {
                         <p class="text-xs text-amber-900 mt-1 leading-relaxed">
                             Nomor Sprin dan periode tetap sama. Saat disimpan, revisi langsung disahkan dengan TTE Pasops bertanggal hari ini,
                             menggantikan versi sebelumnya, dan notifikasi dikirim ke seluruh personel.
+                        </p>
+                        <p class="text-xs text-amber-900 mt-1 leading-relaxed">
+                            Menambah atau menghapus perwira otomatis menghitung ulang tanggal jaga perwira mulai hari ini dengan rotasi resmi;
+                            tanggal yang sudah lewat tetap. Tanggal anggota mengikuti divisinya, jadi tidak berubah saat anggota ditambah atau dihapus.
                         </p>
                     </div>
                     <div class="space-y-1.5">
