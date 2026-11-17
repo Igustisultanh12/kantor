@@ -542,9 +542,12 @@ class SpJagaController extends Controller
         });
 
         \App\Support\SpJagaRevisiOtp::habiskan($asli);
-        $this->notifPasops($revisi, $user);
 
-        return redirect()->route('sp-jaga.index')->with('success', "Revisi ke-{$revisi->revisi_ke} {$revisi->nomor_sprin} diajukan dan menunggu TTE Pasops.");
+        // Lolos OTP pengaju = disahkan: TTE Pasops langsung tertempel dengan tanggal hari ini.
+        $this->sahkanTte($revisi->load(['perwiras', 'anggotas']), $user);
+        \App\Support\SpJagaNotifier::revisiDisahkan($revisi, $user);
+
+        return redirect()->route('sp-jaga.index')->with('success', "Revisi ke-{$revisi->revisi_ke} {$revisi->nomor_sprin} disahkan dengan TTE Pasops dan notifikasi telah dikirim ke personel.");
     }
 
     /**
@@ -689,28 +692,39 @@ class SpJagaController extends Controller
      */
     public function approveTte(Request $request, $id)
     {
-        $user = auth()->user();
         $spJaga = SpJaga::with(['perwiras', 'anggotas'])->findOrFail($id);
-
-        $pasopsUser = User::where('role', 'pasops')->first()
-                   ?? User::where('name', 'like', '%Roni Sumantri%')->first()
-                   ?? ($user->role === 'pasops' ? $user : null);
-
-        $pName = $pasopsUser ? $pasopsUser->name : 'Roni Sumantri';
-        $pRank = $pasopsUser ? $pasopsUser->pangkat : 'Mayor Laut (P)';
-        $pNrp = ($pasopsUser && $pasopsUser->nrp) ? 'NRP ' . $pasopsUser->nrp : 'NRP 17456/P';
 
         if ($spJaga->status !== 'pending_signature') {
             return back()->with('error', 'SP Jaga ini tidak sedang menunggu TTE.');
         }
 
+        $this->sahkanTte($spJaga, auth()->user());
+
+        return back()->with('success', 'Surat Perintah Jaga berhasil disahkan atas nama Pasiops & Notifikasi WA telah dikirimkan ke seluruh personel.');
+    }
+
+    /**
+     * Tempelkan TTE Pasops (QR) pada SP: status terbit, waktu TTE = sekarang, lalu notifikasi in-app
+     * dan WhatsApp ke seluruh personel. $oleh = yang menjalankan pengesahan (Pasops, atau pengaju revisi).
+     */
+    private function sahkanTte(SpJaga $spJaga, User $oleh): void
+    {
+        $pasopsUser = User::where('role', 'pasops')->first()
+                   ?? User::where('name', 'like', '%Roni Sumantri%')->first()
+                   ?? ($oleh->role === 'pasops' ? $oleh : null);
+
+        $pName = $pasopsUser ? $pasopsUser->name : 'Roni Sumantri';
+        $pRank = $pasopsUser ? $pasopsUser->pangkat : 'Mayor Laut (P)';
+        $pNrp = ($pasopsUser && $pasopsUser->nrp) ? 'NRP ' . $pasopsUser->nrp : 'NRP 17456/P';
+
         $spJaga->update([
-            // Revisi: tanggal surat = tanggal TTE Pasops (nomor tetap sama dengan SP asli).
+            // Revisi: tanggal surat = tanggal TTE (nomor tetap sama dengan SP asli).
             ...($spJaga->isRevisi() ? ['tanggal_surat' => now()->toDateString()] : []),
+            'ttd_type' => 'tte',
             'status' => 'published',
-            'approved_by' => $user->id,
+            'approved_by' => $oleh->id,
             'approved_at' => now(),
-            'penandatangan_user_id' => $pasopsUser?->id ?: $user->id,
+            'penandatangan_user_id' => $pasopsUser?->id ?: $oleh->id,
             'penandatangan_nama' => $pName,
             'penandatangan_pangkat_nrp' => trim("{$pRank} {$pNrp}"),
             'penandatangan_jabatan' => 'Pasiops',
@@ -721,8 +735,6 @@ class SpJagaController extends Controller
 
         // Kirim Broadcast Notifikasi WhatsApp ke Semua Personel Terdaftar
         $this->sendBroadcastWa($spJaga);
-
-        return back()->with('success', 'Surat Perintah Jaga berhasil disahkan atas nama Pasiops & Notifikasi WA telah dikirimkan ke seluruh personel.');
     }
 
     /**

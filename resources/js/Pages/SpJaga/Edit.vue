@@ -338,7 +338,7 @@ const confirmAndGenerateJadwalJaga = () => {
 const submit = () => {
     if (props.revisi) {
         form.post(route('sp-jaga.revisi.store', props.revisi.asli_id), {
-            onSuccess: () => Swal.fire('Revisi Diajukan', `Revisi ke-${props.revisi.revisi_ke} ${props.revisi.nomor_sprin} menunggu TTE Pasops.`, 'success'),
+            onSuccess: () => Swal.fire('Revisi Disahkan', `Revisi ke-${props.revisi.revisi_ke} ${props.revisi.nomor_sprin} sudah disahkan dengan TTE Pasops.`, 'success'),
         });
         return;
     }
@@ -381,8 +381,8 @@ const submit = () => {
                     <div>
                         <h2 class="text-base font-extrabold text-amber-950">Revisi ke-{{ revisi.revisi_ke }} &middot; {{ revisi.nomor_sprin }}</h2>
                         <p class="text-xs text-amber-900 mt-1 leading-relaxed">
-                            Nomor Sprin dan periode tetap sama. Setelah disimpan, revisi menunggu TTE Pasops dan tanggal surat mengikuti tanggal TTE.
-                            SP yang sudah terbit tetap berlaku sampai revisi ini disahkan.
+                            Nomor Sprin dan periode tetap sama. Saat disimpan, revisi langsung disahkan dengan TTE Pasops bertanggal hari ini,
+                            menggantikan versi sebelumnya, dan notifikasi dikirim ke seluruh personel.
                         </p>
                     </div>
                     <div class="space-y-1.5">
@@ -445,7 +445,7 @@ const submit = () => {
 
                         <div class="space-y-1.5">
                             <label class="text-xs font-bold text-slate-700 block">Tanggal Dikeluarkan</label>
-                            <p v-if="revisi" class="p-2.5 text-xs rounded-xl bg-slate-50 border border-slate-200 text-slate-600">Mengikuti tanggal TTE Pasops</p>
+                            <p v-if="revisi" class="p-2.5 text-xs rounded-xl bg-slate-50 border border-slate-200 text-slate-600">Tanggal hari ini (tanggal TTE)</p>
                             <input v-else type="date" v-model="form.tanggal_surat" class="w-full p-2.5 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500" />
                         </div>
                     </div>
@@ -747,7 +747,7 @@ const submit = () => {
                         :disabled="form.processing"
                         class="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition shadow-lg shadow-blue-500/20 active:scale-[0.98] cursor-pointer"
                     >
-                        {{ form.processing ? 'Menyimpan...' : (revisi ? 'Ajukan Revisi ke Pasops' : 'Simpan Perubahan Jadwal') }}
+                        {{ form.processing ? 'Menyimpan...' : (revisi ? 'Simpan & Sahkan Revisi (TTE)' : 'Simpan Perubahan Jadwal') }}
                     </button>
                 </div>
 

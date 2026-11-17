@@ -41,6 +41,26 @@ class SpJagaNotifier
         }
     }
 
+    /** Revisi disahkan otomatis atas nama Pasops (lolos OTP pengaju) → Pasops diberi tahu TTE-nya dipakai. */
+    public static function revisiDisahkan(SpJaga $sp, User $pengaju): void
+    {
+        try {
+            $hasPasopsRole = User::where('role', 'pasops')->exists();
+            $fallback = $hasPasopsRole ? null : User::where('name', 'like', '%Roni Sumantri%')->first();
+            AppNotification::notify(
+                $fallback?->id,
+                $hasPasopsRole ? 'pasops' : null,
+                'TTE Revisi SP Jaga',
+                'Revisi ke-' . $sp->revisi_ke . ' SP Jaga ' . self::periode($sp) . ' (' . $sp->nomor_sprin . ') disahkan dengan TTE Pasops oleh '
+                    . $pengaju->name . ' setelah verifikasi OTP WhatsApp. Alasan: ' . ($sp->revisi_alasan ?: '-') . '.',
+                'info',
+                '/sp-jaga'
+            );
+        } catch (\Throwable $e) {
+            Log::warning('[SP_JAGA_NOTIF] Gagal memberi tahu Pasops soal revisi: ' . $e->getMessage());
+        }
+    }
+
     /** SP Jaga disahkan → seluruh personel diberi tahu (pengingat H-1 di HP ikut terjadwal). */
     public static function published(SpJaga $sp): void
     {

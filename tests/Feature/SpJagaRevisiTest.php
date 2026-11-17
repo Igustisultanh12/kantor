@@ -70,10 +70,12 @@ class SpJagaRevisiTest extends TestCase
         $this->actingAs($this->makeUser(['phone' => '0812']))->postJson("/sp-jaga/{$sp->id}/revisi/otp")->assertForbidden(); // tanpa izin SP Jaga
     }
 
-    public function test_revision_requires_otp_then_waits_for_pasops_and_keeps_the_number(): void
+    public function test_revision_requires_otp_then_is_signed_immediately_and_keeps_the_number(): void
     {
         $pengaju = $this->makeUser(['can_manage_sp_jaga' => true, 'phone' => '081200000001']);
         $sp = $this->spTerbit($pengaju->id);
+
+        $pasops = $this->makeUser(['role' => 'pasops']);
 
         // Tanpa OTP: form & simpan ditolak.
         $this->actingAs($pengaju)->get("/sp-jaga/{$sp->id}/revisi")->assertRedirect('/sp-jaga');
@@ -93,32 +95,27 @@ class SpJagaRevisiTest extends TestCase
         $this->actingAs($pengaju)->post("/sp-jaga/{$sp->id}/revisi", $this->payloadRevisi())->assertSessionHasNoErrors()->assertRedirect('/sp-jaga');
 
         $rev = SpJaga::where('revisi_dari_id', $sp->id)->firstOrFail();
+        // Lolos OTP + simpan = langsung disahkan dengan TTE Pasops hari ini.
         $this->assertSame(1, (int) $rev->revisi_ke);
-        $this->assertSame('pending_signature', $rev->status);
+        $this->assertSame('published', $rev->status);
         $this->assertSame('tte', $rev->ttd_type);
+        $this->assertNotNull($rev->approved_at);
+        $this->assertSame(now()->toDateString(), $rev->tanggal_surat->toDateString());
         $this->assertSame('Sprin/ 50 /XI/2026', $rev->nomor_sprin);
         $this->assertSame('50', (string) $rev->nomor_urut);
         $this->assertSame(11, (int) $rev->bulan);
         $this->assertNotSame($sp->verification_code, $rev->verification_code);
-        $this->assertSame('published', $sp->fresh()->status); // SP lama tetap berlaku sampai revisi disahkan
+        $this->assertTrue(AppNotification::where('role', 'pasops')->where('title', 'TTE Revisi SP Jaga')->exists());
 
-        // Izin OTP hanya sekali pakai; selama revisi menunggu TTE tidak bisa merevisi lagi.
-        $this->actingAs($pengaju)->postJson("/sp-jaga/{$sp->id}/revisi/otp")->assertStatus(422);
+        // Izin OTP hanya sekali pakai: simpan lagi tanpa OTP baru ditolak.
+        $this->actingAs($pengaju)->post("/sp-jaga/{$sp->id}/revisi", $this->payloadRevisi())->assertForbidden();
+        $this->assertSame(1, SpJaga::where('revisi_dari_id', $sp->id)->count());
 
-        // Pasops mengesahkan: terbit dengan tanggal TTE.
-        $pasops = $this->makeUser(['role' => 'pasops']);
-        $this->actingAs($pasops)->post("/sp-jaga/{$rev->id}/approve-tte")->assertRedirect();
-        $rev->refresh();
-        $this->assertSame('published', $rev->status);
-        $this->assertSame(now()->toDateString(), $rev->tanggal_surat->toDateString());
-        $this->assertNotNull($rev->approved_at);
-
-        // Mengesahkan ulang tidak mengubah waktu TTE.
+        // "Setujui & TTE" pada SP yang sudah terbit tidak mengubah waktu TTE.
         $waktu = $rev->approved_at->toDateTimeString();
         $this->travel(2)->hours();
         $this->actingAs($pasops)->post("/sp-jaga/{$rev->id}/approve-tte");
         $this->assertSame($waktu, $rev->fresh()->approved_at->toDateTimeString());
-
         // Daftar: revisi tampil di bawah SP asli, bukan baris tersendiri.
         $this->actingAs($pengaju)->get('/sp-jaga')->assertOk()->assertInertia(fn (Assert $p) => $p
             ->where('spJagas.total', 1)

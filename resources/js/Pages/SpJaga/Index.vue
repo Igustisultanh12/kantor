@@ -113,7 +113,7 @@ const revisiSp = (sp) => {
     Swal.fire({
         title: 'Revisi SP Jaga?',
         html: `<div class="text-left text-xs text-slate-600 space-y-2">
-            <p>SP <b>${sp.nomor_sprin}</b> sudah ditandatangani. Revisi akan dibuat dengan <b>nomor yang sama</b> dan menunggu TTE Pasops.</p>
+            <p>SP <b>${sp.nomor_sprin}</b> sudah ditandatangani. Revisi dibuat dengan <b>nomor yang sama</b> dan langsung disahkan dengan TTE Pasops bertanggal hari ini saat disimpan.</p>
             <p>Untuk keamanan, kode OTP dikirim ke WhatsApp Anda terlebih dahulu.</p>
         </div>`,
         icon: 'question',
