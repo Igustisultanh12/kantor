@@ -106,7 +106,7 @@ const formatDateIndo = (dateStr) => {
                 <!-- 6: Tanggal Pengesahan -->
                 <div class="auth-panel p-3 rounded-2xl space-y-0.5">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tanggal Pengesahan</span>
-                  <p class="text-xs font-semibold text-slate-200">{{ formatDateIndo(skhpp.tanggal_skhpp || skhpp.approved_at) }}</p>
+                  <p class="text-xs font-semibold text-slate-200">{{ skhpp.waktu_tte || formatDateIndo(skhpp.approved_at || skhpp.tanggal_skhpp) }}</p>
                 </div>
 
                 <!-- 7: Peruntukan (Span 2 Full Width) -->

@@ -11,6 +11,8 @@ const props = defineProps({
     spJaga: Object,
     personels: Array,
     rotationAnchor: Object, // titik lanjut rotasi dari SP bulan sebelumnya (null jika tidak ada)
+    // Mode revisi SP yang sudah ditandatangani: { asli_id, nomor_sprin, revisi_ke }. null = koreksi biasa.
+    revisi: { type: Object, default: null },
 });
 
 const monthNames = [
@@ -83,7 +85,8 @@ const form = useForm({
     tmt_mulai: initialTmtMulai,
     tmt_selesai: initialTmtSelesai,
     tanggal_surat: initialTanggalSurat,
-    ttd_type: props.spJaga.ttd_type || 'tte',
+    ttd_type: props.revisi ? 'tte' : (props.spJaga.ttd_type || 'tte'),
+    alasan_revisi: '',
     
     // Perwira Tertua (Pater / Penerima Perintah)
     perwira_tertua_user_id: props.spJaga.perwira_tertua_user_id || '',
@@ -333,6 +336,12 @@ const confirmAndGenerateJadwalJaga = () => {
 };
 
 const submit = () => {
+    if (props.revisi) {
+        form.post(route('sp-jaga.revisi.store', props.revisi.asli_id), {
+            onSuccess: () => Swal.fire('Revisi Diajukan', `Revisi ke-${props.revisi.revisi_ke} ${props.revisi.nomor_sprin} menunggu TTE Pasops.`, 'success'),
+        });
+        return;
+    }
     form.put(route('sp-jaga.update', props.spJaga.id), {
         onSuccess: () => {
             Swal.fire('Berhasil', 'Perubahan jadwal SP Jaga berhasil disimpan.', 'success');
@@ -342,7 +351,7 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="Koreksi SP Jaga - SINDEN" />
+    <Head :title="revisi ? 'Revisi SP Jaga - SINDEN' : 'Koreksi SP Jaga - SINDEN'" />
 
     <AuthenticatedLayout>
         <div class="space-y-6 max-w-6xl mx-auto font-sans pb-12">
@@ -352,9 +361,9 @@ const submit = () => {
                     <div class="flex items-center gap-2 text-xs text-slate-500 mb-1">
                         <Link :href="route('sp-jaga.index')" class="hover:text-blue-600">SP Jaga</Link>
                         <span>/</span>
-                        <span class="text-slate-800 font-bold">Koreksi & Perbarui Jadwal</span>
+                        <span class="text-slate-800 font-bold">{{ revisi ? `Revisi ke-${revisi.revisi_ke}` : 'Koreksi & Perbarui Jadwal' }}</span>
                     </div>
-                    <h1 class="text-2xl font-black text-slate-900 tracking-tight">Koreksi Surat Perintah Jaga</h1>
+                    <h1 class="text-2xl font-black text-slate-900 tracking-tight">{{ revisi ? 'Revisi Surat Perintah Jaga' : 'Koreksi Surat Perintah Jaga' }}</h1>
                 </div>
 
                 <Link 
@@ -366,6 +375,22 @@ const submit = () => {
             </div>
 
             <form @submit.prevent="submit" class="space-y-8">
+
+                <!-- MODE REVISI: keterangan & alasan -->
+                <div v-if="revisi" class="bg-amber-50 p-6 sm:p-8 rounded-3xl border border-amber-200 space-y-4">
+                    <div>
+                        <h2 class="text-base font-extrabold text-amber-950">Revisi ke-{{ revisi.revisi_ke }} &middot; {{ revisi.nomor_sprin }}</h2>
+                        <p class="text-xs text-amber-900 mt-1 leading-relaxed">
+                            Nomor Sprin dan periode tetap sama. Setelah disimpan, revisi menunggu TTE Pasops dan tanggal surat mengikuti tanggal TTE.
+                            SP yang sudah terbit tetap berlaku sampai revisi ini disahkan.
+                        </p>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label for="sp-alasan-revisi" class="text-xs font-bold text-amber-950 block">Alasan Revisi *</label>
+                        <textarea id="sp-alasan-revisi" v-model="form.alasan_revisi" rows="2" maxlength="500" required placeholder="Contoh: Pergantian personel jaga divisi 3 karena pindah tugas" class="w-full p-2.5 text-xs border border-amber-300 rounded-xl bg-white focus:ring-2 focus:ring-amber-500"></textarea>
+                        <p v-if="form.errors.alasan_revisi" class="text-xs text-rose-600 font-medium">{{ form.errors.alasan_revisi }}</p>
+                    </div>
+                </div>
                 
                 <!-- BAGIAN 1: INFORMASI SURAT PERINTAH -->
                 <div class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xs space-y-6">
@@ -376,19 +401,19 @@ const submit = () => {
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div class="space-y-1.5">
                             <label class="text-xs font-bold text-slate-700 block">Bulan Dinas</label>
-                            <select v-model.number="form.bulan" class="w-full p-2.5 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500">
+                            <select v-model.number="form.bulan" :disabled="!!revisi" class="disabled:opacity-60 disabled:cursor-not-allowedw-full p-2.5 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500">
                                 <option v-for="m in monthsList" :key="m.id" :value="m.id">{{ m.name }}</option>
                             </select>
                         </div>
 
                         <div class="space-y-1.5">
                             <label class="text-xs font-bold text-slate-700 block">Tahun</label>
-                            <input type="number" v-model="form.tahun" class="w-full p-2.5 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500" />
+                            <input type="number" v-model="form.tahun" :disabled="!!revisi" class="disabled:opacity-60 disabled:cursor-not-allowedw-full p-2.5 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500" />
                         </div>
 
                         <div class="space-y-1.5">
                             <label class="text-xs font-bold text-slate-700 block">Nomor Urut Sprin</label>
-                            <input type="text" v-model="form.nomor_urut" placeholder="Contoh: 50 atau 50a" class="w-full p-2.5 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500" />
+                            <input type="text" v-model="form.nomor_urut" :disabled="!!revisi" placeholder="Contoh: 50 atau 50a" class="disabled:opacity-60 disabled:cursor-not-allowedw-full p-2.5 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500" />
                         </div>
 
                         <div class="space-y-1.5">
@@ -420,7 +445,8 @@ const submit = () => {
 
                         <div class="space-y-1.5">
                             <label class="text-xs font-bold text-slate-700 block">Tanggal Dikeluarkan</label>
-                            <input type="date" v-model="form.tanggal_surat" class="w-full p-2.5 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500" />
+                            <p v-if="revisi" class="p-2.5 text-xs rounded-xl bg-slate-50 border border-slate-200 text-slate-600">Mengikuti tanggal TTE Pasops</p>
+                            <input v-else type="date" v-model="form.tanggal_surat" class="w-full p-2.5 text-xs border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-blue-500" />
                         </div>
                     </div>
 
@@ -721,7 +747,7 @@ const submit = () => {
                         :disabled="form.processing"
                         class="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition shadow-lg shadow-blue-500/20 active:scale-[0.98] cursor-pointer"
                     >
-                        {{ form.processing ? 'Menyimpan...' : 'Simpan Perubahan Jadwal' }}
+                        {{ form.processing ? 'Menyimpan...' : (revisi ? 'Ajukan Revisi ke Pasops' : 'Simpan Perubahan Jadwal') }}
                     </button>
                 </div>
 

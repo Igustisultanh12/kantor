@@ -323,6 +323,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/sp-jaga/{id}/approve-tte', [SpJagaController::class, 'approveTte'])->middleware('perm:duty_roster.sign')->name('sp-jaga.approve-tte');
     Route::post('/sp-jaga/{id}/upload-manual-signed', [SpJagaController::class, 'uploadManualSigned'])->middleware('perm:duty_roster.sign')->name('sp-jaga.upload-manual-signed');
     Route::get('/sp-jaga/{id}/download-pdf', [SpJagaController::class, 'downloadPdf'])->name('sp-jaga.download-pdf');
+    // Revisi SP Jaga yang sudah ditandatangani: hanya pengaju, wajib OTP WhatsApp, lalu menunggu TTE Pasops.
+    Route::post('/sp-jaga/{id}/revisi/otp', [SpJagaController::class, 'revisiKirimOtp'])->middleware(['perm:duty_roster.manage', 'throttle:6,1'])->name('sp-jaga.revisi.otp');
+    Route::post('/sp-jaga/{id}/revisi/otp/verifikasi', [SpJagaController::class, 'revisiVerifikasiOtp'])->middleware(['perm:duty_roster.manage', 'throttle:10,1'])->name('sp-jaga.revisi.verifikasi');
+    Route::get('/sp-jaga/{id}/revisi', [SpJagaController::class, 'revisiForm'])->middleware('perm:duty_roster.manage')->name('sp-jaga.revisi');
+    Route::post('/sp-jaga/{id}/revisi', [SpJagaController::class, 'revisiStore'])->middleware('perm:duty_roster.manage')->name('sp-jaga.revisi.store');
     
     // --- MODUL ABSENSI RAPAT TERBUKA ---
     Route::resource('rapat-terbuka', OpenMeetingController::class);

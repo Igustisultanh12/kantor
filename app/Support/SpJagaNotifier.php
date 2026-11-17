@@ -30,8 +30,8 @@ class SpJagaNotifier
             AppNotification::notify(
                 $fallback?->id,
                 $hasPasopsRole ? 'pasops' : null,
-                'Pengajuan TTE SP Jaga',
-                'SP Jaga ' . self::periode($sp) . ' (' . ($sp->nomor_sprin ?: 'tanpa nomor') . ') menunggu tanda tangan elektronik Pasops'
+                $sp->revisi_ke ? 'Pengajuan TTE Revisi SP Jaga' : 'Pengajuan TTE SP Jaga',
+                'SP Jaga ' . self::periode($sp) . ' (' . ($sp->nomor_sprin ?: 'tanpa nomor') . ($sp->revisi_ke ? ', revisi ke-' . $sp->revisi_ke : '') . ') menunggu tanda tangan elektronik Pasops'
                     . ($pengaju ? ' — diajukan oleh ' . $pengaju->name : '') . '.',
                 'warning',
                 '/sp-jaga'
@@ -49,9 +49,12 @@ class SpJagaNotifier
                 null,
                 null,
                 'Jadwal jaga terbit',
-                'SP Jaga ' . self::periode($sp) . ' telah disahkan. Cek tanggal jaga Anda di menu Daftar Jaga.',
+                'SP Jaga ' . self::periode($sp) . ($sp->revisi_ke ? ' (revisi ke-' . $sp->revisi_ke . ')' : '') . ' telah disahkan. Cek tanggal jaga Anda di menu Daftar Jaga.',
                 'success',
-                '/sp-jaga'
+                '/sp-jaga',
+                null,
+                null,
+                true // siaran ke seluruh personel (disengaja)
             );
         } catch (\Throwable $e) {
             Log::warning('[SP_JAGA_NOTIF] Gagal membuat notifikasi terbit: ' . $e->getMessage());

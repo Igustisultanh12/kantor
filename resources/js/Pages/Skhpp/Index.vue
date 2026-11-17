@@ -199,8 +199,9 @@ const unggahTtdManual = (skhpp) => {
                     <p class="font-bold text-slate-800">${aman(skhpp.nama)}</p>
                 </div>
                 <div>
-                    <label for="swal-berkas-ttd" class="block font-bold uppercase mb-1 text-slate-700 text-[10px]">Berkas hasil scan / foto (PDF, JPG, PNG — maks. 10 MB)</label>
-                    <input id="swal-berkas-ttd" type="file" accept="application/pdf,image/jpeg,image/png" class="w-full text-xs p-2 border rounded-xl" />
+                    <label for="swal-berkas-ttd" class="block font-bold uppercase mb-1 text-slate-700 text-[10px]">Berkas hasil scan (PDF — maks. 20 MB)</label>
+                    <input id="swal-berkas-ttd" type="file" accept="application/pdf" class="w-full text-xs p-2 border rounded-xl" />
+                    <span class="text-[9px] text-slate-400 mt-1 block">PDF ini otomatis menjadi arsip di Agenda Surat.</span>
                 </div>
                 <div>
                     <label for="swal-tanggal-ttd" class="block font-bold uppercase mb-1 text-slate-700 text-[10px]">Tanggal ditandatangani</label>
@@ -216,7 +217,8 @@ const unggahTtdManual = (skhpp) => {
             const berkas = document.getElementById('swal-berkas-ttd').files[0];
             const tanggal = document.getElementById('swal-tanggal-ttd').value;
             if (!berkas) return Swal.showValidationMessage('Pilih berkas SKHPP yang sudah ditandatangani.');
-            if (berkas.size > 10 * 1024 * 1024) return Swal.showValidationMessage('Ukuran berkas melebihi 10 MB.');
+            if (berkas.type !== 'application/pdf') return Swal.showValidationMessage('Berkas harus berformat PDF.');
+            if (berkas.size > 20 * 1024 * 1024) return Swal.showValidationMessage('Ukuran berkas melebihi 20 MB.');
             if (!tanggal) return Swal.showValidationMessage('Isi tanggal ditandatangani.');
             return { berkas_ttd: berkas, tanggal_ttd: tanggal };
         },

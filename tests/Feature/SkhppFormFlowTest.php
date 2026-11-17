@@ -35,6 +35,10 @@ class SkhppFormFlowTest extends TestCase
             $t->foreignId('sub_category_id')->nullable(); $t->text('subject')->nullable(); $t->string('recipient')->nullable(); $t->date('date')->nullable();
             $t->boolean('is_archived')->default(false); $t->string('number')->nullable(); $t->foreignId('user_id')->nullable(); $t->timestamps();
         });
+        Schema::create('letters', function (Blueprint $t) {
+            $t->id(); $t->string('type'); $t->foreignId('category_id')->nullable(); $t->foreignId('sub_category_id')->nullable(); $t->string('security_level')->nullable();
+            $t->string('letter_number'); $t->string('subject'); $t->date('date')->nullable(); $t->string('issuer')->nullable(); $t->string('file_path'); $t->timestamps();
+        });
         DB::table('categories')->insert(['id' => 1, 'name' => 'SKHPP Dinas Militer & PNS', 'code' => 'SKHPP-D']);
         DB::table('sub_categories')->insert(['id' => 7, 'category_id' => 1, 'name' => 'PNS']);
     }
@@ -80,6 +84,21 @@ class SkhppFormFlowTest extends TestCase
         ]);
     }
 
+    public function test_verification_page_shows_real_tte_time_not_midnight(): void
+    {
+        // Halaman verifikasi memeriksa kode TTD dokumen lebih dulu.
+        Schema::create('signature_requests', function (Blueprint $t) {
+            $t->id(); $t->string('verification_code')->nullable(); $t->timestamps();
+        });
+        $this->actingAs($this->makeUser())->post('/skhpp', $this->payload())->assertSessionHasNoErrors();
+        $skhpp = Skhpp::firstOrFail();
+        $this->travelTo(now()->setTime(14, 37));
+        $this->actingAs($this->makeUser(['role' => 'komandan']))->post("/skhpp/{$skhpp->id}/approve");
+
+        $this->get('/verify-skhpp/' . $skhpp->fresh()->verification_code)->assertOk()
+            ->assertInertia(fn (\Inertia\Testing\AssertableInertia $p) => $p->where('skhpp.waktu_tte', fn ($t) => str_ends_with($t, 'pukul 14.37 WIB')));
+    }
+
     public function test_without_manual_number_the_next_automatic_number_is_used(): void
     {
         $this->actingAs($this->makeUser())->post('/skhpp', $this->payload())->assertSessionHasNoErrors();
@@ -113,7 +132,9 @@ class SkhppFormFlowTest extends TestCase
         $this->assertSame('pending', $skhpp->status);
         $nomor = $skhpp->nomor_skhpp;
         $this->assertStringStartsWith('R / 55b / SKHPP / ', $nomor);
-        $this->assertDatabaseCount('letter_logs', 0);
+        // Sudah masuk Agenda Surat, menunggu PDF.
+        $this->assertDatabaseHas('letter_logs', ['full_number' => $nomor, 'sequence' => '55b', 'is_archived' => false]);
+        $this->assertDatabaseCount('letters', 0);
 
         $this->actingAs($operator)->post("/skhpp/{$skhpp->id}/ttd-manual/unggah", [
             'berkas_ttd' => UploadedFile::fake()->create('ttd.pdf', 50, 'application/pdf'),
@@ -127,7 +148,12 @@ class SkhppFormFlowTest extends TestCase
         $this->assertNull($skhpp->approved_by);
         $this->assertSame($operator->id, (int) $skhpp->signed_uploaded_by);
         Storage::disk('local')->assertExists($skhpp->signed_file);
-        $this->assertDatabaseHas('letter_logs', ['full_number' => $nomor, 'sequence' => '55b']);
+        // Agenda Surat ikut terisi: entri yang sama kini ber-PDF dan arsipnya tersimpan.
+        $this->assertDatabaseCount('letter_logs', 1);
+        $this->assertDatabaseHas('letter_logs', ['full_number' => $nomor, 'sequence' => '55b', 'is_archived' => true]);
+        $arsip = DB::table('letters')->where('letter_number', $nomor)->first();
+        $this->assertNotNull($arsip);
+        Storage::disk('local')->assertExists($arsip->file_path);
         $this->assertArrayNotHasKey('signed_file', $skhpp->toArray());
         $this->assertTrue($skhpp->toArray()['has_signed_file']);
 
@@ -157,5 +183,34 @@ class SkhppFormFlowTest extends TestCase
         $skhpp = Skhpp::firstOrFail();
         $this->assertNull($skhpp->ttd_mode);
         $this->assertNull($skhpp->nomor_skhpp);
+    }
+
+    public function test_backfill_adds_waiting_manual_skhpp_to_the_agenda_once(): void
+    {
+        $this->actingAs($this->makeUser())->post('/skhpp', $this->payload(['ttd_mode' => 'manual']))->assertSessionHasNoErrors();
+        $nomor = Skhpp::firstOrFail()->nomor_skhpp;
+        DB::table('letter_logs')->delete(); // keadaan sebelum sinkronisasi ada
+
+        $migrasi = require database_path('migrations/2026_11_16_180000_backfill_manual_skhpp_into_letter_logs.php');
+        $migrasi->up();
+        $migrasi->up();
+
+        $this->assertDatabaseCount('letter_logs', 1);
+        $this->assertDatabaseHas('letter_logs', ['full_number' => $nomor, 'category_id' => 1, 'is_archived' => false]);
+    }
+
+    public function test_revising_manual_skhpp_number_updates_the_same_agenda_entry(): void
+    {
+        $operator = $this->makeUser();
+        $this->actingAs($operator)->post('/skhpp', $this->payload(['ttd_mode' => 'manual', 'nomor_manual' => '70']))->assertSessionHasNoErrors();
+        $skhpp = Skhpp::firstOrFail();
+        $this->assertDatabaseHas('letter_logs', ['full_number' => $skhpp->nomor_skhpp, 'sequence' => '70']);
+
+        $this->actingAs($operator)->post("/skhpp/{$skhpp->id}/update", $this->payload(['ttd_mode' => 'manual', 'nomor_manual' => '71']))->assertSessionHasNoErrors();
+
+        $skhpp->refresh();
+        $this->assertStringStartsWith('R / 71 / SKHPP / ', $skhpp->nomor_skhpp);
+        $this->assertDatabaseCount('letter_logs', 1);
+        $this->assertDatabaseHas('letter_logs', ['full_number' => $skhpp->nomor_skhpp, 'sequence' => '71', 'is_archived' => false]);
     }
 }

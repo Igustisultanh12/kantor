@@ -10,6 +10,9 @@ class SpJaga extends Model
     use HasFactory;
 
     protected $fillable = [
+        'revisi_dari_id',
+        'revisi_ke',
+        'revisi_alasan',
         'nomor_sprin',
         'nomor_urut',
         'bulan',
@@ -80,6 +83,23 @@ class SpJaga extends Model
     public function anggotas()
     {
         return $this->hasMany(SpJagaAnggota::class, 'sp_jaga_id')->orderBy('divisi_no', 'asc');
+    }
+
+    /** Revisi dari SP ini (hanya pada SP asli), urut revisi ke-1, ke-2, ... */
+    public function revisions()
+    {
+        return $this->hasMany(SpJaga::class, 'revisi_dari_id')->orderBy('revisi_ke', 'asc');
+    }
+
+    /** SP asli yang direvisi (hanya pada baris revisi). */
+    public function induk()
+    {
+        return $this->belongsTo(SpJaga::class, 'revisi_dari_id');
+    }
+
+    public function isRevisi(): bool
+    {
+        return !empty($this->revisi_dari_id);
     }
 
     public function creator()

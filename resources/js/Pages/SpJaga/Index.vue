@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import Swal from 'sweetalert2';
+import axios from 'axios';
 
 const props = defineProps({
     mySchedule: Object,
@@ -70,10 +71,72 @@ const approveTte = (sp) => {
     });
 };
 
+// ---------- Revisi SP yang sudah ditandatangani: OTP WhatsApp → form revisi ----------
+const pesanGalat = (e, cadangan) => e?.response?.data?.pesan || e?.response?.data?.message || cadangan;
+
+const mintaOtp = (sp) => axios.post(route('sp-jaga.revisi.otp', sp.id)).then((r) => r.data.pesan);
+
+const isiOtp = (sp, info) => {
+    Swal.fire({
+        title: 'Verifikasi OTP WhatsApp',
+        html: `<p class="text-xs text-slate-600">${info}</p><p class="text-[11px] text-slate-500 mt-1">Masukkan 6 digit kode untuk merevisi <b>${sp.nomor_sprin}</b>.</p>`,
+        input: 'text',
+        inputAttributes: { inputmode: 'numeric', autocomplete: 'one-time-code', maxlength: 6, 'aria-label': 'Kode OTP' },
+        inputPlaceholder: '••••••',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: 'Verifikasi',
+        denyButtonText: 'Kirim Ulang Kode',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#2563eb',
+        denyButtonColor: '#64748b',
+        showLoaderOnConfirm: true,
+        preConfirm: (kode) => {
+            if (!/^\d{6}$/.test(kode || '')) return Swal.showValidationMessage('Kode OTP berupa 6 digit angka.');
+            return axios.post(route('sp-jaga.revisi.verifikasi', sp.id), { kode })
+                .then((r) => r.data)
+                .catch((e) => Swal.showValidationMessage(pesanGalat(e, 'Kode OTP tidak dapat diverifikasi.')));
+        },
+        allowOutsideClick: () => !Swal.isLoading(),
+    }).then((hasil) => {
+        if (hasil.isConfirmed && hasil.value?.redirect) {
+            router.visit(hasil.value.redirect);
+        } else if (hasil.isDenied) {
+            mintaOtp(sp)
+                .then((pesan) => isiOtp(sp, pesan))
+                .catch((e) => Swal.fire('Gagal', pesanGalat(e, 'Kode OTP gagal dikirim.'), 'error').then(() => isiOtp(sp, info)));
+        }
+    });
+};
+
+const revisiSp = (sp) => {
+    Swal.fire({
+        title: 'Revisi SP Jaga?',
+        html: `<div class="text-left text-xs text-slate-600 space-y-2">
+            <p>SP <b>${sp.nomor_sprin}</b> sudah ditandatangani. Revisi akan dibuat dengan <b>nomor yang sama</b> dan menunggu TTE Pasops.</p>
+            <p>Untuk keamanan, kode OTP dikirim ke WhatsApp Anda terlebih dahulu.</p>
+        </div>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Kirim Kode OTP',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#2563eb',
+        showLoaderOnConfirm: true,
+        preConfirm: () => mintaOtp(sp).catch((e) => Swal.showValidationMessage(pesanGalat(e, 'Kode OTP gagal dikirim.'))),
+        allowOutsideClick: () => !Swal.isLoading(),
+    }).then((hasil) => {
+        if (hasil.isConfirmed && hasil.value) isiOtp(sp, hasil.value);
+    });
+};
+
+const formatTanggal = (val) => val ? new Date(val).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+
 const deleteSp = (sp) => {
     Swal.fire({
         title: 'Hapus SP Jaga?',
-        text: `Surat Perintah ${sp.nomor_sprin} akan dihapus secara permanen.`,
+        text: sp.revisi_ke
+            ? `Revisi ke-${sp.revisi_ke} ${sp.nomor_sprin} akan dihapus secara permanen.`
+            : `Surat Perintah ${sp.nomor_sprin} akan dihapus secara permanen${sp.revisions?.length ? ' beserta seluruh revisinya' : ''}.`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonText: 'Ya, Hapus',
@@ -248,7 +311,8 @@ const formatMonthName = (bulan, tahun) => {
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
-                                <tr v-for="sp in spJagas.data" :key="sp.id" class="hover:bg-slate-50/80 transition">
+                                <template v-for="sp in spJagas.data" :key="sp.id">
+                                <tr class="hover:bg-slate-50/80 transition">
                                     <td class="px-6 py-4 font-bold text-slate-900">
                                         {{ sp.nomor_sprin }}
                                         <span class="block text-[10px] text-slate-400 font-normal">
@@ -284,6 +348,7 @@ const formatMonthName = (bulan, tahun) => {
                                         >
                                             {{ sp.status === 'published' ? 'Terbit' : (sp.status === 'pending_signature' ? 'Menunggu TTE' : 'Draf') }}
                                         </span>
+                                        <span v-if="sp.revisions?.some(r => r.status === 'published')" class="block mt-1 text-[10px] font-bold text-amber-700">Sudah direvisi</span>
                                     </td>
                                     <td class="px-6 py-4 text-right space-x-2">
                                         <!-- Unduh PDF -->
@@ -306,8 +371,19 @@ const formatMonthName = (bulan, tahun) => {
                                             <span>Upload Scan</span>
                                         </button>
 
+                                        <!-- Revisi SP yang sudah ditandatangani (hanya pengaju, wajib OTP) -->
+                                        <button
+                                            v-if="sp.can_revise"
+                                            @click="revisiSp(sp)"
+                                            type="button"
+                                            class="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs inline-flex items-center gap-1 transition cursor-pointer"
+                                            title="Revisi SP yang sudah ditandatangani (verifikasi OTP WhatsApp)"
+                                        >
+                                            <span>Revisi</span>
+                                        </button>
+
                                         <!-- Edit / Koreksi -->
-                                        <Link 
+                                        <Link
                                             v-if="isAdmin || isPasops"
                                             :href="route('sp-jaga.edit', sp.id)"
                                             class="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs inline-flex items-center gap-1 transition"
@@ -327,6 +403,39 @@ const formatMonthName = (bulan, tahun) => {
                                         </button>
                                     </td>
                                 </tr>
+
+                                <!-- Revisi: tampil di bawah SP asli, nomor sama, tanggal TTE berbeda -->
+                                <tr v-for="rev in sp.revisions || []" :key="'rev-' + rev.id" class="bg-amber-50/40 hover:bg-amber-50 transition">
+                                    <td class="pl-10 pr-6 py-3 font-bold text-slate-800">
+                                        <span class="text-amber-600 mr-1" aria-hidden="true">↳</span>{{ rev.nomor_sprin }}
+                                        <span class="ml-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-extrabold uppercase">Revisi ke-{{ rev.revisi_ke }}</span>
+                                        <span class="block text-[10px] text-slate-500 font-normal mt-0.5">
+                                            {{ rev.status === 'published' ? `TTE ${formatTanggal(rev.approved_at)}` : `Diajukan ${formatTanggal(rev.created_at)}` }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-3 text-[11px] text-slate-600" colspan="2">
+                                        <span class="font-semibold text-slate-700">Alasan:</span> {{ rev.revisi_alasan || '-' }}
+                                        <span class="block text-[10px] text-slate-400">Oleh {{ rev.creator?.name || '-' }} &middot; Total {{ rev.total_personel_count }} Personel</span>
+                                    </td>
+                                    <td class="px-6 py-3 text-center">
+                                        <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200">TTE Digital</span>
+                                    </td>
+                                    <td class="px-6 py-3 text-center">
+                                        <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider"
+                                              :class="rev.status === 'published' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'">
+                                            {{ rev.status === 'published' ? 'Terbit' : 'Menunggu TTE' }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-3 text-right space-x-2">
+                                        <a :href="route('sp-jaga.download-pdf', rev.id)" target="_blank" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs inline-flex items-center gap-1 transition" title="Unduh PDF Revisi">
+                                            <span>Unduh PDF</span>
+                                        </a>
+                                        <button v-if="isAdmin" @click="deleteSp(rev)" class="px-2.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs transition cursor-pointer" title="Hapus Revisi">
+                                            <span>Hapus</span>
+                                        </button>
+                                    </td>
+                                </tr>
+                                </template>
                                 <tr v-if="!spJagas.data || spJagas.data.length === 0">
                                     <td colspan="6" class="px-6 py-12 text-center text-slate-400 text-xs">
                                         Belum ada dokumen Surat Perintah Jaga yang diterbitkan.
@@ -353,7 +462,11 @@ const formatMonthName = (bulan, tahun) => {
                                 <span class="px-2.5 py-0.5 bg-amber-500 text-slate-950 font-black text-[9px] uppercase rounded-md tracking-wider">
                                     Memerlukan TTE Pasops
                                 </span>
+                                <span v-if="sp.revisi_ke" class="ml-1 px-2.5 py-0.5 bg-slate-900 text-white font-black text-[9px] uppercase rounded-md tracking-wider">
+                                    Revisi ke-{{ sp.revisi_ke }}
+                                </span>
                                 <h3 class="text-lg font-black text-slate-900">{{ sp.nomor_sprin }}</h3>
+                                <p v-if="sp.revisi_ke" class="text-xs text-slate-700"><b>Alasan revisi:</b> {{ sp.revisi_alasan || '-' }}</p>
                                 <p class="text-xs text-slate-600 font-medium">
                                     Periode: {{ formatMonthName(sp.bulan, sp.tahun) }} (Total {{ sp.total_personel_count }} Personel)
                                 </p>

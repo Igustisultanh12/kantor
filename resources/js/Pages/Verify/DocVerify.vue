@@ -54,6 +54,22 @@ const formatDateIndo = (dateStr) => {
               </p>
             </div>
 
+            <!-- STATUS REVISI (SP Jaga) -->
+            <div v-if="doc.revisi" class="p-3.5 rounded-2xl border text-xs leading-relaxed space-y-1"
+                 :class="doc.revisi.pengganti_ke ? 'bg-amber-500/15 border-amber-400/40 text-amber-100' : 'bg-blue-500/15 border-blue-400/40 text-blue-100'">
+              <p class="font-extrabold uppercase tracking-wide text-[11px]" :class="doc.revisi.pengganti_ke ? 'text-amber-300' : 'text-blue-300'">
+                <template v-if="doc.revisi.pengganti_ke">Status: Sudah Direvisi</template>
+                <template v-else>Status: Revisi ke-{{ doc.revisi.revisi_ke }}</template>
+              </p>
+              <p v-if="doc.revisi.revisi_ke">
+                Dokumen ini adalah revisi ke-{{ doc.revisi.revisi_ke }} dengan nomor yang sama<span v-if="doc.revisi.tte_asli">; TTE dokumen asli {{ doc.revisi.tte_asli }}</span>.
+              </p>
+              <p v-if="doc.revisi.alasan" class="opacity-90">Alasan revisi: {{ doc.revisi.alasan }}</p>
+              <p v-if="doc.revisi.pengganti_ke" class="font-semibold">
+                Tanda tangan dokumen ini sah, tetapi isinya telah digantikan oleh revisi ke-{{ doc.revisi.pengganti_ke }}<span v-if="doc.revisi.pengganti_tte"> (TTE {{ doc.revisi.pengganti_tte }})</span>. Gunakan dokumen revisi terbaru.
+              </p>
+            </div>
+
             <!-- DETAIL HASIL VERIFIKASI -->
             <div class="space-y-3.5">
               <!-- Manifes Kode Unik Berkas (Bukan NRP) -->
@@ -114,7 +130,7 @@ const formatDateIndo = (dateStr) => {
                 <div class="auth-panel p-3 rounded-2xl space-y-0.5">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Waktu Pengesahan TTE</span>
                   <p class="text-xs font-semibold text-slate-200">
-                    {{ formatDateIndo(doc.tanggal_dokumen) }}
+                    {{ doc.waktu_tte || formatDateIndo(doc.tanggal_dokumen) }}
                   </p>
                 </div>
 

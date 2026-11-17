@@ -99,6 +99,7 @@ class SpJagaController extends Controller
             ->where('status', 'published')
             ->orderBy('tahun', 'desc')
             ->orderBy('bulan', 'desc')
+            ->orderBy('id', 'desc') // revisi terbaru (nomor sama) menggantikan SP sebelumnya
             ->first();
 
         $mySchedule = null;
@@ -157,16 +158,25 @@ class SpJagaController extends Controller
         }
 
         // 2. Daftar Semua SP Jaga
-        $query = SpJaga::with(['creator', 'approver', 'perwiras', 'anggotas'])->orderBy('created_at', 'desc');
+        // Daftar utama hanya SP asli; revisinya tampil di bawah masing-masing SP.
+        $query = SpJaga::with(['creator', 'approver', 'perwiras', 'anggotas', 'revisions.creator', 'revisions.approver'])
+            ->whereNull('revisi_dari_id')
+            ->orderBy('created_at', 'desc');
 
         if (!$isAdmin && !$isPasops) {
             $query->where('status', 'published');
         }
 
         $spJagas = $query->paginate(15)->withQueryString();
+        $spJagas->getCollection()->each(function (SpJaga $sp) use ($user, $isAdmin, $isPasops) {
+            if (!$isAdmin && !$isPasops) {
+                $sp->setRelation('revisions', $sp->revisions->where('status', 'published')->values());
+            }
+            $sp->setAttribute('can_revise', $this->alasanTidakBisaRevisi($sp, $user) === null);
+        });
 
         // 3. Antrean Verifikasi Pasops (Khusus Pasops & Admin)
-        $pendingSignatures = SpJaga::with(['creator', 'perwiras', 'anggotas'])
+        $pendingSignatures = SpJaga::with(['creator', 'perwiras', 'anggotas', 'induk'])
             ->where('status', 'pending_signature')
             ->orderBy('created_at', 'desc')
             ->get();
@@ -308,8 +318,20 @@ class SpJagaController extends Controller
             }
         }
 
-        // Simpan Perwira Jaga (Lampiran 1)
-        foreach ($request->perwiras as $idx => $p) {
+        $this->simpanJadwal($spJaga, $request->perwiras, $request->anggotas);
+
+        // Jika TTE, kirim notifikasi ke Pasops
+        if ($spJaga->ttd_type === 'tte') {
+            $this->notifPasops($spJaga, $user);
+        }
+
+        return redirect()->route('sp-jaga.index')->with('success', 'Surat Perintah Jaga berhasil dibuat.');
+    }
+
+    /** Simpan Perwira Jaga (Lampiran 1) & Anggota Jaga Divisi (Lampiran 2) sebuah SP. */
+    private function simpanJadwal(SpJaga $spJaga, array $perwiras, array $anggotas): void
+    {
+        foreach ($perwiras as $idx => $p) {
             SpJagaPerwira::create([
                 'sp_jaga_id' => $spJaga->id,
                 'user_id' => $p['user_id'] ?? null,
@@ -328,8 +350,7 @@ class SpJagaController extends Controller
             ]);
         }
 
-        // Simpan Anggota Jaga Divisi (Lampiran 2)
-        foreach ($request->anggotas as $idx => $a) {
+        foreach ($anggotas as $idx => $a) {
             SpJagaAnggota::create([
                 'sp_jaga_id' => $spJaga->id,
                 'divisi_no' => $idx + 1,
@@ -338,34 +359,192 @@ class SpJagaController extends Controller
                 'anggota_items' => $a['anggota_items'] ?? [],
             ]);
         }
+    }
 
-        // Jika TTE, kirim notifikasi ke Pasops
-        if ($spJaga->ttd_type === 'tte') {
-            \App\Support\SpJagaNotifier::pendingSignature($spJaga, $user);
-            try {
-                $pasops = User::where('role', 'pasops')->whereNotNull('phone')->first()
-                       ?? User::where('name', 'like', '%Roni Sumantri%')->first()
-                       ?? User::where('role', 'admin')->whereNotNull('phone')->first();
+    /** Notifikasi in-app + WhatsApp ke Pasops bahwa SP (atau revisinya) menunggu TTE. */
+    private function notifPasops(SpJaga $spJaga, User $user): void
+    {
+        \App\Support\SpJagaNotifier::pendingSignature($spJaga, $user);
+        try {
+            $pasops = User::where('role', 'pasops')->whereNotNull('phone')->first()
+                   ?? User::where('name', 'like', '%Roni Sumantri%')->first()
+                   ?? User::where('role', 'admin')->whereNotNull('phone')->first();
 
-                if ($pasops && $pasops->phone) {
-                    $bulanNama = strtoupper($this->getNamaBulanIndo($spJaga->bulan) . ' ' . $spJaga->tahun);
-                    $pesan = "*SI SINDEN: PENGAJUAN TTE SP JAGA BARU*\n\n" .
-                             "Mohon izin Pasops, terdapat pengajuan Surat Perintah Jaga Siaga Sintel baru yang memerlukan pemeriksaan & tanda tangan elektronik (TTE):\n\n" .
-                             "- *Nomor Sprin:* " . $spJaga->nomor_sprin . "\n" .
-                             "- *Bulan/Tahun:* " . $bulanNama . "\n" .
-                             "- *Total Personel:* " . $totalPersonel . " Orang\n" .
-                             "- *Operator Pengaju:* " . $user->name . "\n\n" .
-                             "Silakan periksa & bubuhkan TTE digital melalui Portal SINDEN:\n" .
-                             route('sp-jaga.index');
+            if ($pasops && $pasops->phone) {
+                $bulanNama = strtoupper($this->getNamaBulanIndo($spJaga->bulan) . ' ' . $spJaga->tahun);
+                $judul = $spJaga->isRevisi() ? "PENGAJUAN TTE REVISI KE-{$spJaga->revisi_ke} SP JAGA" : 'PENGAJUAN TTE SP JAGA BARU';
+                $pesan = "*SI SINDEN: {$judul}*\n\n" .
+                         "Mohon izin Pasops, terdapat pengajuan Surat Perintah Jaga Siaga Sintel " . ($spJaga->isRevisi() ? 'yang direvisi' : 'baru') . " yang memerlukan pemeriksaan & tanda tangan elektronik (TTE):\n\n" .
+                         "- *Nomor Sprin:* " . $spJaga->nomor_sprin . ($spJaga->isRevisi() ? " (Revisi ke-{$spJaga->revisi_ke})" : '') . "\n" .
+                         "- *Bulan/Tahun:* " . $bulanNama . "\n" .
+                         "- *Total Personel:* " . $spJaga->total_personel_count . " Orang\n" .
+                         ($spJaga->isRevisi() && $spJaga->revisi_alasan ? "- *Alasan Revisi:* " . $spJaga->revisi_alasan . "\n" : '') .
+                         "- *Operator Pengaju:* " . $user->name . "\n\n" .
+                         "Silakan periksa & bubuhkan TTE digital melalui Portal SINDEN:\n" .
+                         route('sp-jaga.index');
 
-                    WhatsappService::sendMessage($pasops->phone, $pesan);
-                }
-            } catch (\Exception $e) {
-                Log::warning("Gagal kirim notif Pasops TTE SP Jaga: " . $e->getMessage());
+                WhatsappService::sendMessage($pasops->phone, $pesan);
             }
+        } catch (\Exception $e) {
+            Log::warning("Gagal kirim notif Pasops TTE SP Jaga: " . $e->getMessage());
+        }
+    }
+
+    /* =====================================================================
+       REVISI SP JAGA YANG SUDAH DITANDATANGANI
+       Syarat: hanya pengaju SP asli, lolos OTP WhatsApp, lalu menunggu TTE Pasops.
+       Revisi = SP baru dengan nomor Sprin sama; tanggalnya mengikuti tanggal TTE.
+       ===================================================================== */
+
+    /** SP asli dari sebuah SP / revisinya. */
+    private function spAsli($id): SpJaga
+    {
+        $sp = SpJaga::findOrFail($id);
+        return $sp->isRevisi() ? SpJaga::findOrFail($sp->revisi_dari_id) : $sp;
+    }
+
+    /** Alasan sebuah SP asli belum bisa direvisi oleh pengguna ini (null = boleh). */
+    private function alasanTidakBisaRevisi(SpJaga $asli, User $user): ?string
+    {
+        if ((int) $asli->created_by !== (int) $user->id) {
+            return 'Hanya pengaju SP Jaga ini yang dapat merevisinya.';
+        }
+        if ($asli->status !== 'published') {
+            return 'SP Jaga ini belum ditandatangani; gunakan Edit untuk mengubahnya.';
+        }
+        if (SpJaga::where('revisi_dari_id', $asli->id)->where('status', '!=', 'published')->exists()) {
+            return 'Masih ada revisi SP Jaga ini yang menunggu TTE Pasops.';
+        }
+        return null;
+    }
+
+    private function authorizeRevisi(SpJaga $asli): void
+    {
+        $alasan = $this->alasanTidakBisaRevisi($asli, auth()->user());
+        abort_if($alasan !== null, str_starts_with($alasan, 'Hanya pengaju') ? 403 : 422, $alasan);
+    }
+
+    /** Versi terbaru yang sudah terbit (SP asli atau revisi terakhir) — dasar isian form revisi. */
+    private function versiTerbit(SpJaga $asli): SpJaga
+    {
+        return SpJaga::with(['perwiras', 'anggotas'])
+            ->where(fn ($q) => $q->where('id', $asli->id)->orWhere('revisi_dari_id', $asli->id))
+            ->where('status', 'published')
+            ->orderByRaw('COALESCE(revisi_ke, 0) desc')
+            ->first() ?? $asli->load(['perwiras', 'anggotas']);
+    }
+
+    /** Langkah 1: kirim OTP WhatsApp ke pengaju. */
+    public function revisiKirimOtp($id)
+    {
+        $asli = $this->spAsli($id);
+        $this->authorizeRevisi($asli);
+
+        $hasil = \App\Support\SpJagaRevisiOtp::kirim(auth()->user(), $asli);
+        return response()->json($hasil, $hasil['ok'] ? 200 : 422);
+    }
+
+    /** Langkah 2: periksa OTP; bila benar, pengaju boleh membuka form revisi. */
+    public function revisiVerifikasiOtp(Request $request, $id)
+    {
+        $request->validate(['kode' => 'required|digits:6']);
+        $asli = $this->spAsli($id);
+        $this->authorizeRevisi($asli);
+
+        $hasil = \App\Support\SpJagaRevisiOtp::verifikasi(auth()->user(), $asli, $request->kode);
+        if ($hasil['ok']) {
+            $hasil['redirect'] = route('sp-jaga.revisi', $asli->id);
+        }
+        return response()->json($hasil, $hasil['ok'] ? 200 : 422);
+    }
+
+    /** Langkah 3: form revisi (form Koreksi dengan nomor terkunci). */
+    public function revisiForm($id)
+    {
+        $asli = $this->spAsli($id);
+        $this->authorizeRevisi($asli);
+        if (!\App\Support\SpJagaRevisiOtp::lolos(auth()->user(), $asli)) {
+            return redirect()->route('sp-jaga.index')->with('error', 'Verifikasi OTP WhatsApp diperlukan sebelum merevisi SP Jaga.');
         }
 
-        return redirect()->route('sp-jaga.index')->with('success', 'Surat Perintah Jaga berhasil dibuat.');
+        $dasar = $this->versiTerbit($asli);
+        $previousSp = DutyRoster::previous($asli);
+
+        return Inertia::render('SpJaga/Edit', [
+            'spJaga' => $dasar,
+            'personels' => User::select('id', 'name', 'pangkat', 'nrp', 'role', 'phone')->orderBy('name', 'asc')->get(),
+            'rotationAnchor' => $previousSp ? DutyRoster::rotationAnchor($previousSp) : null,
+            'revisi' => [
+                'asli_id' => $asli->id,
+                'nomor_sprin' => $asli->nomor_sprin,
+                'revisi_ke' => (int) SpJaga::where('revisi_dari_id', $asli->id)->max('revisi_ke') + 1,
+            ],
+        ]);
+    }
+
+    /** Langkah 4: simpan revisi sebagai SP baru (nomor sama) yang menunggu TTE Pasops. */
+    public function revisiStore(Request $request, $id)
+    {
+        $asli = $this->spAsli($id);
+        $this->authorizeRevisi($asli);
+        $user = auth()->user();
+        abort_unless(\App\Support\SpJagaRevisiOtp::lolos($user, $asli), 403, 'Verifikasi OTP WhatsApp diperlukan sebelum merevisi SP Jaga.');
+
+        $request->validate([
+            'alasan_revisi' => 'required|string|max:500',
+            'tmt_mulai' => 'required|date',
+            'tmt_selesai' => 'required|date',
+            'perwiras' => 'required|array|min:1',
+            'anggotas' => 'required|array|min:1',
+        ]);
+
+        $totalPersonel = count($request->perwiras);
+        foreach ($request->anggotas as $div) {
+            $totalPersonel += count($div['anggota_items'] ?? []);
+        }
+
+        $firstPerwira = $request->perwiras[0] ?? [];
+
+        $revisi = DB::transaction(function () use ($request, $asli, $user, $totalPersonel, $firstPerwira) {
+            $revisiKe = (int) SpJaga::where('revisi_dari_id', $asli->id)->lockForUpdate()->max('revisi_ke') + 1;
+
+            $revisi = SpJaga::create([
+                'revisi_dari_id' => $asli->id,
+                'revisi_ke' => $revisiKe,
+                'revisi_alasan' => trim($request->alasan_revisi),
+                // Nomor & periode tetap mengikuti SP asli.
+                'nomor_sprin' => $asli->nomor_sprin,
+                'nomor_urut' => $asli->nomor_urut,
+                'bulan' => $asli->bulan,
+                'tahun' => $asli->tahun,
+                'bulan_romawi' => $asli->bulan_romawi,
+                'tmt_mulai' => $request->tmt_mulai,
+                'tmt_selesai' => $request->tmt_selesai,
+                // Sementara; diganti tanggal TTE saat Pasops mengesahkan.
+                'tanggal_surat' => now()->toDateString(),
+                'perwira_tertua_user_id' => $request->perwira_tertua_user_id ?: ($firstPerwira['user_id'] ?? null),
+                'perwira_tertua_nama' => $request->perwira_tertua_nama ?: ($firstPerwira['nama'] ?? $asli->perwira_tertua_nama),
+                'perwira_tertua_pangkat_nrp' => $request->perwira_tertua_pangkat_nrp ?: $asli->perwira_tertua_pangkat_nrp,
+                'perwira_tertua_jabatan' => $request->perwira_tertua_jabatan ?: $asli->perwira_tertua_jabatan,
+                'total_personel_count' => $totalPersonel,
+                'total_personel_terbilang' => $this->terbilangAngka($totalPersonel),
+                'ttd_type' => 'tte',
+                'status' => 'pending_signature',
+                'verification_code' => 'TTE-SPJAGA-' . $asli->tahun . str_pad($asli->bulan, 2, '0', STR_PAD_LEFT) . '-R' . $revisiKe . '-' . strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 6)),
+                'penandatangan_nama' => $asli->penandatangan_nama,
+                'penandatangan_pangkat_nrp' => $asli->penandatangan_pangkat_nrp,
+                'penandatangan_jabatan' => $asli->penandatangan_jabatan,
+                'created_by' => $user->id,
+            ]);
+
+            $this->simpanJadwal($revisi, $request->perwiras, $request->anggotas);
+            return $revisi;
+        });
+
+        \App\Support\SpJagaRevisiOtp::habiskan($asli);
+        $this->notifPasops($revisi, $user);
+
+        return redirect()->route('sp-jaga.index')->with('success', "Revisi ke-{$revisi->revisi_ke} {$revisi->nomor_sprin} diajukan dan menunggu TTE Pasops.");
     }
 
     /**
@@ -446,6 +625,18 @@ class SpJagaController extends Controller
             'ttd_type' => $request->ttd_type,
         ];
 
+        // Koreksi pada baris revisi: nomor, periode, dan jalur TTE tetap mengikuti SP asli.
+        if ($spJaga->isRevisi() && ($asli = SpJaga::find($spJaga->revisi_dari_id))) {
+            $updateData = array_merge($updateData, [
+                'nomor_sprin' => $asli->nomor_sprin,
+                'nomor_urut' => $asli->nomor_urut,
+                'bulan' => $asli->bulan,
+                'tahun' => $asli->tahun,
+                'bulan_romawi' => $asli->bulan_romawi,
+                'ttd_type' => 'tte',
+            ]);
+        }
+
         try {
             $spJaga->update($updateData);
         } catch (\Throwable $e) {
@@ -509,7 +700,13 @@ class SpJagaController extends Controller
         $pRank = $pasopsUser ? $pasopsUser->pangkat : 'Mayor Laut (P)';
         $pNrp = ($pasopsUser && $pasopsUser->nrp) ? 'NRP ' . $pasopsUser->nrp : 'NRP 17456/P';
 
+        if ($spJaga->status !== 'pending_signature') {
+            return back()->with('error', 'SP Jaga ini tidak sedang menunggu TTE.');
+        }
+
         $spJaga->update([
+            // Revisi: tanggal surat = tanggal TTE Pasops (nomor tetap sama dengan SP asli).
+            ...($spJaga->isRevisi() ? ['tanggal_surat' => now()->toDateString()] : []),
             'status' => 'published',
             'approved_by' => $user->id,
             'approved_at' => now(),
@@ -662,10 +859,14 @@ class SpJagaController extends Controller
     public function destroy($id)
     {
         $spJaga = SpJaga::findOrFail($id);
-        if ($spJaga->signed_file_path && Storage::disk('public')->exists($spJaga->signed_file_path)) {
-            Storage::disk('public')->delete($spJaga->signed_file_path);
+        // Menghapus SP asli ikut menghapus seluruh revisinya.
+        $daftar = $spJaga->isRevisi() ? collect([$spJaga]) : SpJaga::where('revisi_dari_id', $spJaga->id)->get()->push($spJaga);
+        foreach ($daftar as $sp) {
+            if ($sp->signed_file_path && Storage::disk('public')->exists($sp->signed_file_path)) {
+                Storage::disk('public')->delete($sp->signed_file_path);
+            }
+            $sp->delete();
         }
-        $spJaga->delete();
         return back()->with('success', 'Data SP Jaga berhasil dihapus.');
     }
 
@@ -682,6 +883,7 @@ class SpJagaController extends Controller
             $tahunAngka = (int)$tmtCarbon->format('Y');
         }
         $namaBulanTahun = strtoupper($this->getNamaBulanIndo($blnAngka) . ' ' . $tahunAngka);
+        $nomorLabel = $spJaga->nomor_sprin . ($spJaga->isRevisi() ? ' Revisi ke-' . $spJaga->revisi_ke : '');
         $notifiedPhones = [];
 
         // 1. Broadcast ke Perwira Jaga
@@ -703,7 +905,7 @@ class SpJagaController extends Controller
                 $pesan = "*DETASEMEN INTELIJEN KODAERAL V*\n" .
                          "*PEMBERITAHUAN JADWAL JAGA SIAGA SINTEL*\n\n" .
                          "Yth. {$perwira->pangkat_korps} {$perwira->nama} (NRP: {$perwira->nrp})\n\n" .
-                         "Diberitahukan bahwa Surat Perintah Jaga Siaga Sintel Bulan {$namaBulanTahun} ({$spJaga->nomor_sprin}) telah resmi diterbitkan.\n\n" .
+                         "Diberitahukan bahwa Surat Perintah Jaga Siaga Sintel Bulan {$namaBulanTahun} ({$nomorLabel}) telah resmi diterbitkan.\n\n" .
                          "*Rincian Jadwal Jaga Anda:*\n" .
                          "- *Peran:* Perwira Siaga Sintel\n" .
                          "- *Tanggal Jaga:* {$tanggalText}\n" .
@@ -730,7 +932,7 @@ class SpJagaController extends Controller
                     $pesan = "*DETASEMEN INTELIJEN KODAERAL V*\n" .
                              "*PEMBERITAHUAN JADWAL JAGA SIAGA SINTEL*\n\n" .
                              "Yth. " . ($item['pangkat_korps'] ?? '') . " " . ($item['nama'] ?? '') . " (NRP/NIP: " . ($item['nrp_nip'] ?? '-') . ")\n\n" .
-                             "Diberitahukan bahwa Surat Perintah Jaga Siaga Sintel Bulan {$namaBulanTahun} ({$spJaga->nomor_sprin}) telah resmi diterbitkan.\n\n" .
+                             "Diberitahukan bahwa Surat Perintah Jaga Siaga Sintel Bulan {$namaBulanTahun} ({$nomorLabel}) telah resmi diterbitkan.\n\n" .
                              "*Rincian Jadwal Jaga Anda:*\n" .
                              "- *Peran:* {$roleLabel}\n" .
                              "- *Divisi:* Kelompok Divisi {$divisi->divisi_no}\n" .

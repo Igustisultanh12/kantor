@@ -105,10 +105,36 @@ class DocVerificationController extends Controller
             ];
             $blnNamaBaku = $bulanIndoList[(int)$spJaga->bulan] ?? 'Januari';
             $namaBulanTahun = strtoupper("{$blnNamaBaku} {$spJaga->tahun}");
+
+            // Status revisi: QR revisi menunjukkan revisi ke-berapa; QR dokumen lama menunjukkan sudah direvisi.
+            $revisiInfo = null;
+            if ($spJaga->revisi_dari_id) {
+                $asli = SpJaga::find($spJaga->revisi_dari_id);
+                $revisiInfo = [
+                    'jenis' => 'revisi',
+                    'revisi_ke' => (int) $spJaga->revisi_ke,
+                    'alasan' => $spJaga->revisi_alasan,
+                    'tte_asli' => \App\Support\WaktuTte::teks($asli?->approved_at),
+                ];
+            }
+            $asliId = $spJaga->revisi_dari_id ?: $spJaga->id;
+            $pengganti = SpJaga::where('revisi_dari_id', $asliId)
+                ->where('status', 'published')
+                ->where('revisi_ke', '>', (int) ($spJaga->revisi_ke ?? 0))
+                ->orderByDesc('revisi_ke')
+                ->first();
+            if ($pengganti) {
+                $revisiInfo = array_merge($revisiInfo ?? [], [
+                    'jenis' => $spJaga->revisi_dari_id ? 'revisi_digantikan' : 'asli_digantikan',
+                    'pengganti_ke' => (int) $pengganti->revisi_ke,
+                    'pengganti_tte' => \App\Support\WaktuTte::teks($pengganti->approved_at),
+                ]);
+            }
             $docData = (object) [
                 'id' => $spJaga->id,
                 'verification_code' => $spJaga->verification_code,
-                'document_title' => 'SURAT PERINTAH DINAS JAGA SIAGA SINTEL',
+                'document_title' => 'SURAT PERINTAH DINAS JAGA SIAGA SINTEL' . ($spJaga->revisi_dari_id ? ' (REVISI KE-' . (int) $spJaga->revisi_ke . ')' : ''),
+                'revisi' => $revisiInfo,
                 'letter_number' => $spJaga->nomor_sprin,
                 'subject' => "Dinas Jaga Siaga Sintel Bulan {$namaBulanTahun}",
                 'peruntukan' => "Pelaksanaan Tugas Jaga Siaga Sintel Denintel Kodaeral V Periode Bulan {$namaBulanTahun}",
@@ -116,6 +142,8 @@ class DocVerificationController extends Controller
                 'pangkat_korps_nrp' => "$danunitPangkat / $danunitNrp",
                 'jabatan_pekerjaan' => $danunitJabatan,
                 'tanggal_dokumen' => $spJaga->approved_at ?: $spJaga->tanggal_surat,
+                // TTE: jam pengesahan Pasops; TTD basah (tanpa approved_at): tanggal surat saja, tanpa jam.
+                'waktu_tte' => \App\Support\WaktuTte::teks($spJaga->ttd_type === 'tte' ? $spJaga->approved_at : null, $spJaga->tanggal_surat),
                 'status' => ($spJaga->status === 'published') ? 'approved' : 'pending',
                 'is_valid' => ($spJaga->status === 'published'),
                 'signer_name' => "a.n. KOMANDAN DETASEMEN INTELIJEN KODAERAL V",
@@ -221,6 +249,7 @@ class DocVerificationController extends Controller
                 'pangkat_korps_nrp' => $applicantIdentity,
                 'jabatan_pekerjaan' => $applicantPosition,
                 'tanggal_dokumen' => $signedDate,
+                'waktu_tte' => \App\Support\WaktuTte::teks($signedDate),
                 'status' => $sigReq->status,
                 'is_valid' => $isValid,
                 'signer_name' => $signerName,

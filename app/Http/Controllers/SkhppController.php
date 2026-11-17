@@ -8,6 +8,7 @@ use App\Models\SignatureRequest;
 use App\Models\User;
 use App\Models\AppNotification;
 use App\Services\WhatsappService;
+use App\Support\WaktuTte;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
@@ -326,6 +327,9 @@ class SkhppController extends Controller
 
         $user = auth()->user();
 
+        // Nomor yang sudah tercatat di Agenda Surat untuk SKHPP TTD manual ini, dicatat sebelum nomornya berubah.
+        $nomorAgendaLama = $skhpp->ttd_mode === 'manual' ? $skhpp->nomor_skhpp : null;
+
         // Nomor urut manual diubah/dihapus: nomor draf ikut (dihapus = kembali ke penomoran otomatis).
         if ($request->nomor_manual !== $skhpp->nomor_manual) {
             $skhpp->fill($this->nomorDraf($request->nomor_manual));
@@ -374,7 +378,7 @@ class SkhppController extends Controller
 
         // Pilihan TTE / TTD manual di form Revisi (permintaan tanpa ttd_mode, mis. dari aplikasi lama, tidak mengubah apa pun).
         if ($request->ttd_mode === 'manual') {
-            $nomor = $this->bookingTtdManual($skhpp, $request);
+            $nomor = $this->bookingTtdManual($skhpp, $request, $nomorAgendaLama);
             return redirect()->route('skhpp.index')->with('success', "Data SKHPP diperbarui untuk TTD manual dengan nomor {$nomor}. Cetak, mintakan tanda tangan Komandan, lalu unggah hasilnya.");
         }
         if ($request->ttd_mode === 'tte' && $skhpp->ttd_mode === 'manual') {
@@ -507,24 +511,7 @@ class SkhppController extends Controller
         ], $extra));
 
         // SINKRONISASI OTOMATIS KE BUKU AGENDA SURAT SINDEN (LETTER_LOGS)
-        try {
-            \App\Models\LetterLog::create([
-                'full_number' => $formattedNo,
-                'sequence' => $seqLabel,
-                'priority' => $priority,
-                'category_id' => $skhppCategory->id,
-                // Jenis Surat yang dipilih di form SKHPP (hanya bila memang milik kategori ini)
-                'sub_category_id' => $skhpp->letter_sub_category_id
-                    ? \App\Models\LetterSubCategory::where('id', $skhpp->letter_sub_category_id)->where('category_id', $skhppCategory->id)->value('id')
-                    : null,
-                'subject' => "SKHPP - {$skhpp->nama} (" . strtoupper($skhpp->kategori_personel) . ") - " . $skhpp->peruntukan,
-                'recipient' => 'Yth. Asintel Dankodaeral V',
-                'date' => now()->toDateString(),
-                'is_archived' => false,
-            ]);
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::warning("Gagal auto-sync SKHPP ke LetterLog: " . $e->getMessage());
-        }
+        $this->catatAgenda($skhpp, $formattedNo, $seqLabel, $priority, $skhppCategory);
 
         // SINKRONISASI OTOMATIS KE FITUR TRACKING PENGAJUAN SECURITY CLEARANCE (SC)
         // Tahap 1 (Pengisian RH), 2 (Pengecekan Dokumen), 3 (Cetak SKHPP), dan 4 (Menunggu TTD) otomatis terlewati!
@@ -622,6 +609,74 @@ class SkhppController extends Controller
         return $formattedNo;
     }
 
+    /**
+     * Catat (atau perbarui) nomor SKHPP di Agenda Surat. Entri baru berstatus "belum ada PDF"
+     * (is_archived = false) sampai arsipnya diunggah. $nomorLama: nomor sebelumnya bila nomornya berubah,
+     * supaya entri lama diperbarui dan tidak tertinggal sebagai nomor ganda.
+     */
+    private function catatAgenda(Skhpp $skhpp, string $formattedNo, string $seqLabel, string $priority, \App\Models\Category $category, ?string $nomorLama = null): ?\App\Models\LetterLog
+    {
+        try {
+            $log = \App\Models\LetterLog::where('category_id', $category->id)
+                ->whereIn('full_number', array_filter([$formattedNo, $nomorLama]))
+                ->orderByRaw('full_number = ? desc', [$formattedNo])
+                ->first() ?? new \App\Models\LetterLog(['is_archived' => false, 'user_id' => auth()->id()]);
+
+            $log->fill([
+                'full_number' => $formattedNo,
+                'sequence' => $seqLabel,
+                'priority' => $priority,
+                'category_id' => $category->id,
+                // Jenis Surat yang dipilih di form SKHPP (hanya bila memang milik kategori ini)
+                'sub_category_id' => $skhpp->letter_sub_category_id
+                    ? \App\Models\LetterSubCategory::where('id', $skhpp->letter_sub_category_id)->where('category_id', $category->id)->value('id')
+                    : null,
+                'subject' => "SKHPP - {$skhpp->nama} (" . strtoupper($skhpp->kategori_personel) . ") - " . $skhpp->peruntukan,
+                'recipient' => 'Yth. Asintel Dankodaeral V',
+                'date' => ($skhpp->tanggal_skhpp ?? now())->toDateString(),
+            ])->save();
+
+            return $log;
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Gagal auto-sync SKHPP ke LetterLog: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * SKHPP bertanda tangan manual diunggah: simpan juga sebagai arsip surat keluar dan
+     * tandai entri Agenda Surat-nya sudah ber-PDF (sama seperti unggah PDF dari Agenda Surat).
+     */
+    private function arsipkanTtdManual(Skhpp $skhpp, string $signedPath): void
+    {
+        try {
+            $log = \App\Models\LetterLog::where('full_number', $skhpp->nomor_skhpp)->latest('id')->first();
+            if (!$log || $log->is_archived) {
+                return;
+            }
+
+            // Salinan terpisah di folder arsip, supaya menghapus arsip tidak menghilangkan berkas di SKHPP.
+            $arsipPath = 'archives/' . basename($signedPath);
+            Storage::disk('local')->copy($signedPath, $arsipPath);
+
+            \App\Models\Letter::create([
+                'type' => 'keluar',
+                'category_id' => $log->category_id,
+                'sub_category_id' => $log->sub_category_id,
+                'letter_number' => $log->full_number,
+                'subject' => Str::limit($log->subject, 250, ''),
+                'date' => $log->date,
+                'file_path' => $arsipPath,
+                'security_level' => $log->priority === 'B' ? 'biasa' : 'rahasia',
+                'issuer' => 'Internal Denintel',
+            ]);
+
+            $log->update(['is_archived' => true]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Gagal mengarsipkan SKHPP TTD manual ke Agenda Surat: " . $e->getMessage());
+        }
+    }
+
     /** TTD manual hanya untuk SKHPP yang belum terbit, oleh pengajunya atau Admin. */
     private function authorizeTtdManual(Skhpp $skhpp): void
     {
@@ -644,9 +699,12 @@ class SkhppController extends Controller
     }
 
     /** Tandai SKHPP menunggu tanda tangan basah dan booking nomornya (dipakai tombol di daftar & pilihan di form). */
-    private function bookingTtdManual(Skhpp $skhpp, Request $request): string
+    private function bookingTtdManual(Skhpp $skhpp, Request $request, ?string $nomorLama = null): string
     {
-        [$nextSeq, , $formattedNo, , , $romanMonth, $year] = $this->nomorResmi($skhpp, $request);
+        // Nomor yang sebelumnya sudah tercatat di Agenda Surat untuk SKHPP ini (bila pernah diajukan TTD manual).
+        $nomorLama ??= $skhpp->getOriginal('ttd_mode') === 'manual' ? $skhpp->getOriginal('nomor_skhpp') : null;
+
+        [$nextSeq, $seqLabel, $formattedNo, $priority, $category, $romanMonth, $year] = $this->nomorResmi($skhpp, $request);
 
         $skhpp->update([
             'ttd_mode' => 'manual',
@@ -657,6 +715,9 @@ class SkhppController extends Controller
             'bulan_romawi' => $romanMonth,
             'tahun' => $year,
         ]);
+
+        // Langsung masuk Agenda Surat dengan status belum ada PDF; terisi otomatis saat TTD diunggah.
+        $this->catatAgenda($skhpp, $formattedNo, $seqLabel, $priority, $category, $nomorLama);
 
         return $formattedNo;
     }
@@ -672,7 +733,7 @@ class SkhppController extends Controller
         abort_unless($skhpp->ttd_mode === 'manual', 422, 'SKHPP ini belum diajukan TTD manual.');
 
         $request->validate([
-            'berkas_ttd' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'berkas_ttd' => 'required|file|mimes:pdf|max:20480', // PDF saja: berkas ini juga menjadi arsip di Agenda Surat
             'tanggal_ttd' => 'required|date|before_or_equal:today',
         ]);
 
@@ -686,6 +747,8 @@ class SkhppController extends Controller
             'signed_uploaded_by' => auth()->id(),
             'signed_uploaded_at' => now(),
         ]);
+
+        $this->arsipkanTtdManual($skhpp, $path);
 
         return back()->with('success', "SKHPP bertanda tangan berhasil diunggah. SKHPP terbit dengan nomor {$formattedNo} (tersinkron ke Agenda Surat).");
     }
@@ -840,6 +903,12 @@ class SkhppController extends Controller
             $skhpp->signer_name = 'a.n. KOMANDAN DETASEMEN INTELIJEN KODAERAL V';
             $skhpp->signer_title = "{$aRank} {$aName} NRP {$aNrp}";
         }
+
+        // Waktu TTE memakai jam pengesahan sebenarnya (tanggal_skhpp hanya tanggal → dulu tampil 00.00).
+        // TTD manual: tanggal ditandatangani di kertas, tanpa jam.
+        $skhpp->setAttribute('waktu_tte', $skhpp->ttd_mode === 'manual'
+            ? WaktuTte::teks(null, $skhpp->tanggal_skhpp)
+            : WaktuTte::teks($skhpp->approved_at, $skhpp->tanggal_skhpp));
 
         // Data akun pemberi persetujuan/pengaju tidak dikirim ke halaman publik (audit K03).
         $skhpp->unsetRelation('approver')->unsetRelation('submitter');
