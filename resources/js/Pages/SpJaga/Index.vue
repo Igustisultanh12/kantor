@@ -382,22 +382,33 @@ const formatMonthName = (bulan, tahun) => {
                                             <span>Revisi</span>
                                         </button>
 
-                                        <!-- Edit / Koreksi -->
-                                        <Link
-                                            v-if="isAdmin || isPasops"
-                                            :href="route('sp-jaga.edit', sp.id)"
-                                            class="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs inline-flex items-center gap-1 transition"
-                                            title="Koreksi Jadwal"
-                                        >
-                                            <span>Edit</span>
-                                        </Link>
+                                        <!-- Edit / Koreksi: terkunci (abu-abu) setelah SP ditandatangani; perubahan lewat Revisi -->
+                                        <template v-if="isAdmin || isPasops">
+                                            <span
+                                                v-if="sp.status === 'published'"
+                                                class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-400 font-bold text-xs inline-flex items-center gap-1 cursor-not-allowed select-none"
+                                                title="SP sudah ditandatangani — gunakan Revisi"
+                                                aria-disabled="true"
+                                            >
+                                                <span>Edit</span>
+                                            </span>
+                                            <Link
+                                                v-else
+                                                :href="route('sp-jaga.edit', sp.id)"
+                                                class="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs inline-flex items-center gap-1 transition"
+                                                title="Koreksi Jadwal"
+                                            >
+                                                <span>Edit</span>
+                                            </Link>
+                                        </template>
 
-                                        <!-- Hapus (Admin) -->
-                                        <button 
+                                        <!-- Hapus (Admin): terkunci setelah SP ditandatangani -->
+                                        <button
                                             v-if="isAdmin"
                                             @click="deleteSp(sp)"
-                                            class="px-2.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs transition cursor-pointer"
-                                            title="Hapus SP Jaga"
+                                            :disabled="sp.status === 'published'"
+                                            class="px-2.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs transition cursor-pointer disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                                            :title="sp.status === 'published' ? 'SP sudah ditandatangani — tidak dapat dihapus' : 'Hapus SP Jaga'"
                                         >
                                             <span>Hapus</span>
                                         </button>
@@ -430,7 +441,10 @@ const formatMonthName = (bulan, tahun) => {
                                         <a :href="route('sp-jaga.download-pdf', rev.id)" target="_blank" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs inline-flex items-center gap-1 transition" title="Unduh PDF Revisi">
                                             <span>Unduh PDF</span>
                                         </a>
-                                        <button v-if="isAdmin" @click="deleteSp(rev)" class="px-2.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs transition cursor-pointer" title="Hapus Revisi">
+                                        <span v-if="isAdmin || isPasops" class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-400 font-bold text-xs inline-flex items-center gap-1 cursor-not-allowed select-none" title="Revisi sudah ditandatangani — tidak dapat diedit" aria-disabled="true">
+                                            <span>Edit</span>
+                                        </span>
+                                        <button v-if="isAdmin" @click="deleteSp(rev)" :disabled="rev.status === 'published'" class="px-2.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs transition cursor-pointer disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" :title="rev.status === 'published' ? 'Revisi sudah ditandatangani — tidak dapat dihapus' : 'Hapus Revisi'">
                                             <span>Hapus</span>
                                         </button>
                                     </td>

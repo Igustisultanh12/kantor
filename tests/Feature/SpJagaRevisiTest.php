@@ -26,14 +26,14 @@ class SpJagaRevisiTest extends TestCase
         (require database_path('migrations/2026_08_05_130000_create_skhpps_and_skhpp_members_tables.php'))->up();
     }
 
-    private function spTerbit(int $pembuatId): SpJaga
+    private function spTerbit(int $pembuatId, string $kode = 'TTE-SPJAGA-UJI-ASLI'): SpJaga
     {
         $sp = SpJaga::create([
             'nomor_sprin' => 'Sprin/ 50 /XI/2026', 'nomor_urut' => '50', 'bulan' => 11, 'tahun' => 2026, 'bulan_romawi' => 'XI',
             'tmt_mulai' => '2026-11-01', 'tmt_selesai' => '2026-11-30', 'tanggal_surat' => '2026-10-28',
             'perwira_tertua_nama' => 'Perwira Uji', 'perwira_tertua_pangkat_nrp' => 'Kapten Laut (P) NRP 1/P',
             'total_personel_count' => 1, 'total_personel_terbilang' => 'Satu', 'ttd_type' => 'tte', 'status' => 'published',
-            'verification_code' => 'TTE-SPJAGA-UJI-ASLI', 'approved_at' => '2026-10-28 09:15:00', 'created_by' => $pembuatId,
+            'verification_code' => $kode, 'approved_at' => '2026-10-28 09:15:00', 'created_by' => $pembuatId,
         ]);
         SpJagaPerwira::create(['sp_jaga_id' => $sp->id, 'no_urut' => 1, 'nama' => 'Perwira Uji', 'tgl_1' => '1']);
         return $sp;
@@ -169,5 +169,26 @@ class SpJagaRevisiTest extends TestCase
         $this->assertSame('28 Oktober 2026, pukul 09.15 WIB', WaktuTte::teks('2026-10-28 09:15:00'));
         $this->assertSame('28 Oktober 2026', WaktuTte::teks(null, '2026-10-28'));
         $this->assertNull(WaktuTte::teks(null, null));
+    }
+
+    public function test_signed_sp_cannot_be_edited_or_deleted_but_pending_one_can(): void
+    {
+        $admin = $this->makeUser(['role' => 'admin', 'can_manage_sp_jaga' => true]);
+        $sp = $this->spTerbit($admin->id);
+
+        $this->actingAs($admin)->get("/sp-jaga/{$sp->id}/edit")->assertRedirect('/sp-jaga');
+        $this->actingAs($admin)->put("/sp-jaga/{$sp->id}", $this->payloadRevisi() + ['tanggal_surat' => '2026-11-01', 'ttd_type' => 'tte'])
+            ->assertRedirect('/sp-jaga');
+        $this->assertSame('Perwira Uji', $sp->fresh()->perwiras()->first()->nama);
+
+        $this->actingAs($admin)->delete("/sp-jaga/{$sp->id}")->assertRedirect();
+        $this->assertNotNull(SpJaga::find($sp->id));
+
+        // SP yang belum ditandatangani tetap bisa diedit & dihapus.
+        $draf = $this->spTerbit($admin->id, 'TTE-SPJAGA-UJI-DRAF');
+        $draf->update(['status' => 'pending_signature']);
+        $this->actingAs($admin)->get("/sp-jaga/{$draf->id}/edit")->assertOk();
+        $this->actingAs($admin)->delete("/sp-jaga/{$draf->id}")->assertRedirect();
+        $this->assertNull(SpJaga::find($draf->id));
     }
 }

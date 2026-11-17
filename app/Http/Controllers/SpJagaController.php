@@ -18,6 +18,8 @@ use Carbon\Carbon;
 
 class SpJagaController extends Controller
 {
+    private const PESAN_TERKUNCI = 'SP Jaga sudah ditandatangani dan tidak dapat diedit. Gunakan tombol Revisi (verifikasi OTP WhatsApp pengaju).';
+
     private function ensureNomorUrutColumnType(): void
     {
         try {
@@ -556,6 +558,9 @@ class SpJagaController extends Controller
     public function edit($id)
     {
         $spJaga = SpJaga::with(['perwiras', 'anggotas'])->findOrFail($id);
+        if ($spJaga->status === 'published') {
+            return redirect()->route('sp-jaga.index')->with('error', self::PESAN_TERKUNCI);
+        }
         $personels = User::select('id', 'name', 'pangkat', 'nrp', 'role', 'phone')
             ->orderBy('name', 'asc')
             ->get();
@@ -575,6 +580,9 @@ class SpJagaController extends Controller
     public function update(Request $request, $id)
     {
         $spJaga = SpJaga::findOrFail($id);
+        if ($spJaga->status === 'published') {
+            return redirect()->route('sp-jaga.index')->with('error', self::PESAN_TERKUNCI);
+        }
 
         $request->validate([
             'bulan' => 'required|integer|min:1|max:12',
@@ -871,6 +879,10 @@ class SpJagaController extends Controller
     public function destroy($id)
     {
         $spJaga = SpJaga::findOrFail($id);
+        // SP yang sudah ditandatangani (atau punya revisi bertanda tangan) tidak boleh dihapus.
+        if ($spJaga->status === 'published' || SpJaga::where('revisi_dari_id', $spJaga->id)->where('status', 'published')->exists()) {
+            return back()->with('error', 'SP Jaga yang sudah ditandatangani tidak dapat dihapus.');
+        }
         // Menghapus SP asli ikut menghapus seluruh revisinya.
         $daftar = $spJaga->isRevisi() ? collect([$spJaga]) : SpJaga::where('revisi_dari_id', $spJaga->id)->get()->push($spJaga);
         foreach ($daftar as $sp) {
