@@ -221,4 +221,43 @@ class SpJagaRevisiTest extends TestCase
         $this->get('/verify-doc/TTE-SPJAGA-UJI-EDIT')->assertOk()->assertInertia(fn (Assert $p) => $p
             ->where('doc.revisi.jenis', 'asli_digantikan')->where('doc.revisi.pengganti_ke', 1));
     }
+
+    public function test_restore_command_puts_back_the_signed_original_roster(): void
+    {
+        $admin = $this->makeUser(['role' => 'admin', 'can_manage_sp_jaga' => true]);
+        $sp = SpJaga::create([
+            'nomor_sprin' => 'Sprin/ 55 /XI/2026', 'nomor_urut' => '55', 'bulan' => 11, 'tahun' => 2026, 'bulan_romawi' => 'XI',
+            'tmt_mulai' => '2026-11-01', 'tmt_selesai' => '2026-11-30', 'tanggal_surat' => '2026-11-01',
+            'total_personel_count' => 26, 'total_personel_terbilang' => 'Dua Puluh Enam', 'ttd_type' => 'tte', 'status' => 'published',
+            'verification_code' => 'TTE-SPJAGA-UJI-55', 'approved_at' => '2026-10-30 10:00:00', 'created_by' => $admin->id,
+        ]);
+        // Isi keliru hasil edit lama (6 perwira, sesuai screenshot).
+        foreach ([['Bambang', '82068'], ['Indra Gunawan', '19739/P'], ['Bayu Aji K', '22029/P'], ['Erwan Junaidi', '84025'], ["Agus Sub'chan", '25724/P'], ['Agus Musonif', '26327/P']] as $i => [$n, $nrp]) {
+            SpJagaPerwira::create(['sp_jaga_id' => $sp->id, 'no_urut' => $i + 1, 'nama' => $n, 'nrp' => $nrp, 'tgl_1' => '01']);
+        }
+        $otomatis = SpJaga::create(array_merge($sp->only(['nomor_sprin', 'nomor_urut', 'bulan', 'tahun', 'ttd_type', 'status', 'created_by']), [
+            'revisi_dari_id' => $sp->id, 'revisi_ke' => 1, 'verification_code' => 'TTE-SPJAGA-UJI-55-R1',
+            'revisi_alasan' => 'Perubahan setelah TTE sebelum fitur revisi tersedia (dipindahkan otomatis).',
+        ]));
+        $berkas = 'database/data/sp_jaga/sprin-55-xi-2026-asli.json';
+
+        // Pratinjau: tidak mengubah apa pun.
+        $this->artisan('sp-jaga:pulihkan-perwira', ['berkas' => $berkas])->assertSuccessful();
+        $this->assertSame(6, $sp->perwiras()->count());
+
+        $this->artisan('sp-jaga:pulihkan-perwira', ['berkas' => $berkas, '--simpan' => true, '--hapus-revisi-otomatis' => true])->assertSuccessful();
+        $p = $sp->perwiras()->get();
+        $this->assertSame(['Bambang', 'Rizal Nurdin W.', 'Bayu Aji K', 'Indra Gunawan', 'Erwan Junaidi', "Agus Sub'chan", 'Agus Musonif'], $p->pluck('nama')->all());
+        $this->assertSame(['-', '06', '12', '18', '-', '-', '-'], collect(range(1, 7))->map(fn ($k) => $p[1]->{"tgl_{$k}"})->all());
+        $this->assertSame(27, (int) $sp->fresh()->total_personel_count);
+        $this->assertNull(SpJaga::find($otomatis->id));
+
+        // Dijalankan lagi: isi sudah berbeda dari dugaan → ditolak, tidak dobel.
+        $this->artisan('sp-jaga:pulihkan-perwira', ['berkas' => $berkas, '--simpan' => true])->assertFailed();
+        $this->assertSame(7, $sp->perwiras()->count());
+
+        // Hasil pemulihan tidak terbaca sebagai "diedit setelah TTE" oleh migrasi.
+        (require database_path('migrations/2026_11_18_110000_convert_post_tte_edits_to_sp_jaga_revisions.php'))->up();
+        $this->assertSame(0, SpJaga::where('revisi_dari_id', $sp->id)->count());
+    }
 }

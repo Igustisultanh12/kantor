@@ -143,7 +143,11 @@ export const buildPerwiraTable = (count, phase, startDay, endDay) => {
     return { rows, columns: col + 1 };
 };
 
-/** Susun tabel lampiran dari daftar [hari, index perwira] (urut hari), dengan aturan kolom yang sama seperti buildPerwiraTable. */
+/**
+ * Susun tabel lampiran dari daftar [hari, index perwira] (urut hari), dengan aturan kolom yang sama seperti
+ * buildPerwiraTable (kolom baru tiap putaran). Jadwal campuran (tanggal lama + rotasi baru) bisa butuh lebih
+ * dari 7 kolom; bila begitu, tanggal tiap perwira ditulis berurutan dari kiri agar tidak ada yang terbuang.
+ */
 export const buildPerwiraTableFromDays = (count, days) => {
     const rows = Array.from({ length: count }, () => Array(7).fill('-'));
     if (!count) return { rows, columns: 0 };
@@ -154,7 +158,15 @@ export const buildPerwiraTableFromDays = (count, days) => {
         if (col < 7) rows[idx][col] = String(d).padStart(2, '0');
         prev = idx;
     }
-    return { rows, columns: col + 1 };
+    if (col < 7) return { rows, columns: col + 1 };
+
+    const rapat = Array.from({ length: count }, () => []);
+    for (const [d, idx] of days) rapat[idx].push(String(d).padStart(2, '0'));
+    const lebar = Math.max(...rapat.map(r => r.length));
+    return {
+        rows: rapat.map(r => [...r, ...Array(7).fill('-')].slice(0, 7)),
+        columns: lebar,
+    };
 };
 
 /** Cocokkan baris perwira lama ke daftar baru (user_id, lalu NRP, lalu nama). -1 = sudah dihapus. */

@@ -1,0 +1,14 @@
+{
+    "keterangan": "Daftar perwira SP Jaga Sprin/ 55 /XI/2026 sesuai dokumen asli yang ditandatangani Pasiops (foto cetakan, lampiran 1). Data di sistem tertimpa edit langsung sebelum fitur revisi ada.",
+    "nomor_sprin": "Sprin/ 55 /XI/2026",
+    "data_sekarang_harus_berisi": ["Bambang", "Indra Gunawan", "Bayu Aji K", "Erwan Junaidi", "Agus Sub'chan", "Agus Musonif"],
+    "perwiras": [
+        { "nama": "Bambang",          "pangkat_korps": "Peltu Saa",       "nrp": "82068",   "tgl": ["-", "05", "11", "-", "24", "30", "-"] },
+        { "nama": "Rizal Nurdin W.",  "pangkat_korps": "Kapten Laut (P)", "nrp": "20873/P", "tgl": ["-", "06", "12", "18", "-", "-", "-"] },
+        { "nama": "Bayu Aji K",       "pangkat_korps": "Kapten Laut (P)", "nrp": "22029/P", "tgl": ["01", "07", "13", "19", "25", "-", "-"] },
+        { "nama": "Indra Gunawan",    "pangkat_korps": "Kapten Laut (P)", "nrp": "19739/P", "tgl": ["02", "08", "14", "20", "26", "-", "-"] },
+        { "nama": "Erwan Junaidi",    "pangkat_korps": "Peltu Ttg",       "nrp": "84025",   "tgl": ["03", "09", "15", "21", "27", "-", "-"] },
+        { "nama": "Agus Sub'chan",    "pangkat_korps": "Lettu Laut (T)",  "nrp": "25724/P", "tgl": ["-", "10", "16", "22", "28", "-", "-"] },
+        { "nama": "Agus Musonif",     "pangkat_korps": "Lettu Laut (P)",  "nrp": "26327/P", "tgl": ["04", "-", "17", "23", "29", "-", "-"] }
+    ]
+}
