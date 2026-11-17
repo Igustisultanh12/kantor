@@ -191,4 +191,34 @@ class SpJagaRevisiTest extends TestCase
         $this->actingAs($admin)->delete("/sp-jaga/{$draf->id}")->assertRedirect();
         $this->assertNull(SpJaga::find($draf->id));
     }
+
+    public function test_sp_edited_after_tte_before_this_feature_becomes_revision_one(): void
+    {
+        $admin = $this->makeUser(['role' => 'admin', 'can_manage_sp_jaga' => true]);
+
+        // Diedit setelah TTE: daftar jaga dibuat ulang sesudah approved_at.
+        $diedit = $this->spTerbit($admin->id, 'TTE-SPJAGA-UJI-EDIT');
+        // Tidak diedit: daftar jaga dibuat sebelum TTE.
+        $utuh = $this->spTerbit($admin->id, 'TTE-SPJAGA-UJI-UTUH');
+        $utuh->update(['approved_at' => now()->addMinute()]);
+
+        $migrasi = require database_path('migrations/2026_11_18_110000_convert_post_tte_edits_to_sp_jaga_revisions.php');
+        $migrasi->up();
+        $migrasi->up(); // aman dijalankan ulang
+
+        $rev = SpJaga::where('revisi_dari_id', $diedit->id)->get();
+        $this->assertCount(1, $rev);
+        $rev = $rev->first();
+        $this->assertSame(1, (int) $rev->revisi_ke);
+        $this->assertSame('published', $rev->status);
+        $this->assertSame($diedit->nomor_sprin, $rev->nomor_sprin);
+        $this->assertNotSame($diedit->verification_code, $rev->verification_code);
+        $this->assertSame('Perwira Uji', $rev->perwiras()->first()->nama);
+        $this->assertSame(1, $diedit->perwiras()->count()); // SP asli tetap utuh
+        $this->assertSame(0, SpJaga::where('revisi_dari_id', $utuh->id)->count());
+
+        // QR SP asli kini menunjukkan sudah direvisi.
+        $this->get('/verify-doc/TTE-SPJAGA-UJI-EDIT')->assertOk()->assertInertia(fn (Assert $p) => $p
+            ->where('doc.revisi.jenis', 'asli_digantikan')->where('doc.revisi.pengganti_ke', 1));
+    }
 }
