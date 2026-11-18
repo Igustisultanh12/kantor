@@ -65,7 +65,7 @@ class SkhppPdfViewTest extends TestCase
         $this->assertStringContainsString('DAFTAR NAMA PERSONEL POMAL KODAERAL V YANG MELAKSANAKAN SC SELEKSI DIKTUKPA LVI/56 TA. 2026', $html);
         $this->assertStringContainsString('>Pangkat/Korp/NRP</th>', $html);
         // Nomor ditulis tangan: kosong di halaman 1 dan di lampiran.
-        $this->assertSame(2, preg_match_all('#R/<span[^>]*></span>/SKHPP/XI/2026#', $html));
+        $this->assertSame(2, substr_count($html, 'R/' . str_repeat('&nbsp;', 16) . '/SKHPP/XI/2026'));
     }
 
     public function test_no_point_2h_without_followers(): void

@@ -60,6 +60,11 @@
         $berpangkat = in_array($jenisId, ['NRP', 'NIP']);
         $jumlahPengikut = $skhpp->has_pengikut ? count($skhpp->members) : 0;
 
+        // Ruang nomor urut di "R/ … /SKHPP/…": spasi tetap (&nbsp;) supaya tidak turun baris di dompdf;
+        // kosong (nomor ditulis tangan / belum bernomor) = ruang lebar untuk pulpen.
+        $spasi = fn (int $n) => str_repeat('&nbsp;', $n);
+        $ruangNomor = filled($skhpp->nomor_urut) ? $spasi(4) . e($skhpp->nomor_urut) . $spasi(4) : $spasi(16);
+
         // Baris data personel (label => isi), urutan mengikuti naskah acuan.
         $barisData = ['Nama' => $skhpp->nama];
         if ($berpangkat) {
@@ -96,7 +101,7 @@
             @if($skhpp->nomor_skhpp)
                 Nomor : {{ $skhpp->nomor_skhpp }}
             @else
-                Nomor : R/<span style="display: inline-block; min-width: 60pt; text-align: center;">{{ $skhpp->nomor_urut }}</span>/SKHPP/{{ $skhpp->bulan_romawi ?? 'VIII' }}/{{ $skhpp->tahun ?? '2026' }}
+                Nomor : R/{!! $ruangNomor !!}/SKHPP/{{ $skhpp->bulan_romawi ?? 'VIII' }}/{{ $skhpp->tahun ?? '2026' }}
             @endif
         </div>
     </div>
@@ -199,7 +204,7 @@
                                 @if($skhpp->nomor_skhpp)
                                     {{ $skhpp->nomor_skhpp }}
                                 @else
-                                    R/<span style="display: inline-block; min-width: 60pt; text-align: center;">{{ $skhpp->nomor_urut }}</span>/SKHPP/{{ $skhpp->bulan_romawi ?? 'VIII' }}/{{ $skhpp->tahun ?? '2026' }}
+                                    R/{!! $ruangNomor !!}/SKHPP/{{ $skhpp->bulan_romawi ?? 'VIII' }}/{{ $skhpp->tahun ?? '2026' }}
                                 @endif
                             </td>
                         </tr>
