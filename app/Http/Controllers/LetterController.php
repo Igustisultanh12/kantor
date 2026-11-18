@@ -27,8 +27,10 @@ class LetterController extends Controller
                       ->orWhere('letter_number', 'like', "%{$search}%");
             })
             ->latest()
-            ->paginate(50)
-            ->withQueryString(); 
+            // Halaman ini mengelompokkan arsip di sisi klien dan tidak punya navigasi halaman,
+            // jadi semua arsip dimuat sekaligus (sebelumnya hanya 50 teratas yang tampil).
+            ->paginate(2000)
+            ->withQueryString();
 
         return Inertia::render('Letters/Index', [
             'letters' => $letters,
