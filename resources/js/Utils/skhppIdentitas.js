@@ -15,6 +15,10 @@ export const jenisIdentitas = (skhpp) =>
 export const labelIdentitas = (jenis) =>
     ({ NRP: 'Pangkat/Korp/NRP', NIP: 'Pangkat/Gol/NIP', NIM: 'NIM', NIK: 'NIK' })[jenis] || 'NIK';
 
+/** Label kolom identitas pengikut (form & lampiran), mengikuti jenis identitas pemohon. */
+export const labelPengikut = (jenis) =>
+    ({ NRP: 'Pangkat/Korps/NRP', NIP: 'Pangkat/Gol/NIP', NIM: 'NIM', NIK: 'NIK' })[jenis] || 'NIK';
+
 /** Jumlah pengikut untuk poin 2h (0 = baris 2h tidak ditampilkan). */
 export const jumlahPengikut = (skhpp) =>
     skhpp?.has_pengikut ? (skhpp.members?.length || 0) : 0;

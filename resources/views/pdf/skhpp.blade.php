@@ -212,7 +212,7 @@
                 <tr style="background-color: #f8f8f8; text-transform: uppercase; text-align: center;">
                     <th style="width: 35px;">NO</th>
                     <th>NAMA</th>
-                    <th style="width: 180px;">NIK / NRP / NIP</th>
+                    <th style="width: 180px;">{{ ['NRP' => 'Pangkat/Korps/NRP', 'NIP' => 'Pangkat/Gol/NIP', 'NIM' => 'NIM'][$jenisId] ?? 'NIK' }}</th>
                     <th>JABATAN</th>
                 </tr>
             </thead>

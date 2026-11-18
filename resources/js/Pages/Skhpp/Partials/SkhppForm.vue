@@ -3,7 +3,7 @@
 import { Link, useForm } from '@inertiajs/vue3';
 import { ref, reactive, computed } from 'vue';
 import Swal from 'sweetalert2';
-import { JENIS_IDENTITAS, berpangkat, gabungPangkat, uraiIdentitas, teksPengikut } from '@/Utils/skhppIdentitas';
+import { JENIS_IDENTITAS, berpangkat, gabungPangkat, uraiIdentitas, teksPengikut, labelPengikut } from '@/Utils/skhppIdentitas';
 
 const props = defineProps({
     skhpp: { type: Object, default: null },
@@ -341,7 +341,7 @@ const input = 'w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-
                 <div v-for="(member, idx) in form.members" :key="idx" class="grid grid-cols-1 sm:grid-cols-[1.5rem_1fr_1fr_1fr_auto] gap-2 sm:items-center p-3 sm:p-0 bg-slate-50 sm:bg-transparent rounded-2xl">
                     <span class="text-xs font-bold text-slate-500 tabular-nums">{{ idx + 1 }}.</span>
                     <input type="text" v-model="member.nama" required placeholder="Nama lengkap" :aria-label="`Nama pengikut ${idx + 1}`" :class="input" />
-                    <input type="text" v-model="member.pangkat_nrp_nik" required placeholder="NRP / NIP / NIM / NIK" :aria-label="`Nomor identitas pengikut ${idx + 1}`" :class="input" />
+                    <input type="text" v-model="member.pangkat_nrp_nik" required :placeholder="labelPengikut(identitas.jenis)" :aria-label="`${labelPengikut(identitas.jenis)} pengikut ${idx + 1}`" :class="input" />
                     <input type="text" v-model="member.jabatan" required placeholder="Jabatan / pekerjaan" :aria-label="`Jabatan pengikut ${idx + 1}`" :class="input" />
                     <button type="button" @click="hapusPengikut(idx)" class="text-xs font-bold text-rose-600 hover:underline px-2 py-2 text-left cursor-pointer">Hapus</button>
                 </div>

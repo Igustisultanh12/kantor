@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, onMounted } from 'vue';
 import Swal from 'sweetalert2';
-import { jenisIdentitas, berpangkat, labelIdentitas, jumlahPengikut, teksPengikut } from '@/Utils/skhppIdentitas';
+import { jenisIdentitas, berpangkat, labelIdentitas, jumlahPengikut, teksPengikut, labelPengikut } from '@/Utils/skhppIdentitas';
 
 const props = defineProps({
     skhpp: Object,
@@ -388,7 +388,7 @@ const formatDateIndo = (dateStr) => {
                                     <tr class="font-normal uppercase border-b border-black text-center bg-slate-50">
                                         <th class="border border-black p-2 w-10">NO</th>
                                         <th class="border border-black p-2">NAMA</th>
-                                        <th class="border border-black p-2">NIK / NRP / NIP</th>
+                                        <th class="border border-black p-2">{{ labelPengikut(jenisId) }}</th>
                                         <th class="border border-black p-2">JABATAN</th>
                                     </tr>
                                 </thead>
