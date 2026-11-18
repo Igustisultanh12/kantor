@@ -3,7 +3,7 @@ import { ask, notify } from '@/Utils/dialog';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import AuditTrailModal from '@/Components/AuditTrailModal.vue';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 
 const props = defineProps({
     letters: {
@@ -35,29 +35,51 @@ const editForm = useForm({
     date: '',
 });
 
-// Kelompok keperluan: Nikah, Dik (pendidikan/seleksi), atau Lainnya.
-// Diambil dari Jenis Surat bila ada, selain itu dari perihal.
-const KELOMPOK = [
-    { key: 'nikah', nama: 'Nikah', pola: /nikah|perkawinan/i },
-    { key: 'dik', nama: 'Dik', pola: /\bdik(?:tuk|ma|reg|lat|bang|spes|jur|pa|ba)\w*|\bdik\b|pendidikan|seleksi|sesko|kursus|beasiswa/i },
-    { key: 'lainnya', nama: 'Lainnya', pola: null },
+// Kelompok keperluan. Urutan di sini = urutan tabel & tab. Dikenali dari awalan perihal
+// ("PKL: ...", "PHL: ...") atau kata kunci di Jenis Surat / perihal.
+const KELOMPOK_DIKENAL = [
+    { nama: 'Nikah', pola: /nikah|perkawinan/i },
+    { nama: 'Dik', pola: /\bdik(?:tuk|ma|reg|lat|bang|spes|jur|pa|ba)\w*|\bdik\b|pendidikan|seleksi|sesko|kursus|beasiswa/i },
+    { nama: 'PKL', pola: /\bpkl\b|praktik kerja|praktek kerja|magang/i },
+    { nama: 'PHL', pola: /\bphl\b|harian lepas/i },
+    { nama: 'Penelitian', pola: /penelitian|riset/i },
+    { nama: 'Kependudukan', pola: /kependudukan|penduduk|rusunawa|rumah dinas/i },
+    { nama: 'Akses Aplikasi', pola: /akses aplikasi/i },
 ];
+const LAINNYA = 'Lainnya';
+const POLA_AWALAN = /^([A-Za-z][A-Za-z .&/-]{1,30}?)\s*:\s*(.+)$/s;
+
+const namaRapi = (t) => String(t || '').toLowerCase().replace(/(^|[\s.'/-])\S/g, (c) => c.toUpperCase());
+
 const kelompokSurat = (letter) => {
-    const teks = `${letter.sub_category?.name || ''} ${letter.subject || ''}`;
-    return (KELOMPOK.find((k) => k.pola && k.pola.test(teks)) || KELOMPOK[2]).key;
+    const subject = String(letter.subject || '').trim();
+    const awalan = subject.match(POLA_AWALAN)?.[1];
+    // 1) Awalan perihal paling tegas ("PHL: ..."); 2) kata kunci di Jenis Surat lalu perihal.
+    for (const teks of [awalan, letter.sub_category?.name, subject]) {
+        const k = teks && KELOMPOK_DIKENAL.find((g) => g.pola.test(teks));
+        if (k) return k.nama;
+    }
+    // Awalan baru yang belum dikenal tetap jadi kelompok sendiri, bukan "Lainnya".
+    return awalan ? namaRapi(awalan) : LAINNYA;
 };
 
-// Perihal SKHPP otomatis berpola "SKHPP - NAMA (KATEGORI) - peruntukan": pisahkan nama & perihalnya.
+const urutanKelompok = (nama) => {
+    const i = KELOMPOK_DIKENAL.findIndex((g) => g.nama === nama);
+    return i >= 0 ? i : (nama === LAINNYA ? 999 : 500);
+};
+const urutkanKelompok = (daftar) => [...daftar].sort((a, b) => urutanKelompok(a) - urutanKelompok(b) || a.localeCompare(b));
+
+// Perihal SKHPP otomatis "SKHPP - NAMA (KATEGORI) - peruntukan": pisahkan nama & perihalnya.
+// Perihal berawalan ("PKL: ...") tampil tanpa awalan, karena sudah jadi judul kelompoknya.
 const uraiPerihal = (subject) => {
     const s = String(subject || '').trim();
     const m = s.match(/^SKHPP\s*-\s*(.+?)\s*\(([^)]+)\)\s*-\s*(.*)$/i);
     if (m) return { nama: m[1], keterangan: m[3] };
-    const nikah = s.match(/^NIKAH\s*:\s*(.*)$/i);
-    if (nikah) return { nama: null, keterangan: nikah[1] };
+    const a = s.match(POLA_AWALAN);
+    if (a) return { nama: null, keterangan: a[2] };
     return { nama: null, keterangan: s };
 };
 const kapitalAwal = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : '');
-const namaRapi = (t) => String(t || '').toLowerCase().replace(/(^|[\s.'-])\S/g, (c) => c.toUpperCase());
 
 const filterKelompok = ref('semua');
 
@@ -69,10 +91,19 @@ const cocokCari = (letter) => {
 
 const hasilCari = computed(() => props.letters.data.filter(cocokCari));
 
-const jumlahKelompok = computed(() => {
-    const n = { semua: hasilCari.value.length, nikah: 0, dik: 0, lainnya: 0 };
-    hasilCari.value.forEach((l) => { n[kelompokSurat(l)]++; });
-    return n;
+// Tab: "Semua" + setiap kelompok yang ada pada hasil pencarian, beserta jumlahnya.
+const tabKelompok = computed(() => {
+    const n = {};
+    hasilCari.value.forEach((l) => { const k = kelompokSurat(l); n[k] = (n[k] || 0) + 1; });
+    return [
+        { key: 'semua', nama: 'Semua', jumlah: hasilCari.value.length },
+        ...urutkanKelompok(Object.keys(n)).map((k) => ({ key: k, nama: k, jumlah: n[k] })),
+    ];
+});
+
+// Pilihan tab yang hilang karena pencarian kembali ke "Semua".
+watch(tabKelompok, (tabs) => {
+    if (!tabs.some((t) => t.key === filterKelompok.value)) filterKelompok.value = 'semua';
 });
 
 // Kategori -> kelompok -> daftar surat (urut tanggal terbaru).
@@ -83,12 +114,14 @@ const groupedLetters = computed(() => {
         .forEach((l) => {
             const cat = l.category?.name || 'Umum';
             const k = kelompokSurat(l);
-            (out[cat] ??= { total: 0, kelompok: { nikah: [], dik: [], lainnya: [] } });
-            out[cat].kelompok[k].push(l);
+            out[cat] ??= { total: 0, kelompok: {} };
+            (out[cat].kelompok[k] ??= []).push(l);
             out[cat].total++;
         });
-    Object.values(out).forEach((c) => Object.values(c.kelompok).forEach((list) =>
-        list.sort((a, b) => String(b.date).localeCompare(String(a.date)))));
+    Object.values(out).forEach((c) => {
+        Object.values(c.kelompok).forEach((list) => list.sort((a, b) => String(b.date).localeCompare(String(a.date))));
+        c.urutan = urutkanKelompok(Object.keys(c.kelompok));
+    });
     return out;
 });
 
@@ -138,11 +171,14 @@ const sifat = (level) => {
     return { nama: 'Biasa', kelas: 'bg-slate-100 text-slate-600 ring-slate-200' };
 };
 
-const warnaKelompok = {
-    nikah: 'bg-pink-500',
-    dik: 'bg-sky-500',
-    lainnya: 'bg-slate-400',
+// Titik warna per kelompok (kelompok baru memakai warna cadangan bergiliran).
+const WARNA = {
+    Nikah: 'bg-pink-500', Dik: 'bg-sky-500', PKL: 'bg-amber-500', PHL: 'bg-emerald-500',
+    Penelitian: 'bg-violet-500', Kependudukan: 'bg-teal-500', 'Akses Aplikasi': 'bg-indigo-500', [LAINNYA]: 'bg-slate-400',
 };
+const CADANGAN = ['bg-orange-500', 'bg-lime-500', 'bg-cyan-500', 'bg-fuchsia-500', 'bg-rose-400', 'bg-blue-400'];
+const warnaKelompok = (nama) => WARNA[nama]
+    || CADANGAN[[...nama].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 0) % CADANGAN.length];
 </script>
 
 <template>
@@ -172,13 +208,13 @@ const warnaKelompok = {
                 </div>
 
                 <div role="tablist" aria-label="Kelompok keperluan" class="flex flex-wrap gap-1.5 lg:ml-auto">
-                    <button v-for="t in [{ key: 'semua', nama: 'Semua' }, ...KELOMPOK]" :key="t.key" type="button" role="tab"
+                    <button v-for="t in tabKelompok" :key="t.key" type="button" role="tab"
                         :aria-selected="filterKelompok === t.key" @click="filterKelompok = t.key"
                         :class="filterKelompok === t.key ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'"
                         class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600">
-                        <span v-if="t.key !== 'semua'" :class="warnaKelompok[t.key]" class="w-2 h-2 rounded-full" aria-hidden="true"></span>
+                        <span v-if="t.key !== 'semua'" :class="warnaKelompok(t.key)" class="w-2 h-2 rounded-full" aria-hidden="true"></span>
                         {{ t.nama }}
-                        <span class="tabular-nums text-xs" :class="filterKelompok === t.key ? 'text-slate-300' : 'text-slate-400'">{{ jumlahKelompok[t.key] }}</span>
+                        <span class="tabular-nums text-xs" :class="filterKelompok === t.key ? 'text-slate-300' : 'text-slate-400'">{{ t.jumlah }}</span>
                     </button>
                 </div>
             </div>
@@ -196,17 +232,17 @@ const warnaKelompok = {
                     <span class="text-sm text-slate-500 tabular-nums">{{ cat.total }} berkas</span>
                 </header>
 
-                <template v-for="k in KELOMPOK" :key="k.key">
-                    <div v-if="cat.kelompok[k.key].length" class="border-t border-slate-100">
+                <template v-for="k in cat.urutan" :key="k">
+                    <div class="border-t border-slate-100">
                         <div class="flex items-center gap-2 px-6 py-2.5 bg-slate-50/70">
-                            <span :class="warnaKelompok[k.key]" class="w-2 h-2 rounded-full" aria-hidden="true"></span>
-                            <h4 class="text-sm font-semibold text-slate-700">{{ k.nama }}</h4>
-                            <span class="text-xs text-slate-400 tabular-nums">{{ cat.kelompok[k.key].length }}</span>
+                            <span :class="warnaKelompok(k)" class="w-2 h-2 rounded-full" aria-hidden="true"></span>
+                            <h4 class="text-sm font-semibold text-slate-700">{{ k }}</h4>
+                            <span class="text-xs text-slate-400 tabular-nums">{{ cat.kelompok[k].length }}</span>
                         </div>
 
                         <div class="overflow-x-auto">
                             <table class="w-full text-sm">
-                                <caption class="sr-only">{{ catName }}, kelompok {{ k.nama }}</caption>
+                                <caption class="sr-only">{{ catName }}, kelompok {{ k }}</caption>
                                 <thead>
                                     <tr class="text-left text-xs font-medium text-slate-500">
                                         <th scope="col" class="pl-6 pr-3 py-2 w-12 font-medium">No</th>
@@ -217,7 +253,7 @@ const warnaKelompok = {
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
-                                    <tr v-for="(letter, index) in cat.kelompok[k.key]" :key="letter.id" class="align-top hover:bg-slate-50/60">
+                                    <tr v-for="(letter, index) in cat.kelompok[k]" :key="letter.id" class="align-top hover:bg-slate-50/60">
                                         <td class="pl-6 pr-3 py-3.5 text-slate-400 tabular-nums">{{ index + 1 }}</td>
                                         <td class="px-3 py-3.5">
                                             <span class="block font-semibold text-slate-900 tabular-nums whitespace-nowrap">{{ letter.letter_number }}</span>
