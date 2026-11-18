@@ -208,6 +208,24 @@ class SkhppFormFlowTest extends TestCase
         $this->assertStringStartsWith('%PDF', Storage::disk('local')->get($arsip->file_path));
     }
 
+    public function test_missing_skhpp_archive_file_is_rebuilt_when_opened(): void
+    {
+        $this->actingAs($this->makeUser())->post('/skhpp', $this->payload())->assertSessionHasNoErrors();
+        $skhpp = Skhpp::firstOrFail();
+        $this->actingAs($this->makeUser(['role' => 'komandan']))->post("/skhpp/{$skhpp->id}/approve")->assertRedirect();
+        $arsip = DB::table('letters')->first();
+        Storage::disk('local')->delete($arsip->file_path); // mis. dulu gagal ditulis karena izin folder
+
+        $res = $this->actingAs($this->makeUser(['role' => 'admin']))->get("/letters/{$arsip->id}/file")->assertOk();
+        $this->assertStringStartsWith('%PDF', $res->getContent());
+        Storage::disk('local')->assertExists($arsip->file_path);
+
+        // Arsip non-SKHPP tanpa berkas: pesan jelas, bukan halaman 404 bawaan.
+        $lain = DB::table('letters')->insertGetId(['type' => 'keluar', 'letter_number' => 'B/1/X/2026', 'subject' => 'Uji', 'file_path' => 'archives/hilang.pdf', 'created_at' => now(), 'updated_at' => now()]);
+        $this->actingAs($this->makeUser(['role' => 'admin']))->get("/letters/{$lain}/file")
+            ->assertNotFound()->assertSee('Berkas PDF tidak ditemukan');
+    }
+
     public function test_sync_command_books_waiting_and_archives_signed_legacy_skhpp(): void
     {
         $operator = $this->makeUser();

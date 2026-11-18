@@ -210,7 +210,36 @@ class LetterController extends Controller
                 ]);
             }
         }
-        abort(404, 'Berkas arsip tidak ditemukan.');
+
+        // Arsip SKHPP ber-TTE yang berkasnya hilang (mis. gagal ditulis karena izin folder):
+        // buat ulang naskahnya dari data SKHPP, simpan, lalu tampilkan.
+        $skhpp = \App\Models\Skhpp::where('nomor_skhpp', $letter->letter_number)
+            ->where('status', 'approved')
+            ->where(fn ($q) => $q->whereNull('ttd_mode')->orWhere('ttd_mode', '!=', 'manual'))
+            ->first();
+        if ($skhpp) {
+            $pdf = \App\Support\SkhppPdf::buat($skhpp)->output();
+            if ($letter->file_path && !Storage::disk('local')->put($letter->file_path, $pdf)) {
+                \Illuminate\Support\Facades\Log::warning("Arsip SKHPP {$letter->letter_number} dibuat ulang tetapi gagal disimpan ke {$letter->file_path}.");
+            }
+            return response($pdf, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="arsip-' . $letter->id . '.pdf"',
+                'X-Content-Type-Options' => 'nosniff',
+                'Cache-Control' => 'private, no-store',
+            ]);
+        }
+
+        // Ditampilkan di dalam pratinjau: pesan jelas, bukan halaman 404 bawaan.
+        $nomor = e($letter->letter_number);
+        return response(<<<HTML
+            <!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>Berkas tidak ditemukan</title></head>
+            <body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;background:#f8fafc;color:#334155">
+            <div style="max-width:420px;text-align:center;padding:24px">
+            <p style="font-size:16px;font-weight:600;color:#0f172a;margin:0 0 8px">Berkas PDF tidak ditemukan</p>
+            <p style="font-size:14px;line-height:1.6;margin:0">Data arsip {$nomor} ada, tetapi berkas PDF-nya tidak ada di server. Hapus arsip ini lalu unggah ulang PDF-nya dari Agenda Surat.</p>
+            </div></body></html>
+            HTML, 404)->header('Content-Type', 'text/html; charset=utf-8');
     }
 
     /**

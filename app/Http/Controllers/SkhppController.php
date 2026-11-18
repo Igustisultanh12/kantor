@@ -702,7 +702,9 @@ class SkhppController extends Controller
         $this->arsipkan($skhpp, 'TTD manual', function () use ($signedPath) {
             // Salinan terpisah di folder arsip, supaya menghapus arsip tidak menghilangkan berkas di SKHPP.
             $arsipPath = 'archives/' . basename($signedPath);
-            Storage::disk('local')->copy($signedPath, $arsipPath);
+            if (!Storage::disk('local')->copy($signedPath, $arsipPath)) {
+                throw new \RuntimeException("Gagal menyalin berkas ke {$arsipPath} (izin folder storage?)");
+            }
             return $arsipPath;
         });
     }
@@ -715,7 +717,11 @@ class SkhppController extends Controller
     {
         $this->arsipkan($skhpp, 'TTE', function () use ($skhpp) {
             $arsipPath = 'archives/SKHPP_' . $skhpp->id . '_' . Str::random(10) . '.pdf';
-            Storage::disk('local')->put($arsipPath, \App\Support\SkhppPdf::buat($skhpp)->output());
+            // Disk 'local' tidak melempar error saat gagal menulis: periksa hasilnya supaya
+            // arsip tidak tercatat tanpa berkas (pratinjau jadi 404).
+            if (!Storage::disk('local')->put($arsipPath, \App\Support\SkhppPdf::buat($skhpp)->output())) {
+                throw new \RuntimeException("Gagal menulis {$arsipPath} (izin folder storage?)");
+            }
             return $arsipPath;
         });
     }

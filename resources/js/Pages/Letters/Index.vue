@@ -3,7 +3,7 @@ import { ask, notify } from '@/Utils/dialog';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import AuditTrailModal from '@/Components/AuditTrailModal.vue';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 
 const props = defineProps({
     letters: {
@@ -129,10 +129,15 @@ const formatTanggal = (d) => d
     ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
     : '-';
 
+const selectedLetter = ref(null);
+const tombolTutupPdf = ref(null);
+
 const openPdf = (letter) => {
     // Arsip disajikan lewat rute berotorisasi, bukan URL /storage publik (audit S04).
+    selectedLetter.value = letter;
     selectedPdfUrl.value = route('letters.file', letter.id) + `?t=${new Date().getTime()}`;
     isShowingPdf.value = true;
+    nextTick(() => tombolTutupPdf.value?.focus()); // Esc langsung bisa menutup
 };
 
 const openEdit = (letter) => {
@@ -142,8 +147,9 @@ const openEdit = (letter) => {
     editForm.category_id = letter.category_id;
     editForm.security_level = letter.security_level;
     editForm.issuer = letter.issuer;
-    editForm.date = letter.date;
+    editForm.date = letter.date ? String(letter.date).slice(0, 10) : '';
     isEditing.value = true;
+    nextTick(() => document.getElementById('ubah-nomor')?.focus());
 };
 
 const updateLetter = () => {
@@ -292,60 +298,71 @@ const warnaKelompok = (nama) => WARNA[nama]
         </div>
 
         <Teleport to="body">
-            <div v-if="isShowingPdf" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                <div class="fixed inset-0 bg-black/80 backdrop-blur-sm" @click="isShowingPdf = false"></div>
-                <div class="relative w-full max-w-6xl bg-white border-4 border-gray-900 flex flex-col h-[90vh]">
-                    <div class="px-6 py-2 border-b-2 border-gray-900 flex justify-between items-center bg-gray-50">
-                        <span class="text-[10px] font-black uppercase text-indigo-700">Preview Dokumen</span>
-                        <button @click="isShowingPdf = false" class="font-black text-gray-900 uppercase text-[10px]">[ Tutup X ]</button>
+            <!-- Pratinjau PDF -->
+            <div v-if="isShowingPdf" class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="judul-pratinjau" @keydown.esc="isShowingPdf = false">
+                <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="isShowingPdf = false"></div>
+                <div class="relative w-full max-w-5xl h-[92vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+                    <div class="flex items-start justify-between gap-4 px-5 sm:px-6 py-4 border-b border-slate-100">
+                        <div class="min-w-0">
+                            <h3 id="judul-pratinjau" class="text-base font-bold text-slate-900 tabular-nums truncate">{{ selectedLetter?.letter_number }}</h3>
+                            <p class="text-sm text-slate-500 truncate">{{ kapitalAwal(uraiPerihal(selectedLetter?.subject).keterangan) }}</p>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <a :href="selectedPdfUrl" target="_blank" rel="noopener" class="hidden sm:inline-flex items-center px-3.5 py-2 rounded-xl text-sm font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-emerald-600">Buka di tab baru</a>
+                            <button ref="tombolTutupPdf" type="button" @click="isShowingPdf = false" class="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-emerald-600" aria-label="Tutup pratinjau">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
+                            </button>
+                        </div>
                     </div>
-                    <iframe :src="selectedPdfUrl" class="flex-1 w-full border-none bg-gray-200"></iframe>
+                    <iframe :src="selectedPdfUrl" :title="`PDF ${selectedLetter?.letter_number || ''}`" class="flex-1 w-full border-0 bg-slate-100"></iframe>
                 </div>
             </div>
 
-            <div v-if="isEditing" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" @click="isEditing = false"></div>
-                <div class="relative w-full max-w-xl bg-white border-4 border-gray-900 p-8 shadow-2xl animate-in zoom-in duration-300">
-                    <h3 class="font-black text-xs uppercase tracking-widest text-gray-900 mb-8 border-b-2 border-gray-900 pb-2"> Pembaruan Data</h3>
+            <!-- Ubah data arsip -->
+            <div v-if="isEditing" class="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="judul-ubah" @keydown.esc="isEditing = false">
+                <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="isEditing = false"></div>
+                <div class="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl p-6 sm:p-7">
+                    <h3 id="judul-ubah" class="text-base font-bold text-slate-900">Ubah data arsip</h3>
+                    <p class="text-sm text-slate-500 mt-0.5 mb-5">Berkas PDF tidak berubah; hanya keterangannya.</p>
                     <form @submit.prevent="updateLetter" class="space-y-4">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="space-y-1">
-                                <label class="text-[9px] font-black text-gray-500 uppercase px-1">Nomor Surat</label>
-                                <input v-model="editForm.letter_number" type="text" required class="w-full border-2 border-gray-800 bg-gray-50 h-11 text-xs font-bold" />
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="ubah-nomor" class="block text-sm font-medium text-slate-700 mb-1">Nomor surat</label>
+                                <input id="ubah-nomor" v-model="editForm.letter_number" type="text" required class="w-full rounded-xl border-slate-200 text-sm focus:border-emerald-500 focus:ring-emerald-500" />
                             </div>
-                            <div class="space-y-1">
-                                <label class="text-[9px] font-black text-gray-500 uppercase px-1">Tanggal</label>
-                                <input v-model="editForm.date" type="date" required class="w-full border-2 border-gray-800 bg-gray-50 h-11 text-xs font-bold" />
+                            <div>
+                                <label for="ubah-tanggal" class="block text-sm font-medium text-slate-700 mb-1">Tanggal</label>
+                                <input id="ubah-tanggal" v-model="editForm.date" type="date" required class="w-full rounded-xl border-slate-200 text-sm focus:border-emerald-500 focus:ring-emerald-500" />
                             </div>
                         </div>
-                        <div class="space-y-1">
-                            <label class="text-[9px] font-black text-gray-500 uppercase px-1">Perihal</label>
-                            <input v-model="editForm.subject" type="text" required class="w-full border-2 border-gray-800 bg-gray-50 h-11 text-xs font-bold" />
+                        <div>
+                            <label for="ubah-perihal" class="block text-sm font-medium text-slate-700 mb-1">Perihal</label>
+                            <textarea id="ubah-perihal" v-model="editForm.subject" rows="3" required maxlength="255" class="w-full rounded-xl border-slate-200 text-sm focus:border-emerald-500 focus:ring-emerald-500"></textarea>
                         </div>
-                        <div class="space-y-1">
-                            <label class="text-[9px] font-black text-gray-500 uppercase px-1">Instansi</label>
-                            <input v-model="editForm.issuer" type="text" class="w-full border-2 border-gray-800 bg-gray-50 h-11 text-[11px] font-black uppercase" />
+                        <div>
+                            <label for="ubah-instansi" class="block text-sm font-medium text-slate-700 mb-1">Asal / instansi</label>
+                            <input id="ubah-instansi" v-model="editForm.issuer" type="text" class="w-full rounded-xl border-slate-200 text-sm focus:border-emerald-500 focus:ring-emerald-500" />
                         </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="space-y-1">
-                                <label class="text-[9px] font-black text-gray-500 uppercase px-1">Kategori</label>
-                                <select v-model="editForm.category_id" required class="w-full border-2 border-gray-800 bg-gray-50 h-11 text-[11px] font-bold">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="ubah-kategori" class="block text-sm font-medium text-slate-700 mb-1">Kategori</label>
+                                <select id="ubah-kategori" v-model="editForm.category_id" required class="w-full rounded-xl border-slate-200 text-sm focus:border-emerald-500 focus:ring-emerald-500">
                                     <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
                                 </select>
                             </div>
-                            <div class="space-y-1">
-                                <label class="text-[9px] font-black text-gray-500 uppercase px-1">Sifat</label>
-                                <select v-model="editForm.security_level" required class="w-full border-2 border-gray-800 bg-gray-50 h-11 text-[11px] font-bold uppercase">
+                            <div>
+                                <label for="ubah-sifat" class="block text-sm font-medium text-slate-700 mb-1">Sifat</label>
+                                <select id="ubah-sifat" v-model="editForm.security_level" required class="w-full rounded-xl border-slate-200 text-sm focus:border-emerald-500 focus:ring-emerald-500">
                                     <option value="biasa">Biasa</option>
                                     <option value="rahasia">Rahasia</option>
                                     <option value="kilat">Kilat</option>
                                 </select>
                             </div>
                         </div>
-                        <div class="pt-6 flex justify-end gap-3">
-                            <button type="button" @click="isEditing = false" class="px-6 py-2 text-[10px] font-black uppercase text-gray-400 hover:text-gray-900 transition-colors">Batal</button>
-                            <button type="submit" :disabled="editForm.processing" class="bg-gray-900 text-white px-8 py-3 font-black text-[10px] uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-50">
-                                {{ editForm.processing ? 'Menyimpan...' : 'Simpan Perubahan' }}
+                        <div class="pt-3 flex justify-end gap-2">
+                            <button type="button" @click="isEditing = false" class="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-emerald-600">Batal</button>
+                            <button type="submit" :disabled="editForm.processing" class="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600">
+                                {{ editForm.processing ? 'Menyimpan…' : 'Simpan perubahan' }}
                             </button>
                         </div>
                     </form>
