@@ -69,6 +69,8 @@ const onUp = () => {
     vel = 0;
     release();
 };
+// Browser mengambil alih sentuhan untuk menggulir: kartu dilepas tanpa dibalik.
+const onCancel = () => { moved = true; onUp(); };
 const onKey = (e) => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flipped.value = !flipped.value; }
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); vel += e.key === 'ArrowLeft' ? -60 : 60; release(); }
@@ -111,7 +113,7 @@ const label = computed(() =>
                 @pointerdown="onDown"
                 @pointermove="onMove"
                 @pointerup="onUp"
-                @pointercancel="onUp"
+                @pointercancel="onCancel"
                 @keydown="onKey"
             >
                 <span class="ly-inner">
@@ -163,7 +165,8 @@ const label = computed(() =>
 .ly-clip i { position: absolute; left: 10px; top: 16px; width: 14px; height: 16px; border-radius: 3px; background: linear-gradient(#D1D5DB, #6B7280); box-shadow: 0 1px 2px rgba(0,0,0,.3); }
 
 .ly-card { position: relative; display: block; width: 220px; height: 312px; margin: -2px auto 0; padding: 0; border: 0; background: none;
-           perspective: 900px; cursor: grab; touch-action: none; border-radius: 16px; }
+           /* pan-y: geser vertikal di atas kartu tetap menggulir halaman di HP; ayunan kiri-kanan tetap jalan */
+           perspective: 900px; cursor: grab; touch-action: pan-y; border-radius: 16px; }
 .ly-card.is-drag { cursor: grabbing; }
 .ly-card:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, #2563EB 45%, transparent); }
 .ly-inner { position: relative; display: block; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .6s cubic-bezier(.16, 1, .3, 1); }

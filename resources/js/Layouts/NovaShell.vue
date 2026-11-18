@@ -196,6 +196,9 @@ onBeforeUnmount(() => {
     document.removeEventListener('click', onDocClick);
     clearInterval(notifTimer);
     removeNav?.();
+    // Layout ini dipasang ulang tiap pindah halaman: bila drawer masih terbuka saat itu,
+    // kunci gulir di <html> tertinggal dan halaman berikutnya tidak bisa digulir di HP.
+    document.documentElement.style.overflow = '';
 });
 watch(drawer, (v) => { document.documentElement.style.overflow = v ? 'hidden' : ''; });
 
