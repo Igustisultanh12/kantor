@@ -159,8 +159,9 @@
 
                 <div style="text-align: center; white-space: nowrap; margin-top: 5pt;">Komandan Detasemen Intelijen Kodaeral V,</div>
 
-                <!-- TTD QR Code -->
-                <div style="height: 66pt; text-align: center;">
+                <!-- TTD QR Code. Bila ada pas foto, ruang ini ditinggikan supaya baris pangkat/NRP
+                     Komandan sejajar dengan tepi bawah foto 6 cm (seperti naskah acuan). -->
+                <div style="height: {{ $foto1_base64 ? 95 : 66 }}pt; text-align: center;">
                     @if($qr_base64 && $skhpp->status === 'approved')
                         <img src="{{ $qr_base64 }}" style="width: 60pt; height: 60pt; margin: 3pt auto 0 auto; display: block;" />
                     @endif
