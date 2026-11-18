@@ -167,13 +167,10 @@
                 </div>
 
                 <div style="text-align: center; white-space: nowrap;">Hari Bagio Wijayanto, M.Tr.Opsla.</div>
+                {{-- Blok TTD rata bawah: baris pangkat/NRP sejajar dengan tepi bawah pas foto. --}}
+                <div style="text-align: center; white-space: nowrap;">Kolonel Laut (E) NRP 16085/P</div>
                 </div>
             </td>
-        </tr>
-        {{-- Baris pangkat/NRP di baris tabel tersendiri, supaya tepi bawah pas foto sejajar dengan nama Komandan. --}}
-        <tr>
-            <td></td>
-            <td style="width: 251pt;"><div style="width: 251pt; text-align: center; white-space: nowrap;">Kolonel Laut (E) NRP 16085/P</div></td>
         </tr>
     </table>
 
