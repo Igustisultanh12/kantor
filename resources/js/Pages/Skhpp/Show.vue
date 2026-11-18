@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, onMounted } from 'vue';
 import Swal from 'sweetalert2';
-import { jenisIdentitas, berpangkat, labelIdentitas, jumlahPengikut, teksPengikut, labelPengikut } from '@/Utils/skhppIdentitas';
+import { jenisIdentitas, berpangkat, labelIdentitas, jumlahPengikut, teksPengikut, labelPengikut, judulLampiran } from '@/Utils/skhppIdentitas';
 
 const props = defineProps({
     skhpp: Object,
@@ -31,6 +31,25 @@ const downloadPdf = () => {
 
 const approveSkhpp = () => {
     const defaultSeq = (props.skhpp.nomor_urut || 1);
+
+    if (props.skhpp.nomor_tulis_tangan) {
+        Swal.fire({
+            title: 'OTORISASI TTD KOMANDAN',
+            html: '<p class="text-xs text-slate-600 font-sans">Nomor SKHPP ini <b>ditulis tangan</b> (R/ &nbsp;&nbsp;&nbsp;&nbsp; /SKHPP/...), jadi tidak diambil dari Agenda Surat.</p>',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'YA, SETUJU & TTD',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#059669',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.post(route('skhpp.approve', props.skhpp.id), {}, {
+                    onSuccess: () => Swal.fire('SUKSES', 'SKHPP Resmi disetujui & ditandatangani Komandan.', 'success')
+                });
+            }
+        });
+        return;
+    }
 
     Swal.fire({
         title: 'OTORISASI TTD KOMANDAN',
@@ -133,7 +152,7 @@ const formatDateIndo = (dateStr) => {
                             <div v-if="skhpp.kategori_personel === 'perusahaan'" class="font-normal uppercase text-[12pt]">MITRA KERJA TNI ANGKATAN LAUT</div>
                             <div class="font-normal text-[12pt] mt-1">
                                 <span v-if="skhpp.nomor_skhpp">Nomor : {{ skhpp.nomor_skhpp }}</span>
-                                <span v-else>Nomor : R/ &nbsp;&nbsp;&nbsp;&nbsp;{{ skhpp.nomor_urut || '        ' }}&nbsp;&nbsp;&nbsp;&nbsp; /SKHPP/{{ skhpp.bulan_romawi || 'VIII' }}/{{ skhpp.tahun || '2026' }}</span>
+                                <span v-else>Nomor : R/<span class="inline-block min-w-[80px] text-center">{{ skhpp.nomor_urut }}</span>/SKHPP/{{ skhpp.bulan_romawi || 'VIII' }}/{{ skhpp.tahun || '2026' }}</span>
                             </div>
                         </div>
 
@@ -367,25 +386,34 @@ const formatDateIndo = (dateStr) => {
                                     <div class="text-[12pt] font-normal uppercase leading-tight whitespace-nowrap">DETASEMEN INTELIJEN</div>
                                     <div class="border-b-2 border-black w-full mt-0.5"></div>
                                 </div>
-                                <div class="text-right text-[11pt] font-normal" style="line-height: 1.3;">
-                                    <div>Lampiran SKHPP Den Intel Kodaeral V</div>
-                                    <div class="border-b border-black inline-block pb-0.5">
-                                        <span v-if="skhpp.nomor_skhpp">Nomor {{ skhpp.nomor_skhpp }}</span>
-                                        <span v-else>Nomor SKHPP/ <span class="px-2">{{ skhpp.nomor_urut || '   ' }}</span> /{{ skhpp.bulan_romawi || 'VIII' }}/{{ skhpp.tahun || '2026' }}</span><br> Tanggal <span class="px-3">{{ formatDateIndo(skhpp.tanggal_skhpp || skhpp.approved_at || skhpp.created_at) }}</span>
-                                    </div>
-                                </div>
+                                <!-- Blok lampiran rata kiri; isi Nomor & Tanggal sejajar; garis bawah selebar blok -->
+                                <table class="text-[12pt] font-normal border-b border-black">
+                                    <tbody>
+                                        <tr><td colspan="2" class="whitespace-nowrap">Lampiran SKHPP Denintel Kodaeral V</td></tr>
+                                        <tr>
+                                            <td class="w-[88px]">Nomor</td>
+                                            <td class="whitespace-nowrap">
+                                                <span v-if="skhpp.nomor_skhpp">{{ skhpp.nomor_skhpp }}</span>
+                                                <span v-else>R/<span class="inline-block min-w-[80px] text-center">{{ skhpp.nomor_urut }}</span>/SKHPP/{{ skhpp.bulan_romawi || 'VIII' }}/{{ skhpp.tahun || '2026' }}</span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="pb-0.5">Tanggal</td>
+                                            <td class="whitespace-nowrap pb-0.5">{{ formatDateIndo(skhpp.tanggal_skhpp || skhpp.approved_at || skhpp.created_at) }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
 
                             <!-- Judul Lampiran -->
                             <div class="text-center my-6">
-                                <div class="text-[12pt] font-normal uppercase tracking-wider"> DAFTAR NAMA-NAMA ANGGOTA PENGIKUT
-                                </div>
+                                <div class="text-[12pt] font-normal uppercase tracking-wider">{{ judulLampiran(skhpp.satuan, skhpp.kegiatan, skhpp.peruntukan) }}</div>
                             </div>
 
                             <!-- Tabel Anggota Pengikut -->
                             <table class="w-full border-collapse border border-black text-[11pt] my-6 font-normal">
                                 <thead>
-                                    <tr class="font-normal uppercase border-b border-black text-center bg-slate-50">
+                                    <tr class="font-normal uppercase border-b border-black text-center">
                                         <th class="border border-black p-2 w-10">NO</th>
                                         <th class="border border-black p-2">NAMA</th>
                                         <th class="border border-black p-2">{{ labelPengikut(jenisId) }}</th>

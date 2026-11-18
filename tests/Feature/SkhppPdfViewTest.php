@@ -54,6 +54,20 @@ class SkhppPdfViewTest extends TestCase
         $this->assertStringContainsString('Made Pengikut', $html);
     }
 
+    public function test_attachment_header_title_and_member_column_follow_the_form(): void
+    {
+        $html = $this->render([
+            'jenis_identitas' => 'NRP', 'pangkat_korps_nrp' => 'Serda NRP 1', 'has_pengikut' => true,
+            'satuan' => 'Pomal Kodaeral V', 'kegiatan' => 'Seleksi Diktukpa LVI/56 TA. 2026',
+            'nomor_tulis_tangan' => true, 'bulan_romawi' => 'XI', 'tahun' => 2026,
+        ], ['Ani Pengikut']);
+        $this->assertStringContainsString('Lampiran SKHPP Denintel Kodaeral V', $html);
+        $this->assertStringContainsString('DAFTAR NAMA PERSONEL POMAL KODAERAL V YANG MELAKSANAKAN SC SELEKSI DIKTUKPA LVI/56 TA. 2026', $html);
+        $this->assertStringContainsString('>Pangkat/Korp/NRP</th>', $html);
+        // Nomor ditulis tangan: kosong di halaman 1 dan di lampiran.
+        $this->assertSame(2, preg_match_all('#R/<span[^>]*></span>/SKHPP/XI/2026#', $html));
+    }
+
     public function test_no_point_2h_without_followers(): void
     {
         $html = $this->render(['jenis_identitas' => 'NIK', 'nik' => '3515', 'has_pengikut' => false]);

@@ -1,9 +1,9 @@
 <script setup>
 // Form SKHPP bersama untuk halaman Buat (tanpa prop skhpp) dan Revisi (dengan prop skhpp).
 import { Link, useForm } from '@inertiajs/vue3';
-import { ref, reactive, computed } from 'vue';
+import { ref, reactive, computed, watch } from 'vue';
 import Swal from 'sweetalert2';
-import { JENIS_IDENTITAS, berpangkat, gabungPangkat, uraiIdentitas, teksPengikut, labelPengikut } from '@/Utils/skhppIdentitas';
+import { JENIS_IDENTITAS, berpangkat, gabungPangkat, uraiIdentitas, teksPengikut, labelPengikut, judulLampiran, satuanDariPengantar, kegiatanDariPeruntukan, peruntukanDariKegiatan } from '@/Utils/skhppIdentitas';
 
 const props = defineProps({
     skhpp: { type: Object, default: null },
@@ -19,6 +19,7 @@ const form = useForm({
     is_pernikahan: Boolean(s.is_pernikahan),
     letter_sub_category_id: s.letter_sub_category_id || '',
     nomor_manual: s.nomor_manual || '',
+    nomor_tulis_tangan: Boolean(s.nomor_tulis_tangan),
     ttd_mode: s.ttd_mode === 'manual' ? 'manual' : 'tte',
     surat_pengantar: s.surat_pengantar || '',
     nama: s.nama || '',
@@ -32,6 +33,8 @@ const form = useForm({
     agama: s.agama || 'Islam',
     alamat: s.alamat || '',
     has_pengikut: Boolean(s.has_pengikut),
+    satuan: s.satuan || '',
+    kegiatan: s.kegiatan || kegiatanDariPeruntukan(s.peruntukan),
     members: (s.members || []).map((m) => ({ nama: m.nama, pangkat_nrp_nik: m.pangkat_nrp_nik, jabatan: m.jabatan })),
     peruntukan: s.peruntukan || '',
     foto_1: null,
@@ -63,6 +66,10 @@ const TEKS_IDENTITAS = {
 };
 const teks = computed(() => TEKS_IDENTITAS[identitas.jenis]);
 
+const ROMAWI = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+const bulanRomawiIni = ROMAWI[new Date().getMonth()];
+const tahunIni = new Date().getFullYear();
+
 // Dasar surat pengantar (Poin 1c): tiga isian → satu kalimat yang disimpan di surat_pengantar.
 const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 const uraiPengantar = (teksLama) => {
@@ -89,6 +96,18 @@ const togglePengikut = () => {
     if (form.has_pengikut && form.members.length === 0) tambahPengikut();
 };
 
+// Satuan judul lampiran ikut "Surat Dari" selama belum diketik sendiri oleh operator.
+let satuanOtomatis = !form.satuan || form.satuan === satuanDariPengantar(pengantar.dari);
+watch(() => pengantar.dari, (dari) => {
+    if (satuanOtomatis) form.satuan = satuanDariPengantar(dari);
+}, { immediate: !form.satuan });
+const ketikSatuan = () => { satuanOtomatis = form.satuan === ''; };
+
+// Peruntukan: operator cukup menulis kegiatannya; awalan baku ditambahkan otomatis.
+// Data lama yang tidak berpola awalan baku dibiarkan apa adanya sampai isian kegiatan diisi.
+const peruntukanLama = form.kegiatan ? '' : (s.peruntukan || '');
+const teksPeruntukan = computed(() => peruntukanDariKegiatan(form.kegiatan) || peruntukanLama);
+
 // Foto
 const preview1 = ref(s.foto_1 ? '/storage/' + s.foto_1 : null);
 const preview2 = ref(s.foto_2 ? '/storage/' + s.foto_2 : null);
@@ -110,6 +129,9 @@ const submit = () => {
             pangkat_korps_nrp: punyaPangkat.value ? gabungPangkat(identitas.pangkat, identitas.jenis, identitas.nomor) : '',
             nik: punyaPangkat.value ? '' : identitas.nomor.trim(),
             has_pengikut: adaPengikut,
+            peruntukan: teksPeruntukan.value,
+            kegiatan: data.kegiatan.trim().replace(/\.+$/, ''),
+            nomor_manual: data.nomor_tulis_tangan ? '' : data.nomor_manual,
             members: adaPengikut ? data.members : [],
         };
     }).post(isEdit.value ? route('skhpp.update', props.skhpp.id) : route('skhpp.store'), {
@@ -195,7 +217,7 @@ const input = 'w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-
                     </button>
                 </div>
                 <p v-if="form.ttd_mode === 'manual'" class="mt-2 text-[11px] text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200" role="status">
-                    Nomor SKHPP langsung diberikan saat disimpan supaya tercetak di naskah. SKHPP baru berstatus terbit setelah berkas bertanda tangan diunggah.
+                    {{ form.nomor_tulis_tangan ? 'Nomor dikosongkan untuk ditulis tangan.' : 'Nomor SKHPP langsung diberikan saat disimpan supaya tercetak di naskah.' }} SKHPP baru berstatus terbit setelah berkas bertanda tangan diunggah.
                 </p>
             </div>
 
@@ -214,6 +236,16 @@ const input = 'w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-
                 </div>
 
                 <div>
+                    <label class="flex items-center gap-2.5 cursor-pointer select-none w-fit mb-2">
+                        <input type="checkbox" v-model="form.nomor_tulis_tangan" class="w-4 h-4 text-emerald-600 rounded-md focus:ring-emerald-500" />
+                        <span class="text-xs font-semibold text-slate-700">Nomor ditulis tangan</span>
+                    </label>
+                    <p v-if="form.nomor_tulis_tangan" class="text-[11px] text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200" role="status">
+                        Nomor tercetak kosong: <b>R/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /SKHPP/{{ bulanRomawiIni }}/{{ tahunIni }}</b>, untuk diisi dengan pulpen.
+                        Nomor tidak diambil dari Agenda Surat.
+                    </p>
+
+                    <template v-else>
                     <label for="skhpp-nomor-manual" :class="label">Nomor Urut SKHPP <span class="font-medium normal-case text-slate-500">(opsional)</span></label>
                     <input id="skhpp-nomor-manual" type="text" v-model.trim="form.nomor_manual" maxlength="8" pattern="[0-9]{1,6}[A-Za-z]{0,2}"
                         title="Angka saja, boleh diikuti huruf. Contoh: 120 atau 120a" placeholder="Contoh: 120 atau 120a" :class="input" />
@@ -222,6 +254,7 @@ const input = 'w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-
                         <template v-else>Cukup angkanya saja, boleh berhuruf (120a). Kosongkan untuk nomor otomatis.</template>
                     </p>
                     <p v-if="form.errors.nomor_manual" class="mt-1 text-xs text-rose-600 font-medium">{{ form.errors.nomor_manual }}</p>
+                    </template>
                 </div>
             </div>
         </div>
@@ -241,6 +274,13 @@ const input = 'w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-
                 <div>
                     <label for="skhpp-pengantar-tgl" :class="label">Tanggal Surat *</label>
                     <input id="skhpp-pengantar-tgl" type="date" v-model="pengantar.tanggal" :required="!pengantarLama" :class="input" />
+                </div>
+                <div class="sm:col-span-3">
+                    <label for="skhpp-satuan" :class="label">Satuan {{ form.has_pengikut ? '*' : '' }}</label>
+                    <input id="skhpp-satuan" type="text" v-model="form.satuan" @input="ketikSatuan" :required="form.has_pengikut"
+                        placeholder="Contoh: Pomal Kodaeral V" :class="input" />
+                    <p class="mt-1 text-[11px] text-slate-500">Terisi otomatis dari "Surat Dari" (Danpomal Kodaeral V → Pomal Kodaeral V); boleh diubah. Dipakai di judul lampiran pengikut.</p>
+                    <p v-if="form.errors.satuan" class="mt-1 text-xs text-rose-600 font-medium">{{ form.errors.satuan }}</p>
                 </div>
             </div>
             <p v-if="teksPengantar" class="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200" role="status">
@@ -338,6 +378,11 @@ const input = 'w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-
                     Nama-nama di bawah ini dimuat pada lembar 2 (Lampiran).
                 </p>
 
+                <p class="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200" role="status">
+                    Judul lampiran: <b class="text-slate-800">{{ judulLampiran(form.satuan, form.kegiatan, peruntukanLama) }}</b>
+                    <span class="block mt-0.5 text-[11px] text-slate-500">Dari isian Satuan (bagian 2) dan Maksud &amp; Peruntukan (bagian 5).</span>
+                </p>
+
                 <div v-for="(member, idx) in form.members" :key="idx" class="grid grid-cols-1 sm:grid-cols-[1.5rem_1fr_1fr_1fr_auto] gap-2 sm:items-center p-3 sm:p-0 bg-slate-50 sm:bg-transparent rounded-2xl">
                     <span class="text-xs font-bold text-slate-500 tabular-nums">{{ idx + 1 }}.</span>
                     <input type="text" v-model="member.nama" required placeholder="Nama lengkap" :aria-label="`Nama pengikut ${idx + 1}`" :class="input" />
@@ -357,9 +402,15 @@ const input = 'w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-
             <h2 :class="judul">5. Peruntukan SKHPP (Poin 4)</h2>
             <div>
                 <label for="skhpp-peruntukan" :class="label">Maksud &amp; Peruntukan *</label>
-                <textarea id="skhpp-peruntukan" v-model="form.peruntukan" rows="3" required
-                    placeholder="Contoh: Dalam rangka sebagai persyaratan mengikuti program pendidikan spesialis Bidang Ilmu Penyakit Dalam di Universitas Sebelas Maret (UNS) Solo"
-                    :class="input" class="!font-medium"></textarea>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <span class="text-xs font-semibold text-slate-500 whitespace-nowrap">dalam rangka melengkapi administrasi</span>
+                    <input id="skhpp-peruntukan" type="text" v-model="form.kegiatan" :required="!peruntukanLama"
+                        placeholder="Contoh: Seleksi Diktukpa LVI/56 TA. 2026" :class="input" />
+                </div>
+                <p v-if="teksPeruntukan" class="mt-2 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200" role="status">
+                    Tertulis di dokumen: <b class="text-slate-800">SKHPP ini diberikan {{ teksPeruntukan.replace(/\.+$/, '') }}.</b>
+                    <span v-if="peruntukanLama && !form.kegiatan" class="block mt-0.5 text-[11px] text-slate-500">(Teks lama dipertahankan sampai isian di atas diisi.)</span>
+                </p>
                 <p v-if="form.errors.peruntukan" class="mt-1 text-xs text-rose-600 font-medium">{{ form.errors.peruntukan }}</p>
             </div>
         </div>

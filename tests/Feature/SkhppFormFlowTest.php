@@ -24,6 +24,7 @@ class SkhppFormFlowTest extends TestCase
         (require database_path('migrations/2026_08_05_130000_create_skhpps_and_skhpp_members_tables.php'))->up();
         (require database_path('migrations/2026_11_16_100000_add_form_fields_to_skhpps_table.php'))->up();
         (require database_path('migrations/2026_11_16_170000_add_manual_signature_to_skhpps_table.php'))->up();
+        (require database_path('migrations/2026_11_18_120000_add_lampiran_title_fields_to_skhpps_table.php'))->up();
         Schema::create('categories', function (Blueprint $t) {
             $t->id(); $t->string('name'); $t->string('code'); $t->integer('start_number')->default(1); $t->boolean('is_telegram')->default(false); $t->timestamps();
         });
@@ -60,6 +61,7 @@ class SkhppFormFlowTest extends TestCase
             'letter_sub_category_id' => 7,
             'nomor_manual' => '171a',
             'has_pengikut' => true,
+            'satuan' => 'Denma Kodaeral V',
             'members' => [
                 ['nama' => 'Ani', 'pangkat_nrp_nik' => '3515', 'jabatan' => 'Anggota'],
                 ['nama' => 'Made', 'pangkat_nrp_nik' => '3516', 'jabatan' => 'Anggota'],
@@ -212,5 +214,76 @@ class SkhppFormFlowTest extends TestCase
         $this->assertStringStartsWith('R / 71 / SKHPP / ', $skhpp->nomor_skhpp);
         $this->assertDatabaseCount('letter_logs', 1);
         $this->assertDatabaseHas('letter_logs', ['full_number' => $skhpp->nomor_skhpp, 'sequence' => '71', 'is_archived' => false]);
+    }
+
+    public function test_handwritten_number_is_left_blank_and_skips_the_agenda_on_tte(): void
+    {
+        $this->actingAs($this->makeUser())->post('/skhpp', $this->payload(['nomor_tulis_tangan' => true, 'nomor_manual' => '99']))->assertSessionHasNoErrors();
+        $skhpp = Skhpp::firstOrFail();
+        $this->assertTrue($skhpp->nomor_tulis_tangan);
+        $this->assertNull($skhpp->nomor_skhpp);
+        $this->assertNull($skhpp->nomor_manual);
+
+        $this->actingAs($this->makeUser(['role' => 'komandan']))->post("/skhpp/{$skhpp->id}/approve", ['custom_nomor_urut' => 5])->assertRedirect();
+
+        $skhpp->refresh();
+        $this->assertSame('approved', $skhpp->status);
+        $this->assertNull($skhpp->nomor_skhpp);
+        $this->assertNull($skhpp->nomor_urut);
+        $this->assertSame((int) date('Y'), (int) $skhpp->tahun);
+        $this->assertDatabaseCount('letter_logs', 0);
+    }
+
+    public function test_handwritten_number_with_manual_signature_releases_booked_number(): void
+    {
+        $operator = $this->makeUser();
+        $this->actingAs($operator)->post('/skhpp', $this->payload(['ttd_mode' => 'manual', 'nomor_manual' => '70']))->assertSessionHasNoErrors();
+        $skhpp = Skhpp::firstOrFail();
+        $this->assertDatabaseCount('letter_logs', 1);
+
+        // Diubah menjadi nomor tulis tangan: nomor yang sempat dibooking dilepas dari Agenda Surat.
+        $this->actingAs($operator)->post("/skhpp/{$skhpp->id}/update", $this->payload(['ttd_mode' => 'manual', 'nomor_tulis_tangan' => true]))->assertSessionHasNoErrors();
+        $skhpp->refresh();
+        $this->assertNull($skhpp->nomor_skhpp);
+        $this->assertSame('manual', $skhpp->ttd_mode);
+        $this->assertDatabaseCount('letter_logs', 0);
+
+        $this->actingAs($operator)->post("/skhpp/{$skhpp->id}/ttd-manual/unggah", [
+            'berkas_ttd' => UploadedFile::fake()->create('ttd.pdf', 50, 'application/pdf'), 'tanggal_ttd' => now()->toDateString(),
+        ])->assertSessionHasNoErrors();
+        $skhpp->refresh();
+        $this->assertSame('approved', $skhpp->status);
+        $this->assertNull($skhpp->nomor_skhpp);
+        $this->assertDatabaseCount('letter_logs', 0);
+        $this->assertDatabaseCount('letters', 0);
+
+        // Revisi lama tanpa field nomor_tulis_tangan tidak mematikan pilihan ini.
+        $this->assertTrue($skhpp->nomor_tulis_tangan);
+    }
+
+    public function test_unit_and_short_purpose_build_the_attachment_title(): void
+    {
+        $this->actingAs($this->makeUser())->post('/skhpp', $this->payload([
+            'satuan' => 'Pomal Kodaeral V',
+            'kegiatan' => 'Seleksi Diktukpa LVI/56 TA. 2026',
+            'peruntukan' => 'dalam rangka melengkapi administrasi seleksi Diktukpa LVI/56 TA. 2026',
+            'has_pengikut' => true,
+            'members' => [['nama' => 'Ani', 'pangkat_nrp_nik' => 'Serda NRP 1', 'jabatan' => 'Anggota']],
+        ]))->assertSessionHasNoErrors();
+
+        $skhpp = Skhpp::firstOrFail();
+        $this->assertSame('DAFTAR NAMA PERSONEL POMAL KODAERAL V YANG MELAKSANAKAN SC SELEKSI DIKTUKPA LVI/56 TA. 2026', $skhpp->judulLampiran());
+
+        // Satuan wajib bila ada pengikut.
+        $this->actingAs($this->makeUser())->post('/skhpp', $this->payload([
+            'has_pengikut' => true, 'members' => [['nama' => 'Ani', 'pangkat_nrp_nik' => '1', 'jabatan' => 'A']],
+        ]))->assertSessionHasErrors('satuan');
+    }
+
+    public function test_legacy_rows_derive_attachment_title_from_purpose(): void
+    {
+        $lama = new Skhpp(['satuan' => 'Denma Kodaeral V', 'peruntukan' => 'dalam rangka melengkapi administrasi seleksi Dikmaba TA. 2026.']);
+        $this->assertSame('DAFTAR NAMA PERSONEL DENMA KODAERAL V YANG MELAKSANAKAN SC SELEKSI DIKMABA TA. 2026', $lama->judulLampiran());
+        $this->assertSame('DAFTAR NAMA-NAMA ANGGOTA PENGIKUT', (new Skhpp(['peruntukan' => 'uji']))->judulLampiran());
     }
 }

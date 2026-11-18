@@ -78,8 +78,13 @@ class SkhppController extends Controller
      * Kolom penomoran draf dari nomor urut manual di form ("120" / "120a").
      * Kosong = semua dikosongkan supaya saat disahkan memakai nomor otomatis berikutnya.
      */
-    private function nomorDraf(?string $manual): array
+    private function nomorDraf(?string $manual, bool $tulisTangan = false): array
     {
+        if ($tulisTangan) {
+            // Nomor urut dikosongkan di dokumen untuk ditulis tangan; bulan & tahun tetap tercetak.
+            return ['nomor_tulis_tangan' => true, 'nomor_manual' => null, 'nomor_skhpp' => null, 'nomor_urut' => null,
+                'bulan_romawi' => $this->getRomanMonth(date('n')), 'tahun' => (int) date('Y')];
+        }
         if (!filled($manual)) {
             return ['nomor_manual' => null, 'nomor_skhpp' => null, 'nomor_urut' => null];
         }
@@ -91,6 +96,12 @@ class SkhppController extends Controller
             'bulan_romawi' => $roman,
             'tahun' => (int) date('Y'),
         ];
+    }
+
+    /** Teks nomor untuk pesan/notifikasi bila nomornya ditulis tangan. */
+    private function labelTulisTangan(string $roman, int $tahun): string
+    {
+        return "R / … / SKHPP / {$roman} / {$tahun} (nomor ditulis tangan)";
     }
 
     private function agendaSurat(): array
@@ -131,9 +142,12 @@ class SkhppController extends Controller
             'agama' => 'required|string',
             'alamat' => 'required|string',
             'peruntukan' => 'required|string',
+            'nomor_tulis_tangan' => 'nullable|boolean',
             'foto_1' => 'required|image|mimes:jpeg,jpg,png|max:10240',
             'foto_2' => 'nullable|required_if:is_pernikahan,true|image|mimes:jpeg,jpg,png|max:10240',
             'has_pengikut' => 'boolean',
+            'satuan' => 'nullable|required_if:has_pengikut,true,1|string|max:150',
+            'kegiatan' => 'nullable|string|max:255',
             'members' => 'nullable|array',
             'members.*.nama' => 'required|string',
             'members.*.pangkat_nrp_nik' => 'required|string',
@@ -169,13 +183,16 @@ class SkhppController extends Controller
             'agama' => $request->agama,
             'alamat' => $request->alamat,
             'has_pengikut' => $request->has_pengikut ?? false,
+            'satuan' => $request->satuan,
+            'kegiatan' => $request->kegiatan,
             'peruntukan' => $request->peruntukan,
             'foto_1' => $foto1Path,
             'foto_2' => $foto2Path,
             'label_foto_1' => $request->is_pernikahan ? 'Foto Calon Suami' : 'Foto Utama Personel',
             'label_foto_2' => $request->is_pernikahan ? 'Foto Calon Istri' : null,
             // Nomor urut manual (mis. 120 / 120a) langsung dibooking di draf; dipakai lagi saat disahkan (lihat approve()).
-            ...$this->nomorDraf($request->nomor_manual),
+            'nomor_tulis_tangan' => false,
+            ...$this->nomorDraf($request->nomor_manual, $request->boolean('nomor_tulis_tangan')),
             'status' => 'pending',
             'verification_code' => $code,
             'submitted_by' => $user->id,
@@ -302,9 +319,12 @@ class SkhppController extends Controller
             'agama' => 'required|string',
             'alamat' => 'required|string',
             'peruntukan' => 'required|string',
+            'nomor_tulis_tangan' => 'nullable|boolean',
             'foto_1' => 'nullable|image|mimes:jpeg,jpg,png|max:10240',
             'foto_2' => 'nullable|image|mimes:jpeg,jpg,png|max:10240',
             'has_pengikut' => 'boolean',
+            'satuan' => 'nullable|required_if:has_pengikut,true,1|string|max:150',
+            'kegiatan' => 'nullable|string|max:255',
             'members' => 'nullable|array',
             'members.*.nama' => 'required|string',
             'members.*.pangkat_nrp_nik' => 'required|string',
@@ -331,8 +351,10 @@ class SkhppController extends Controller
         $nomorAgendaLama = $skhpp->ttd_mode === 'manual' ? $skhpp->nomor_skhpp : null;
 
         // Nomor urut manual diubah/dihapus: nomor draf ikut (dihapus = kembali ke penomoran otomatis).
-        if ($request->nomor_manual !== $skhpp->nomor_manual) {
-            $skhpp->fill($this->nomorDraf($request->nomor_manual));
+        // Centang "nomor ditulis tangan" diubah juga membuat nomor draf disusun ulang.
+        $tulisTangan = $request->has('nomor_tulis_tangan') ? $request->boolean('nomor_tulis_tangan') : (bool) $skhpp->nomor_tulis_tangan;
+        if ($tulisTangan !== (bool) $skhpp->nomor_tulis_tangan || (!$tulisTangan && $request->nomor_manual !== $skhpp->nomor_manual)) {
+            $skhpp->fill(['nomor_tulis_tangan' => false, ...$this->nomorDraf($request->nomor_manual, $tulisTangan)]);
         }
 
         $skhpp->update([
@@ -351,6 +373,8 @@ class SkhppController extends Controller
             'agama' => $request->agama,
             'alamat' => $request->alamat,
             'has_pengikut' => $request->has_pengikut ?? false,
+            'satuan' => $request->satuan,
+            'kegiatan' => $request->kegiatan,
             'peruntukan' => $request->peruntukan,
             'label_foto_1' => $request->is_pernikahan ? 'Foto Calon Suami' : 'Foto Utama Personel',
             'label_foto_2' => $request->is_pernikahan ? 'Foto Calon Istri' : null,
@@ -496,14 +520,24 @@ class SkhppController extends Controller
     private function terbitkan(Skhpp $skhpp, Request $request, array $extra = []): string
     {
         $user = auth()->user();
-        [$nextSeq, $seqLabel, $formattedNo, $priority, $skhppCategory, $romanMonth, $currentYear] = $this->nomorResmi($skhpp, $request);
+
+        if ($skhpp->nomor_tulis_tangan) {
+            // Nomor ditulis tangan di kertas: tidak ada nomor sistem & tidak dicatat di Agenda Surat.
+            $nomorKolom = $this->nomorDraf(null, true);
+            $formattedNo = $this->labelTulisTangan($nomorKolom['bulan_romawi'], $nomorKolom['tahun']);
+        } else {
+            [$nextSeq, $seqLabel, $formattedNo, $priority, $skhppCategory, $romanMonth, $currentYear] = $this->nomorResmi($skhpp, $request);
+            $nomorKolom = [
+                'nomor_skhpp' => $formattedNo,
+                'nomor_urut' => $nextSeq,
+                'bulan_romawi' => $romanMonth,
+                'tahun' => (int)$currentYear,
+            ];
+        }
 
         $skhpp->update(array_merge([
             'status' => 'approved',
-            'nomor_skhpp' => $formattedNo,
-            'nomor_urut' => $nextSeq,
-            'bulan_romawi' => $romanMonth,
-            'tahun' => (int)$currentYear,
+            ...$nomorKolom,
             'tanggal_skhpp' => now(),
             'approved_by' => $user->id,
             'approved_at' => now(),
@@ -511,7 +545,9 @@ class SkhppController extends Controller
         ], $extra));
 
         // SINKRONISASI OTOMATIS KE BUKU AGENDA SURAT SINDEN (LETTER_LOGS)
-        $this->catatAgenda($skhpp, $formattedNo, $seqLabel, $priority, $skhppCategory);
+        if (!$skhpp->nomor_tulis_tangan) {
+            $this->catatAgenda($skhpp, $formattedNo, $seqLabel, $priority, $skhppCategory);
+        }
 
         // SINKRONISASI OTOMATIS KE FITUR TRACKING PENGAJUAN SECURITY CLEARANCE (SC)
         // Tahap 1 (Pengisian RH), 2 (Pengecekan Dokumen), 3 (Cetak SKHPP), dan 4 (Menunggu TTD) otomatis terlewati!
@@ -649,6 +685,9 @@ class SkhppController extends Controller
      */
     private function arsipkanTtdManual(Skhpp $skhpp, string $signedPath): void
     {
+        if (!$skhpp->nomor_skhpp) {
+            return; // nomor ditulis tangan: tidak ada entri Agenda Surat
+        }
         try {
             $log = \App\Models\LetterLog::where('full_number', $skhpp->nomor_skhpp)->latest('id')->first();
             if (!$log || $log->is_archived) {
@@ -703,6 +742,16 @@ class SkhppController extends Controller
     {
         // Nomor yang sebelumnya sudah tercatat di Agenda Surat untuk SKHPP ini (bila pernah diajukan TTD manual).
         $nomorLama ??= $skhpp->getOriginal('ttd_mode') === 'manual' ? $skhpp->getOriginal('nomor_skhpp') : null;
+
+        if ($skhpp->nomor_tulis_tangan) {
+            // Nomor ditulis tangan: tidak dibooking. Nomor yang dulu sempat dibooking (belum ber-PDF) dilepas dari Agenda Surat.
+            if ($nomorLama) {
+                \App\Models\LetterLog::where('full_number', $nomorLama)->where('is_archived', false)->delete();
+            }
+            $nomorKolom = $this->nomorDraf(null, true);
+            $skhpp->update(['ttd_mode' => 'manual', 'status' => 'pending', 'catatan_revisi' => null, ...$nomorKolom]);
+            return $this->labelTulisTangan($nomorKolom['bulan_romawi'], $nomorKolom['tahun']);
+        }
 
         [$nextSeq, $seqLabel, $formattedNo, $priority, $category, $romanMonth, $year] = $this->nomorResmi($skhpp, $request);
 

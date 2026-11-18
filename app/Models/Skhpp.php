@@ -26,6 +26,7 @@ class Skhpp extends Model
         'jenis_identitas',
         'letter_sub_category_id',
         'nomor_manual',
+        'nomor_tulis_tangan',
         'jabatan_pekerjaan',
         'tempat_lahir',
         'tanggal_lahir',
@@ -33,7 +34,9 @@ class Skhpp extends Model
         'agama',
         'alamat',
         'has_pengikut',
+        'satuan',
         'peruntukan',
+        'kegiatan',
         'foto_1',
         'foto_2',
         'label_foto_1',
@@ -56,6 +59,7 @@ class Skhpp extends Model
     protected $casts = [
         'is_pernikahan' => 'boolean',
         'has_pengikut' => 'boolean',
+        'nomor_tulis_tangan' => 'boolean',
         'tanggal_lahir' => 'date',
         'tanggal_skhpp' => 'date',
         'submitted_at' => 'datetime',
@@ -70,6 +74,24 @@ class Skhpp extends Model
     public function getHasSignedFileAttribute(): bool
     {
         return !empty($this->attributes['signed_file'] ?? null);
+    }
+
+    /** Awalan poin 3; operator cukup mengisi kegiatannya (mis. "Seleksi Diktukpa LVI/56 TA. 2026"). */
+    public const AWALAN_PERUNTUKAN = 'dalam rangka melengkapi administrasi ';
+
+    /** Judul lampiran pengikut (sama dengan judulLampiran() di resources/js/Utils/skhppIdentitas.js). */
+    public function judulLampiran(): string
+    {
+        $satuan = trim((string) $this->satuan);
+        $kegiatan = trim((string) $this->kegiatan);
+        // Data lama tanpa kolom kegiatan: ambil dari peruntukan bila berawalan baku.
+        if ($kegiatan === '' && stripos((string) $this->peruntukan, self::AWALAN_PERUNTUKAN) === 0) {
+            $kegiatan = rtrim(trim(substr($this->peruntukan, strlen(self::AWALAN_PERUNTUKAN))), '.');
+        }
+        if ($satuan === '' || $kegiatan === '') {
+            return 'DAFTAR NAMA-NAMA ANGGOTA PENGIKUT';
+        }
+        return mb_strtoupper("DAFTAR NAMA PERSONEL {$satuan} YANG MELAKSANAKAN SC {$kegiatan}");
     }
 
     public function members()

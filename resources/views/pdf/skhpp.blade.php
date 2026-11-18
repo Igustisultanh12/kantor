@@ -96,7 +96,7 @@
             @if($skhpp->nomor_skhpp)
                 Nomor : {{ $skhpp->nomor_skhpp }}
             @else
-                Nomor : R/ &nbsp;&nbsp;&nbsp;&nbsp;{{ $skhpp->nomor_urut ?? '        ' }}&nbsp;&nbsp;&nbsp;&nbsp; /SKHPP/{{ $skhpp->bulan_romawi ?? 'VIII' }}/{{ $skhpp->tahun ?? '2026' }}
+                Nomor : R/<span style="display: inline-block; min-width: 60pt; text-align: center;">{{ $skhpp->nomor_urut }}</span>/SKHPP/{{ $skhpp->bulan_romawi ?? 'VIII' }}/{{ $skhpp->tahun ?? '2026' }}
             @endif
         </div>
     </div>
@@ -189,30 +189,39 @@
                         <div>DETASEMEN INTELIJEN</div>
                     </div>
                 </td>
-                <td style="width: 50%; text-align: right; font-size: 11pt; line-height: 1.3;">
-                    <div>Lampiran SKHPP Den Intel Kodaeral V</div>
-                    <div style="border-bottom: 1px solid #000; display: inline-block; padding-bottom: 2px;">
-                        @if($skhpp->nomor_skhpp)
-                            Nomor {{ $skhpp->nomor_skhpp }}<br>
-                        @else
-                            Nomor SKHPP/ &nbsp;&nbsp;&nbsp;&nbsp;{{ $skhpp->nomor_urut ?? '        ' }}&nbsp;&nbsp;&nbsp;&nbsp; /{{ $skhpp->bulan_romawi ?? 'VIII' }}/{{ $skhpp->tahun ?? '2026' }}<br>
-                        @endif
-                        Tanggal &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{{ $tanggal_skhpp_indo }}
-                    </div>
+                <td style="width: 50%;">
+                    {{-- Blok lampiran rata kiri; isi Nomor & Tanggal sejajar; garis bawah selebar blok (seperti naskah acuan). --}}
+                    <table style="margin-left: auto; border-bottom: 1px solid #000;">
+                        <tr><td colspan="2" style="white-space: nowrap;">Lampiran SKHPP Denintel Kodaeral V</td></tr>
+                        <tr>
+                            <td style="width: 66pt;">Nomor</td>
+                            <td style="white-space: nowrap;">
+                                @if($skhpp->nomor_skhpp)
+                                    {{ $skhpp->nomor_skhpp }}
+                                @else
+                                    R/<span style="display: inline-block; min-width: 60pt; text-align: center;">{{ $skhpp->nomor_urut }}</span>/SKHPP/{{ $skhpp->bulan_romawi ?? 'VIII' }}/{{ $skhpp->tahun ?? '2026' }}
+                                @endif
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding-bottom: 1pt;">Tanggal</td>
+                            <td style="white-space: nowrap; padding-bottom: 1pt;">{{ $tanggal_skhpp_indo }}</td>
+                        </tr>
+                    </table>
                 </td>
             </tr>
         </table>
 
         <!-- Judul Lampiran -->
-        <div style="text-align: center; text-transform: uppercase; margin-bottom: 15px;">DAFTAR NAMA-NAMA ANGGOTA PENGIKUT</div>
+        <div style="text-align: center; text-transform: uppercase; margin-bottom: 15px;">{{ $skhpp->judulLampiran() }}</div>
 
         <!-- Tabel Anggota Pengikut -->
         <table class="table-members" style="width: 100%; font-size: 11pt; margin-bottom: 25px;">
             <thead>
-                <tr style="background-color: #f8f8f8; text-transform: uppercase; text-align: center;">
+                <tr style="text-transform: uppercase; text-align: center;">
                     <th style="width: 35px;">NO</th>
                     <th>NAMA</th>
-                    <th style="width: 180px;">{{ ['NRP' => 'Pangkat/Korps/NRP', 'NIP' => 'Pangkat/Gol/NIP', 'NIM' => 'NIM'][$jenisId] ?? 'NIK' }}</th>
+                    <th style="width: 180px;">{{ ['NRP' => 'Pangkat/Korp/NRP', 'NIP' => 'Pangkat/Gol/NIP', 'NIM' => 'NIM'][$jenisId] ?? 'NIK' }}</th>
                     <th>JABATAN</th>
                 </tr>
             </thead>

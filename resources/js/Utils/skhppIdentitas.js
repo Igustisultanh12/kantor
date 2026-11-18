@@ -17,7 +17,37 @@ export const labelIdentitas = (jenis) =>
 
 /** Label kolom identitas pengikut (form & lampiran), mengikuti jenis identitas pemohon. */
 export const labelPengikut = (jenis) =>
-    ({ NRP: 'Pangkat/Korps/NRP', NIP: 'Pangkat/Gol/NIP', NIM: 'NIM', NIK: 'NIK' })[jenis] || 'NIK';
+    ({ NRP: 'Pangkat/Korp/NRP', NIP: 'Pangkat/Gol/NIP', NIM: 'NIM', NIK: 'NIK' })[jenis] || 'NIK';
+
+/** Awalan poin 3 (sama dengan Skhpp::AWALAN_PERUNTUKAN); operator cukup menulis kegiatannya. */
+export const AWALAN_PERUNTUKAN = 'dalam rangka melengkapi administrasi ';
+
+/** Kegiatan singkat dari peruntukan lengkap berawalan baku ('' bila tidak berpola). */
+export const kegiatanDariPeruntukan = (peruntukan) => {
+    const p = String(peruntukan || '').trim();
+    if (!p.toLowerCase().startsWith(AWALAN_PERUNTUKAN.trim())) return '';
+    return p.slice(AWALAN_PERUNTUKAN.trim().length).trim().replace(/\.+$/, '');
+};
+
+/** Kalimat poin 3 dari kegiatan singkat: huruf pertama kegiatan dikecilkan ("seleksi Diktukpa ..."). */
+export const peruntukanDariKegiatan = (kegiatan) => {
+    const k = String(kegiatan || '').trim().replace(/\.+$/, '');
+    return k ? AWALAN_PERUNTUKAN + k.charAt(0).toLowerCase() + k.slice(1) : '';
+};
+
+/** Judul lampiran pengikut (sama dengan Skhpp::judulLampiran() di PHP). */
+export const judulLampiran = (satuan, kegiatan, peruntukan = '') => {
+    const s = String(satuan || '').trim();
+    const k = String(kegiatan || '').trim() || kegiatanDariPeruntukan(peruntukan);
+    if (!s || !k) return 'DAFTAR NAMA-NAMA ANGGOTA PENGIKUT';
+    return `DAFTAR NAMA PERSONEL ${s} YANG MELAKSANAKAN SC ${k}`.toUpperCase();
+};
+
+/** Satuan dari "Surat Dari": buang awalan jabatan "Dan" (Danpomal Kodaeral V -> Pomal Kodaeral V). */
+export const satuanDariPengantar = (dari) => {
+    const t = String(dari || '').trim().replace(/^dan\s*/i, '');
+    return t ? t.charAt(0).toUpperCase() + t.slice(1) : '';
+};
 
 /** Jumlah pengikut untuk poin 2h (0 = baris 2h tidak ditampilkan). */
 export const jumlahPengikut = (skhpp) =>
