@@ -105,7 +105,9 @@ class SkhppFormFlowTest extends TestCase
     {
         $this->actingAs($this->makeUser())->post('/skhpp', $this->payload())->assertSessionHasNoErrors();
         $skhpp = Skhpp::firstOrFail();
-        $this->assertNull($skhpp->nomor_skhpp);
+        // Nomor otomatis langsung dibooking saat diajukan (tercatat di Agenda Surat, belum ber-PDF).
+        $this->assertStringStartsWith('R / 1 / SKHPP / ', $skhpp->nomor_skhpp);
+        $this->assertDatabaseHas('letter_logs', ['full_number' => $skhpp->nomor_skhpp, 'is_archived' => false]);
 
         $this->actingAs($this->makeUser(['role' => 'komandan']))->post("/skhpp/{$skhpp->id}/approve")->assertRedirect();
 
@@ -184,7 +186,51 @@ class SkhppFormFlowTest extends TestCase
         $this->actingAs($this->makeUser())->post('/skhpp', $this->payload(['ttd_mode' => 'tte']))->assertSessionHasNoErrors();
         $skhpp = Skhpp::firstOrFail();
         $this->assertNull($skhpp->ttd_mode);
-        $this->assertNull($skhpp->nomor_skhpp);
+        $this->assertStringStartsWith('R / 1 / SKHPP / ', $skhpp->nomor_skhpp);
+    }
+
+    public function test_pending_tte_is_in_the_agenda_and_is_archived_automatically_when_signed(): void
+    {
+        $this->actingAs($this->makeUser())->post('/skhpp', $this->payload(['nomor_manual' => '40']))->assertSessionHasNoErrors();
+        $skhpp = Skhpp::firstOrFail();
+        $this->assertDatabaseCount('letter_logs', 1);
+        $this->assertDatabaseHas('letter_logs', ['full_number' => $skhpp->nomor_skhpp, 'sequence' => '40', 'is_archived' => false]);
+
+        // Komandan mengganti nomor saat TTE: entri yang sama diperbarui, lalu langsung ber-PDF.
+        $this->actingAs($this->makeUser(['role' => 'komandan']))->post("/skhpp/{$skhpp->id}/approve", ['custom_nomor_urut' => 41])->assertRedirect();
+
+        $skhpp->refresh();
+        $this->assertStringStartsWith('R / 41 / SKHPP / ', $skhpp->nomor_skhpp);
+        $this->assertDatabaseCount('letter_logs', 1);
+        $this->assertDatabaseHas('letter_logs', ['full_number' => $skhpp->nomor_skhpp, 'is_archived' => true]);
+        $arsip = DB::table('letters')->where('letter_number', $skhpp->nomor_skhpp)->first();
+        $this->assertNotNull($arsip);
+        $this->assertStringStartsWith('%PDF', Storage::disk('local')->get($arsip->file_path));
+    }
+
+    public function test_sync_command_books_waiting_and_archives_signed_legacy_skhpp(): void
+    {
+        $operator = $this->makeUser();
+        $this->actingAs($operator)->post('/skhpp', $this->payload(['nama' => 'Lama Menunggu']))->assertSessionHasNoErrors();
+        $this->actingAs($operator)->post('/skhpp', $this->payload(['nama' => 'Lama Terbit']))->assertSessionHasNoErrors();
+        // Keadaan data lama: belum ada di Agenda Surat; yang menunggu belum bernomor, yang terbit bernomor.
+        DB::table('letter_logs')->delete();
+        Skhpp::where('nama', 'Lama Menunggu')->update(['nomor_skhpp' => null, 'nomor_urut' => null]);
+        Skhpp::where('nama', 'Lama Terbit')->update(['status' => 'approved', 'nomor_skhpp' => 'R / 250 / SKHPP / VIII / 2026', 'nomor_urut' => 250, 'tanggal_skhpp' => '2026-08-20']);
+
+        $this->artisan('skhpp:sinkron-agenda')->assertSuccessful();
+        $this->assertDatabaseCount('letter_logs', 0); // pratinjau tidak mengubah apa pun
+
+        $this->artisan('skhpp:sinkron-agenda --simpan')->assertSuccessful();
+        $menunggu = Skhpp::where('nama', 'Lama Menunggu')->first();
+        $this->assertNotNull($menunggu->nomor_skhpp);
+        $this->assertDatabaseHas('letter_logs', ['full_number' => $menunggu->nomor_skhpp, 'is_archived' => false]);
+        $this->assertDatabaseHas('letter_logs', ['full_number' => 'R / 250 / SKHPP / VIII / 2026', 'is_archived' => true]);
+        $this->assertDatabaseCount('letters', 1);
+
+        $this->artisan('skhpp:sinkron-agenda --simpan')->assertSuccessful();
+        $this->assertDatabaseCount('letter_logs', 2); // aman dijalankan ulang
+        $this->assertDatabaseCount('letters', 1);
     }
 
     public function test_backfill_adds_waiting_manual_skhpp_to_the_agenda_once(): void

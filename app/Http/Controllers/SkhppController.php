@@ -220,6 +220,9 @@ class SkhppController extends Controller
             return redirect()->route('skhpp.index')->with('success', "Permohonan SKHPP tersimpan untuk TTD manual dengan nomor {$nomor}. Cetak, mintakan tanda tangan Komandan, lalu unggah hasilnya.");
         }
 
+        // TTE: nomor langsung dibooking & tercatat di Agenda Surat selama menunggu TTE Komandan.
+        $this->bookingTte($skhpp, $request);
+
         // Sinkronisasi ke Antrean TTD Komandan (SignatureRequest)
         try {
             SignatureRequest::create([
@@ -347,8 +350,8 @@ class SkhppController extends Controller
 
         $user = auth()->user();
 
-        // Nomor yang sudah tercatat di Agenda Surat untuk SKHPP TTD manual ini, dicatat sebelum nomornya berubah.
-        $nomorAgendaLama = $skhpp->ttd_mode === 'manual' ? $skhpp->nomor_skhpp : null;
+        // Nomor yang sudah dibooking di Agenda Surat untuk SKHPP ini (TTE/TTD manual), dicatat sebelum nomornya berubah.
+        $nomorAgendaLama = $skhpp->nomor_skhpp;
 
         // Nomor urut manual diubah/dihapus: nomor draf ikut (dihapus = kembali ke penomoran otomatis).
         // Centang "nomor ditulis tangan" diubah juga membuat nomor draf disusun ulang.
@@ -407,6 +410,10 @@ class SkhppController extends Controller
         }
         if ($request->ttd_mode === 'tte' && $skhpp->ttd_mode === 'manual') {
             $skhpp->update(['ttd_mode' => null]);
+        }
+        // Jalur TTE: nomor (tetap/baru) dibooking ulang di Agenda Surat; entri lama diperbarui, bukan dobel.
+        if ($skhpp->ttd_mode !== 'manual') {
+            $this->bookingTte($skhpp, $request, $nomorAgendaLama);
         }
 
         // Kirim Notifikasi WA ke Komandan
@@ -520,9 +527,11 @@ class SkhppController extends Controller
     private function terbitkan(Skhpp $skhpp, Request $request, array $extra = []): string
     {
         $user = auth()->user();
+        $nomorSebelum = $skhpp->nomor_skhpp; // nomor yang dibooking saat pengajuan (bila ada)
 
         if ($skhpp->nomor_tulis_tangan) {
             // Nomor ditulis tangan di kertas: tidak ada nomor sistem & tidak dicatat di Agenda Surat.
+            $this->lepasNomorAgenda($nomorSebelum);
             $nomorKolom = $this->nomorDraf(null, true);
             $formattedNo = $this->labelTulisTangan($nomorKolom['bulan_romawi'], $nomorKolom['tahun']);
         } else {
@@ -545,8 +554,13 @@ class SkhppController extends Controller
         ], $extra));
 
         // SINKRONISASI OTOMATIS KE BUKU AGENDA SURAT SINDEN (LETTER_LOGS)
+        // Nomor yang dibooking saat pengajuan diperbarui (bukan dobel) bila nomornya berubah saat disahkan.
         if (!$skhpp->nomor_tulis_tangan) {
-            $this->catatAgenda($skhpp, $formattedNo, $seqLabel, $priority, $skhppCategory);
+            $this->catatAgenda($skhpp, $formattedNo, $seqLabel, $priority, $skhppCategory, $nomorSebelum);
+            // Disahkan lewat TTE (bukan unggah TTD manual): naskah ber-QR langsung jadi arsip.
+            if (!array_key_exists('signed_file', $extra)) {
+                $this->arsipkanTte($skhpp);
+            }
         }
 
         // SINKRONISASI OTOMATIS KE FITUR TRACKING PENGAJUAN SECURITY CLEARANCE (SC)
@@ -685,6 +699,30 @@ class SkhppController extends Controller
      */
     private function arsipkanTtdManual(Skhpp $skhpp, string $signedPath): void
     {
+        $this->arsipkan($skhpp, 'TTD manual', function () use ($signedPath) {
+            // Salinan terpisah di folder arsip, supaya menghapus arsip tidak menghilangkan berkas di SKHPP.
+            $arsipPath = 'archives/' . basename($signedPath);
+            Storage::disk('local')->copy($signedPath, $arsipPath);
+            return $arsipPath;
+        });
+    }
+
+    /**
+     * SKHPP disahkan lewat TTE: naskah PDF ber-QR dibuat dan disimpan sebagai arsip surat keluar,
+     * lalu entri Agenda Surat-nya ditandai sudah ber-PDF. Dipakai juga oleh perintah skhpp:sinkron-agenda.
+     */
+    public function arsipkanTte(Skhpp $skhpp): void
+    {
+        $this->arsipkan($skhpp, 'TTE', function () use ($skhpp) {
+            $arsipPath = 'archives/SKHPP_' . $skhpp->id . '_' . Str::random(10) . '.pdf';
+            Storage::disk('local')->put($arsipPath, \App\Support\SkhppPdf::buat($skhpp)->output());
+            return $arsipPath;
+        });
+    }
+
+    /** Simpan berkas SKHPP sebagai arsip surat keluar dan tandai entri Agenda Surat-nya ber-PDF. */
+    private function arsipkan(Skhpp $skhpp, string $jenis, \Closure $simpanBerkas): void
+    {
         if (!$skhpp->nomor_skhpp) {
             return; // nomor ditulis tangan: tidak ada entri Agenda Surat
         }
@@ -694,9 +732,7 @@ class SkhppController extends Controller
                 return;
             }
 
-            // Salinan terpisah di folder arsip, supaya menghapus arsip tidak menghilangkan berkas di SKHPP.
-            $arsipPath = 'archives/' . basename($signedPath);
-            Storage::disk('local')->copy($signedPath, $arsipPath);
+            $arsipPath = $simpanBerkas();
 
             \App\Models\Letter::create([
                 'type' => 'keluar',
@@ -711,8 +747,8 @@ class SkhppController extends Controller
             ]);
 
             $log->update(['is_archived' => true]);
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::warning("Gagal mengarsipkan SKHPP TTD manual ke Agenda Surat: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Gagal mengarsipkan SKHPP {$jenis} ke Agenda Surat: " . $e->getMessage());
         }
     }
 
@@ -740,14 +776,12 @@ class SkhppController extends Controller
     /** Tandai SKHPP menunggu tanda tangan basah dan booking nomornya (dipakai tombol di daftar & pilihan di form). */
     private function bookingTtdManual(Skhpp $skhpp, Request $request, ?string $nomorLama = null): string
     {
-        // Nomor yang sebelumnya sudah tercatat di Agenda Surat untuk SKHPP ini (bila pernah diajukan TTD manual).
-        $nomorLama ??= $skhpp->getOriginal('ttd_mode') === 'manual' ? $skhpp->getOriginal('nomor_skhpp') : null;
+        // Nomor yang sebelumnya sudah dibooking di Agenda Surat untuk SKHPP ini (TTE maupun TTD manual).
+        $nomorLama ??= $skhpp->getOriginal('nomor_skhpp');
 
         if ($skhpp->nomor_tulis_tangan) {
             // Nomor ditulis tangan: tidak dibooking. Nomor yang dulu sempat dibooking (belum ber-PDF) dilepas dari Agenda Surat.
-            if ($nomorLama) {
-                \App\Models\LetterLog::where('full_number', $nomorLama)->where('is_archived', false)->delete();
-            }
+            $this->lepasNomorAgenda($nomorLama);
             $nomorKolom = $this->nomorDraf(null, true);
             $skhpp->update(['ttd_mode' => 'manual', 'status' => 'pending', 'catatan_revisi' => null, ...$nomorKolom]);
             return $this->labelTulisTangan($nomorKolom['bulan_romawi'], $nomorKolom['tahun']);
@@ -769,6 +803,63 @@ class SkhppController extends Controller
         $this->catatAgenda($skhpp, $formattedNo, $seqLabel, $priority, $category, $nomorLama);
 
         return $formattedNo;
+    }
+
+    /**
+     * SKHPP jalur TTE yang menunggu tanda tangan Komandan: nomornya langsung dibooking dan tercatat
+     * di Agenda Surat (status belum ada PDF), lalu otomatis ber-PDF saat disahkan. Nomor tulis tangan
+     * tidak dibooking. Dipakai juga oleh perintah skhpp:sinkron-agenda.
+     */
+    public function bookingTte(Skhpp $skhpp, Request $request, ?string $nomorLama = null): ?string
+    {
+        if ($skhpp->nomor_tulis_tangan) {
+            $this->lepasNomorAgenda($nomorLama);
+            return null;
+        }
+
+        [$nextSeq, $seqLabel, $formattedNo, $priority, $category, $romanMonth, $year] = $this->nomorResmi($skhpp, $request);
+
+        $skhpp->update([
+            'nomor_skhpp' => $formattedNo,
+            'nomor_urut' => $nextSeq,
+            'bulan_romawi' => $romanMonth,
+            'tahun' => $year,
+        ]);
+
+        $this->catatAgenda($skhpp, $formattedNo, $seqLabel, $priority, $category, $nomorLama);
+
+        return $formattedNo;
+    }
+
+    /**
+     * SKHPP TTE yang sudah terbit sebelum sinkronisasi ini ada: pastikan nomornya tercatat di Agenda Surat
+     * (nomor tidak diubah) lalu arsipkan naskahnya. Dipakai perintah skhpp:sinkron-agenda.
+     */
+    public function sinkronTerbitKeAgenda(Skhpp $skhpp): void
+    {
+        if (!$skhpp->nomor_skhpp || $skhpp->nomor_tulis_tangan) {
+            return;
+        }
+        if (!\App\Models\LetterLog::where('full_number', $skhpp->nomor_skhpp)->exists()) {
+            $perusahaan = $skhpp->kategori_personel === 'perusahaan';
+            $category = \App\Models\Category::firstOrCreate(
+                ['code' => $perusahaan ? 'SKHPP-P' : 'SKHPP-D'],
+                ['name' => $perusahaan ? 'SKHPP Mitra Kerja / Perusahaan' : 'SKHPP Dinas Militer & PNS', 'start_number' => 1]
+            );
+            $label = ($skhpp->nomor_manual && (int) $skhpp->nomor_manual === (int) $skhpp->nomor_urut) ? $skhpp->nomor_manual : (string) $skhpp->nomor_urut;
+            $this->catatAgenda($skhpp, $skhpp->nomor_skhpp, $label, trim(explode('/', $skhpp->nomor_skhpp)[0]) ?: 'R', $category);
+        }
+        if ($skhpp->ttd_mode !== 'manual') {
+            $this->arsipkanTte($skhpp);
+        }
+    }
+
+    /** Lepas nomor yang pernah dibooking di Agenda Surat (hanya yang belum ber-PDF). */
+    private function lepasNomorAgenda(?string $nomor): void
+    {
+        if ($nomor) {
+            \App\Models\LetterLog::where('full_number', $nomor)->where('is_archived', false)->delete();
+        }
     }
 
     /**
@@ -994,6 +1085,9 @@ class SkhppController extends Controller
             'ip_address' => request()->ip(),
         ]);
 
+        // Nomor yang masih dibooking (belum ber-PDF) dilepas dari Agenda Surat; yang sudah terarsip tetap.
+        $this->lepasNomorAgenda($skhpp->nomor_skhpp);
+
         $skhpp->delete();
 
         return back()->with('success', 'Data SKHPP dan status validasi legalitas berhasil dihapus/dicabut.');
@@ -1006,57 +1100,8 @@ class SkhppController extends Controller
     {
         $skhpp = Skhpp::with(['members', 'submitter', 'approver'])->findOrFail($id);
 
-        $foto1_base64 = null;
-        if ($skhpp->foto_1 && Storage::disk('public')->exists($skhpp->foto_1)) {
-            $foto1Path = Storage::disk('public')->path($skhpp->foto_1);
-            $foto1Type = pathinfo($foto1Path, PATHINFO_EXTENSION);
-            $foto1Data = file_get_contents($foto1Path);
-            $foto1_base64 = 'data:image/' . $foto1Type . ';base64,' . base64_encode($foto1Data);
-        }
-
-        $foto2_base64 = null;
-        if ($skhpp->foto_2 && Storage::disk('public')->exists($skhpp->foto_2)) {
-            $foto2Path = Storage::disk('public')->path($skhpp->foto_2);
-            $foto2Type = pathinfo($foto2Path, PATHINFO_EXTENSION);
-            $foto2Data = file_get_contents($foto2Path);
-            $foto2_base64 = 'data:image/' . $foto2Type . ';base64,' . base64_encode($foto2Data);
-        }
-
-        // Generate QR Code TTD Image
-        $qr_base64 = null;
-        $manual = $skhpp->ttd_mode === 'manual'; // tanda tangan basah: tanpa QR
-        if ($skhpp->status === 'approved' && !$manual) {
-            try {
-                $verifyUrl = route('skhpp.verify', $skhpp->verification_code);
-                $qrData = file_get_contents('https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' . urlencode($verifyUrl));
-                if ($qrData) {
-                    $qr_base64 = 'data:image/png;base64,' . base64_encode($qrData);
-                }
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::warning("Gagal fetch QR image: " . $e->getMessage());
-            }
-        }
-
-        $months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-
-        $tglLahir = $skhpp->tanggal_lahir ? new \DateTime($skhpp->tanggal_lahir) : null;
-        $tanggal_lahir_indo = $tglLahir ? ($tglLahir->format('d') . ' ' . $months[(int)$tglLahir->format('n') - 1] . ' ' . $tglLahir->format('Y')) : '';
-
-        $tglSkhpp = $skhpp->tanggal_skhpp ? new \DateTime($skhpp->tanggal_skhpp) : ($skhpp->approved_at ? new \DateTime($skhpp->approved_at) : new \DateTime());
-        $tanggal_skhpp_indo = $tglSkhpp ? ($tglSkhpp->format('j') . ' ' . $months[(int)$tglSkhpp->format('n') - 1] . ' ' . $tglSkhpp->format('Y')) : '';
-        $bulan_tahun_indo = $tglSkhpp ? ($months[(int)$tglSkhpp->format('n') - 1] . ' ' . $tglSkhpp->format('Y')) : '';
-        // Naskah untuk TTD manual: hari dikosongkan (diisi tangan saat ditandatangani), bulan & tahun tetap tercetak.
-        if ($manual && $skhpp->status !== 'approved') {
-            $tanggal_skhpp_indo = ' ' . $bulan_tahun_indo;
-        }
-
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.skhpp', compact(
-            'skhpp', 'foto1_base64', 'foto2_base64', 'qr_base64',
-            'tanggal_lahir_indo', 'tanggal_skhpp_indo', 'bulan_tahun_indo'
-        ))->setPaper([0, 0, 609.45, 935.43], 'portrait'); // EXACT F4 / FOLIO SIZE (21.5cm x 33cm)
-
         $safeName = \Illuminate\Support\Str::slug($skhpp->nama);
-        return $pdf->stream("SKHPP_{$safeName}.pdf");
+        return \App\Support\SkhppPdf::buat($skhpp)->stream("SKHPP_{$safeName}.pdf");
     }
 
     /**
@@ -1086,6 +1131,7 @@ class SkhppController extends Controller
         $cleanCode = 'SKHPP';
 
         $formattedNo = "{$priority} / {$nextSeq} / {$cleanCode} / {$romanMonth} / {$currentYear}";
+        $nomorLama = $skhpp->nomor_skhpp;
 
         $skhpp->update([
             'nomor_skhpp' => $formattedNo,
@@ -1093,6 +1139,11 @@ class SkhppController extends Controller
             'bulan_romawi' => $romanMonth,
             'tahun' => (int)$currentYear,
         ]);
+
+        // Entri Agenda Surat ikut pindah ke nomor baru (bukan dobel).
+        if (!$skhpp->nomor_tulis_tangan) {
+            $this->bookingTte($skhpp, $request, $nomorLama);
+        }
 
         // Kirim Notifikasi Sistem In-App Bell & WA ke Operator & Komandan bahwa Nomor SKHPP telah dibooking
         try {
@@ -1144,6 +1195,7 @@ class SkhppController extends Controller
             'catatan_revisi' => null,
             'submitted_at' => now(),
         ]);
+        $this->bookingTte($skhpp, request(), $skhpp->nomor_skhpp); // tetap tercatat di Agenda Surat selama menunggu
 
         // Kirim Notifikasi Sistem In-App Bell & WA ke Komandan
         try {
