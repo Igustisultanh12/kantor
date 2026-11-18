@@ -187,7 +187,7 @@
     <div style="width: 100%;">
 
         <!-- Header Lampiran (Kop Kiri & Detail Lampiran Kanan) -->
-        <table style="width: 100%; margin-bottom: 25px;">
+        <table style="width: 100%; margin-bottom: 60pt;">
             <tr>
                 <td style="width: 50%;">
                     <div class="kop">
@@ -219,7 +219,7 @@
         </table>
 
         <!-- Judul Lampiran -->
-        <div style="text-align: center; text-transform: uppercase; margin-bottom: 15px;">{{ $skhpp->judulLampiran() }}</div>
+        <div style="text-align: center; text-transform: uppercase; margin-bottom: 24pt;">{{ $skhpp->judulLampiran() }}</div>
 
         <!-- Tabel Anggota Pengikut -->
         <table class="table-members" style="width: 100%; font-size: 11pt; margin-bottom: 25px;">
