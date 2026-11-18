@@ -136,7 +136,7 @@
     <!-- Pas foto 4x6 (kiri) & blok tanda tangan Komandan (kanan; sengaja melewati margin kanan seperti naskah acuan) -->
     <table style="width: 525pt; margin-right: -25pt;">
         <tr>
-            <td style="text-align: right; padding-right: 6pt; font-size: 0; white-space: nowrap;">
+            <td style="text-align: right; padding-right: 6pt; font-size: 0; white-space: nowrap; vertical-align: bottom;">
                 @if($foto1_base64)
                     <img src="{{ $foto1_base64 }}" style="width: 4cm; height: 6cm; object-fit: cover; border: none; display: inline-block; vertical-align: top;" />
                 @endif
@@ -144,7 +144,7 @@
                     <img src="{{ $foto2_base64 }}" style="width: 4cm; height: 6cm; object-fit: cover; border: none; display: inline-block; vertical-align: top;" />
                 @endif
             </td>
-            <td style="width: 251pt;"><div style="width: 251pt;">
+            <td style="width: 251pt; vertical-align: bottom;"><div style="width: 251pt;">
                 <div style="margin-left: 8pt; width: 229pt;">
                     <div>Dikeluarkan di Surabaya</div>
                     <table style="width: 229pt; border-bottom: 1px solid #000;">
@@ -167,9 +167,13 @@
                 </div>
 
                 <div style="text-align: center; white-space: nowrap;">Hari Bagio Wijayanto, M.Tr.Opsla.</div>
-                <div style="text-align: center; white-space: nowrap;">Kolonel Laut (E) NRP 16085/P</div>
                 </div>
             </td>
+        </tr>
+        {{-- Baris pangkat/NRP di baris tabel tersendiri, supaya tepi bawah pas foto sejajar dengan nama Komandan. --}}
+        <tr>
+            <td></td>
+            <td style="width: 251pt;"><div style="width: 251pt; text-align: center; white-space: nowrap;">Kolonel Laut (E) NRP 16085/P</div></td>
         </tr>
     </table>
 
