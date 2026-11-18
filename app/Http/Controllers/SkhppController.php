@@ -529,7 +529,10 @@ class SkhppController extends Controller
         $user = auth()->user();
         $nomorSebelum = $skhpp->nomor_skhpp; // nomor yang dibooking saat pengajuan (bila ada)
 
-        if ($skhpp->nomor_tulis_tangan) {
+        // Nomor tulis tangan yang sudah diisikan saat unggah TTD manual diperlakukan seperti nomor biasa.
+        $tulisTanganKosong = $skhpp->nomor_tulis_tangan && !$skhpp->nomor_skhpp;
+
+        if ($tulisTanganKosong) {
             // Nomor ditulis tangan di kertas: tidak ada nomor sistem & tidak dicatat di Agenda Surat.
             $this->lepasNomorAgenda($nomorSebelum);
             $nomorKolom = $this->nomorDraf(null, true);
@@ -555,7 +558,7 @@ class SkhppController extends Controller
 
         // SINKRONISASI OTOMATIS KE BUKU AGENDA SURAT SINDEN (LETTER_LOGS)
         // Nomor yang dibooking saat pengajuan diperbarui (bukan dobel) bila nomornya berubah saat disahkan.
-        if (!$skhpp->nomor_tulis_tangan) {
+        if (!$tulisTanganKosong) {
             $this->catatAgenda($skhpp, $formattedNo, $seqLabel, $priority, $skhppCategory, $nomorSebelum);
             // Disahkan lewat TTE (bukan unggah TTD manual): naskah ber-QR langsung jadi arsip.
             if (!array_key_exists('signed_file', $extra)) {
@@ -878,10 +881,44 @@ class SkhppController extends Controller
         $this->authorizeTtdManual($skhpp);
         abort_unless($skhpp->ttd_mode === 'manual', 422, 'SKHPP ini belum diajukan TTD manual.');
 
+        $tulisTangan = (bool) $skhpp->nomor_tulis_tangan;
         $request->validate([
             'berkas_ttd' => 'required|file|mimes:pdf|max:20480', // PDF saja: berkas ini juga menjadi arsip di Agenda Surat
             'tanggal_ttd' => 'required|date|before_or_equal:today',
+            // Nomor ditulis tangan: nomor urut yang tertulis di kertas wajib diisi supaya tercatat di Agenda Surat & arsip.
+            'nomor_urut_tulis' => [$tulisTangan ? 'required' : 'nullable', 'regex:/^\d{1,6}[A-Za-z]{0,2}$/'],
+        ], [
+            'nomor_urut_tulis.required' => 'Isi nomor urut yang ditulis tangan di naskah.',
+            'nomor_urut_tulis.regex' => 'Nomor urut hanya angka, boleh diikuti huruf (contoh: 120 atau 120a).',
         ]);
+
+        if ($tulisTangan) {
+            // Bulan & tahun mengikuti yang tercetak di naskah; bila kosong, ikut tanggal tanda tangan.
+            $tgl = $request->date('tanggal_ttd');
+            $roman = $skhpp->bulan_romawi ?: $this->getRomanMonth($tgl->month);
+            $tahun = (int) ($skhpp->tahun ?: $tgl->year);
+            $urut = $request->input('nomor_urut_tulis');
+            $nomor = "R / {$urut} / SKHPP / {$roman} / {$tahun}";
+
+            // SKHPP-D & SKHPP-P bernomor sendiri-sendiri: bentrok hanya dicek di kategori yang sama.
+            $perusahaan = $skhpp->kategori_personel === 'perusahaan';
+            $kategoriId = \App\Models\Category::where('code', $perusahaan ? 'SKHPP-P' : 'SKHPP-D')->value('id');
+            $bentrok = Skhpp::where('id', '!=', $skhpp->id)->where('nomor_skhpp', $nomor)
+                    ->where('kategori_personel', $perusahaan ? '=' : '!=', 'perusahaan')->exists()
+                || ($kategoriId && \App\Models\LetterLog::where('category_id', $kategoriId)->where('full_number', $nomor)->exists());
+            if ($bentrok) {
+                return back()->withErrors(['nomor_urut_tulis' => "Nomor {$nomor} sudah dipakai di SKHPP / Agenda Surat lain."]);
+            }
+
+            // Nomor tetap berstatus "ditulis tangan" (naskah aslinya kosong), tapi kini sudah diketahui.
+            $skhpp->update([
+                'nomor_manual' => $urut,
+                'nomor_urut' => (int) $urut,
+                'nomor_skhpp' => $nomor,
+                'bulan_romawi' => $roman,
+                'tahun' => $tahun,
+            ]);
+        }
 
         // Berkas bertanda tangan disimpan di disk privat; hanya bisa dibuka lewat route berizin.
         $path = $request->file('berkas_ttd')->store('skhpp_signed', 'local');

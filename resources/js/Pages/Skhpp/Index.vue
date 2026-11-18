@@ -190,12 +190,24 @@ const ajukanTtdManual = (skhpp) => {
 // Langkah 2: unggah naskah yang sudah ditandatangani → SKHPP terbit.
 const unggahTtdManual = (skhpp) => {
     const hariIni = new Date().toLocaleDateString('en-CA'); // yyyy-mm-dd waktu setempat
+    // Nomor ditulis tangan: nomor urut di kertas diketik di sini supaya tercatat di Agenda Surat & arsip.
+    const tulisTangan = Boolean(skhpp.nomor_tulis_tangan);
+    const isianNomor = tulisTangan ? `
+                <div>
+                    <label for="swal-nomor-tulis" class="block font-bold uppercase mb-1 text-slate-700 text-[10px]">Nomor urut yang ditulis tangan</label>
+                    <div class="flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                        <span>R /</span>
+                        <input id="swal-nomor-tulis" type="text" maxlength="8" placeholder="120 / 120a" class="w-24 text-xs font-bold p-2.5 border rounded-xl" />
+                        <span>/ SKHPP / ${aman(skhpp.bulan_romawi || '…')} / ${aman(skhpp.tahun || '…')}</span>
+                    </div>
+                    <span class="text-[9px] text-slate-400 mt-1 block">Samakan dengan nomor yang tertulis di naskah. Nomor & tanggal ini dicatat di Agenda Surat dan arsip.</span>
+                </div>` : '';
     Swal.fire({
         title: 'UNGGAH SKHPP BERTANDA TANGAN',
         html: `
             <div class="text-left text-xs space-y-3 font-sans">
                 <div class="bg-teal-50 p-2.5 rounded-xl border border-teal-100">
-                    <p class="font-black text-teal-700 text-[10px] uppercase mb-0.5">${aman(skhpp.nomor_skhpp || 'Nomor belum ada')}</p>
+                    <p class="font-black text-teal-700 text-[10px] uppercase mb-0.5">${tulisTangan ? 'Nomor ditulis tangan' : aman(skhpp.nomor_skhpp || 'Nomor belum ada')}</p>
                     <p class="font-bold text-slate-800">${aman(skhpp.nama)}</p>
                 </div>
                 <div>
@@ -203,6 +215,7 @@ const unggahTtdManual = (skhpp) => {
                     <input id="swal-berkas-ttd" type="file" accept="application/pdf" class="w-full text-xs p-2 border rounded-xl" />
                     <span class="text-[9px] text-slate-400 mt-1 block">PDF ini otomatis menjadi arsip di Agenda Surat.</span>
                 </div>
+                ${isianNomor}
                 <div>
                     <label for="swal-tanggal-ttd" class="block font-bold uppercase mb-1 text-slate-700 text-[10px]">Tanggal ditandatangani</label>
                     <input id="swal-tanggal-ttd" type="date" value="${hariIni}" max="${hariIni}" class="w-full text-xs font-bold p-2.5 border rounded-xl" />
@@ -220,7 +233,11 @@ const unggahTtdManual = (skhpp) => {
             if (berkas.type !== 'application/pdf') return Swal.showValidationMessage('Berkas harus berformat PDF.');
             if (berkas.size > 20 * 1024 * 1024) return Swal.showValidationMessage('Ukuran berkas melebihi 20 MB.');
             if (!tanggal) return Swal.showValidationMessage('Isi tanggal ditandatangani.');
-            return { berkas_ttd: berkas, tanggal_ttd: tanggal };
+            if (!tulisTangan) return { berkas_ttd: berkas, tanggal_ttd: tanggal };
+            const nomor = document.getElementById('swal-nomor-tulis').value.trim();
+            if (!nomor) return Swal.showValidationMessage('Isi nomor urut yang ditulis tangan di naskah.');
+            if (!/^\d{1,6}[A-Za-z]{0,2}$/.test(nomor)) return Swal.showValidationMessage('Nomor urut hanya angka, boleh diikuti huruf (contoh: 120 atau 120a).');
+            return { berkas_ttd: berkas, tanggal_ttd: tanggal, nomor_urut_tulis: nomor };
         },
     }).then((result) => {
         if (!result.isConfirmed || !result.value) return;

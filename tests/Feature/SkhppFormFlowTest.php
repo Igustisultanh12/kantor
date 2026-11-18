@@ -312,17 +312,43 @@ class SkhppFormFlowTest extends TestCase
         $this->assertSame('manual', $skhpp->ttd_mode);
         $this->assertDatabaseCount('letter_logs', 0);
 
+        // Unggah tanpa nomor yang ditulis tangan ditolak.
         $this->actingAs($operator)->post("/skhpp/{$skhpp->id}/ttd-manual/unggah", [
             'berkas_ttd' => UploadedFile::fake()->create('ttd.pdf', 50, 'application/pdf'), 'tanggal_ttd' => now()->toDateString(),
+        ])->assertSessionHasErrors('nomor_urut_tulis');
+        $this->assertSame('pending', $skhpp->fresh()->status);
+
+        // Nomor & tanggal yang ditulis tangan diisikan saat unggah → tercatat di Agenda Surat dan terarsip.
+        $tanggal = now()->subDay()->toDateString();
+        $this->actingAs($operator)->post("/skhpp/{$skhpp->id}/ttd-manual/unggah", [
+            'berkas_ttd' => UploadedFile::fake()->create('ttd.pdf', 50, 'application/pdf'), 'tanggal_ttd' => $tanggal, 'nomor_urut_tulis' => '88a',
         ])->assertSessionHasNoErrors();
         $skhpp->refresh();
+        $nomor = "R / 88a / SKHPP / {$skhpp->bulan_romawi} / {$skhpp->tahun}";
         $this->assertSame('approved', $skhpp->status);
-        $this->assertNull($skhpp->nomor_skhpp);
-        $this->assertDatabaseCount('letter_logs', 0);
-        $this->assertDatabaseCount('letters', 0);
+        $this->assertSame($nomor, $skhpp->nomor_skhpp);
+        $this->assertSame(88, (int) $skhpp->nomor_urut);
+        $this->assertDatabaseHas('letter_logs', ['full_number' => $nomor, 'sequence' => '88a', 'is_archived' => true]);
+        $this->assertSame($tanggal, \App\Models\LetterLog::firstOrFail()->date->toDateString());
+        $this->assertDatabaseHas('letters', ['letter_number' => $nomor, 'type' => 'keluar']);
 
         // Revisi lama tanpa field nomor_tulis_tangan tidak mematikan pilihan ini.
         $this->assertTrue($skhpp->nomor_tulis_tangan);
+    }
+
+    public function test_handwritten_number_already_used_is_rejected_on_upload(): void
+    {
+        $operator = $this->makeUser();
+        $this->actingAs($operator)->post('/skhpp', $this->payload(['ttd_mode' => 'manual', 'nomor_manual' => '50']))->assertSessionHasNoErrors();
+        $this->actingAs($operator)->post('/skhpp', $this->payload(['ttd_mode' => 'manual', 'nomor_tulis_tangan' => true]))->assertSessionHasNoErrors();
+        $skhpp = Skhpp::where('nomor_tulis_tangan', true)->firstOrFail();
+
+        $this->actingAs($operator)->post("/skhpp/{$skhpp->id}/ttd-manual/unggah", [
+            'berkas_ttd' => UploadedFile::fake()->create('ttd.pdf', 50, 'application/pdf'), 'tanggal_ttd' => now()->toDateString(), 'nomor_urut_tulis' => '50',
+        ])->assertSessionHasErrors('nomor_urut_tulis');
+        $skhpp->refresh();
+        $this->assertSame('pending', $skhpp->status);
+        $this->assertNull($skhpp->nomor_skhpp);
     }
 
     public function test_unit_and_short_purpose_build_the_attachment_title(): void
