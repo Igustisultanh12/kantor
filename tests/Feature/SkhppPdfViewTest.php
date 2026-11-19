@@ -74,4 +74,35 @@ class SkhppPdfViewTest extends TestCase
         $this->assertStringNotContainsString('daftar nama terlampir', $html);
         $this->assertStringNotContainsString('DAFTAR NAMA-NAMA ANGGOTA PENGIKUT', $html);
     }
+
+    public function test_docx_is_valid_word_package_with_same_content(): void
+    {
+        $skhpp = new Skhpp([
+            'kategori_personel' => 'militer', 'nama' => 'Budi & <Uji>', 'jabatan_pekerjaan' => 'Staf',
+            'tempat_lahir' => 'Surabaya', 'jenis_kelamin' => 'Laki-laki', 'agama' => 'Hindu', 'alamat' => 'Jl. Uji',
+            'surat_pengantar' => 'Surat', 'peruntukan' => 'uji', 'status' => 'pending',
+            'jenis_identitas' => 'NIP', 'pangkat_korps_nrp' => 'Penata III/c NIP 19', 'has_pengikut' => true,
+        ]);
+        $skhpp->setRelation('members', collect([new SkhppMember(['nama' => 'Ani Pengikut', 'pangkat_nrp_nik' => '1', 'jabatan' => 'Anggota'])]));
+
+        $bytes = (new \App\Services\SkhppDocx())->build($skhpp, [
+            'foto1' => null, 'foto2' => null, 'qr' => null,
+            'tanggal_lahir_indo' => '1 Januari 1990', 'tanggal_skhpp_indo' => '16 November 2026', 'bulan_tahun_indo' => 'November 2026',
+        ]);
+
+        $tmp = tempnam(sys_get_temp_dir(), 'docx');
+        file_put_contents($tmp, $bytes);
+        $zip = new \ZipArchive();
+        $this->assertTrue($zip->open($tmp) === true);
+        $xml = $zip->getFromName('word/document.xml');
+        $zip->close();
+        @unlink($tmp);
+
+        $this->assertNotFalse(simplexml_load_string($xml), 'document.xml harus XML yang sah');
+        $this->assertStringContainsString('w:w="12189" w:h="18709"', $xml); // F4
+        $this->assertStringContainsString('Budi &amp; &lt;Uji&gt;', $xml);
+        $this->assertStringContainsString('Pangkat/Gol/NIP', $xml);
+        $this->assertStringContainsString('1 orang (daftar nama terlampir)', $xml);
+        $this->assertStringContainsString('Ani Pengikut', $xml);
+    }
 }

@@ -1148,6 +1148,22 @@ class SkhppController extends Controller
     }
 
     /**
+     * Export naskah SKHPP ke Word (.docx) yang bisa disunting; tata letak sama dengan PDF (F4, Arial 12pt).
+     */
+    public function exportDocx($id)
+    {
+        $skhpp = Skhpp::with(['members', 'submitter', 'approver'])->findOrFail($id);
+        $bytes = (new \App\Services\SkhppDocx())->build($skhpp, \App\Support\SkhppPdf::bahan($skhpp));
+
+        $safeName = \Illuminate\Support\Str::slug($skhpp->nama);
+        return response($bytes, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'Content-Disposition' => "attachment; filename=\"SKHPP_{$safeName}.docx\"",
+            'Cache-Control' => 'no-store',
+        ]);
+    }
+
+    /**
      * Khusus Admin: Atur / Loncati Nomor Urut SKHPP Tanpa Menyetujui / TTD
      */
     public function updateNumber(Request $request, $id)

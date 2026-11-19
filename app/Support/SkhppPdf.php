@@ -11,27 +11,47 @@ class SkhppPdf
 {
     public static function buat(Skhpp $skhpp): \Barryvdh\DomPDF\PDF
     {
+        $b = self::bahan($skhpp);
+
+        $keDataUri = fn (?array $img) => $img ? 'data:image/' . $img['ext'] . ';base64,' . base64_encode($img['bytes']) : null;
+        $foto1_base64 = $keDataUri($b['foto1']);
+        $foto2_base64 = $keDataUri($b['foto2']);
+        $qr_base64 = $keDataUri($b['qr']);
+        $tanggal_lahir_indo = $b['tanggal_lahir_indo'];
+        $tanggal_skhpp_indo = $b['tanggal_skhpp_indo'];
+        $bulan_tahun_indo = $b['bulan_tahun_indo'];
+
+        return \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.skhpp', compact(
+            'skhpp', 'foto1_base64', 'foto2_base64', 'qr_base64',
+            'tanggal_lahir_indo', 'tanggal_skhpp_indo', 'bulan_tahun_indo'
+        ))->setPaper([0, 0, 609.45, 935.43], 'portrait'); // F4 / Folio (21,5 x 33 cm)
+    }
+
+    /**
+     * Bahan naskah bersama untuk PDF & DOCX (App\Services\SkhppDocx): foto, QR TTE, dan tanggal berbahasa Indonesia.
+     * Gambar berbentuk ['bytes' => ..., 'ext' => 'png|jpeg'] atau null.
+     */
+    public static function bahan(Skhpp $skhpp): array
+    {
         $skhpp->loadMissing('members');
 
-        $foto = function (?string $path): ?string {
+        $foto = function (?string $path): ?array {
             if (!$path || !Storage::disk('public')->exists($path)) {
                 return null;
             }
-            $full = Storage::disk('public')->path($path);
-            return 'data:image/' . pathinfo($full, PATHINFO_EXTENSION) . ';base64,' . base64_encode(file_get_contents($full));
+            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+            return ['bytes' => Storage::disk('public')->get($path), 'ext' => $ext === 'jpg' ? 'jpeg' : $ext];
         };
-        $foto1_base64 = $foto($skhpp->foto_1);
-        $foto2_base64 = $foto($skhpp->foto_2);
 
         // QR TTE (tanda tangan basah: tanpa QR). Tidak diambil saat tes agar tidak bergantung internet.
-        $qr_base64 = null;
+        $qr = null;
         $manual = $skhpp->ttd_mode === 'manual';
         if ($skhpp->status === 'approved' && !$manual && !app()->runningUnitTests()) {
             try {
                 $verifyUrl = route('skhpp.verify', $skhpp->verification_code);
                 $qrData = file_get_contents('https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' . urlencode($verifyUrl));
                 if ($qrData) {
-                    $qr_base64 = 'data:image/png;base64,' . base64_encode($qrData);
+                    $qr = ['bytes' => $qrData, 'ext' => 'png'];
                 }
             } catch (\Throwable $e) {
                 Log::warning('Gagal fetch QR image: ' . $e->getMessage());
@@ -51,9 +71,13 @@ class SkhppPdf
             $tanggal_skhpp_indo = ' ' . $bulan_tahun_indo;
         }
 
-        return \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.skhpp', compact(
-            'skhpp', 'foto1_base64', 'foto2_base64', 'qr_base64',
-            'tanggal_lahir_indo', 'tanggal_skhpp_indo', 'bulan_tahun_indo'
-        ))->setPaper([0, 0, 609.45, 935.43], 'portrait'); // F4 / Folio (21,5 x 33 cm)
+        return [
+            'foto1' => $foto($skhpp->foto_1),
+            'foto2' => $skhpp->is_pernikahan ? $foto($skhpp->foto_2) : null,
+            'qr' => $qr,
+            'tanggal_lahir_indo' => $tanggal_lahir_indo,
+            'tanggal_skhpp_indo' => $tanggal_skhpp_indo,
+            'bulan_tahun_indo' => $bulan_tahun_indo,
+        ];
     }
 }

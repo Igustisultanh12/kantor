@@ -434,6 +434,8 @@ const formatDate = (dateStr) => {
 
                                         <a :href="route('skhpp.export-pdf', skhpp.id)" target="_blank" class="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs flex items-center gap-1" title="Unduh PDF DomPDF"> PDF
                                         </a>
+                                        <a :href="route('skhpp.export-docx', skhpp.id)" class="px-3 py-1.5 bg-sky-50 text-sky-700 hover:bg-sky-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs flex items-center gap-1" title="Unduh naskah Word (.docx) yang bisa disunting"> DOCX
+                                        </a>
 
                                         <Link v-if="!menungguTtdManual(skhpp)" :href="route('skhpp.show', skhpp.id)" class="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl text-[10px] font-bold uppercase transition-all shadow-xs" title="Pratinjau Dokumen"> Detail
                                         </Link>

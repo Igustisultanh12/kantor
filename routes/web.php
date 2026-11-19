@@ -546,6 +546,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/skhpp', [SkhppController::class, 'store'])->name('skhpp.store');
     Route::get('/skhpp/{id}', [SkhppController::class, 'show'])->name('skhpp.show');
     Route::get('/skhpp/{id}/export-pdf', [SkhppController::class, 'exportPdf'])->name('skhpp.export-pdf');
+    Route::get('/skhpp/{id}/export-docx', [SkhppController::class, 'exportDocx'])->name('skhpp.export-docx');
     Route::get('/skhpp/{id}/edit', [SkhppController::class, 'edit'])->name('skhpp.edit');
     Route::post('/skhpp/{id}/update', [SkhppController::class, 'update'])->name('skhpp.update');
     Route::post('/skhpp/{id}/approve', [SkhppController::class, 'approve'])->name('skhpp.approve');

@@ -55,34 +55,15 @@
 </head>
 <body>
     @php
-        // Sama dengan resources/js/Utils/skhppIdentitas.js (data lama tanpa jenis_identitas ditebak dari kolom terisi).
-        $jenisId = $skhpp->jenis_identitas ?: ($skhpp->pangkat_korps_nrp ? 'NRP' : 'NIK');
-        $berpangkat = in_array($jenisId, ['NRP', 'NIP']);
-        $jumlahPengikut = $skhpp->has_pengikut ? count($skhpp->members) : 0;
+        $jumlahPengikut = $skhpp->jumlahPengikut();
 
         // Ruang nomor urut di "R/ … /SKHPP/…": spasi tetap (&nbsp;) supaya tidak turun baris di dompdf;
         // kosong (nomor ditulis tangan / belum bernomor) = ruang lebar untuk pulpen.
         $spasi = fn (int $n) => str_repeat('&nbsp;', $n);
         $ruangNomor = filled($skhpp->nomor_urut) ? $spasi(4) . e($skhpp->nomor_urut) . $spasi(4) : $spasi(16);
 
-        // Baris data personel (label => isi), urutan mengikuti naskah acuan.
-        $barisData = ['Nama' => $skhpp->nama];
-        if ($berpangkat) {
-            $barisData[$jenisId === 'NIP' ? 'Pangkat/Gol/NIP' : 'Pangkat/Korp/NRP'] = $skhpp->pangkat_korps_nrp;
-            $barisData['Jabatan'] = $skhpp->jabatan_pekerjaan;
-        } else {
-            $barisData[$jenisId === 'NIM' ? 'NIM' : 'NIK'] = $skhpp->nik ?: '-';
-        }
-        $barisData['Tempat/tgl lahir'] = $skhpp->tempat_lahir . ', ' . $tanggal_lahir_indo;
-        $barisData['Jenis kelamin'] = $skhpp->jenis_kelamin;
-        $barisData['Agama/kepercayaan'] = $skhpp->agama;
-        if (!$berpangkat) {
-            $barisData['Pekerjaan'] = $skhpp->jabatan_pekerjaan;
-        }
-        $barisData['Alamat rumah/tlp'] = $skhpp->alamat;
-        if ($jumlahPengikut > 0) {
-            $barisData['Pengikut'] = $jumlahPengikut . ' orang (daftar nama terlampir)';
-        }
+        // Baris data personel (label => isi); sumber yang sama dipakai naskah DOCX.
+        $barisData = $skhpp->barisDataNaskah($tanggal_lahir_indo);
     @endphp
 
     <!-- HALAMAN 1: DOKUMEN SKHPP UTAMA -->
@@ -227,7 +208,7 @@
                 <tr style="text-transform: uppercase; text-align: center;">
                     <th style="width: 35px;">NO</th>
                     <th>NAMA</th>
-                    <th style="width: 180px;">{{ ['NRP' => 'Pangkat/Korp/NRP', 'NIP' => 'Pangkat/Gol/NIP', 'NIM' => 'NIM'][$jenisId] ?? 'NIK' }}</th>
+                    <th style="width: 180px;">{{ $skhpp->labelIdentitasLampiran() }}</th>
                     <th>JABATAN</th>
                 </tr>
             </thead>

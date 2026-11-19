@@ -94,6 +94,53 @@ class Skhpp extends Model
         return mb_strtoupper("DAFTAR NAMA PERSONEL {$satuan} YANG MELAKSANAKAN SC {$kegiatan}");
     }
 
+    /** Jenis identitas; data lama tanpa jenis_identitas ditebak dari kolom terisi (sama dengan Utils/skhppIdentitas.js). */
+    public function jenisIdentitasNaskah(): string
+    {
+        return $this->jenis_identitas ?: ($this->pangkat_korps_nrp ? 'NRP' : 'NIK');
+    }
+
+    /** Label kolom identitas pada tabel lampiran pengikut. */
+    public function labelIdentitasLampiran(): string
+    {
+        return ['NRP' => 'Pangkat/Korp/NRP', 'NIP' => 'Pangkat/Gol/NIP', 'NIM' => 'NIM'][$this->jenisIdentitasNaskah()] ?? 'NIK';
+    }
+
+    public function jumlahPengikut(): int
+    {
+        return $this->has_pengikut ? count($this->members) : 0;
+    }
+
+    /**
+     * Baris data personel naskah SKHPP (label => isi), urutan mengikuti naskah acuan.
+     * Dipakai bersama oleh PDF (pdf/skhpp.blade.php) dan DOCX (App\Services\SkhppDocx).
+     */
+    public function barisDataNaskah(string $tanggalLahirIndo): array
+    {
+        $jenisId = $this->jenisIdentitasNaskah();
+        $berpangkat = in_array($jenisId, ['NRP', 'NIP']);
+
+        $baris = ['Nama' => $this->nama];
+        if ($berpangkat) {
+            $baris[$jenisId === 'NIP' ? 'Pangkat/Gol/NIP' : 'Pangkat/Korp/NRP'] = $this->pangkat_korps_nrp;
+            $baris['Jabatan'] = $this->jabatan_pekerjaan;
+        } else {
+            $baris[$jenisId === 'NIM' ? 'NIM' : 'NIK'] = $this->nik ?: '-';
+        }
+        $baris['Tempat/tgl lahir'] = $this->tempat_lahir . ', ' . $tanggalLahirIndo;
+        $baris['Jenis kelamin'] = $this->jenis_kelamin;
+        $baris['Agama/kepercayaan'] = $this->agama;
+        if (!$berpangkat) {
+            $baris['Pekerjaan'] = $this->jabatan_pekerjaan;
+        }
+        $baris['Alamat rumah/tlp'] = $this->alamat;
+        if ($this->jumlahPengikut() > 0) {
+            $baris['Pengikut'] = $this->jumlahPengikut() . ' orang (daftar nama terlampir)';
+        }
+
+        return $baris;
+    }
+
     public function members()
     {
         return $this->hasMany(SkhppMember::class, 'skhpp_id')->orderBy('no_urut', 'asc');
