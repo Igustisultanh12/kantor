@@ -59,7 +59,7 @@ const onScheme = (e) => { systemDark.value = e.matches; };
 /* ---------- Navigasi ---------- */
 const access = useNovaAccess(user);
 const unread = ref(0);
-const groups = computed(() => buildNovaGroups(access, { unread: unread.value }));
+const groups = computed(() => buildNovaGroups(access, { unread: unread.value, agenda: Number(page.props.agenda_badge || 0) }));
 const isCurrent = (item) => { try { return route().current(item.match); } catch (e) { return false; } };
 const homeHref = computed(() => safeRoute(access.isAnggotaSintel.value ? 'sc-submissions.index' : 'dashboard'));
 const crumb = computed(() => {

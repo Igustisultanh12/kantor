@@ -33,7 +33,7 @@ export function useNovaAccess(user) {
  * Item: { label, route, match (pola route().current), icon, show, count? }
  * `show` dievaluasi sekali per render; grup tanpa item yang tampil disembunyikan.
  */
-export function buildNovaGroups(a, { unread = 0 } = {}) {
+export function buildNovaGroups(a, { unread = 0, agenda = 0 } = {}) {
     const notAnggota = !a.isAnggotaSintel.value;
     const notDanUnit = !a.isDanUnitTeknis.value || a.isAdmin.value;
     const groups = [
@@ -46,7 +46,7 @@ export function buildNovaGroups(a, { unread = 0 } = {}) {
         },
         {
             id: 'persuratan', title: 'Persuratan', items: [
-                { label: 'Agenda Surat', route: 'letter-logs.index', match: 'letter-logs.*', icon: 'inbox', show: notAnggota },
+                { label: 'Agenda Surat', route: 'letter-logs.index', match: 'letter-logs.*', icon: 'inbox', show: notAnggota, count: agenda, tone: 'accent' },
                 { label: 'Buat & Draf Surat', route: 'letters.index', match: 'letters.*', icon: 'pen', show: notAnggota },
                 { label: 'SKHPP', route: 'skhpp.index', match: 'skhpp.*', icon: 'file', show: notAnggota },
                 { label: 'Tracking SC', route: 'sc-submissions.index', match: 'sc-submissions.*', icon: 'pin', show: true },

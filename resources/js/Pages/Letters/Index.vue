@@ -10,8 +10,25 @@ const props = defineProps({
         type: Object,
         default: () => ({ data: [], total: 0, links: [] })
     },
-    categories: Array
+    categories: Array,
+    awaiting_disposition: { type: Number, default: 0 },
+    role_labels: { type: Object, default: () => ({}) },
 });
+
+// Tipe dokumen: surat masuk (bernomor agenda + disposisi), keluar, telegram.
+const TIPE = [
+    { key: 'semua', nama: 'Semua' },
+    { key: 'masuk', nama: 'Masuk' },
+    { key: 'keluar', nama: 'Keluar' },
+    { key: 'telegram', nama: 'Telegram' },
+];
+const filterTipe = ref('semua');
+const STATUS_DISPOSISI = {
+    didisposisi: { nama: 'Didisposisi', kelas: 'bg-blue-50 text-blue-700 ring-blue-200' },
+    selesai: { nama: 'Disposisi selesai', kelas: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
+};
+const tujuanDisposisi = (letter) => (letter.disposition?.targets || [])
+    .map((t) => `${props.role_labels[t.role] || t.role}${t.status === 'selesai' ? ' (selesai)' : ''}`).join(', ');
 
 const search = ref('');
 const isShowingPdf = ref(false);
@@ -86,10 +103,16 @@ const filterKelompok = ref('semua');
 const cocokCari = (letter) => {
     const q = search.value.trim().toLowerCase();
     if (!q) return true;
-    return [letter.subject, letter.letter_number, letter.issuer].some((v) => v?.toLowerCase().includes(q));
+    return [letter.subject, letter.letter_number, letter.agenda_number, letter.issuer].some((v) => v?.toLowerCase().includes(q));
 };
 
-const hasilCari = computed(() => props.letters.data.filter(cocokCari));
+const hasilCariSemuaTipe = computed(() => props.letters.data.filter(cocokCari));
+const jumlahTipe = computed(() => {
+    const n = { semua: hasilCariSemuaTipe.value.length };
+    hasilCariSemuaTipe.value.forEach((l) => { n[l.type] = (n[l.type] || 0) + 1; });
+    return n;
+});
+const hasilCari = computed(() => hasilCariSemuaTipe.value.filter((l) => filterTipe.value === 'semua' || l.type === filterTipe.value));
 
 // Tab: "Semua" + setiap kelompok yang ada pada hasil pencarian, beserta jumlahnya.
 const tabKelompok = computed(() => {
@@ -200,9 +223,31 @@ const warnaKelompok = (nama) => WARNA[nama]
                     <p class="text-xs text-slate-500 font-semibold mt-0.5">Sistem Manajemen Pengarsipan & Penyimpanan Berkas Dokumen</p>
                 </div>
                 
-                <Link :href="route('letters.create')" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-2xl text-xs font-extrabold uppercase shadow-md shadow-blue-500/20 transition tracking-wider flex items-center gap-2">
-                    + Arsip Baru
-                </Link>
+                <div class="flex flex-wrap items-center gap-2">
+                    <Link :href="route('letter-logs.index', { tab: 'masuk' })" class="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-5 py-3 rounded-2xl text-xs font-extrabold uppercase transition tracking-wider">
+                        Agenda surat masuk
+                    </Link>
+                    <Link :href="route('letters.create')" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-2xl text-xs font-extrabold uppercase shadow-md shadow-blue-500/20 transition tracking-wider flex items-center gap-2">
+                        + Arsip Baru
+                    </Link>
+                </div>
+            </div>
+
+            <!-- Surat masuk yang belum boleh diarsipkan -->
+            <Link v-if="awaiting_disposition" :href="route('letter-logs.index', { tab: 'disposisi' })"
+                class="flex items-center gap-3 p-4 rounded-2xl border border-amber-200 bg-amber-50 text-sm text-amber-700 hover:bg-amber-100 transition">
+                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+                <span class="flex-1"><strong>{{ awaiting_disposition }} surat masuk</strong> menunggu disposisi Komandan dan belum tampil di arsip.</span>
+                <span class="font-semibold whitespace-nowrap">Buka Agenda Surat &rarr;</span>
+            </Link>
+
+            <!-- Tipe dokumen -->
+            <div role="tablist" aria-label="Tipe dokumen" class="inline-flex p-[3px] rounded-xl bg-slate-100">
+                <button v-for="t in TIPE" :key="t.key" type="button" role="tab" :aria-selected="filterTipe === t.key" @click="filterTipe = t.key"
+                    :class="['h-[34px] px-3.5 rounded-[10px] text-sm whitespace-nowrap transition inline-flex items-center gap-1.5', filterTipe === t.key ? 'bg-white text-slate-900 font-medium shadow-sm' : 'text-slate-600 hover:text-slate-900']">
+                    {{ t.nama }}
+                    <span class="text-[11px] font-mono text-slate-400">{{ jumlahTipe[t.key] || 0 }}</span>
+                </button>
             </div>
 
             <!-- Cari & saring kelompok -->
@@ -210,7 +255,7 @@ const warnaKelompok = (nama) => WARNA[nama]
                 <div class="relative w-full lg:w-80">
                     <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="m20 20-3.5-3.5"/></svg>
                     <label for="cari-arsip" class="sr-only">Cari arsip</label>
-                    <input id="cari-arsip" v-model="search" type="search" class="w-full rounded-2xl border-slate-200 bg-slate-50 text-sm py-2.5 pl-10 focus:ring-emerald-500 focus:border-emerald-500 placeholder:text-slate-400" placeholder="Cari nomor, nama, atau perihal" />
+                    <input id="cari-arsip" v-model="search" type="search" class="w-full rounded-2xl border-slate-200 bg-slate-50 text-sm py-2.5 pl-10 focus:ring-emerald-500 focus:border-emerald-500 placeholder:text-slate-400" placeholder="Cari nomor, nomor agenda, nama, atau perihal" />
                 </div>
 
                 <div role="tablist" aria-label="Kelompok keperluan" class="flex flex-wrap gap-1.5 lg:ml-auto">
@@ -252,7 +297,7 @@ const warnaKelompok = (nama) => WARNA[nama]
                                 <thead>
                                     <tr class="text-left text-xs font-medium text-slate-500">
                                         <th scope="col" class="pl-6 pr-3 py-2 w-12 font-medium">No</th>
-                                        <th scope="col" class="px-3 py-2 w-56 font-medium">Nomor surat</th>
+                                        <th scope="col" class="px-3 py-2 w-56 font-medium">Nomor agenda / surat</th>
                                         <th scope="col" class="px-3 py-2 font-medium">Perihal</th>
                                         <th scope="col" class="px-3 py-2 w-32 font-medium">Tanggal</th>
                                         <th scope="col" class="pl-3 pr-6 py-2 w-44 font-medium text-right">Aksi</th>
@@ -262,13 +307,22 @@ const warnaKelompok = (nama) => WARNA[nama]
                                     <tr v-for="(letter, index) in cat.kelompok[k]" :key="letter.id" class="align-top hover:bg-slate-50/60">
                                         <td class="pl-6 pr-3 py-3.5 text-slate-400 tabular-nums">{{ index + 1 }}</td>
                                         <td class="px-3 py-3.5">
-                                            <span class="block font-semibold text-slate-900 tabular-nums whitespace-nowrap">{{ letter.letter_number }}</span>
-                                            <span :class="sifat(letter.security_level).kelas" class="mt-1.5 inline-block rounded-md px-1.5 py-0.5 text-[11px] font-medium ring-1 ring-inset">{{ sifat(letter.security_level).nama }}</span>
+                                            <template v-if="letter.agenda_number">
+                                                <span class="block font-mono text-[13px] font-semibold text-slate-900 whitespace-nowrap">{{ letter.agenda_number }}</span>
+                                                <span class="block text-xs text-slate-500 tabular-nums">No. asal {{ letter.letter_number }}</span>
+                                            </template>
+                                            <span v-else class="block font-semibold text-slate-900 tabular-nums whitespace-nowrap">{{ letter.letter_number }}</span>
+                                            <span class="mt-1.5 flex flex-wrap gap-1">
+                                                <span :class="letter.type === 'masuk' ? 'bg-indigo-50 text-indigo-700 ring-indigo-200' : 'bg-slate-100 text-slate-600 ring-slate-200'" class="inline-block rounded-md px-1.5 py-0.5 text-[11px] font-medium ring-1 ring-inset capitalize">{{ letter.type }}</span>
+                                                <span :class="sifat(letter.security_level).kelas" class="inline-block rounded-md px-1.5 py-0.5 text-[11px] font-medium ring-1 ring-inset">{{ sifat(letter.security_level).nama }}</span>
+                                                <span v-if="STATUS_DISPOSISI[letter.disposition_status]" :class="STATUS_DISPOSISI[letter.disposition_status].kelas" class="inline-block rounded-md px-1.5 py-0.5 text-[11px] font-medium ring-1 ring-inset">{{ STATUS_DISPOSISI[letter.disposition_status].nama }}</span>
+                                            </span>
                                         </td>
                                         <td class="px-3 py-3.5 max-w-xl">
                                             <span v-if="uraiPerihal(letter.subject).nama" class="block font-semibold text-slate-900">{{ namaRapi(uraiPerihal(letter.subject).nama) }}</span>
                                             <span class="block text-slate-600 leading-relaxed">{{ kapitalAwal(uraiPerihal(letter.subject).keterangan) }}</span>
                                             <span v-if="letter.issuer && !/^internal/i.test(letter.issuer)" class="block mt-1 text-xs text-slate-500">Dari {{ letter.issuer }}</span>
+                                            <Link v-if="tujuanDisposisi(letter)" :href="route('letter-logs.index', { tab: 'disposisi' })" class="block mt-1 text-xs text-blue-700 hover:underline">Disposisi ke {{ tujuanDisposisi(letter) }}</Link>
                                         </td>
                                         <td class="px-3 py-3.5 text-slate-600 whitespace-nowrap tabular-nums">{{ formatTanggal(letter.date) }}</td>
                                         <td class="pl-3 pr-6 py-3.5">

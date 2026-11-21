@@ -36,6 +36,8 @@ const form = useForm({
     subject: props.selectedLog?.subject || '', 
     date: props.selectedLog?.date || new Date().toISOString().substr(0, 10),
     issuer: '',
+    received_at: new Date().toISOString().substr(0, 10),
+    twu: '',
     file: null,
 });
 
@@ -185,6 +187,11 @@ const submit = () => {
                         </div>
                     </div>
 
+                    <div v-if="form.type !== 'keluar'" class="md:col-span-2 flex gap-3 p-4 rounded-2xl border border-blue-200 bg-blue-50 text-sm text-blue-700">
+                        <svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 8h.01M11 12h1v4h1"/></svg>
+                        <span>{{ form.type === 'telegram' ? 'Telegram' : 'Surat masuk' }} otomatis diberi <strong>nomor agenda {{ form.type === 'telegram' ? 'telegram' : 'surat masuk' }}</strong> dan <strong>menunggu disposisi Komandan</strong>. Setelah didisposisi, lembar disposisi A5 digabung ke halaman pertama PDF dan dokumen tampil di arsip. Isi "Nomor Dokumen" dengan nomor yang tertulis di dokumen.</span>
+                    </div>
+
                     <div class="md:col-span-2 space-y-1">
                         <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest px-1">Nomor Dokumen</label>
                         <input v-model="form.letter_number" type="text" :readonly="!!props.selectedLog" class="w-full rounded-2xl border-slate-200 bg-slate-50 text-xs font-bold uppercase font-mono h-12 focus:ring-blue-500 focus:border-blue-600">
@@ -222,6 +229,14 @@ const submit = () => {
                     <div class="space-y-1">
                         <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest px-1">Tanggal Dokumen</label>
                         <input v-model="form.date" type="date" :readonly="!!props.selectedLog" class="w-full rounded-2xl border-slate-200 bg-slate-50 h-12 text-xs font-bold focus:ring-blue-500 focus:border-blue-600">
+                    </div>
+                    <div v-if="form.type === 'telegram'" class="md:col-span-2 space-y-1">
+                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest px-1">TWU</label>
+                        <input v-model="form.twu" type="text" maxlength="100" placeholder="MISAL: 201030Z NOV 2026" class="w-full rounded-2xl border-slate-200 bg-slate-50 uppercase h-12 text-xs font-bold font-mono focus:ring-blue-500 focus:border-blue-600">
+                    </div>
+                    <div v-if="form.type !== 'keluar'" class="space-y-1">
+                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest px-1">Tanggal Diterima</label>
+                        <input v-model="form.received_at" type="date" class="w-full rounded-2xl border-slate-200 bg-slate-50 h-12 text-xs font-bold focus:ring-blue-500 focus:border-blue-600">
                     </div>
                     <div class="space-y-1">
                         <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest px-1">Asal / Instansi</label>

@@ -21,10 +21,13 @@ class LetterController extends Controller
         $categories = Category::all();
 
         // Tambahkan fitur Pencarian agar Bapak mudah mencari arsip
-        $letters = Letter::with(['category', 'subCategory'])
+        $letters = Letter::with(['category', 'subCategory', 'disposition', 'disposition.targets:id,disposition_id,role,status'])
+            // Surat masuk yang belum didisposisi Komandan belum boleh diproses/diarsipkan (tampil di Agenda Surat).
+            ->where(fn ($q) => $q->whereNull('disposition_status')->orWhere('disposition_status', '!=', Letter::DISPOSISI_MENUNGGU))
             ->when($request->search, function ($query, $search) {
-                $query->where('subject', 'like', "%{$search}%")
-                      ->orWhere('letter_number', 'like', "%{$search}%");
+                $query->where(fn ($q) => $q->where('subject', 'like', "%{$search}%")
+                      ->orWhere('letter_number', 'like', "%{$search}%")
+                      ->orWhere('agenda_number', 'like', "%{$search}%"));
             })
             ->latest()
             // Halaman ini mengelompokkan arsip di sisi klien dan tidak punya navigasi halaman,
@@ -34,6 +37,8 @@ class LetterController extends Controller
 
         return Inertia::render('Letters/Index', [
             'letters' => $letters,
+            'awaiting_disposition' => Letter::whereIn('type', Letter::TIPE_DISPOSISI)->where('disposition_status', Letter::DISPOSISI_MENUNGGU)->count(),
+            'role_labels' => \App\Support\AgendaSurat::JABATAN_TUJUAN,
             'categories' => $categories,
             'filters' => $request->only(['search'])
         ]);
@@ -71,6 +76,29 @@ class LetterController extends Controller
             'file'            => 'required|mimes:pdf|max:10240', 
             'letter_log_id'   => 'nullable|exists:letter_logs,id',
         ]);
+
+        // Semua surat masuk & telegram wajib bernomor agenda & menunggu disposisi Komandan.
+        if (in_array($request->type, Letter::TIPE_DISPOSISI, true)) {
+            $request->validate(['letter_number' => 'unique:letters,letter_number'], [
+                'letter_number.unique' => 'Nomor surat ini sudah tercatat.',
+            ]);
+            $request->validate(['twu' => 'nullable|required_if:type,telegram|string|max:100'], ['twu.required_if' => 'TWU telegram wajib diisi.']);
+            $letter = LetterDispositionController::catatSuratMasuk([
+                'type' => $request->type,
+                'twu' => $request->twu,
+                'letter_number' => $request->letter_number,
+                'issuer' => $request->issuer ?: '-',
+                'subject' => $request->subject,
+                'date' => $request->date,
+                'received_at' => $request->input('received_at', now()->toDateString()),
+                'security_level' => $request->security_level === 'rahasia' ? 'rahasia' : 'biasa',
+                'category_id' => $request->category_id,
+                'sub_category_id' => $request->sub_category_id,
+            ], $request->file('file'), $request->user(), $request->ip());
+
+            return redirect()->route('letter-logs.index', ['tab' => 'disposisi'])
+                ->with('success', ($letter->isTelegram() ? 'Telegram' : 'Surat masuk') . " dicatat dengan nomor agenda {$letter->agenda_number}. Menunggu disposisi Komandan.");
+        }
 
         try {
             DB::beginTransaction();
@@ -200,6 +228,18 @@ class LetterController extends Controller
      */
     public function file(Letter $letter)
     {
+        // Wajib disposisi: sebelum Komandan mendisposisi, berkas hanya untuk Komandan, pencatat, dan Admin.
+        if ($letter->isAwaitingDisposition()) {
+            $u = auth()->user();
+            abort_unless(
+                \App\Support\MobileAccess::isKomandan($u)
+                    || \App\Support\MobileAccess::isSuperAdmin($u)
+                    || (int) $letter->recorded_by === (int) $u->id,
+                403,
+                'Surat masuk ini menunggu disposisi Komandan.'
+            );
+        }
+
         foreach (['local', 'public'] as $disk) {
             if ($letter->file_path && Storage::disk($disk)->exists($letter->file_path)) {
                 return response()->file(Storage::disk($disk)->path($letter->file_path), [

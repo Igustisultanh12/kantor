@@ -102,9 +102,31 @@ class HandleInertiaRequests extends Middleware
                 ] : null,
             ],
 
+            // --- BADGE AGENDA SURAT: surat menunggu disposisi (Komandan) / disposisi yang belum selesai (jabatan tujuan) ---
+            'agenda_badge' => fn () => self::agendaBadge($request->user()),
+
             // --- CSRF TOKEN (Cadangan untuk request manual) ---
             'csrf_token' => csrf_token(),
         ];
+    }
+
+    private static function agendaBadge($user): int
+    {
+        if (!$user) {
+            return 0;
+        }
+        try {
+            if (\App\Support\MobileAccess::isKomandan($user)) {
+                return \App\Models\Letter::whereIn('type', \App\Models\Letter::TIPE_DISPOSISI)->where('disposition_status', \App\Models\Letter::DISPOSISI_MENUNGGU)->count();
+            }
+            $role = \App\Support\MobileAccess::normalizedRole($user);
+            if (!array_key_exists($role, \App\Support\AgendaSurat::JABATAN_TUJUAN)) {
+                return 0;
+            }
+            return \App\Models\LetterDispositionTarget::where('role', $role)->where('status', '!=', 'selesai')->count();
+        } catch (\Throwable) {
+            return 0; // migrasi disposisi belum dijalankan
+        }
     }
 
     /** Kunci pengaturan yang bersifat rahasia dan tidak boleh dibagikan ke frontend. */

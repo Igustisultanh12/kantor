@@ -17,9 +17,84 @@ class LetterLogController extends Controller
     /**
      * Menampilkan halaman Buku Nomor (Agenda).
      */
-    public function index()
+    public function index(Request $request)
     {
+        $user = $request->user();
+        $canGive = \App\Support\MobileAccess::can($user, 'dispositions.give');
+        $superAdmin = \App\Support\MobileAccess::isSuperAdmin($user);
+        $isKomandan = \App\Support\MobileAccess::isKomandan($user);
+        $jabatan = \App\Support\AgendaSurat::JABATAN_TUJUAN;
+        $instruksi = \App\Models\LetterDisposition::INSTRUKSI;
+        $fmt = fn ($d) => $d ? $d->format('Y-m-d H:i') : null;
+        // Nama + pangkat, tanpa mengulang pangkat bila nama akun sudah memuatnya.
+        $who = fn ($u) => $u ? (($u->pangkat && !str_starts_with((string) $u->name, (string) $u->pangkat)) ? "{$u->pangkat} {$u->name}" : $u->name) : null;
+
+        $incoming = \App\Models\Letter::with(['category', 'recorder:id,name,pangkat', 'disposition.giver:id,name,pangkat',
+                'disposition.targets.receiver:id,name', 'disposition.targets.completer:id,name'])
+            ->whereIn('type', \App\Models\Letter::TIPE_DISPOSISI)
+            ->latest()
+            ->limit(1000)
+            ->get()
+            ->map(function ($l) use ($user, $superAdmin, $isKomandan, $jabatan, $instruksi, $fmt, $who) {
+                $locked = $l->isAwaitingDisposition()
+                    && !($isKomandan || $superAdmin || (int) $l->recorded_by === (int) $user->id);
+                $d = $l->disposition;
+                return [
+                    'id' => $l->id,
+                    'type' => $l->type,
+                    'twu' => $l->twu,
+                    'sheet_url' => !$locked && $l->disposition_sheet_path ? route('letters.disposition.sheet', $l->id) : null,
+                    'sheet_merged' => (bool) $l->disposition_sheet_pages,
+                    'agenda_number' => $l->agenda_number,
+                    'letter_number' => $l->letter_number,
+                    'issuer' => $l->issuer,
+                    'subject' => $l->subject,
+                    'date' => $l->date,
+                    'received_at' => $l->received_at?->format('Y-m-d'),
+                    'created_at' => $fmt($l->created_at),
+                    'security_level' => $l->security_level,
+                    'category_id' => $l->category_id,
+                    'category' => $l->category?->name,
+                    'status' => $l->disposition_status ?? 'lama',
+                    'recorder' => $who($l->recorder),
+                    'file_url' => $locked ? null : route('letters.file', $l->id),
+                    'disposition' => $d ? [
+                        'giver' => $who($d->giver) ?? 'Komandan',
+                        'created_at' => $fmt($d->created_at),
+                        'instructions' => array_values(array_map(fn ($k) => $instruksi[$k] ?? $k, $d->instructions ?? [])),
+                        'note' => $d->note,
+                        'urgency' => $d->urgency,
+                        'due_date' => $d->due_date?->format('Y-m-d'),
+                        'targets' => $d->targets->map(fn ($t) => [
+                            'id' => $t->id,
+                            'role' => $t->role,
+                            'role_label' => $jabatan[$t->role] ?? $t->role,
+                            'status' => $t->status,
+                            'received_by' => $t->receiver?->name,
+                            'received_at' => $fmt($t->received_at),
+                            'completed_by' => $t->completer?->name,
+                            'completed_at' => $fmt($t->completed_at),
+                            'report_note' => $t->report_note,
+                            'mine' => $t->belongsToUser($user),
+                        ])->values(),
+                    ] : null,
+                ];
+            });
+
         return Inertia::render('LetterLogs/Index', [
+            'incoming' => $incoming,
+            'disposition_options' => [
+                'roles' => $jabatan,
+                'instructions' => $instruksi,
+                'urgencies' => \App\Models\LetterDisposition::URGENSI,
+            ],
+            'can' => [
+                'give_disposition' => $canGive,
+                'record_incoming' => \App\Support\MobileAccess::can($user, 'letters.create'),
+                'respond_any' => $superAdmin,
+            ],
+            'incoming_format' => \App\Support\AgendaSurat::format('masuk'),
+            'telegram_format' => \App\Support\AgendaSurat::format('telegram'),
             'categories' => Category::all(),
             'sub_categories' => LetterSubCategory::all(), 
             'logs' => tap(LetterLog::with(['category', 'subCategory'])->latest()->paginate(1000), function ($page) {

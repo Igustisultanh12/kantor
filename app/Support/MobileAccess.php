@@ -180,6 +180,10 @@ class MobileAccess
             'letters.view' => $regular,
             'letters.create' => $regular,
 
+            // Disposisi surat masuk: hanya Komandan yang memberi; penerima ditentukan per jabatan tujuan.
+            'dispositions.view' => $regular,
+            'dispositions.give' => $komandan,
+
             'skhpp.view' => $regular,
             'skhpp.create' => $regular,
             'skhpp.approve' => $commanderApproval,

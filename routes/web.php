@@ -306,6 +306,13 @@ Route::middleware('auth')->group(function () {
 
     // Manajemen Surat-Menyurat
     Route::get('/letters/{letter}/file', [LetterController::class, 'file'])->middleware('perm:letters.view')->name('letters.file');
+    // Surat masuk bernomor agenda + disposisi wajib (didaftarkan sebelum resource agar tidak tertangkap letters/{letter}).
+    Route::get('/letters/incoming/next-number', [\App\Http\Controllers\LetterDispositionController::class, 'nextNumber'])->middleware('perm:letters.create')->name('letters.incoming.next-number');
+    Route::post('/letters/incoming', [\App\Http\Controllers\LetterDispositionController::class, 'storeIncoming'])->middleware(['perm:letters.create', 'throttle:30,1'])->name('letters.incoming.store');
+    Route::post('/letters/{letter}/disposition', [\App\Http\Controllers\LetterDispositionController::class, 'dispose'])->whereNumber('letter')->middleware(['perm:dispositions.give', 'throttle:30,1'])->name('letters.disposition.store');
+    Route::post('/dispositions/targets/{target}/receive', [\App\Http\Controllers\LetterDispositionController::class, 'receive'])->whereNumber('target')->middleware(['perm:dispositions.view', 'throttle:30,1'])->name('dispositions.receive');
+    Route::post('/dispositions/targets/{target}/complete', [\App\Http\Controllers\LetterDispositionController::class, 'complete'])->whereNumber('target')->middleware(['perm:dispositions.view', 'throttle:30,1'])->name('dispositions.complete');
+    Route::get('/letters/{letter}/disposition-sheet', [\App\Http\Controllers\LetterDispositionController::class, 'sheet'])->whereNumber('letter')->middleware('perm:letters.view')->name('letters.disposition.sheet');
     Route::resource('letters', LetterController::class);
     Route::post('/letters/store-direct', [LetterController::class, 'storeDirect'])->name('letters.store-direct');
     Route::get('/letter-logs', [LetterLogController::class, 'index'])->name('letter-logs.index');
