@@ -125,18 +125,21 @@ class SkhppDocx
         $x = $this->tbl([5006, 5006], '<w:tr>' . $this->tc(5006, $this->kop()) . $this->tc(5006, $keterangan) . '</w:tr>');
         $x .= $this->p($this->r($s->judulLampiran()), ['jc' => 'center', 'before' => 1200, 'after' => 480]);
 
-        $w = [600, 3500, 2700, 3212];
+        $usaha = $s->lampiranBerusaha();
+        $w = $usaha ? [520, 2200, 1900, 1800, 1600, 1992] : [600, 3500, 2700, 3212];
         $sel = fn ($i, $teks, $jc = 'left') => $this->tc($w[$i], $this->p($this->r($teks, 22), ['jc' => $jc]), 'all');
 
         $rows = '<w:tr><w:trPr><w:tblHeader/></w:trPr>'
             . $sel(0, 'NO', 'center') . $sel(1, 'NAMA', 'center')
-            . $sel(2, mb_strtoupper($s->labelIdentitasLampiran()), 'center') . $sel(3, 'JABATAN', 'center') . '</w:tr>';
+            . $sel(2, mb_strtoupper($s->labelIdentitasLampiran()), 'center') . $sel(3, 'JABATAN', 'center')
+            . ($usaha ? $sel(4, 'USAHA', 'center') . $sel(5, 'LOKASI USAHA', 'center') : '') . '</w:tr>';
         foreach ($s->members as $idx => $m) {
             $rows .= '<w:tr>'
                 . $sel(0, ($idx + 1) . '.', 'center')
                 . $sel(1, (string) $m->nama)
                 . $sel(2, (string) $m->pangkat_nrp_nik, 'center')
                 . $sel(3, (string) $m->jabatan)
+                . ($usaha ? $sel(4, (string) $m->usaha) . $sel(5, (string) $m->lokasi_usaha) : '')
                 . '</w:tr>';
         }
         $x .= $this->tbl($w, $rows, ['cellMar' => true]);

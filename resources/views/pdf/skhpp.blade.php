@@ -210,6 +210,10 @@
                     <th>NAMA</th>
                     <th style="width: 180px;">{{ $skhpp->labelIdentitasLampiran() }}</th>
                     <th>JABATAN</th>
+                    @if($skhpp->lampiranBerusaha())
+                    <th>USAHA</th>
+                    <th>LOKASI USAHA</th>
+                    @endif
                 </tr>
             </thead>
             <tbody>
@@ -219,6 +223,10 @@
                     <td>{{ $m->nama }}</td>
                     <td style="text-align: center;">{{ $m->pangkat_nrp_nik }}</td>
                     <td>{{ $m->jabatan }}</td>
+                    @if($skhpp->lampiranBerusaha())
+                    <td>{{ $m->usaha }}</td>
+                    <td>{{ $m->lokasi_usaha }}</td>
+                    @endif
                 </tr>
                 @endforeach
             </tbody>

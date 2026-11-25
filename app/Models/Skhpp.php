@@ -14,6 +14,7 @@ class Skhpp extends Model
     protected $fillable = [
         'kategori_personel',
         'is_pernikahan',
+        'is_mitra_pks',
         'nomor_skhpp',
         'nomor_urut',
         'bulan_romawi',
@@ -59,6 +60,7 @@ class Skhpp extends Model
     protected $casts = [
         'is_pernikahan' => 'boolean',
         'has_pengikut' => 'boolean',
+        'is_mitra_pks' => 'boolean',
         'nomor_tulis_tangan' => 'boolean',
         'tanggal_lahir' => 'date',
         'tanggal_skhpp' => 'date',
@@ -104,6 +106,12 @@ class Skhpp extends Model
     public function labelIdentitasLampiran(): string
     {
         return ['NRP' => 'Pangkat/Korp/NRP', 'NIP' => 'Pangkat/Gol/NIP', 'NIM' => 'NIM'][$this->jenisIdentitasNaskah()] ?? 'NIK';
+    }
+
+    /** Kolom USAHA di lampiran hanya untuk SKHPP-P Mitra / PKS. */
+    public function lampiranBerusaha(): bool
+    {
+        return $this->kategori_personel === 'perusahaan' && (bool) $this->is_mitra_pks;
     }
 
     public function jumlahPengikut(): int

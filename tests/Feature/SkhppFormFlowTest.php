@@ -25,6 +25,7 @@ class SkhppFormFlowTest extends TestCase
         (require database_path('migrations/2026_11_16_100000_add_form_fields_to_skhpps_table.php'))->up();
         (require database_path('migrations/2026_11_16_170000_add_manual_signature_to_skhpps_table.php'))->up();
         (require database_path('migrations/2026_11_18_120000_add_lampiran_title_fields_to_skhpps_table.php'))->up();
+        (require database_path('migrations/2026_11_25_100000_add_mitra_pks_to_skhpps_table.php'))->up();
         Schema::create('categories', function (Blueprint $t) {
             $t->id(); $t->string('name'); $t->string('code'); $t->integer('start_number')->default(1); $t->boolean('is_telegram')->default(false); $t->timestamps();
         });
@@ -84,6 +85,58 @@ class SkhppFormFlowTest extends TestCase
         $this->assertDatabaseHas('letter_logs', [
             'full_number' => $nomor, 'sequence' => '171a', 'category_id' => 1, 'sub_category_id' => 7,
         ]);
+    }
+
+    public function test_mitra_pks_stores_usaha_per_follower_and_shows_usaha_column_in_lampiran(): void
+    {
+        $this->actingAs($this->makeUser())->post('/skhpp', $this->payload([
+            'kategori_personel' => 'perusahaan', 'jenis_identitas' => 'NIK', 'pangkat_korps_nrp' => '', 'nik' => '3515081205640009',
+            'is_mitra_pks' => true, 'has_pengikut' => true, 'satuan' => 'Kopkar Kodaeral V',
+            'members' => [
+                ['nama' => 'Ani', 'pangkat_nrp_nik' => '3515', 'jabatan' => 'Pemilik', 'usaha' => 'Bengkel', 'lokasi_usaha' => 'Jl. Perak Barat 10'],
+                ['nama' => 'Made', 'pangkat_nrp_nik' => '3516', 'jabatan' => 'Pemilik', 'usaha' => 'Laundry', 'lokasi_usaha' => 'Kantin Mako'],
+            ],
+        ]))->assertSessionHasNoErrors()->assertRedirect();
+
+        $skhpp = Skhpp::with('members')->firstOrFail();
+        $this->assertTrue($skhpp->is_mitra_pks);
+        $this->assertTrue($skhpp->lampiranBerusaha());
+        $this->assertSame(['Bengkel', 'Laundry'], $skhpp->members->pluck('usaha')->all());
+        $this->assertSame(['Jl. Perak Barat 10', 'Kantin Mako'], $skhpp->members->pluck('lokasi_usaha')->all());
+
+        $html = view('pdf.skhpp', [
+            'skhpp' => $skhpp, 'foto1_base64' => null, 'foto2_base64' => null, 'qr_base64' => null,
+            'tanggal_lahir_indo' => '12 Mei 1973', 'tanggal_skhpp_indo' => '25 November 2026', 'bulan_tahun_indo' => 'November 2026',
+        ])->render();
+        $this->assertStringContainsString('<th>USAHA</th>', $html);
+        $this->assertStringContainsString('<th>LOKASI USAHA</th>', $html);
+        $this->assertStringContainsString('Kantin Mako', $html);
+
+        $tmp = tempnam(sys_get_temp_dir(), 'docx');
+        file_put_contents($tmp, (new \App\Services\SkhppDocx())->build($skhpp, [
+            'foto1' => null, 'foto2' => null, 'qr' => null,
+            'tanggal_lahir_indo' => '12 Mei 1973', 'tanggal_skhpp_indo' => '25 November 2026', 'bulan_tahun_indo' => 'November 2026',
+        ]));
+        $zip = new \ZipArchive();
+        $zip->open($tmp);
+        $xml = $zip->getFromName('word/document.xml');
+        $zip->close();
+        @unlink($tmp);
+        $this->assertStringContainsString('LOKASI USAHA', $xml);
+        $this->assertStringContainsString('Jl. Perak Barat 10', $xml);
+    }
+
+    public function test_mitra_pks_is_ignored_for_dinas_format(): void
+    {
+        $this->actingAs($this->makeUser())->post('/skhpp', $this->payload([
+            'is_mitra_pks' => true, 'has_pengikut' => true, 'satuan' => 'Denma Kodaeral V',
+            'members' => [['nama' => 'Ani', 'pangkat_nrp_nik' => '1', 'jabatan' => 'Anggota', 'usaha' => 'Bengkel', 'lokasi_usaha' => 'Jl. Uji']],
+        ]))->assertSessionHasNoErrors();
+
+        $skhpp = Skhpp::with('members')->firstOrFail();
+        $this->assertFalse($skhpp->is_mitra_pks);
+        $this->assertNull($skhpp->members->first()->usaha);
+        $this->assertNull($skhpp->members->first()->lokasi_usaha);
     }
 
     public function test_verification_page_shows_real_tte_time_not_midnight(): void

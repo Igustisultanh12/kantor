@@ -17,6 +17,8 @@ class SkhppMember extends Model
         'nama',
         'pangkat_nrp_nik',
         'jabatan',
+        'usaha',
+        'lokasi_usaha',
     ];
 
     public function skhpp()

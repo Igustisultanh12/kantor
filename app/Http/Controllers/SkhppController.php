@@ -152,7 +152,13 @@ class SkhppController extends Controller
             'members.*.nama' => 'required|string',
             'members.*.pangkat_nrp_nik' => 'required|string',
             'members.*.jabatan' => 'required|string',
+            'is_mitra_pks' => 'nullable|boolean',
+            'members.*.usaha' => 'nullable|string|max:150',
+            'members.*.lokasi_usaha' => 'nullable|string|max:255',
         ]);
+
+        // Mitra / PKS hanya berlaku untuk SKHPP-P (perusahaan).
+        $mitraPks = $request->kategori_personel === 'perusahaan' && $request->boolean('is_mitra_pks');
 
         $foto1Path = null;
         if ($request->hasFile('foto_1')) {
@@ -170,6 +176,7 @@ class SkhppController extends Controller
         $skhpp = Skhpp::create([
             'kategori_personel' => $request->kategori_personel,
             'is_pernikahan' => $request->is_pernikahan,
+            'is_mitra_pks' => $mitraPks,
             'surat_pengantar' => $request->surat_pengantar,
             'nama' => $request->nama,
             'pangkat_korps_nrp' => $request->pangkat_korps_nrp,
@@ -210,6 +217,8 @@ class SkhppController extends Controller
                     'nama' => $m['nama'],
                     'pangkat_nrp_nik' => $m['pangkat_nrp_nik'],
                     'jabatan' => $m['jabatan'],
+                    'usaha' => $mitraPks ? ($m['usaha'] ?? null) : null,
+                    'lokasi_usaha' => $mitraPks ? ($m['lokasi_usaha'] ?? null) : null,
                 ]);
             }
         }
@@ -332,7 +341,14 @@ class SkhppController extends Controller
             'members.*.nama' => 'required|string',
             'members.*.pangkat_nrp_nik' => 'required|string',
             'members.*.jabatan' => 'required|string',
+            'is_mitra_pks' => 'nullable|boolean',
+            'members.*.usaha' => 'nullable|string|max:150',
+            'members.*.lokasi_usaha' => 'nullable|string|max:255',
         ]);
+
+        // Mitra / PKS hanya berlaku untuk SKHPP-P; permintaan tanpa isian ini (aplikasi lama) mempertahankan nilai tersimpan.
+        $mitraPks = $request->kategori_personel === 'perusahaan'
+            && ($request->has('is_mitra_pks') ? $request->boolean('is_mitra_pks') : (bool) $skhpp->is_mitra_pks);
 
         if ($request->hasFile('foto_1')) {
             if ($skhpp->foto_1 && Storage::disk('public')->exists($skhpp->foto_1)) {
@@ -363,6 +379,7 @@ class SkhppController extends Controller
         $skhpp->update([
             'kategori_personel' => $request->kategori_personel,
             'is_pernikahan' => $request->is_pernikahan,
+            'is_mitra_pks' => $mitraPks,
             'surat_pengantar' => $request->surat_pengantar,
             'nama' => $request->nama,
             'pangkat_korps_nrp' => $request->pangkat_korps_nrp,
@@ -399,6 +416,8 @@ class SkhppController extends Controller
                     'nama' => $m['nama'],
                     'pangkat_nrp_nik' => $m['pangkat_nrp_nik'],
                     'jabatan' => $m['jabatan'],
+                    'usaha' => $mitraPks ? ($m['usaha'] ?? null) : null,
+                    'lokasi_usaha' => $mitraPks ? ($m['lokasi_usaha'] ?? null) : null,
                 ]);
             }
         }

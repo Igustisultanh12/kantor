@@ -17,6 +17,7 @@ const s = props.skhpp || {};
 const form = useForm({
     kategori_personel: s.kategori_personel || 'militer',
     is_pernikahan: Boolean(s.is_pernikahan),
+    is_mitra_pks: Boolean(s.is_mitra_pks),
     letter_sub_category_id: s.letter_sub_category_id || '',
     nomor_manual: s.nomor_manual || '',
     nomor_tulis_tangan: Boolean(s.nomor_tulis_tangan),
@@ -35,7 +36,7 @@ const form = useForm({
     has_pengikut: Boolean(s.has_pengikut),
     satuan: s.satuan || '',
     kegiatan: s.kegiatan || kegiatanDariPeruntukan(s.peruntukan),
-    members: (s.members || []).map((m) => ({ nama: m.nama, pangkat_nrp_nik: m.pangkat_nrp_nik, jabatan: m.jabatan })),
+    members: (s.members || []).map((m) => ({ nama: m.nama, pangkat_nrp_nik: m.pangkat_nrp_nik, jabatan: m.jabatan, usaha: m.usaha || '', lokasi_usaha: m.lokasi_usaha || '' })),
     peruntukan: s.peruntukan || '',
     foto_1: null,
     foto_2: null,
@@ -90,7 +91,9 @@ const teksPengantar = computed(() => {
 });
 
 // Pengikut
-const tambahPengikut = () => form.members.push({ nama: '', pangkat_nrp_nik: '', jabatan: '' });
+const tambahPengikut = () => form.members.push({ nama: '', pangkat_nrp_nik: '', jabatan: '', usaha: '', lokasi_usaha: '' });
+// Mitra / PKS (khusus SKHPP-P): tiap pengikut punya jenis usaha, tampil sebagai kolom USAHA di lampiran.
+const mitraPks = computed(() => format.value === 'perusahaan' && form.is_mitra_pks);
 const hapusPengikut = (i) => form.members.splice(i, 1);
 const togglePengikut = () => {
     if (form.has_pengikut && form.members.length === 0) tambahPengikut();
@@ -132,7 +135,12 @@ const submit = () => {
             peruntukan: teksPeruntukan.value,
             kegiatan: data.kegiatan.trim().replace(/\.+$/, ''),
             nomor_manual: data.nomor_tulis_tangan ? '' : data.nomor_manual,
-            members: adaPengikut ? data.members : [],
+            is_mitra_pks: mitraPks.value,
+            members: adaPengikut ? data.members.map((m) => ({
+                ...m,
+                usaha: mitraPks.value ? m.usaha.trim() : '',
+                lokasi_usaha: mitraPks.value ? m.lokasi_usaha.trim() : '',
+            })) : [],
         };
     }).post(isEdit.value ? route('skhpp.update', props.skhpp.id) : route('skhpp.store'), {
         onSuccess: () => Swal.fire(
@@ -183,6 +191,11 @@ const input = 'w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-
                     </span>
                 </button>
             </div>
+
+            <label v-if="format === 'perusahaan'" class="flex items-center gap-2.5 cursor-pointer select-none w-fit">
+                <input type="checkbox" v-model="form.is_mitra_pks" class="w-4 h-4 text-emerald-600 rounded-md focus:ring-emerald-500" />
+                <span class="text-xs font-semibold text-slate-700">Mitra / PKS <span class="font-medium text-slate-500">(tiap pengikut diisi jenis &amp; lokasi usahanya, mis. bengkel, laundry; tampil di lampiran)</span></span>
+            </label>
 
             <label class="flex items-center gap-2.5 cursor-pointer select-none w-fit">
                 <input type="checkbox" v-model="form.is_pernikahan" class="w-4 h-4 text-emerald-600 rounded-md focus:ring-emerald-500" />
@@ -389,7 +402,15 @@ const input = 'w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-
                     <input type="text" v-model="member.pangkat_nrp_nik" required :placeholder="labelPengikut(identitas.jenis)" :aria-label="`${labelPengikut(identitas.jenis)} pengikut ${idx + 1}`" :class="input" />
                     <input type="text" v-model="member.jabatan" required placeholder="Jabatan / pekerjaan" :aria-label="`Jabatan pengikut ${idx + 1}`" :class="input" />
                     <button type="button" @click="hapusPengikut(idx)" class="text-xs font-bold text-rose-600 hover:underline px-2 py-2 text-left cursor-pointer">Hapus</button>
+                    <div v-if="mitraPks" class="sm:col-start-2 sm:col-span-3 grid grid-cols-1 sm:grid-cols-[1fr_2fr] gap-2 sm:mb-2">
+                        <input type="text" v-model="member.usaha" required list="skhpp-daftar-usaha" placeholder="Usaha (bengkel, laundry, …)" :aria-label="`Usaha pengikut ${idx + 1}`" :class="input" />
+                        <input type="text" v-model="member.lokasi_usaha" required placeholder="Lokasi usaha (contoh: Kantin Mako Kodaeral V, Jl. Perak Barat)" :aria-label="`Lokasi usaha pengikut ${idx + 1}`" :class="input" />
+                    </div>
                 </div>
+
+                <datalist id="skhpp-daftar-usaha">
+                    <option v-for="u in ['Bengkel', 'Laundry', 'Warung Makan', 'Kantin', 'Toko Kelontong', 'Fotokopi', 'Cleaning Service', 'Catering']" :key="u" :value="u"></option>
+                </datalist>
 
                 <button type="button" @click="tambahPengikut" class="px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-bold uppercase rounded-xl transition-all cursor-pointer">
                     + Tambah Pengikut

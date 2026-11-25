@@ -12,6 +12,8 @@ const props = defineProps({
 
 const jenisId = computed(() => jenisIdentitas(props.skhpp));
 const nPengikut = computed(() => jumlahPengikut(props.skhpp));
+// Kolom USAHA di lampiran untuk SKHPP-P Mitra / PKS (sama dengan Skhpp::lampiranBerusaha()).
+const lampiranBerusaha = computed(() => props.skhpp.kategori_personel === 'perusahaan' && Boolean(props.skhpp.is_mitra_pks));
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
@@ -423,6 +425,8 @@ const formatDateIndo = (dateStr) => {
                                         <th class="border border-black p-2">NAMA</th>
                                         <th class="border border-black p-2">{{ labelPengikut(jenisId) }}</th>
                                         <th class="border border-black p-2">JABATAN</th>
+                                        <th v-if="lampiranBerusaha" class="border border-black p-2">USAHA</th>
+                                        <th v-if="lampiranBerusaha" class="border border-black p-2">LOKASI USAHA</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -431,6 +435,8 @@ const formatDateIndo = (dateStr) => {
                                         <td class="border border-black p-2 font-normal">{{ m.nama }}</td>
                                         <td class="border border-black p-2 text-center">{{ m.pangkat_nrp_nik }}</td>
                                         <td class="border border-black p-2">{{ m.jabatan }}</td>
+                                        <td v-if="lampiranBerusaha" class="border border-black p-2">{{ m.usaha }}</td>
+                                        <td v-if="lampiranBerusaha" class="border border-black p-2">{{ m.lokasi_usaha }}</td>
                                     </tr>
                                 </tbody>
                             </table>
