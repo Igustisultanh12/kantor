@@ -11,6 +11,15 @@ class ThumbnailService
     const THUMB_QUALITY = 75;
     const MAX_CONCURRENT_GENERATIONS = 2;
 
+    /** Pratinjau foto: sisi terpanjang (px). Foto asli kamera/HP (4000px+, 5-20 MB) diperkecil sekali lalu disimpan. */
+    const PREVIEW_MAX = 2560;
+    const PREVIEW_QUALITY = 82;
+    /** Di bawah ukuran ini foto dikirim apa adanya (sudah cukup ringan). */
+    const PREVIEW_MIN_BYTES = 1024 * 1024;
+    /** Batas aman memori GD. */
+    const PREVIEW_MAX_PIXELS = 60_000_000;
+    const PREVIEW_MAX_BYTES = 60 * 1024 * 1024;
+
     // 26-byte valid 1x1 transparent WebP image data
     const TRANSPARENT_WEBP_BASE64 = 'UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==';
 
@@ -50,6 +59,179 @@ class ThumbnailService
 
         // 3. Jika sedang dalam antrean pembuatan (server sibuk), kembalikan respons 202 placeholder
         return self::getQueuedResponse();
+    }
+
+    /**
+     * Pratinjau gambar di Backup Explorer & folder berbagi.
+     * Foto besar (> PREVIEW_MAX px atau > 3 MB) dikirim sebagai salinan berukuran layar yang dibuat sekali
+     * lalu disimpan terenkripsi; selain itu (gambar kecil, GIF/SVG, video, PDF) dikirim apa adanya.
+     * Berkas asli resolusi penuh tetap tersedia lewat tombol Unduh.
+     */
+    public static function getPreviewResponse(string $fullPath, string $fileName)
+    {
+        $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+        $asli = fn () => FileSecurityService::streamDecryptedInline($fullPath, $fileName);
+
+        if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'bmp'], true) || !function_exists('imagecreatefromstring')) {
+            return $asli();
+        }
+        $ukuran = FileSecurityService::plaintextSize($fullPath);
+        if ($ukuran <= self::PREVIEW_MIN_BYTES) {
+            return $asli();
+        }
+        // Dimensi dari kepala berkas saja (tanpa mendekode seluruh foto).
+        $kepala = FileSecurityService::getDecryptedContents($fullPath, 512 * 1024);
+        $dimensi = $kepala ? @getimagesizefromstring($kepala) : false;
+        $sisiTerpanjang = $dimensi ? max($dimensi[0], $dimensi[1]) : 0;
+        if ($sisiTerpanjang <= self::PREVIEW_MAX && $ukuran <= 3 * 1024 * 1024) {
+            return $asli();
+        }
+
+        $useWebp = function_exists('imagewebp');
+        $extHasil = $useWebp ? 'webp' : 'jpg';
+        if (!$useWebp && $ext !== 'jpg' && $ext !== 'jpeg') {
+            return $asli(); // tanpa WebP, PNG transparan tidak bisa diperkecil tanpa kehilangan transparansi
+        }
+
+        $cacheDir = storage_path('app/private/cache_previews');
+        if (!file_exists($cacheDir)) {
+            @mkdir($cacheDir, 0777, true);
+        }
+        $cached = $cacheDir . '/' . md5('preview_' . $fullPath . '_' . @filemtime($fullPath) . '_' . @filesize($fullPath) . '_' . self::PREVIEW_MAX) . '.' . $extHasil;
+
+        if (!file_exists($cached)) {
+            self::generateWithLocks($cached, fn () => self::buatPratinjau($fullPath, $ext, $cached, $useWebp));
+        }
+        if (file_exists($cached) && filesize($cached) > 50) {
+            return FileSecurityService::streamDecryptedInline($cached, pathinfo($fileName, PATHINFO_FILENAME) . '.' . $extHasil, $useWebp ? 'image/webp' : 'image/jpeg');
+        }
+        return $asli(); // gagal / server sibuk: tetap tampil, memakai berkas asli
+    }
+
+    /** Buat salinan pratinjau berukuran layar, simpan terenkripsi di $target. */
+    protected static function buatPratinjau(string $fullPath, string $ext, string $target, bool $useWebp): bool
+    {
+        @ini_set('memory_limit', '768M');
+        $data = FileSecurityService::getDecryptedContents($fullPath, self::PREVIEW_MAX_BYTES);
+        if (!$data || strlen($data) >= self::PREVIEW_MAX_BYTES) {
+            return false;
+        }
+        $info = @getimagesizefromstring($data);
+        if (!$info || $info[0] * $info[1] > self::PREVIEW_MAX_PIXELS) {
+            return false;
+        }
+        $orientasi = in_array($ext, ['jpg', 'jpeg'], true) ? self::orientasiExif($data) : 1;
+        $src = @imagecreatefromstring($data);
+        unset($data);
+        if (!$src) {
+            return false;
+        }
+        $src = self::terapkanOrientasi($src, $orientasi);
+
+        $w = imagesx($src);
+        $h = imagesy($src);
+        $rasio = min(1, self::PREVIEW_MAX / max($w, $h));
+        $nw = max(1, (int) round($w * $rasio));
+        $nh = max(1, (int) round($h * $rasio));
+        $dst = imagecreatetruecolor($nw, $nh);
+        if ($useWebp) {
+            imagealphablending($dst, false);
+            imagesavealpha($dst, true);
+        } else {
+            imagefill($dst, 0, 0, imagecolorallocate($dst, 255, 255, 255));
+        }
+        imagecopyresampled($dst, $src, 0, 0, 0, 0, $nw, $nh, $w, $h);
+        imagedestroy($src);
+
+        // Salinan polos hanya sesaat di disk, lalu disimpan terenkripsi seperti berkas aslinya.
+        $tmp = $target . '.tmp.' . uniqid();
+        try {
+            $ok = $useWebp ? @imagewebp($dst, $tmp, self::PREVIEW_QUALITY) : @imagejpeg($dst, $tmp, self::PREVIEW_QUALITY);
+            imagedestroy($dst);
+            if (!$ok || !file_exists($tmp) || filesize($tmp) < 50) {
+                return false;
+            }
+            $part = $target . '.part.' . uniqid();
+            if (!FileSecurityService::encryptAndStoreFile($tmp, $part)) {
+                @unlink($part);
+                return false;
+            }
+            return @rename($part, $target);
+        } finally {
+            if (file_exists($tmp)) {
+                @unlink($tmp);
+            }
+        }
+    }
+
+    /** Nilai EXIF Orientation (1-8) dari foto JPEG; 1 bila tidak ada. Foto HP sering disimpan miring + penanda ini. */
+    protected static function orientasiExif(string $jpeg): int
+    {
+        if (!function_exists('exif_read_data')) {
+            return 1;
+        }
+        $exif = @exif_read_data('data://image/jpeg;base64,' . base64_encode(substr($jpeg, 0, 256 * 1024)));
+        $o = (int) ($exif['Orientation'] ?? 1);
+        return $o >= 1 && $o <= 8 ? $o : 1;
+    }
+
+    protected static function terapkanOrientasi($img, int $orientasi)
+    {
+        if ($orientasi === 1) {
+            return $img;
+        }
+        $putar = [3 => 180, 4 => 180, 5 => -90, 6 => -90, 7 => 90, 8 => 90][$orientasi] ?? 0;
+        if ($putar) {
+            $hasil = imagerotate($img, $putar, 0);
+            if ($hasil) {
+                imagedestroy($img);
+                $img = $hasil;
+            }
+        }
+        if (in_array($orientasi, [2, 4, 5, 7], true)) {
+            imageflip($img, IMG_FLIP_HORIZONTAL);
+        }
+        return $img;
+    }
+
+    /**
+     * Jalankan pembuatan berkas cache dengan kunci per-berkas (permintaan ganda menunggu hasil yang sama)
+     * dan slot global (maks. MAX_CONCURRENT_GENERATIONS pembuatan serempak). Mengembalikan false bila server sibuk.
+     */
+    protected static function generateWithLocks(string $target, callable $generate): bool
+    {
+        $lockDir = storage_path('app/locks');
+        if (!file_exists($lockDir)) {
+            @mkdir($lockDir, 0777, true);
+        }
+        $fileLock = @fopen($lockDir . '/preview_' . md5($target) . '.lock', 'c+');
+        if (!$fileLock) {
+            return false;
+        }
+        $slot = null;
+        try {
+            flock($fileLock, LOCK_EX); // permintaan kedua untuk foto yang sama menunggu, lalu memakai hasilnya
+            if (file_exists($target)) {
+                return true;
+            }
+            for ($i = 0; $i < 30 && !($slot = self::acquireGlobalGenerationSlot()); $i++) {
+                usleep(100000); // tunggu slot hingga 3 detik
+            }
+            if (!$slot) {
+                return false;
+            }
+            return (bool) $generate();
+        } catch (\Throwable $e) {
+            Log::warning('Pembuatan pratinjau gagal: ' . $e->getMessage());
+            return false;
+        } finally {
+            if ($slot) {
+                flock($slot, LOCK_UN);
+                fclose($slot);
+            }
+            flock($fileLock, LOCK_UN);
+            fclose($fileLock);
+        }
     }
 
     /**

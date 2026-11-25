@@ -816,7 +816,8 @@ class BackupShareController extends Controller
             return ArwService::previewResponse($fullPath, $file->file_name);
         }
 
-        return FileSecurityService::streamDecryptedInline($fullPath, $file->file_name);
+        // Foto besar dikirim sebagai salinan berukuran layar (lihat ThumbnailService::getPreviewResponse).
+        return ThumbnailService::getPreviewResponse($fullPath, $file->file_name);
     }
 
     /**
@@ -1039,10 +1040,14 @@ class BackupShareController extends Controller
 
             $zipStream = new StreamingZipService($out);
 
-            foreach ($items as $item) {
-                $this->streamSharedItemToZip($item, $zipStream, '', $share);
+            try {
+                foreach ($items as $item) {
+                    $this->streamSharedItemToZip($item, $zipStream, '', $share);
+                }
+            } catch (\Throwable $e) {
+                Log::error('ZIP berbagi terhenti: ' . $e->getMessage());
             }
-
+            // Selalu ditutup rapi supaya berkas yang sudah terkirim tetap bisa diekstrak.
             $zipStream->finish();
             fclose($out);
         }, 200, [
@@ -1064,9 +1069,11 @@ class BackupShareController extends Controller
             return;
         }
 
+        // Nama aman untuk Windows (mis. folder "RAPAT 10:00"); nama kembar diberi " (2)" oleh StreamingZipService.
+        $entryPath = ($zipSubDir !== '' ? $zipSubDir . '/' : '') . StreamingZipService::namaAman((string) $item->file_name);
+
         if ($item->is_folder) {
-            $newDir = $zipSubDir ? $zipSubDir . '/' . $item->file_name : $item->file_name;
-            $zipStream->addEmptyDir($newDir);
+            $newDir = $zipStream->addEmptyDir($entryPath);
             $children = Backup::where('parent_id', $item->id)->where('pc_id', $share->pc_id)->get();
             foreach ($children as $child) {
                 if (connection_aborted()) {
@@ -1075,15 +1082,22 @@ class BackupShareController extends Controller
                 $this->streamSharedItemToZip($child, $zipStream, $newDir, $share);
             }
         } else {
-            $fullPath = FileSecurityService::verifySafeStoragePath($item->file_path);
-            if (file_exists($fullPath)) {
-                $entryPath = $zipSubDir ? $zipSubDir . '/' . $item->file_name : $item->file_name;
-                $timestamp = $item->updated_at ? $item->updated_at->timestamp : time();
-
-                $zipStream->addFileStream($entryPath, function ($writeChunk) use ($fullPath) {
-                    FileSecurityService::streamDecryptedChunks($fullPath, $writeChunk);
-                }, $timestamp);
+            // Satu berkas bermasalah dilewati saja; error di tengah aliran akan membuat seluruh ZIP rusak.
+            try {
+                $fullPath = FileSecurityService::verifySafeStoragePath($item->file_path);
+            } catch (\Throwable $e) {
+                Log::warning("ZIP berbagi: berkas ID {$item->id} dilewati: " . $e->getMessage());
+                return;
             }
+            if (!file_exists($fullPath)) {
+                Log::warning("ZIP berbagi: berkas fisik ID {$item->id} tidak ditemukan, dilewati.");
+                return;
+            }
+            $timestamp = $item->updated_at ? $item->updated_at->timestamp : time();
+
+            $zipStream->addFileStream($entryPath, function ($writeChunk) use ($fullPath) {
+                FileSecurityService::streamDecryptedChunks($fullPath, $writeChunk);
+            }, $timestamp);
         }
     }
 

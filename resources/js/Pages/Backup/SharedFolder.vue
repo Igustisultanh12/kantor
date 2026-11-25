@@ -253,6 +253,7 @@ const panPosition = ref({ x: 0, y: 0 });
 const isPanning = ref(false);
 const panStart = ref({ x: 0, y: 0 });
 const isImageLoading = ref(false);
+const imageLoadProgress = ref(null); // persen pemuatan pratinjau gambar (null = ukuran belum diketahui)
 
 const resetZoomAndRotate = () => {
     zoomLevel.value = 1;
@@ -316,13 +317,17 @@ const fetchSecureBlob = async (url) => {
     }
     previewUrl.value = null;
     isImageLoading.value = true;
+    imageLoadProgress.value = null;
 
     try {
         const response = await axios.get(url, {
             responseType: 'blob',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'
-            }
+            },
+            onDownloadProgress: (e) => {
+                if (e.total) imageLoadProgress.value = Math.round((e.loaded * 100) / e.total);
+            },
         });
         const blobUrl = URL.createObjectURL(response.data);
         previewUrl.value = blobUrl;
@@ -1616,10 +1621,12 @@ const exitAndLock = () => {
                      @mouseleave="endPan"
                      :style="{ cursor: zoomLevel > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default' }">
                     
-                    <!-- Loading Spinner Saat Dekripsi Blob -->
-                    <div v-if="isImageLoading" class="flex flex-col items-center gap-3 text-slate-300">
-                        <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                        <p class="text-xs font-bold uppercase tracking-wider">Mendekripsi Data Gambar...</p>
+                    <!-- Memuat pratinjau: thumbnail samar langsung tampil + persentase pemuatan -->
+                    <div v-if="isImageLoading" class="relative w-full h-full flex flex-col items-center justify-center gap-3 text-slate-300">
+                        <img v-if="activePreviewItem?.thumbnail_url" :src="activePreviewItem.thumbnail_url" alt="" aria-hidden="true"
+                            class="absolute inset-0 m-auto max-w-full max-h-full object-contain blur-sm opacity-40 pointer-events-none" />
+                        <div class="relative w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                        <p class="relative text-xs font-bold uppercase tracking-wider" role="status">Memuat gambar{{ imageLoadProgress !== null ? ` ${imageLoadProgress}%` : '...' }}</p>
                     </div>
 
                     <!-- Video Streaming Player Langsung (Native HTML5 dengan Hardware Acceleration) -->

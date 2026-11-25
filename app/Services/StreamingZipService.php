@@ -25,6 +25,53 @@ class StreamingZipService
     /** @var array Riwayat berkas dan direktori untuk Central Directory */
     private array $files = [];
 
+    /** @var array<string,true> Jalur yang sudah dipakai (huruf kecil; Windows tidak membedakan huruf besar/kecil) */
+    private array $dipakai = [];
+
+    /**
+     * Satu segmen nama (berkas/folder) yang aman diekstrak di Windows:
+     * karakter \ / : * ? " < > | dan karakter kontrol diganti "_", spasi/titik di ujung dibuang,
+     * nama perangkat (CON, NUL, COM1, ...) diberi akhiran "_".
+     * Tanpa ini Windows Explorer menampilkan ZIP kosong / gagal ekstrak (mis. folder "RAPAT 10:00").
+     */
+    public static function namaAman(string $nama): string
+    {
+        $nama = preg_replace('/[\x00-\x1F\\\\\/:*?"<>|]/u', '_', $nama) ?? '_';
+        $nama = rtrim($nama, ' .');
+        if ($nama === '') {
+            return '_';
+        }
+        $dasar = strtoupper(explode('.', $nama)[0]);
+        if (preg_match('/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/', $dasar)) {
+            $pos = strpos($nama, '.');
+            $nama = $pos === false ? $nama . '_' : substr($nama, 0, $pos) . '_' . substr($nama, $pos);
+        }
+        return $nama;
+    }
+
+    /**
+     * Jalur entri yang belum dipakai: nama kembar (termasuk beda huruf besar/kecil) menjadi "nama (2).ext".
+     * Arsip dengan entri kembar ditolak sebagian pembuka ZIP dan gagal diekstrak di Windows.
+     */
+    private function jalurUnik(string $jalur, bool $folder): string
+    {
+        $jalur = trim(str_replace('\\', '/', $jalur), '/');
+        $induk = str_contains($jalur, '/') ? substr($jalur, 0, strrpos($jalur, '/') + 1) : '';
+        $nama = substr($jalur, strlen($induk));
+        $ext = '';
+        if (!$folder && ($titik = strrpos($nama, '.')) > 0) {
+            $ext = substr($nama, $titik);
+            $nama = substr($nama, 0, $titik);
+        }
+
+        $calon = $jalur;
+        for ($n = 2; isset($this->dipakai[mb_strtolower($calon)]); $n++) {
+            $calon = "{$induk}{$nama} ({$n}){$ext}";
+        }
+        $this->dipakai[mb_strtolower($calon)] = true;
+        return $calon;
+    }
+
     /**
      * @param resource $outputStream Resource stream tujuan (misal php://output atau file pointer)
      */
@@ -37,14 +84,18 @@ class StreamingZipService
     }
 
     /**
-     * Menambahkan entri direktori kosong ke dalam arsip
+     * Menambahkan entri direktori kosong ke dalam arsip.
+     * Mengembalikan jalur folder yang dipakai (bisa berakhiran " (2)" bila namanya kembar),
+     * untuk dipakai sebagai induk isi folder tersebut.
      */
-    public function addEmptyDir(string $dirPath, ?int $timestamp = null): void
+    public function addEmptyDir(string $dirPath, ?int $timestamp = null): string
     {
         $dirPath = trim(str_replace('\\', '/', $dirPath), '/');
         if ($dirPath === '') {
-            return;
+            return '';
         }
+        $dirPath = $this->jalurUnik($dirPath, true);
+        $hasil = $dirPath;
         $dirPath .= '/';
         $dirLen = strlen($dirPath);
 
@@ -83,6 +134,8 @@ class StreamingZipService
             'time' => $dosTime,
             'date' => $dosDate,
         ];
+
+        return $hasil;
     }
 
     /**
@@ -94,7 +147,7 @@ class StreamingZipService
      */
     public function addFileStream(string $zipPath, callable $chunkProvider, ?int $timestamp = null): void
     {
-        $zipPath = ltrim(str_replace('\\', '/', $zipPath), '/');
+        $zipPath = $this->jalurUnik($zipPath, false);
         $nameLen = strlen($zipPath);
 
         $time = $timestamp ?? time();

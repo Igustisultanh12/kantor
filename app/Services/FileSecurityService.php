@@ -12,6 +12,25 @@ class FileSecurityService
     const CHUNK_SIZE = 65536; // 64 KB per chunk
 
     /**
+     * Potongan maksimal untuk permintaan video terbuka ("Range: bytes=N-").
+     * Tanpa batas ini setiap buka/geser video membuat server mengalirkan seluruh sisa berkas,
+     * walau browser hanya memakai sebagian: proses PHP tersita dan pratinjau/ZIP lain ikut antre.
+     */
+    const MEDIA_RANGE_CHUNK = 4 * 1024 * 1024;
+
+    /** Ukuran isi asli berkas (sebelum enkripsi). */
+    public static function plaintextSize(string $fullPath): int
+    {
+        return self::isEncrypted($fullPath) ? self::getEncryptedPlaintextSize($fullPath) : (int) @filesize($fullPath);
+    }
+
+    /** ETag dari identitas berkas di disk (berubah bila berkas diganti/diubah). */
+    public static function etag(string $fullPath): string
+    {
+        return '"' . md5($fullPath . '|' . @filemtime($fullPath) . '|' . @filesize($fullPath)) . '"';
+    }
+
+    /**
      * DAFTAR EKSTENSI BERBAHAYA (EKSEKUTABEL & SKRIP SERVER)
      */
     protected static $blacklistedExtensions = [
@@ -279,6 +298,9 @@ class FileSecurityService
 
         $headers = [
             'Content-Type' => $mime,
+            // Ukuran pasti: browser menampilkan progres dan menandai unduhan terputus sebagai gagal, bukan berkas rusak.
+            'Content-Length' => (string) self::plaintextSize($fullPath),
+            'X-Accel-Buffering' => 'no',
             'Content-Disposition' => 'attachment; filename="' . addslashes($downloadName) . '"',
             'X-Content-Type-Options' => 'nosniff',
             'X-Frame-Options' => 'SAMEORIGIN',
@@ -413,8 +435,11 @@ class FileSecurityService
         if ($rangeHeader && preg_match('/bytes=\s*(\d+)-(\d*)/i', $rangeHeader, $matches)) {
             $isPartial = true;
             $start = (int)$matches[1];
-            if (!empty($matches[2])) {
+            if ($matches[2] !== '') {
                 $end = min((int)$matches[2], $totalSize - 1);
+            } else {
+                // Rentang terbuka: kirim sepotong saja; browser meminta potongan berikutnya sesuai kebutuhan.
+                $end = min($start + self::MEDIA_RANGE_CHUNK - 1, $totalSize - 1);
             }
         }
 
@@ -436,6 +461,7 @@ class FileSecurityService
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, max-age=86400, must-revalidate',
             'Pragma' => 'public',
+            'X-Accel-Buffering' => 'no',
         ];
 
         if ($isPartial) {
@@ -544,14 +570,26 @@ class FileSecurityService
         }
 
         $isEncrypted = self::isEncrypted($fullPath);
+        $etag = self::etag($fullPath);
 
         $headers = [
             'Content-Type' => $mime,
             'Content-Disposition' => 'inline; filename="' . addslashes($fileName) . '"',
             'X-Content-Type-Options' => 'nosniff',
             'X-Frame-Options' => 'SAMEORIGIN',
+            // no-cache = boleh disimpan browser, tapi selalu dicek ulang ke server (izin akses/tautan berbagi tetap diperiksa).
             'Cache-Control' => 'private, no-cache, must-revalidate',
+            'ETag' => $etag,
         ];
+
+        // Dibuka lagi dan berkas belum berubah: cukup 304 tanpa isi, browser memakai salinannya.
+        if (trim((string) request()->header('If-None-Match')) === $etag) {
+            return new StreamedResponse(function () {}, 304, $headers);
+        }
+
+        // Ukuran pasti: browser bisa menampilkan progres pemuatan.
+        $headers['Content-Length'] = (string) self::plaintextSize($fullPath);
+        $headers['X-Accel-Buffering'] = 'no';
 
         return new StreamedResponse(function () use ($fullPath, $isEncrypted) {
             $fp = fopen($fullPath, 'rb');
