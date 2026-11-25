@@ -414,7 +414,7 @@ const formatDateIndo = (dateStr) => {
 
                             <!-- Judul Lampiran -->
                             <div class="text-center my-6">
-                                <div class="text-[12pt] font-normal uppercase tracking-wider">{{ judulLampiran(skhpp.satuan, skhpp.kegiatan, skhpp.peruntukan) }}</div>
+                                <div class="text-[12pt] font-normal uppercase tracking-wider">{{ judulLampiran(skhpp.satuan, skhpp.kegiatan, skhpp.peruntukan, skhpp.kategori_personel === 'perusahaan') }}</div>
                             </div>
 
                             <!-- Tabel Anggota Pengikut -->

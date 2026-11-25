@@ -91,7 +91,8 @@ class SkhppFormFlowTest extends TestCase
     {
         $this->actingAs($this->makeUser())->post('/skhpp', $this->payload([
             'kategori_personel' => 'perusahaan', 'jenis_identitas' => 'NIK', 'pangkat_korps_nrp' => '', 'nik' => '3515081205640009',
-            'is_mitra_pks' => true, 'has_pengikut' => true, 'satuan' => 'Kopkar Kodaeral V',
+            'is_mitra_pks' => true, 'has_pengikut' => true, // tanpa Satuan: tidak wajib untuk SKHPP-P
+            'kegiatan' => 'Mitra Perjanjian Kerja Sama (PKS) Sewa Lahan Primkopal Mako Kodaeral V',
             'members' => [
                 ['nama' => 'Ani', 'pangkat_nrp_nik' => '3515', 'jabatan' => 'Pemilik', 'usaha' => 'Bengkel', 'lokasi_usaha' => 'Jl. Perak Barat 10'],
                 ['nama' => 'Made', 'pangkat_nrp_nik' => '3516', 'jabatan' => 'Pemilik', 'usaha' => 'Laundry', 'lokasi_usaha' => 'Kantin Mako'],
@@ -103,6 +104,7 @@ class SkhppFormFlowTest extends TestCase
         $this->assertTrue($skhpp->lampiranBerusaha());
         $this->assertSame(['Bengkel', 'Laundry'], $skhpp->members->pluck('usaha')->all());
         $this->assertSame(['Jl. Perak Barat 10', 'Kantin Mako'], $skhpp->members->pluck('lokasi_usaha')->all());
+        $this->assertSame('DAFTAR NAMA YANG MELAKSANAKAN SC MITRA PERJANJIAN KERJA SAMA (PKS) SEWA LAHAN PRIMKOPAL MAKO KODAERAL V', $skhpp->judulLampiran());
 
         $html = view('pdf.skhpp', [
             'skhpp' => $skhpp, 'foto1_base64' => null, 'foto2_base64' => null, 'qr_base64' => null,
@@ -428,5 +430,9 @@ class SkhppFormFlowTest extends TestCase
         $lama = new Skhpp(['satuan' => 'Denma Kodaeral V', 'peruntukan' => 'dalam rangka melengkapi administrasi seleksi Dikmaba TA. 2026.']);
         $this->assertSame('DAFTAR NAMA PERSONEL DENMA KODAERAL V YANG MELAKSANAKAN SC SELEKSI DIKMABA TA. 2026', $lama->judulLampiran());
         $this->assertSame('DAFTAR NAMA-NAMA ANGGOTA PENGIKUT', (new Skhpp(['peruntukan' => 'uji']))->judulLampiran());
+        // SKHPP-P lama (tanpa kolom kegiatan) juga tanpa "PERSONEL <satuan>".
+        $this->assertSame('DAFTAR NAMA YANG MELAKSANAKAN SC SEWA LAHAN', (new Skhpp([
+            'kategori_personel' => 'perusahaan', 'satuan' => 'Primkopal', 'peruntukan' => 'dalam rangka melengkapi administrasi Sewa Lahan.',
+        ]))->judulLampiran());
     }
 }

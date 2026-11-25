@@ -10,6 +10,7 @@ use App\Models\AppNotification;
 use App\Services\WhatsappService;
 use App\Support\WaktuTte;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
@@ -146,7 +147,8 @@ class SkhppController extends Controller
             'foto_1' => 'required|image|mimes:jpeg,jpg,png|max:10240',
             'foto_2' => 'nullable|required_if:is_pernikahan,true|image|mimes:jpeg,jpg,png|max:10240',
             'has_pengikut' => 'boolean',
-            'satuan' => 'nullable|required_if:has_pengikut,true,1|string|max:150',
+            // Satuan hanya wajib untuk SKHPP-D berpengikut; judul lampiran SKHPP-P tidak memakainya.
+            'satuan' => [Rule::requiredIf(fn () => $request->boolean('has_pengikut') && $request->kategori_personel !== 'perusahaan'), 'nullable', 'string', 'max:150'],
             'kegiatan' => 'nullable|string|max:255',
             'members' => 'nullable|array',
             'members.*.nama' => 'required|string',
@@ -335,7 +337,8 @@ class SkhppController extends Controller
             'foto_1' => 'nullable|image|mimes:jpeg,jpg,png|max:10240',
             'foto_2' => 'nullable|image|mimes:jpeg,jpg,png|max:10240',
             'has_pengikut' => 'boolean',
-            'satuan' => 'nullable|required_if:has_pengikut,true,1|string|max:150',
+            // Satuan hanya wajib untuk SKHPP-D berpengikut; judul lampiran SKHPP-P tidak memakainya.
+            'satuan' => [Rule::requiredIf(fn () => $request->boolean('has_pengikut') && $request->kategori_personel !== 'perusahaan'), 'nullable', 'string', 'max:150'],
             'kegiatan' => 'nullable|string|max:255',
             'members' => 'nullable|array',
             'members.*.nama' => 'required|string',

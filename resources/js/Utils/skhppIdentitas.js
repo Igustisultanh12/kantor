@@ -36,9 +36,11 @@ export const peruntukanDariKegiatan = (kegiatan) => {
 };
 
 /** Judul lampiran pengikut (sama dengan Skhpp::judulLampiran() di PHP). */
-export const judulLampiran = (satuan, kegiatan, peruntukan = '') => {
+export const judulLampiran = (satuan, kegiatan, peruntukan = '', perusahaan = false) => {
     const s = String(satuan || '').trim();
     const k = String(kegiatan || '').trim() || kegiatanDariPeruntukan(peruntukan);
+    // SKHPP-P (perusahaan): tanpa "PERSONEL <satuan>".
+    if (perusahaan && k) return `DAFTAR NAMA YANG MELAKSANAKAN SC ${k}`.toUpperCase();
     if (!s || !k) return 'DAFTAR NAMA-NAMA ANGGOTA PENGIKUT';
     return `DAFTAR NAMA PERSONEL ${s} YANG MELAKSANAKAN SC ${k}`.toUpperCase();
 };

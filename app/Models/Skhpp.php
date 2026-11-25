@@ -90,6 +90,10 @@ class Skhpp extends Model
         if ($kegiatan === '' && stripos((string) $this->peruntukan, self::AWALAN_PERUNTUKAN) === 0) {
             $kegiatan = rtrim(trim(substr($this->peruntukan, strlen(self::AWALAN_PERUNTUKAN))), '.');
         }
+        // SKHPP-P (perusahaan): tanpa "PERSONEL <satuan>", mis. "DAFTAR NAMA YANG MELAKSANAKAN SC MITRA PKS ...".
+        if ($this->kategori_personel === 'perusahaan' && $kegiatan !== '') {
+            return mb_strtoupper("DAFTAR NAMA YANG MELAKSANAKAN SC {$kegiatan}");
+        }
         if ($satuan === '' || $kegiatan === '') {
             return 'DAFTAR NAMA-NAMA ANGGOTA PENGIKUT';
         }

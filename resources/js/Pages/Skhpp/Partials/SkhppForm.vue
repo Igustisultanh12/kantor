@@ -361,10 +361,10 @@ const input = 'w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-
                     <input id="skhpp-pengantar-tgl" type="date" v-model="pengantar.tanggal" :required="!pengantarLama" :class="input" />
                 </div>
                 <div class="sm:col-span-3">
-                    <label for="skhpp-satuan" :class="label">Satuan {{ form.has_pengikut ? '*' : '' }}</label>
-                    <input id="skhpp-satuan" type="text" v-model="form.satuan" @input="ketikSatuan" :required="form.has_pengikut"
+                    <label for="skhpp-satuan" :class="label">Satuan {{ form.has_pengikut && format !== 'perusahaan' ? '*' : '' }}</label>
+                    <input id="skhpp-satuan" type="text" v-model="form.satuan" @input="ketikSatuan" :required="form.has_pengikut && format !== 'perusahaan'"
                         placeholder="Contoh: Pomal Kodaeral V" :class="input" />
-                    <p class="mt-1 text-[11px] text-slate-500">Terisi otomatis dari "Surat Dari" (Danpomal Kodaeral V → Pomal Kodaeral V); boleh diubah. Dipakai di judul lampiran pengikut.</p>
+                    <p class="mt-1 text-[11px] text-slate-500">Terisi otomatis dari "Surat Dari" (Danpomal Kodaeral V → Pomal Kodaeral V); boleh diubah. {{ format === 'perusahaan' ? 'Tidak dipakai di judul lampiran SKHPP Mitra Kerja / Perusahaan.' : 'Dipakai di judul lampiran pengikut.' }}</p>
                     <p v-if="form.errors.satuan" class="mt-1 text-xs text-rose-600 font-medium">{{ form.errors.satuan }}</p>
                 </div>
             </div>
@@ -464,8 +464,8 @@ const input = 'w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-
                 </p>
 
                 <p class="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200" role="status">
-                    Judul lampiran: <b class="text-slate-800">{{ judulLampiran(form.satuan, form.kegiatan, peruntukanLama) }}</b>
-                    <span class="block mt-0.5 text-[11px] text-slate-500">Dari isian Satuan (bagian 2) dan Maksud &amp; Peruntukan (bagian 5).</span>
+                    Judul lampiran: <b class="text-slate-800">{{ judulLampiran(form.satuan, form.kegiatan, peruntukanLama, format === 'perusahaan') }}</b>
+                    <span class="block mt-0.5 text-[11px] text-slate-500">{{ format === 'perusahaan' ? 'Dari isian Maksud & Peruntukan (bagian 5).' : 'Dari isian Satuan (bagian 2) dan Maksud & Peruntukan (bagian 5).' }}</span>
                 </p>
 
                 <div v-for="(member, idx) in form.members" :key="idx" class="grid grid-cols-1 sm:grid-cols-[1.5rem_1fr_1fr_1fr_auto] gap-2 sm:items-center p-3 sm:p-0 bg-slate-50 sm:bg-transparent rounded-2xl">
