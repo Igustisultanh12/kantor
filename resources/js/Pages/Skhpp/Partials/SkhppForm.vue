@@ -1,7 +1,7 @@
 <script setup>
 // Form SKHPP bersama untuk halaman Buat (tanpa prop skhpp) dan Revisi (dengan prop skhpp).
-import { Link, useForm } from '@inertiajs/vue3';
-import { ref, reactive, computed, watch } from 'vue';
+import { Link, useForm, usePage } from '@inertiajs/vue3';
+import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import Swal from 'sweetalert2';
 import { JENIS_IDENTITAS, berpangkat, gabungPangkat, uraiIdentitas, teksPengikut, labelPengikut, judulLampiran, satuanDariPengantar, kegiatanDariPeruntukan, peruntukanDariKegiatan } from '@/Utils/skhppIdentitas';
 
@@ -82,6 +82,62 @@ const uraiPengantar = (teksLama) => {
 const pengantar = reactive(uraiPengantar(s.surat_pengantar));
 // Data lama yang kalimatnya tidak berpola "Surat … No. … tanggal …" dibiarkan apa adanya sampai ketiga isian diisi.
 const pengantarLama = pengantar.dari ? '' : (s.surat_pengantar || '');
+
+// Draf otomatis: isian disimpan di browser (per pengguna, per SKHPP) supaya tidak hilang saat halaman ter-refresh.
+// Pas foto tidak ikut (berkas tidak bisa disimpan di localStorage). Draf kedaluwarsa setelah 3 hari dan dihapus saat terkirim.
+const kunciDraf = `skhpp-draf:${usePage().props.auth?.user?.id ?? 'tamu'}:${props.skhpp?.id ?? 'baru'}`;
+const MASA_DRAF = 3 * 24 * 60 * 60 * 1000;
+const KOLOM_DRAF = Object.keys(form.data()).filter((k) => !k.startsWith('foto_'));
+const isiDraf = () => ({
+    form: Object.fromEntries(KOLOM_DRAF.map((k) => [k, form[k]])),
+    format: format.value,
+    identitas: { ...identitas },
+    pengantar: { ...pengantar },
+});
+const hapusDraf = () => { try { localStorage.removeItem(kunciDraf); } catch { /* penyimpanan browser tidak tersedia */ } };
+const bacaDraf = () => {
+    try {
+        const d = JSON.parse(localStorage.getItem(kunciDraf));
+        // Draf usang, atau data SKHPP sudah diubah di tempat lain setelah draf dibuat: abaikan.
+        const usang = !d?.isi || Date.now() - d.waktu > MASA_DRAF || (s.updated_at && d.waktu < Date.parse(s.updated_at));
+        if (usang) { hapusDraf(); return null; }
+        return d;
+    } catch { return null; }
+};
+const drafDipulihkan = ref(null);
+const drafTersimpan = ref(null);
+const draf = bacaDraf();
+if (draf) {
+    Object.assign(form, draf.isi.form);
+    format.value = draf.isi.format;
+    Object.assign(identitas, draf.isi.identitas);
+    Object.assign(pengantar, draf.isi.pengantar);
+    drafDipulihkan.value = draf.waktu;
+}
+
+let timerDraf = null;
+let drafSelesai = false; // setelah terkirim, draf tidak boleh tersimpan lagi
+const simpanDraf = () => {
+    clearTimeout(timerDraf);
+    if (drafSelesai) return;
+    try {
+        const waktu = Date.now();
+        localStorage.setItem(kunciDraf, JSON.stringify({ waktu, isi: isiDraf() }));
+        drafTersimpan.value = waktu;
+    } catch { /* penuh / mode privat: abaikan */ }
+};
+watch(isiDraf, () => { clearTimeout(timerDraf); timerDraf = setTimeout(simpanDraf, 400); }, { deep: true });
+// Simpan seketika saat halaman akan dimuat ulang/ditutup, supaya ketikan terakhir tidak tertinggal.
+const simpanSebelumKeluar = () => { if (timerDraf) simpanDraf(); };
+onMounted(() => window.addEventListener('beforeunload', simpanSebelumKeluar));
+onBeforeUnmount(() => { window.removeEventListener('beforeunload', simpanSebelumKeluar); clearTimeout(timerDraf); });
+
+const buangDraf = () => {
+    drafSelesai = true;
+    hapusDraf();
+    window.location.reload();
+};
+const jamDraf = (t) => new Date(t).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const teksPengantar = computed(() => {
     const dari = pengantar.dari.trim();
     const nomor = pengantar.nomor.trim();
@@ -143,15 +199,21 @@ const submit = () => {
             })) : [],
         };
     }).post(isEdit.value ? route('skhpp.update', props.skhpp.id) : route('skhpp.store'), {
-        onSuccess: () => Swal.fire(
-            'BERHASIL',
-            form.ttd_mode === 'manual'
-                ? 'SKHPP tersimpan untuk TTD manual. Cetak naskahnya, mintakan tanda tangan Komandan, lalu unggah hasilnya lewat tombol "Unggah TTD".'
-                : (isEdit.value
-                    ? 'Revisi data SKHPP telah diperbarui & dikirim ulang ke TTD Komandan.'
-                    : 'Permohonan SKHPP telah diterbitkan dan dikirim ke TTD Komandan.'),
-            'success',
-        ),
+        onSuccess: () => {
+            // Terkirim: draf otomatis tidak diperlukan lagi.
+            drafSelesai = true;
+            clearTimeout(timerDraf);
+            hapusDraf();
+            Swal.fire(
+                'BERHASIL',
+                form.ttd_mode === 'manual'
+                    ? 'SKHPP tersimpan untuk TTD manual. Cetak naskahnya, mintakan tanda tangan Komandan, lalu unggah hasilnya lewat tombol "Unggah TTD".'
+                    : (isEdit.value
+                        ? 'Revisi data SKHPP telah diperbarui & dikirim ulang ke TTD Komandan.'
+                        : 'Permohonan SKHPP telah diterbitkan dan dikirim ke TTD Komandan.'),
+                'success',
+            );
+        },
     });
 };
 
@@ -163,6 +225,16 @@ const input = 'w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-
 
 <template>
     <form @submit.prevent="submit" class="space-y-6">
+
+        <div v-if="drafDipulihkan" role="status" class="flex flex-wrap items-center justify-between gap-3 text-xs text-sky-900 bg-sky-50 p-4 rounded-2xl border border-sky-200">
+            <span>
+                <b>Isian sebelumnya dipulihkan</b> dari draf otomatis ({{ jamDraf(drafDipulihkan) }}).
+                <span class="text-sky-800">Pas foto perlu dipilih ulang.</span>
+            </span>
+            <button type="button" @click="buangDraf" class="px-3 py-1.5 bg-white hover:bg-sky-100 text-sky-800 font-bold rounded-xl border border-sky-200 transition-all cursor-pointer">
+                Buang draf &amp; mulai dari awal
+            </button>
+        </div>
 
         <!-- 1. Jenis SKHPP -->
         <div :class="kartu">
@@ -459,7 +531,8 @@ const input = 'w-full text-xs font-semibold px-4 py-2.5 rounded-xl border-slate-
             </div>
         </div>
 
-        <div class="flex flex-wrap justify-end gap-4 pt-4">
+        <div class="flex flex-wrap items-center justify-end gap-4 pt-4">
+            <span v-if="drafTersimpan" class="text-[11px] text-slate-500 mr-auto" aria-live="polite">Draf tersimpan otomatis {{ jamDraf(drafTersimpan) }}</span>
             <Link :href="route('skhpp.index')" class="px-6 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold uppercase rounded-2xl transition-all">Batal</Link>
             <button type="submit" :disabled="form.processing"
                 class="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider rounded-2xl shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-50 cursor-pointer">

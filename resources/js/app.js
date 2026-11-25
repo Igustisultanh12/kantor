@@ -4,7 +4,7 @@ import '../css/nova.css';
 import '../css/nova-dark-compat.css';
 import './bootstrap';
 
-import { createInertiaApp } from '@inertiajs/vue3';
+import { createInertiaApp, router } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createApp, h } from 'vue';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
@@ -16,6 +16,16 @@ installClickBurst();
 
 const appName = import.meta.env.VITE_APP_NAME || 'SI SINDEN - DENINTEL KODAERAL V';
 
+// Draf form SKHPP (berisi NIK, alamat) disimpan di browser; dihapus begitu halaman tampil tanpa pengguna login
+// (keluar sistem / sesi habis), supaya tidak tertinggal di komputer bersama.
+const hapusDrafSaatKeluar = (page) => {
+    if (page?.props?.auth?.user) return;
+    try {
+        Object.keys(localStorage).filter((k) => k.startsWith('skhpp-draf:')).forEach((k) => localStorage.removeItem(k));
+    } catch { /* penyimpanan browser tidak tersedia */ }
+};
+router.on('navigate', (event) => hapusDrafSaatKeluar(event.detail.page));
+
 createInertiaApp({
     title: (title) => title ? `${title} - ${appName}` : appName,
     resolve: (name) => resolvePageComponent(
@@ -23,6 +33,7 @@ createInertiaApp({
             import.meta.glob('./Pages/**/*.vue'),
         ),
     setup({ el, App, props, plugin }) {
+        hapusDrafSaatKeluar(props.initialPage);
         return createApp({ render: () => h(App, props) })
             .use(plugin)
             .use(ZiggyVue)
