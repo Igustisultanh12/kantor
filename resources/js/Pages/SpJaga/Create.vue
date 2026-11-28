@@ -233,6 +233,19 @@ const removePerwira = (idx) => {
     }
 };
 
+// Geser perwira naik/turun. Urutan baris = urutan rotasi, jadi tanggal tetap di posisinya
+// dan perwira yang digeser mengambil giliran tanggal posisi barunya.
+const TGL_KEYS = ['tgl_1', 'tgl_2', 'tgl_3', 'tgl_4', 'tgl_5', 'tgl_6', 'tgl_7'];
+const movePerwira = (idx, dir) => {
+    const list = form.perwiras;
+    const to = idx + dir;
+    if (to < 0 || to >= list.length) return;
+    const slotDates = list.map(p => TGL_KEYS.map(k => p[k]));
+    const [row] = list.splice(idx, 1);
+    list.splice(to, 0, row);
+    list.forEach((p, r) => TGL_KEYS.forEach((k, c) => { p[k] = slotDates[r][c]; }));
+};
+
 // Tambah / Hapus Anggota di Divisi
 const addAnggotaToDivisi = (divIdx) => {
     form.anggotas[divIdx].anggota_items.push({
@@ -683,7 +696,31 @@ const submit = () => {
                                     class="transition"
                                     :class="isRowPerwiraTertua(p, idx) ? 'bg-amber-50/60 ring-1 ring-amber-300' : 'hover:bg-slate-50/50'"
                                 >
-                                    <td class="p-2 text-center font-bold text-slate-500">{{ idx + 1 }}.</td>
+                                    <td class="p-1 text-center font-bold text-slate-500">
+                                        <div class="flex flex-col items-center gap-0.5">
+                                            <button
+                                                type="button"
+                                                @click="movePerwira(idx, -1)"
+                                                :disabled="idx === 0"
+                                                class="p-0.5 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-25 disabled:pointer-events-none cursor-pointer"
+                                                :aria-label="`Geser ${p.nama || 'perwira'} ke atas`"
+                                                title="Geser ke atas"
+                                            >
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5 15 7-7 7 7"/></svg>
+                                            </button>
+                                            <span>{{ idx + 1 }}.</span>
+                                            <button
+                                                type="button"
+                                                @click="movePerwira(idx, 1)"
+                                                :disabled="idx === form.perwiras.length - 1"
+                                                class="p-0.5 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-25 disabled:pointer-events-none cursor-pointer"
+                                                :aria-label="`Geser ${p.nama || 'perwira'} ke bawah`"
+                                                title="Geser ke bawah"
+                                            >
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7"/></svg>
+                                            </button>
+                                        </div>
+                                    </td>
                                     <td class="p-2">
                                         <div class="space-y-1">
                                             <select 
